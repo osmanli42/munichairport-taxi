@@ -1,0 +1,237 @@
+{
+  "nav": {
+    "home": "Home",
+    "vehicles": "Vehicles & Prices",
+    "about": "About Us",
+    "contact": "Contact",
+    "book": "Book Now",
+    "faq": "FAQ"
+  },
+  "hero": {
+    "title": "Your reliable taxi service",
+    "subtitle": "to & from Munich Airport – Bavaria, Austria & neighboring regions",
+    "description": "Professional airport transfer for individuals and groups. We travel from Munich Airport throughout Bavaria, Austria, and all neighboring countries – one-way or as a round trip. Punctual, comfortable, and at a fixed price.",
+    "cta": "Book Now",
+    "phone": "Call Now",
+    "features": {
+      "fixed_price": "Fixed Prices",
+      "punctual": "Punctual Service",
+      "247": "24/7 Available",
+      "wifi": "Free WiFi"
+    }
+  },
+  "booking": {
+    "title": "Book a Ride",
+    "subtitle": "Simple, fast, and at a fixed price",
+    "pickup": "Pickup Address",
+    "pickup_placeholder": "Enter pickup address...",
+    "dropoff": "Destination Address",
+    "dropoff_placeholder": "Enter destination address...",
+    "date": "Date",
+    "time": "Time",
+    "vehicle": "Vehicle Type",
+    "passengers": "Number of Passengers",
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "email": "Email Address",
+    "flight_number": "Flight Number (optional)",
+    "child_seat": "Child seat required (free of charge)",
+    "luggage": "Number of Luggage",
+    "notes": "Notes (optional)",
+    "payment": "Payment Method",
+    "payment_cash": "Cash",
+    "payment_card": "Card Payment",
+    "submit": "Book Now",
+    "submitting": "Sending...",
+    "price_label": "Estimated Price",
+    "calculating": "Calculating price...",
+    "enter_addresses": "Please enter pickup and destination addresses",
+    "success_title": "Booking Successful!",
+    "success_message": "Your booking request was submitted successfully. You will receive a confirmation email at {email}.",
+    "success_booking_number": "Booking Number",
+    "error_title": "Error",
+    "error_message": "The booking could not be submitted. Please try again or call us.",
+    "required": "Required field",
+    "distance": "Distance",
+    "duration": "Duration",
+    "approx": "approx.",
+    "km": "km",
+    "min": "min."
+  },
+  "vehicles": {
+    "title": "Vehicles & Prices",
+    "subtitle": "Choose the right vehicle for your group",
+    "kombi": {
+      "name": "Kombi",
+      "persons": "1–3 Persons",
+      "description": "Ideal for small groups and solo travelers. Comfortable vehicle with ample trunk space.",
+      "features": ["Air conditioning", "WiFi", "Water bottle included", "Up to 3 suitcases"]
+    },
+    "van": {
+      "name": "Van / Minibus",
+      "persons": "4–7 Persons",
+      "description": "Perfect for families and medium-sized groups. Plenty of space for passengers and luggage.",
+      "features": ["Air conditioning", "WiFi", "Large trunk", "Up to 7 suitcases"]
+    },
+    "grossraumtaxi": {
+      "name": "Large Taxi",
+      "persons": "8+ Persons",
+      "description": "For large groups and corporate transfers. Maximum comfort and space.",
+      "features": ["Air conditioning", "WiFi", "XXL trunk", "Up to 12 suitcases"]
+    },
+    "base_price": "Base price",
+    "per_km": "per km",
+    "book_now": "Book Now",
+    "included": "Included",
+    "child_seat_free": "Child seat free of charge",
+    "fixed_price_info": "All prices are fixed. No hidden costs."
+  },
+  "about": {
+    "title": "About Munich Airport Taxi",
+    "subtitle": "Your trusted partner for airport transfers – Bavaria, Austria & beyond",
+    "description": "Munich Airport Taxi was founded to provide travelers with a reliable, punctual, and comfortable transfer service to and from Munich Airport. We travel throughout Bavaria, Austria, and all neighboring countries and regions – both one-way and as round trips. We are proud to offer our customers professional service at a fair fixed price.",
+    "why_us": "Why Munich Airport Taxi?",
+    "reasons": {
+      "experience": {
+        "title": "Experience",
+        "text": "20 years of experience in airport transfers"
+      },
+      "punctual": {
+        "title": "Punctuality",
+        "text": "We monitor your flight and adjust pickup time accordingly"
+      },
+      "fixed": {
+        "title": "Fixed Prices",
+        "text": "No surprises – you know the price before the ride"
+      },
+      "multilingual": {
+        "title": "Multilingual",
+        "text": "We speak German, English, and Turkish"
+      }
+    },
+    "owner": "Owner",
+    "contact": "Contact"
+  },
+  "contact": {
+    "title": "Contact",
+    "subtitle": "We are here for you – around the clock",
+    "phone": "Phone / WhatsApp",
+    "email": "Email",
+    "address": "Address",
+    "hours": "Availability",
+    "hours_value": "24 hours, 7 days a week",
+    "whatsapp": "Write on WhatsApp",
+    "call": "Call Now"
+  },
+  "footer": {
+    "company": "Munich Airport Taxi",
+    "tagline": "Your reliable airport transfer",
+    "links": "Links",
+    "legal": "Legal",
+    "impressum": "Legal Notice",
+    "datenschutz": "Privacy Policy",
+    "agb": "Terms & Conditions",
+    "copyright": "© {year} Munich Airport Taxi. All rights reserved."
+  },
+  "common": {
+    "book_now": "Book Now",
+    "learn_more": "Learn More",
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All"
+  },
+  "trust": {
+    "title": "Our Promises to You",
+    "subtitle": "20 years of experience – your trust is our mission",
+    "experience": "20 Years of Experience",
+    "experience_sub": "Your reliable airport transfer for 20 years",
+    "storno": "Free cancellation up to 3 hrs before",
+    "storno_sub": "No questions, no fees",
+    "fixed_price": "Fixed price guarantee",
+    "fixed_price_sub": "No meter – price is fixed at booking",
+    "flight_wait": "60 min. free waiting time",
+    "flight_wait_sub": "We wait for free if your flight is delayed",
+    "confirmation": "Instant email confirmation",
+    "confirmation_sub": "Directly in your inbox after booking",
+    "child_seat": "Child seats free of charge",
+    "child_seat_sub": "Infant carrier, child seat & booster",
+    "secure_payment": "Secure payment",
+    "secure_payment_sub": "Cash or encrypted credit card",
+    "availability": "24/7 reachable",
+    "availability_sub": "Phone & WhatsApp – day and night",
+    "insurance": "Fully insured vehicles",
+    "insurance_sub": "Liability & comprehensive insurance for all vehicles",
+    "multilingual": "Multilingual service",
+    "multilingual_sub": "German, English & Turkish",
+    "no_hidden": "No hidden costs",
+    "no_hidden_sub": "What you see is what you pay – nothing more",
+    "checkout_storno": "✅ Free cancellation up to 3 hrs before",
+    "checkout_price": "💰 Fixed price guaranteed",
+    "checkout_confirm": "📧 Instant email confirmation"
+  },
+  "cookie": {
+    "title": "🍪 Cookie Settings",
+    "message": "We use cookies to provide you with the best possible experience on our website. You can choose which cookies you want to allow.",
+    "accept_all": "Accept All",
+    "accept_selected": "Confirm Selection",
+    "decline_all": "Only Necessary",
+    "privacy": "Privacy Policy",
+    "settings": "Settings",
+    "necessary": "Necessary",
+    "necessary_desc": "These cookies are essential for the basic functions of the website and cannot be disabled.",
+    "analytics": "Analytics",
+    "analytics_desc": "Help us understand how visitors use our website to improve it.",
+    "maps": "Google Maps",
+    "maps_desc": "Enables map display and route calculation for your transfer.",
+    "marketing": "Marketing",
+    "marketing_desc": "Used to make advertising more relevant to you.",
+    "always_active": "Always Active"
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "dashboard": "Dashboard",
+    "bookings": "Bookings",
+    "prices": "Prices",
+    "stats": "Statistics",
+    "today": "Today",
+    "week": "This Week",
+    "month": "This Month",
+    "total": "Total",
+    "revenue": "Revenue",
+    "trips": "Trips",
+    "status": {
+      "new": "New",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "confirm_status": "Change status to '{status}'?",
+    "price_updated": "Price updated successfully",
+    "change_password": "Change Password",
+    "current_password": "Current Password",
+    "new_password": "New Password"
+  },
+  "seo": {
+    "home_title": "Munich Airport Taxi - Airport Transfer Munich | Fixed Prices",
+    "home_description": "Professional taxi service to and from Munich Airport. Fixed prices, punctual, 24/7 available. Kombi, Van and Large Taxi. Book online now!",
+    "vehicles_title": "Vehicles & Prices - Munich Airport Taxi",
+    "about_title": "About Us - Munich Airport Taxi",
+    "contact_title": "Contact - Munich Airport Taxi"
+  }
+}

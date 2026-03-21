@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Backend (Express + SQLite)",
+      "cwd": "/Users/osman/munichairport-taxi/backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 4000
+    },
+    {
+      "name": "Frontend (Next.js 14)",
+      "cwd": "/Users/osman/munichairport-taxi/frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}

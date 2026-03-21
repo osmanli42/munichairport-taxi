@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors duration-200;
+  }
+
+  .btn-gold {
+    @apply bg-gold-400 hover:bg-gold-500 text-primary-600 font-bold px-6 py-3 rounded-xl transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-md p-6;
+  }
+
+  .input-field {
+    @apply w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+}
+
+/* Google Places Autocomplete dropdown styling */
+.pac-container {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+  z-index: 9999;
+}
+
+.pac-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pac-item:hover {
+  background-color: #f0f4ff;
+}
+
+.pac-item-query {
+  font-size: 14px;
+  color: #1a365d;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a365d;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a66aa;
+}

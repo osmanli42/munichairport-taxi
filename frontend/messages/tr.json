@@ -1,0 +1,237 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "vehicles": "Araçlar & Fiyatlar",
+    "about": "Hakkımızda",
+    "contact": "İletişim",
+    "book": "Rezervasyon",
+    "faq": "SSS"
+  },
+  "hero": {
+    "title": "Güvenilir taksi hizmetiniz",
+    "subtitle": "Münih Havalimanı'na & Havalimanı'ndan – Bavyera, Avusturya & komşu bölgeler",
+    "description": "Bireyler ve gruplar için profesyonel havalimanı transferi. Münih Havalimanı'ndan tüm Bavyera'ya, Avusturya'ya ve tüm komşu ülkelere gidiş-dönüş seferler düzenliyoruz. Dakik, konforlu ve sabit fiyatlı.",
+    "cta": "Hemen Rezervasyon",
+    "phone": "Hemen Ara",
+    "features": {
+      "fixed_price": "Sabit Fiyat",
+      "punctual": "Dakik Hizmet",
+      "247": "7/24 Hizmet",
+      "wifi": "Ücretsiz WiFi"
+    }
+  },
+  "booking": {
+    "title": "Yolculuk Rezervasyonu",
+    "subtitle": "Basit, hızlı ve sabit fiyatlı",
+    "pickup": "Alış Noktası",
+    "pickup_placeholder": "Alış adresini girin...",
+    "dropoff": "Hedef Adres",
+    "dropoff_placeholder": "Hedef adresini girin...",
+    "date": "Tarih",
+    "time": "Saat",
+    "vehicle": "Araç Tipi",
+    "passengers": "Yolcu Sayısı",
+    "name": "Ad Soyad",
+    "phone": "Telefon Numarası",
+    "email": "E-posta Adresi",
+    "flight_number": "Uçuş Numarası (isteğe bağlı)",
+    "child_seat": "Çocuk koltuğu gerekli (ücretsiz)",
+    "luggage": "Bagaj Sayısı",
+    "notes": "Notlar (isteğe bağlı)",
+    "payment": "Ödeme Yöntemi",
+    "payment_cash": "Nakit",
+    "payment_card": "Kart ile Ödeme",
+    "submit": "Rezervasyonu Onayla",
+    "submitting": "Gönderiliyor...",
+    "price_label": "Tahmini Fiyat",
+    "calculating": "Fiyat hesaplanıyor...",
+    "enter_addresses": "Lütfen alış ve hedef adreslerini girin",
+    "success_title": "Rezervasyon Başarılı!",
+    "success_message": "Rezervasyon talebiniz başarıyla gönderildi. {email} adresine onay e-postası gönderilecek.",
+    "success_booking_number": "Rezervasyon Numarası",
+    "error_title": "Hata",
+    "error_message": "Rezervasyon gönderilemedi. Lütfen tekrar deneyin veya bizi arayın.",
+    "required": "Zorunlu alan",
+    "distance": "Mesafe",
+    "duration": "Süre",
+    "approx": "yaklaşık",
+    "km": "km",
+    "min": "dk."
+  },
+  "vehicles": {
+    "title": "Araçlar & Fiyatlar",
+    "subtitle": "Grubunuza uygun aracı seçin",
+    "kombi": {
+      "name": "Kombi",
+      "persons": "1–3 Kişi",
+      "description": "Küçük gruplar ve tekil yolcular için ideal. Geniş bagaj alanıyla konforlu araç.",
+      "features": ["Klima", "WiFi", "Su şişesi dahil", "3 valiz'e kadar"]
+    },
+    "van": {
+      "name": "Van / Minibüs",
+      "persons": "4–7 Kişi",
+      "description": "Aileler ve orta büyüklükteki gruplar için mükemmel. Yolcu ve bagaj için bol alan.",
+      "features": ["Klima", "WiFi", "Geniş bagaj", "7 valiz'e kadar"]
+    },
+    "grossraumtaxi": {
+      "name": "Büyük Taksi",
+      "persons": "8+ Kişi",
+      "description": "Büyük gruplar ve kurumsal transferler için. Maksimum konfor ve alan.",
+      "features": ["Klima", "WiFi", "XXL bagaj", "12 valiz'e kadar"]
+    },
+    "base_price": "Başlangıç ücreti",
+    "per_km": "km başına",
+    "book_now": "Rezervasyon Yap",
+    "included": "Dahil",
+    "child_seat_free": "Çocuk koltuğu ücretsiz",
+    "fixed_price_info": "Tüm fiyatlar sabittir. Gizli ücret yoktur."
+  },
+  "about": {
+    "title": "Munich Airport Taxi Hakkında",
+    "subtitle": "Havalimanı transferlerinde güvenilir ortağınız – Bavyera, Avusturya & daha fazlası",
+    "description": "Munich Airport Taxi, yolculara Münih Havalimanı'na ve havalimanından güvenilir, dakik ve konforlu transfer hizmeti sunmak için kuruldu. Tüm Bavyera'ya, Avusturya'ya ve tüm komşu ülke ve bölgelere gidiş-dönüş seferler düzenliyoruz. Müşterilerimize adil sabit fiyatlı profesyonel hizmet sunmaktan gurur duyuyoruz.",
+    "why_us": "Neden Munich Airport Taxi?",
+    "reasons": {
+      "experience": {
+        "title": "Deneyim",
+        "text": "Havalimanı transferinde 20 yıllık deneyim"
+      },
+      "punctual": {
+        "title": "Dakiklik",
+        "text": "Uçuşunuzu takip eder, alış saatini ayarlarız"
+      },
+      "fixed": {
+        "title": "Sabit Fiyat",
+        "text": "Sürpriz yok – yolculuktan önce fiyatı bilirsiniz"
+      },
+      "multilingual": {
+        "title": "Çok Dilli",
+        "text": "Almanca, İngilizce ve Türkçe konuşuyoruz"
+      }
+    },
+    "owner": "İşletme Sahibi",
+    "contact": "İletişim"
+  },
+  "contact": {
+    "title": "İletişim",
+    "subtitle": "7/24 hizmetinizdeyiz",
+    "phone": "Telefon / WhatsApp",
+    "email": "E-posta",
+    "address": "Adres",
+    "hours": "Ulaşılabilirlik",
+    "hours_value": "Haftanın 7 günü, 24 saat",
+    "whatsapp": "WhatsApp'tan Yaz",
+    "call": "Hemen Ara"
+  },
+  "footer": {
+    "company": "Munich Airport Taxi",
+    "tagline": "Güvenilir havalimanı transferiniz",
+    "links": "Bağlantılar",
+    "legal": "Yasal",
+    "impressum": "Künye",
+    "datenschutz": "Gizlilik Politikası",
+    "agb": "Hizmet Şartları",
+    "copyright": "© {year} Munich Airport Taxi. Tüm hakları saklıdır."
+  },
+  "common": {
+    "book_now": "Rezervasyon Yap",
+    "learn_more": "Daha Fazla",
+    "back": "Geri",
+    "close": "Kapat",
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "yes": "Evet",
+    "no": "Hayır",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "search": "Ara",
+    "filter": "Filtrele",
+    "all": "Tümü"
+  },
+  "trust": {
+    "title": "Size Verdiğimiz Sözler",
+    "subtitle": "20 yıllık deneyim – güveniniz bizim görevimiz",
+    "experience": "20 Yıllık Deneyim",
+    "experience_sub": "20 yıldır güvenilir havalimanı transferiniz",
+    "storno": "3 saate kadar ücretsiz iptal",
+    "storno_sub": "Soru yok, ücret yok",
+    "fixed_price": "Sabit fiyat garantisi",
+    "fixed_price_sub": "Taksimetre yok – rezervasyonda fiyat belirlenir",
+    "flight_wait": "60 dk ücretsiz bekleme",
+    "flight_wait_sub": "Uçuş gecikmesinde ücretsiz bekliyoruz",
+    "confirmation": "Anında e-posta onayı",
+    "confirmation_sub": "Rezervasyondan hemen sonra gelen kutunuzda",
+    "child_seat": "Ücretsiz çocuk koltuğu",
+    "child_seat_sub": "Bebek taşıyıcı, çocuk koltuğu & yükseltici",
+    "secure_payment": "Güvenli ödeme",
+    "secure_payment_sub": "Nakit veya şifreli kredi kartı",
+    "availability": "7/24 ulaşılabilir",
+    "availability_sub": "Telefon & WhatsApp – gece gündüz",
+    "insurance": "Tam sigortalı araçlar",
+    "insurance_sub": "Tüm araçlar tam sorumluluk & kasko sigortalı",
+    "multilingual": "Çok dilli hizmet",
+    "multilingual_sub": "Almanca, İngilizce & Türkçe",
+    "no_hidden": "Gizli maliyet yok",
+    "no_hidden_sub": "Gördüğünüzü ödersiniz – fazlası yok",
+    "checkout_storno": "✅ 3 saate kadar ücretsiz iptal",
+    "checkout_price": "💰 Sabit fiyat garantili",
+    "checkout_confirm": "📧 Anında e-posta onayı"
+  },
+  "cookie": {
+    "title": "🍪 Çerez Ayarları",
+    "message": "Web sitemizde size en iyi deneyimi sunmak için çerezler kullanıyoruz. Hangi çerezlere izin vermek istediğinizi seçebilirsiniz.",
+    "accept_all": "Tümünü Kabul Et",
+    "accept_selected": "Seçimi Onayla",
+    "decline_all": "Sadece Gerekli",
+    "privacy": "Gizlilik Politikası",
+    "settings": "Ayarlar",
+    "necessary": "Gerekli",
+    "necessary_desc": "Bu çerezler web sitesinin temel işlevleri için zorunludur ve devre dışı bırakılamaz.",
+    "analytics": "Analiz",
+    "analytics_desc": "Ziyaretçilerin web sitemizi nasıl kullandığını anlamamıza ve geliştirmemize yardımcı olur.",
+    "maps": "Google Maps",
+    "maps_desc": "Transferiniz için harita görüntüleme ve rota hesaplama imkanı sağlar.",
+    "marketing": "Pazarlama",
+    "marketing_desc": "Reklamları sizin için daha alakalı hale getirmek için kullanılır.",
+    "always_active": "Her Zaman Aktif"
+  },
+  "admin": {
+    "title": "Yönetim Paneli",
+    "login": "Giriş Yap",
+    "logout": "Çıkış Yap",
+    "username": "Kullanıcı Adı",
+    "password": "Şifre",
+    "dashboard": "Gösterge Paneli",
+    "bookings": "Rezervasyonlar",
+    "prices": "Fiyatlar",
+    "stats": "İstatistikler",
+    "today": "Bugün",
+    "week": "Bu Hafta",
+    "month": "Bu Ay",
+    "total": "Toplam",
+    "revenue": "Gelir",
+    "trips": "Yolculuk",
+    "status": {
+      "new": "Yeni",
+      "confirmed": "Onaylandı",
+      "completed": "Tamamlandı",
+      "cancelled": "İptal Edildi"
+    },
+    "confirm_status": "Durum '{status}' olarak değiştirilsin mi?",
+    "price_updated": "Fiyat başarıyla güncellendi",
+    "change_password": "Şifre Değiştir",
+    "current_password": "Mevcut Şifre",
+    "new_password": "Yeni Şifre"
+  },
+  "seo": {
+    "home_title": "Munich Airport Taxi - Münih Havalimanı Transferi | Sabit Fiyat",
+    "home_description": "Münih Havalimanı'na ve havalimanından profesyonel taksi hizmeti. Sabit fiyat, dakik, 7/24 hizmet. Kombi, Van ve Büyük Taksi. Hemen online rezervasyon yapın!",
+    "vehicles_title": "Araçlar & Fiyatlar - Munich Airport Taxi",
+    "about_title": "Hakkımızda - Munich Airport Taxi",
+    "contact_title": "İletişim - Munich Airport Taxi"
+  }
+}

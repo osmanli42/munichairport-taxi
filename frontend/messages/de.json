@@ -1,0 +1,237 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "vehicles": "Fahrzeuge & Preise",
+    "about": "Über uns",
+    "contact": "Kontakt",
+    "book": "Jetzt buchen",
+    "faq": "FAQ"
+  },
+  "hero": {
+    "title": "Ihr zuverlässiger Taxiservice",
+    "subtitle": "zum & vom Flughafen München – Bayern, Österreich & Nachbarregionen",
+    "description": "Professioneller Flughafentransfer für Einzelpersonen und Gruppen. Wir fahren vom Flughafen München in ganz Bayern, nach Österreich und in alle angrenzenden Länder – als Einzel- oder Hin- und Rückfahrt. Pünktlich, komfortabel und zum Festpreis.",
+    "cta": "Jetzt buchen",
+    "phone": "Sofort anrufen",
+    "features": {
+      "fixed_price": "Festpreise",
+      "punctual": "Pünktlicher Service",
+      "247": "24/7 verfügbar",
+      "wifi": "Kostenlos WLAN"
+    }
+  },
+  "booking": {
+    "title": "Fahrt buchen",
+    "subtitle": "Einfach, schnell und zum Festpreis",
+    "pickup": "Abholadresse",
+    "pickup_placeholder": "Startadresse eingeben...",
+    "dropoff": "Zieladresse",
+    "dropoff_placeholder": "Zieladresse eingeben...",
+    "date": "Datum",
+    "time": "Uhrzeit",
+    "vehicle": "Fahrzeugtyp",
+    "passengers": "Anzahl Personen",
+    "name": "Vor- und Nachname",
+    "phone": "Telefonnummer",
+    "email": "E-Mail-Adresse",
+    "flight_number": "Flugnummer (optional)",
+    "child_seat": "Kindersitz benötigt (kostenlos)",
+    "luggage": "Anzahl Gepäckstücke",
+    "notes": "Anmerkungen (optional)",
+    "payment": "Zahlungsmethode",
+    "payment_cash": "Barzahlung",
+    "payment_card": "Kartenzahlung",
+    "submit": "Jetzt verbindlich buchen",
+    "submitting": "Wird gesendet...",
+    "price_label": "Geschätzter Preis",
+    "calculating": "Preis wird berechnet...",
+    "enter_addresses": "Bitte geben Sie Start- und Zieladresse ein",
+    "success_title": "Buchung erfolgreich!",
+    "success_message": "Ihre Buchungsanfrage wurde erfolgreich übermittelt. Sie erhalten eine Bestätigungsmail an {email}.",
+    "success_booking_number": "Buchungsnummer",
+    "error_title": "Fehler",
+    "error_message": "Die Buchung konnte nicht übermittelt werden. Bitte versuchen Sie es erneut oder rufen Sie uns an.",
+    "required": "Pflichtfeld",
+    "distance": "Strecke",
+    "duration": "Fahrzeit",
+    "approx": "ca.",
+    "km": "km",
+    "min": "Min."
+  },
+  "vehicles": {
+    "title": "Fahrzeuge & Preise",
+    "subtitle": "Wählen Sie das passende Fahrzeug für Ihre Gruppe",
+    "kombi": {
+      "name": "Kombi",
+      "persons": "1–3 Personen",
+      "description": "Ideal für kleine Gruppen und Einzelreisende. Komfortables Fahrzeug mit ausreichend Kofferraumplatz.",
+      "features": ["Klimaanlage", "WLAN", "Wasserflasche inklusive", "Bis zu 3 Koffer"]
+    },
+    "van": {
+      "name": "Van / Minibus",
+      "persons": "4–7 Personen",
+      "description": "Perfekt für Familien und mittlere Gruppen. Viel Platz für Personen und Gepäck.",
+      "features": ["Klimaanlage", "WLAN", "Großer Kofferraum", "Bis zu 7 Koffer"]
+    },
+    "grossraumtaxi": {
+      "name": "Großraumtaxi",
+      "persons": "8+ Personen",
+      "description": "Für große Gruppen und Firmentransfers. Maximaler Komfort und Platz.",
+      "features": ["Klimaanlage", "WLAN", "XXL Kofferraum", "Bis zu 12 Koffer"]
+    },
+    "base_price": "Grundpreis",
+    "per_km": "pro km",
+    "book_now": "Jetzt buchen",
+    "included": "Inklusive",
+    "child_seat_free": "Kindersitz kostenlos",
+    "fixed_price_info": "Alle Preise sind Festpreise. Keine versteckten Kosten."
+  },
+  "about": {
+    "title": "Über Munich Airport Taxi",
+    "subtitle": "Ihr vertrauensvoller Partner für Flughafentransfers – Bayern, Österreich & mehr",
+    "description": "Munich Airport Taxi wurde gegründet, um Reisenden einen zuverlässigen, pünktlichen und komfortablen Transferservice zum und vom Flughafen München zu bieten. Wir fahren in ganz Bayern, nach Österreich und in alle angrenzenden Länder und Regionen – sowohl Hinfahrten als auch Hin- und Rückfahrten. Wir sind stolz darauf, unseren Kunden professionellen Service zum fairen Festpreis anzubieten.",
+    "why_us": "Warum Munich Airport Taxi?",
+    "reasons": {
+      "experience": {
+        "title": "Erfahrung",
+        "text": "20 Jahre Erfahrung im Flughafentransfer"
+      },
+      "punctual": {
+        "title": "Pünktlichkeit",
+        "text": "Wir überwachen Ihren Flug und passen die Abholzeit an"
+      },
+      "fixed": {
+        "title": "Festpreise",
+        "text": "Keine Überraschungen – Sie wissen den Preis vor der Fahrt"
+      },
+      "multilingual": {
+        "title": "Mehrsprachig",
+        "text": "Wir sprechen Deutsch, Englisch und Türkisch"
+      }
+    },
+    "owner": "Inhaber",
+    "contact": "Kontakt"
+  },
+  "contact": {
+    "title": "Kontakt",
+    "subtitle": "Wir sind für Sie da – rund um die Uhr",
+    "phone": "Telefon / WhatsApp",
+    "email": "E-Mail",
+    "address": "Adresse",
+    "hours": "Erreichbarkeit",
+    "hours_value": "24 Stunden, 7 Tage die Woche",
+    "whatsapp": "WhatsApp schreiben",
+    "call": "Jetzt anrufen"
+  },
+  "footer": {
+    "company": "Munich Airport Taxi",
+    "tagline": "Ihr zuverlässiger Flughafentransfer",
+    "links": "Links",
+    "legal": "Rechtliches",
+    "impressum": "Impressum",
+    "datenschutz": "Datenschutz",
+    "agb": "AGB",
+    "copyright": "© {year} Munich Airport Taxi. Alle Rechte vorbehalten."
+  },
+  "common": {
+    "book_now": "Jetzt buchen",
+    "learn_more": "Mehr erfahren",
+    "back": "Zurück",
+    "close": "Schließen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "yes": "Ja",
+    "no": "Nein",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "all": "Alle"
+  },
+  "trust": {
+    "title": "Unsere Versprechen an Sie",
+    "subtitle": "20 Jahre Erfahrung – Ihr Vertrauen ist unser Auftrag",
+    "experience": "20 Jahre Erfahrung",
+    "experience_sub": "Seit 20 Jahren Ihr zuverlässiger Flughafentransfer",
+    "storno": "Kostenloser Storno bis 3 Std. vorher",
+    "storno_sub": "Keine Fragen, keine Gebühren",
+    "fixed_price": "Festpreisgarantie",
+    "fixed_price_sub": "Kein Taxameter – Preis steht fest",
+    "flight_wait": "60 Min. Gratis-Wartezeit",
+    "flight_wait_sub": "Bei Flugverspätungen warten wir kostenlos",
+    "confirmation": "Sofortige E-Mail-Bestätigung",
+    "confirmation_sub": "Nach der Buchung sofort in Ihrem Postfach",
+    "child_seat": "Kindersitze kostenlos",
+    "child_seat_sub": "Babyschale, Kindersitz & Sitzerhöhung",
+    "secure_payment": "Sichere Zahlung",
+    "secure_payment_sub": "Bar oder verschlüsselte Kreditkarte",
+    "availability": "24/7 erreichbar",
+    "availability_sub": "Telefon & WhatsApp – Tag und Nacht",
+    "insurance": "Vollversicherte Fahrzeuge",
+    "insurance_sub": "Haftpflicht & Vollkasko für alle Fahrzeuge",
+    "multilingual": "Mehrsprachiger Service",
+    "multilingual_sub": "Deutsch, Englisch & Türkisch",
+    "no_hidden": "Keine versteckten Kosten",
+    "no_hidden_sub": "Was Sie sehen, zahlen Sie – nicht mehr",
+    "checkout_storno": "✅ Kostenloser Storno bis 3 Std. vorher",
+    "checkout_price": "💰 Festpreis garantiert",
+    "checkout_confirm": "📧 Sofortige E-Mail-Bestätigung"
+  },
+  "cookie": {
+    "title": "🍪 Cookie-Einstellungen",
+    "message": "Wir verwenden Cookies, um Ihnen die bestmögliche Erfahrung auf unserer Website zu bieten. Sie können wählen, welche Cookies Sie zulassen möchten.",
+    "accept_all": "Alle akzeptieren",
+    "accept_selected": "Auswahl bestätigen",
+    "decline_all": "Nur notwendige",
+    "privacy": "Datenschutzerklärung",
+    "settings": "Einstellungen",
+    "necessary": "Notwendig",
+    "necessary_desc": "Diese Cookies sind für die Grundfunktionen der Website erforderlich und können nicht deaktiviert werden.",
+    "analytics": "Analyse",
+    "analytics_desc": "Helfen uns zu verstehen, wie Besucher unsere Website nutzen, um sie zu verbessern.",
+    "maps": "Google Maps",
+    "maps_desc": "Ermöglicht die Anzeige von Karten und die Berechnung von Routen für Ihren Transfer.",
+    "marketing": "Marketing",
+    "marketing_desc": "Werden verwendet, um Werbung relevanter für Sie zu gestalten.",
+    "always_active": "Immer aktiv"
+  },
+  "admin": {
+    "title": "Admin-Panel",
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "dashboard": "Dashboard",
+    "bookings": "Buchungen",
+    "prices": "Preise",
+    "stats": "Statistiken",
+    "today": "Heute",
+    "week": "Diese Woche",
+    "month": "Dieser Monat",
+    "total": "Gesamt",
+    "revenue": "Umsatz",
+    "trips": "Fahrten",
+    "status": {
+      "new": "Neu",
+      "confirmed": "Bestätigt",
+      "completed": "Abgeschlossen",
+      "cancelled": "Storniert"
+    },
+    "confirm_status": "Status ändern zu '{status}'?",
+    "price_updated": "Preis wurde aktualisiert",
+    "change_password": "Passwort ändern",
+    "current_password": "Aktuelles Passwort",
+    "new_password": "Neues Passwort"
+  },
+  "seo": {
+    "home_title": "Munich Airport Taxi - Flughafentransfer München | Festpreise",
+    "home_description": "Professioneller Taxiservice zum und vom Flughafen München. Festpreise, pünktlich, 24/7 verfügbar. Kombi, Van und Großraumtaxi. Jetzt online buchen!",
+    "vehicles_title": "Fahrzeuge & Preise - Munich Airport Taxi",
+    "about_title": "Über uns - Munich Airport Taxi",
+    "contact_title": "Kontakt - Munich Airport Taxi"
+  }
+}

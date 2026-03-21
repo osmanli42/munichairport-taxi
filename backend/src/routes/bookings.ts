@@ -1,0 +1,252 @@
+import { Router, Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
+import db from '../db';
+import { sendAllNotifications, BookingNotificationData } from '../services/notifications';
+
+const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
+const IV_LENGTH = 16;
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPT_KEY), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text: string): string {
+  try {
+    const [ivHex, encryptedHex] = text.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPT_KEY), iv);
+    let decrypted = decipher.update(encrypted);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch { return '***'; }
+}
+
+export { decrypt };
+
+const router = Router();
+
+function generateBookingNumber(): string {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `MAT${year}${month}${day}-${random}`;
+}
+
+interface PriceRow {
+  base_price: number;
+  price_per_km: number;
+  roundtrip_discount: number;
+  fahrrad_price: number;
+  fahrrad_enabled: number;
+}
+
+// POST /api/bookings - Create new booking
+router.post('/', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      pickup_address,
+      dropoff_address,
+      pickup_datetime,
+      vehicle_type,
+      passengers,
+      name,
+      phone,
+      email,
+      flight_number,
+      child_seat,
+      luggage_count,
+      notes,
+      distance_km,
+      duration_minutes,
+      payment_method,
+      language,
+      card_holder,
+      card_number,
+      card_expiry,
+      card_cvv,
+      child_seat_details,
+      trip_type,
+      return_datetime,
+      fahrrad_count,
+    } = req.body;
+
+    // Validation
+    if (!pickup_address || !dropoff_address || !pickup_datetime || !vehicle_type || !passengers || !name || !phone || !email) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    if (!['kombi', 'van', 'grossraumtaxi'].includes(vehicle_type)) {
+      res.status(400).json({ error: 'Invalid vehicle type' });
+      return;
+    }
+
+    if (!['cash', 'card'].includes(payment_method || 'cash')) {
+      res.status(400).json({ error: 'Invalid payment method' });
+      return;
+    }
+
+    // Get price from database
+    const priceRow = db.prepare('SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?').get(vehicle_type) as PriceRow | undefined;
+    if (!priceRow) {
+      res.status(400).json({ error: 'Vehicle type not found in prices' });
+      return;
+    }
+
+    const km = parseFloat(distance_km) || 0;
+    const fahrradCount = priceRow.fahrrad_enabled ? (parseInt(fahrrad_count) || 0) : 0;
+    const fahrradCost = fahrradCount * (priceRow.fahrrad_price || 0);
+    const oneWayPrice = priceRow.base_price + (km * priceRow.price_per_km);
+    const isRoundtrip = trip_type === 'roundtrip';
+    const discount = priceRow.roundtrip_discount || 0;
+    const tripPrice = isRoundtrip
+      ? oneWayPrice * 2 * (1 - discount / 100)
+      : oneWayPrice;
+    const price = tripPrice + fahrradCost;
+
+    const booking_number = generateBookingNumber();
+
+    // Encrypt card data if provided
+    const card_number_enc = card_number ? encrypt(card_number) : null;
+    const card_cvv_enc = card_cvv ? encrypt(card_cvv) : null;
+
+    const stmt = db.prepare(`
+      INSERT INTO bookings (
+        booking_number, status, pickup_address, dropoff_address, pickup_datetime,
+        vehicle_type, passengers, name, phone, email, flight_number, child_seat,
+        child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
+        card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
+        trip_type, return_datetime, fahrrad_count
+      ) VALUES (
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      )
+    `);
+
+    const result = stmt.run(
+      booking_number,
+      pickup_address,
+      dropoff_address,
+      pickup_datetime,
+      vehicle_type,
+      parseInt(passengers),
+      name,
+      phone,
+      email,
+      flight_number || null,
+      child_seat ? 1 : 0,
+      child_seat_details || null,
+      parseInt(luggage_count) || 0,
+      notes || null,
+      km || null,
+      parseInt(duration_minutes) || null,
+      parseFloat(price.toFixed(2)),
+      payment_method || 'cash',
+      card_holder || null,
+      card_number_enc,
+      card_expiry || null,
+      card_cvv_enc,
+      language || 'de',
+      trip_type || 'oneway',
+      return_datetime || null,
+      fahrradCount,
+    );
+
+    const newBooking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(result.lastInsertRowid);
+
+    // Send notifications asynchronously
+    const notificationData: BookingNotificationData = {
+      booking_number,
+      name,
+      email,
+      phone,
+      pickup_address,
+      dropoff_address,
+      pickup_datetime,
+      vehicle_type,
+      passengers: parseInt(passengers),
+      price: parseFloat(price.toFixed(2)),
+      payment_method: payment_method || 'cash',
+      flight_number,
+      child_seat: !!child_seat,
+      child_seat_details: child_seat_details || undefined,
+      luggage_count: parseInt(luggage_count) || 0,
+      notes,
+      distance_km: km || undefined,
+      duration_minutes: parseInt(duration_minutes) || undefined,
+      language: language || 'de',
+      trip_type: trip_type || 'oneway',
+      return_datetime: return_datetime || undefined,
+      oneway_price: isRoundtrip ? oneWayPrice : undefined,
+      roundtrip_discount: isRoundtrip ? discount : undefined,
+      fahrrad_count: fahrradCount || 0,
+      fahrrad_price: fahrradCount > 0 ? priceRow.fahrrad_price : undefined,
+      fahrrad_total: fahrradCount > 0 ? fahrradCost : undefined,
+    };
+
+    sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
+
+    res.status(201).json({
+      success: true,
+      booking_number,
+      booking: newBooking,
+    });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    res.status(500).json({ error: 'Failed to create booking' });
+  }
+});
+
+// GET /api/bookings/calculate-price - Calculate price
+router.post('/calculate-price', (req: Request, res: Response): void => {
+  try {
+    const { vehicle_type, distance_km } = req.body;
+
+    if (!vehicle_type || distance_km === undefined) {
+      res.status(400).json({ error: 'vehicle_type and distance_km required' });
+      return;
+    }
+
+    const priceRow = db.prepare('SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?').get(vehicle_type) as PriceRow | undefined;
+    if (!priceRow) {
+      res.status(404).json({ error: 'Vehicle type not found' });
+      return;
+    }
+
+    const km = parseFloat(distance_km);
+    const price = priceRow.base_price + (km * priceRow.price_per_km);
+
+    res.json({
+      vehicle_type,
+      distance_km: km,
+      base_price: priceRow.base_price,
+      price_per_km: priceRow.price_per_km,
+      total_price: parseFloat(price.toFixed(2)),
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to calculate price' });
+  }
+});
+
+// GET /api/bookings/:booking_number - Get booking by number (public)
+router.get('/:booking_number', (req: Request, res: Response): void => {
+  try {
+    const booking = db.prepare('SELECT * FROM bookings WHERE booking_number = ?').get(req.params.booking_number);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch booking' });
+  }
+});
+
+export default router;
