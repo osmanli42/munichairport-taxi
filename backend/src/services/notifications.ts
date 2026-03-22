@@ -167,7 +167,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
   await transporter.sendMail({
     from: `"Munich Airport Taxi" <${process.env.SMTP_USER}>`,
-    to: 'info@munichairport.taxi',
+    to: process.env.SMTP_USER || 'info@flughafen-muenchen.taxi',
     subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${booking.price.toFixed(2)}`,
     html,
   });
