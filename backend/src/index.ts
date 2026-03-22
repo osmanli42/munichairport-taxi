@@ -30,27 +30,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// SMTP debug (temporary)
+// Email test (temporary)
 app.get('/api/smtp-test', async (req, res) => {
-  const nodemailer = require('nodemailer');
-  const config = {
-    host: process.env.SMTP_HOST || 'not set',
-    port: process.env.SMTP_PORT || 'not set',
-    secure: process.env.SMTP_SECURE || 'not set',
-    user: process.env.SMTP_USER || 'not set',
-    pass_len: (process.env.SMTP_PASS || '').length,
-  };
+  const { Resend } = require('resend');
+  const r = new Resend(process.env.RESEND_API_KEY);
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    const result = await r.emails.send({
+      from: 'Munich Airport Taxi <onboarding@resend.dev>',
+      to: process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'info@flughafen-muenchen.taxi',
+      subject: 'Test Email - Munich Airport Taxi',
+      html: '<h1>Email çalışıyor! ✅</h1><p>Bu bir test emailidir.</p>',
     });
-    await transporter.verify();
-    res.json({ smtp: 'OK', config });
+    res.json({ status: 'OK', result });
   } catch (err: any) {
-    res.json({ smtp: 'FAILED', error: err.message, config });
+    res.json({ status: 'FAILED', error: err.message });
   }
 });
 

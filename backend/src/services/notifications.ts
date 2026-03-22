@@ -1,21 +1,12 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Email transporter
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL = process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 
 // Twilio client
 function createTwilioClient() {
@@ -165,9 +156,9 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 </html>
   `;
 
-  await transporter.sendMail({
-    from: `"Munich Airport Taxi" <${process.env.SMTP_USER}>`,
-    to: process.env.SMTP_USER || 'info@flughafen-muenchen.taxi',
+  await resend.emails.send({
+    from: 'Munich Airport Taxi <onboarding@resend.dev>',
+    to: ADMIN_EMAIL,
     subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${booking.price.toFixed(2)}`,
     html,
   });
@@ -385,8 +376,8 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 </html>
   `;
 
-  await transporter.sendMail({
-    from: `"Munich Airport Taxi" <${process.env.SMTP_USER}>`,
+  await resend.emails.send({
+    from: 'Munich Airport Taxi <onboarding@resend.dev>',
     to: booking.email,
     subject: t.subject,
     html,

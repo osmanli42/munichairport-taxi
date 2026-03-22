@@ -17,6 +17,7 @@
     "express": "^4.18.3",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.12",
+    "resend": "^6.9.4",
     "twilio": "^5.0.4",
     "uuid": "^9.0.1"
   },
