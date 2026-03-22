@@ -1,20 +1,11 @@
 import { Resend } from 'resend';
-import twilio from 'twilio';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
-
-// Twilio client
-function createTwilioClient() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (!accountSid || !authToken) return null;
-  return twilio(accountSid, authToken);
-}
 
 export interface BookingNotificationData {
   booking_number: string;
@@ -155,6 +146,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 </html>
   `;
 
+  const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
     from: 'Munich Airport Taxi <onboarding@resend.dev>',
     to: ADMIN_EMAIL,
@@ -374,6 +366,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 </html>
   `;
 
+  const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
     from: 'Munich Airport Taxi <onboarding@resend.dev>',
     to: booking.email,
@@ -382,33 +375,14 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
   });
 }
 
-// SMS notification to admin
-export async function sendAdminSMS(booking: BookingNotificationData): Promise<void> {
-  const client = createTwilioClient();
-  if (!client) {
-    console.warn('Twilio not configured, skipping SMS.');
-    return;
-  }
-
-  const formattedDate = formatDateTime(booking.pickup_datetime);
-  const message = `NEUE BUCHUNG ${booking.booking_number}\n${formattedDate}\nVon: ${booking.pickup_address.substring(0, 40)}\nNach: ${booking.dropoff_address.substring(0, 40)}\nKunde: ${booking.name} ${booking.phone}\nFahrzeug: ${booking.vehicle_type}\nPreis: €${booking.price.toFixed(2)}`;
-
-  await client.messages.create({
-    body: message,
-    from: process.env.TWILIO_PHONE_NUMBER || '',
-    to: '+4915141620000',
-  });
-}
-
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
     sendCustomerConfirmation(booking),
-    sendAdminSMS(booking),
   ]);
 
   results.forEach((result, index) => {
-    const names = ['Admin Email', 'Customer Email', 'Admin SMS'];
+    const names = ['Admin Email', 'Customer Email'];
     if (result.status === 'rejected') {
       console.error(`Failed to send ${names[index]}:`, result.reason);
     } else {
