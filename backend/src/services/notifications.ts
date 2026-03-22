@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn';
 const FROM_EMAIL = process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 

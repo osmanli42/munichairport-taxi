@@ -34,7 +34,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/smtp-test', async (req, res) => {
   try {
     const { Resend } = await import('resend');
-    const r = new Resend(process.env.RESEND_API_KEY || '');
+    const r = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
     const to = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
     const result = await r.emails.send({
       from: 'Munich Airport Taxi <onboarding@resend.dev>',
