@@ -148,7 +148,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
-    from: 'Munich Airport Taxi <onboarding@resend.dev>',
+    from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
     to: ADMIN_EMAIL,
     subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${booking.price.toFixed(2)}`,
     html,
@@ -368,7 +368,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
-    from: 'Munich Airport Taxi <onboarding@resend.dev>',
+    from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
     to: booking.email,
     subject: t.subject,
     html,

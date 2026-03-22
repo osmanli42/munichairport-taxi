@@ -37,7 +37,7 @@ app.get('/api/smtp-test', async (req, res) => {
     const r = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
     const to = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
     const result = await r.emails.send({
-      from: 'Munich Airport Taxi <onboarding@resend.dev>',
+      from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
       to,
       subject: 'Test Email - Munich Airport Taxi',
       html: '<h1>Email çalışıyor! ✅</h1><p>Bu bir test emailidir.</p>',
