@@ -6,8 +6,14 @@ const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLI
 
 // GET /api/maps/debug-key (temporary)
 router.get('/debug-key', (req: Request, res: Response): void => {
-  const key = process.env.GOOGLE_MAPS_API_KEY || '';
-  res.json({ length: key.length, starts: key.substring(0, 8), ends: key.substring(key.length - 4) });
+  const key1 = process.env.GOOGLE_MAPS_API_KEY || '';
+  const key2 = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const allKeys = Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('MAPS'));
+  res.json({
+    GOOGLE_MAPS_API_KEY_len: key1.length,
+    NEXT_PUBLIC_len: key2.length,
+    relevant_keys: allKeys
+  });
 });
 
 // GET /api/maps/autocomplete?input=...
