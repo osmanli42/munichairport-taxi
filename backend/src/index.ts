@@ -30,6 +30,30 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// SMTP debug (temporary)
+app.get('/api/smtp-test', async (req, res) => {
+  const nodemailer = require('nodemailer');
+  const config = {
+    host: process.env.SMTP_HOST || 'not set',
+    port: process.env.SMTP_PORT || 'not set',
+    secure: process.env.SMTP_SECURE || 'not set',
+    user: process.env.SMTP_USER || 'not set',
+    pass_len: (process.env.SMTP_PASS || '').length,
+  };
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    await transporter.verify();
+    res.json({ smtp: 'OK', config });
+  } catch (err: any) {
+    res.json({ smtp: 'FAILED', error: err.message, config });
+  }
+});
+
 // Routes
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin', adminRouter);
