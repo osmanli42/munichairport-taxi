@@ -165,7 +165,6 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
 // Customer confirmation email
 export async function sendCustomerConfirmation(booking: BookingNotificationData): Promise<void> {
-  const transporter = createTransporter();
   const lang = booking.language || 'de';
   const vehicleLabel = getVehicleLabel(booking.vehicle_type, lang);
   const formattedDate = formatDateTime(booking.pickup_datetime);
