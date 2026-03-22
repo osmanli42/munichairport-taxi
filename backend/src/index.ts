@@ -32,18 +32,19 @@ app.get('/api/health', (req, res) => {
 
 // Email test (temporary)
 app.get('/api/smtp-test', async (req, res) => {
-  const { Resend } = require('resend');
-  const r = new Resend(process.env.RESEND_API_KEY);
   try {
+    const { Resend } = await import('resend');
+    const r = new Resend(process.env.RESEND_API_KEY || '');
+    const to = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
     const result = await r.emails.send({
       from: 'Munich Airport Taxi <onboarding@resend.dev>',
-      to: process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'info@flughafen-muenchen.taxi',
+      to,
       subject: 'Test Email - Munich Airport Taxi',
       html: '<h1>Email çalışıyor! ✅</h1><p>Bu bir test emailidir.</p>',
     });
-    res.json({ status: 'OK', result });
+    res.json({ status: 'OK', to, result });
   } catch (err: any) {
-    res.json({ status: 'FAILED', error: err.message });
+    res.json({ status: 'FAILED', error: err.message, stack: err.stack?.substring(0, 200) });
   }
 });
 
