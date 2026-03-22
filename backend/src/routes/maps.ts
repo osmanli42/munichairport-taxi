@@ -4,6 +4,12 @@ const router = Router();
 
 const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || '';
 
+// GET /api/maps/debug-key (temporary)
+router.get('/debug-key', (req: Request, res: Response): void => {
+  const key = process.env.GOOGLE_MAPS_API_KEY || '';
+  res.json({ length: key.length, starts: key.substring(0, 8), ends: key.substring(key.length - 4) });
+});
+
 // GET /api/maps/autocomplete?input=...
 router.get('/autocomplete', async (req: Request, res: Response): Promise<void> => {
   try {
