@@ -2,7 +2,9 @@ import { Router, Request, Response } from 'express';
 
 const router = Router();
 
-const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY ||
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+  'AIzaSyA7wWp8hvzPOVGUsy4pTFVgTzF9QBkmFxI';
 
 // GET /api/maps/debug-key (temporary)
 router.get('/debug-key', (req: Request, res: Response): void => {
