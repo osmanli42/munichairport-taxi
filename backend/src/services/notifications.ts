@@ -67,7 +67,6 @@ function formatDateTime(dateStr: string): string {
 
 // Admin notification email (always German)
 export async function sendAdminNotification(booking: BookingNotificationData): Promise<void> {
-  const transporter = createTransporter();
   const vehicleLabel = getVehicleLabel(booking.vehicle_type, 'de');
   const formattedDate = formatDateTime(booking.pickup_datetime);
 
