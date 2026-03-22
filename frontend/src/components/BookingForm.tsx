@@ -10,7 +10,8 @@ import { bookingsApi } from '@/lib/api';
 import { VEHICLE_PRICES, formatPrice, cn } from '@/lib/utils';
 import { fireBookingConversion } from '@/lib/gtag';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
 const schema = z.object({
   pickup_address: z.string().min(5, 'Required'),

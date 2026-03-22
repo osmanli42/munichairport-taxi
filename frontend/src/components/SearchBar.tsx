@@ -6,7 +6,8 @@ import { useLocale } from 'next-intl';
 import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
 const AIRPORT_TERMINALS = [
   { id: 'muc-t1a', label: '✈️ Terminal 1 · Modul A', address: 'Flughafen München, Terminal 1 Modul A, 85356 München-Flughafen' },
