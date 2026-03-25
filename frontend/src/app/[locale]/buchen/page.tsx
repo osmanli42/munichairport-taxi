@@ -285,7 +285,7 @@ function BuchenContent() {
                   <div className="flex items-center gap-2"><Users size={14} className="text-gray-400" /> {passengers} {locale === 'de' ? 'Person(en)' : locale === 'en' ? 'Passenger(s)' : 'Kişi'}</div>
                   <div className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {luggageCount} {locale === 'de' ? 'Gepäckstück(e)' : locale === 'en' ? 'Luggage' : 'Bagaj'}</div>
                   {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> {flightNumber}</div>}
-                  {pickupSign && <div className="flex items-center gap-2"><span className="text-gray-400">🪧</span> {pickupSign}</div>}
+                  {pickupSign && <div className="flex items-center gap-2"><span className="text-gray-400">🪧</span> <span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> {pickupSign}</div>}
                   <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
                   {childSeat && <div className="flex items-center gap-2 col-span-2">👶 {buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')}</div>}
                   {fahrradCount > 0 && <div className="flex items-center gap-2">🚲 {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</div>}
@@ -427,7 +427,7 @@ function BuchenContent() {
                     <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span className="text-gray-800">{phone}</span></div>
                     <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /> <span className="text-gray-800">{email}</span></div>
                     {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> <span className="text-gray-800">{flightNumber}</span></div>}
-                    {pickupSign && <div className="flex items-center gap-2"><span>🪧</span> <span className="text-gray-800 font-medium">{pickupSign}</span></div>}
+                    {pickupSign && <div className="flex items-center gap-2"><span>🪧</span> <span className="text-gray-800"><span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> <span className="font-medium">{pickupSign}</span></span></div>}
                   </div>
                 </div>
 
