@@ -60,16 +60,12 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Initialize database and start server
-initializeDatabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Munich Airport Taxi API running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
-  });
+// Start server first, then initialize database
+app.listen(PORT, () => {
+  console.log(`Munich Airport Taxi API running on port ${PORT}`);
+  initializeDatabase()
+    .then(() => console.log('Database ready.'))
+    .catch((err) => console.error('Database init warning:', err.message));
+});
 
 export default app;

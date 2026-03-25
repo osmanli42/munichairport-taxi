@@ -13,6 +13,7 @@ const pool = mysql.createPool({
   connectTimeout: 10000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
+  ssl: { rejectUnauthorized: false },
 });
 
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
