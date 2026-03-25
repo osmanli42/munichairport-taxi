@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import db from '../db';
+import { query, run } from '../db';
 import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
 
@@ -32,7 +32,7 @@ interface BookingRow {
 }
 
 // POST /api/admin/login
-router.post('/login', (req: Request, res: Response): void => {
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -40,7 +40,7 @@ router.post('/login', (req: Request, res: Response): void => {
     return;
   }
 
-  const admin = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(username) as AdminUser | undefined;
+  const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE username = ?', [username]);
   if (!admin) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
@@ -57,7 +57,7 @@ router.post('/login', (req: Request, res: Response): void => {
 });
 
 // GET /api/admin/bookings - List all bookings with filters
-router.get('/bookings', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const {
       status,
@@ -69,27 +69,27 @@ router.get('/bookings', authenticateAdmin, (req: AuthRequest, res: Response): vo
       limit = '20',
     } = req.query as Record<string, string>;
 
-    let query = 'SELECT * FROM bookings WHERE 1=1';
+    let sql = 'SELECT * FROM bookings WHERE 1=1';
     const params: (string | number)[] = [];
 
     if (status) {
-      query += ' AND status = ?';
+      sql += ' AND status = ?';
       params.push(status);
     }
     if (vehicle_type) {
-      query += ' AND vehicle_type = ?';
+      sql += ' AND vehicle_type = ?';
       params.push(vehicle_type);
     }
     if (date_from) {
-      query += ' AND DATE(pickup_datetime) >= ?';
+      sql += ' AND DATE(pickup_datetime) >= ?';
       params.push(date_from);
     }
     if (date_to) {
-      query += ' AND DATE(pickup_datetime) <= ?';
+      sql += ' AND DATE(pickup_datetime) <= ?';
       params.push(date_to);
     }
     if (search) {
-      query += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ?)';
+      sql += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ?)';
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam, searchParam);
     }
@@ -98,13 +98,13 @@ router.get('/bookings', authenticateAdmin, (req: AuthRequest, res: Response): vo
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const countResult = db.prepare(countQuery).get(...params) as { count: number };
+    const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const [countResult] = await query<{ count: number }>(countSql, params);
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(limitNum, offset);
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    const fullParams = [...params, limitNum, offset];
 
-    const rawBookings = db.prepare(query).all(...params);
+    const rawBookings = await query(sql, fullParams);
     const bookings = rawBookings.map(decryptBooking);
 
     res.json({
@@ -123,8 +123,8 @@ router.get('/bookings', authenticateAdmin, (req: AuthRequest, res: Response): vo
 });
 
 // GET /api/admin/bookings/:id
-router.get('/bookings/:id', authenticateAdmin, (req: AuthRequest, res: Response): void => {
-  const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+router.get('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
   if (!booking) {
     res.status(404).json({ error: 'Booking not found' });
     return;
@@ -133,7 +133,7 @@ router.get('/bookings/:id', authenticateAdmin, (req: AuthRequest, res: Response)
 });
 
 // PATCH /api/admin/bookings/:id/status - Update booking status
-router.patch('/bookings/:id/status', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status } = req.body;
   const validStatuses = ['new', 'confirmed', 'completed', 'cancelled'];
 
@@ -142,20 +142,20 @@ router.patch('/bookings/:id/status', authenticateAdmin, (req: AuthRequest, res: 
     return;
   }
 
-  const result = db.prepare('UPDATE bookings SET status = ? WHERE id = ?').run(status, req.params.id);
-  if (result.changes === 0) {
+  const result = await run('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
+  if (result.affectedRows === 0) {
     res.status(404).json({ error: 'Booking not found' });
     return;
   }
 
-  const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id);
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
   res.json(booking);
 });
 
 // DELETE /api/admin/bookings/:id
-router.delete('/bookings/:id', authenticateAdmin, (req: AuthRequest, res: Response): void => {
-  const result = db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
-  if (result.changes === 0) {
+router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const result = await run('DELETE FROM bookings WHERE id = ?', [req.params.id]);
+  if (result.affectedRows === 0) {
     res.status(404).json({ error: 'Booking not found' });
     return;
   }
@@ -163,46 +163,46 @@ router.delete('/bookings/:id', authenticateAdmin, (req: AuthRequest, res: Respon
 });
 
 // GET /api/admin/stats - Dashboard statistics
-router.get('/stats', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
 
-    const todayStats = db.prepare(`
+    const [todayStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
       FROM bookings WHERE DATE(created_at) = ? AND status != 'cancelled'
-    `).get(today) as { count: number; revenue: number };
+    `, [today]);
 
-    const weekStats = db.prepare(`
+    const [weekStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
       FROM bookings WHERE DATE(created_at) >= ? AND status != 'cancelled'
-    `).get(weekStart) as { count: number; revenue: number };
+    `, [weekStart]);
 
-    const monthStats = db.prepare(`
+    const [monthStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
       FROM bookings WHERE DATE(created_at) >= ? AND status != 'cancelled'
-    `).get(monthStart) as { count: number; revenue: number };
+    `, [monthStart]);
 
-    const totalStats = db.prepare(`
+    const [totalStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
       FROM bookings WHERE status != 'cancelled'
-    `).get() as { count: number; revenue: number };
+    `);
 
-    const statusCounts = db.prepare(`
+    const statusCounts = await query<{ status: string; count: number }>(`
       SELECT status, COUNT(*) as count FROM bookings GROUP BY status
-    `).all() as { status: string; count: number }[];
+    `);
 
-    const vehicleStats = db.prepare(`
+    const vehicleStats = await query(`
       SELECT vehicle_type, COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
       FROM bookings WHERE status != 'cancelled'
       GROUP BY vehicle_type
-    `).all();
+    `);
 
-    const recentBookings = db.prepare(`
+    const recentBookings = await query(`
       SELECT id, booking_number, name, pickup_address, dropoff_address, pickup_datetime, vehicle_type, price, status, created_at
       FROM bookings ORDER BY created_at DESC LIMIT 5
-    `).all();
+    `);
 
     res.json({
       today: todayStats,
@@ -220,7 +220,7 @@ router.get('/stats', authenticateAdmin, (req: AuthRequest, res: Response): void 
 });
 
 // POST /api/admin/change-password
-router.post('/change-password', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.post('/change-password', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -233,7 +233,7 @@ router.post('/change-password', authenticateAdmin, (req: AuthRequest, res: Respo
     return;
   }
 
-  const admin = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(req.adminId) as AdminUser;
+  const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE id = ?', [req.adminId]);
   if (!admin) {
     res.status(404).json({ error: 'Admin not found' });
     return;
@@ -246,13 +246,13 @@ router.post('/change-password', authenticateAdmin, (req: AuthRequest, res: Respo
   }
 
   const newHash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, req.adminId);
+  await run('UPDATE admin_users SET password_hash = ? WHERE id = ?', [newHash, req.adminId]);
 
   res.json({ success: true, message: 'Password changed successfully' });
 });
 
 // POST /api/admin/import-db — one-time data import (admin protected)
-router.post('/import-db', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.post('/import-db', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { bookings, prices } = req.body;
   let importedBookings = 0;
   let importedPrices = 0;
@@ -260,10 +260,10 @@ router.post('/import-db', authenticateAdmin, (req: AuthRequest, res: Response): 
   if (Array.isArray(prices)) {
     for (const p of prices) {
       try {
-        db.prepare(`
-          INSERT OR REPLACE INTO prices (vehicle_type, base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, updated_at)
+        await run(`
+          REPLACE INTO prices (vehicle_type, base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(p.vehicle_type, p.base_price, p.price_per_km, p.roundtrip_discount ?? 5, p.fahrrad_price ?? 10, p.fahrrad_enabled ?? 0, p.max_passengers ?? 8, p.max_luggage ?? 10, p.updated_at ?? new Date().toISOString());
+        `, [p.vehicle_type, p.base_price, p.price_per_km, p.roundtrip_discount ?? 5, p.fahrrad_price ?? 10, p.fahrrad_enabled ?? 0, p.max_passengers ?? 8, p.max_luggage ?? 10, p.updated_at ?? new Date().toISOString()]);
         importedPrices++;
       } catch { /* skip duplicate */ }
     }
@@ -272,21 +272,21 @@ router.post('/import-db', authenticateAdmin, (req: AuthRequest, res: Response): 
   if (Array.isArray(bookings)) {
     for (const b of bookings) {
       try {
-        db.prepare(`
-          INSERT OR IGNORE INTO bookings (
+        await run(`
+          INSERT IGNORE INTO bookings (
             booking_number, status, pickup_address, dropoff_address, pickup_datetime,
             vehicle_type, passengers, name, phone, email, flight_number, pickup_sign,
             child_seat, child_seat_details, luggage_count, notes, distance_km,
             duration_minutes, price, payment_method, language, trip_type,
             return_datetime, fahrrad_count, created_at
           ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `).run(
+        `, [
           b.booking_number, b.status, b.pickup_address, b.dropoff_address, b.pickup_datetime,
           b.vehicle_type, b.passengers, b.name, b.phone, b.email, b.flight_number ?? null, b.pickup_sign ?? null,
           b.child_seat, b.child_seat_details ?? null, b.luggage_count, b.notes ?? null, b.distance_km ?? null,
           b.duration_minutes ?? null, b.price, b.payment_method, b.language ?? 'de', b.trip_type ?? 'oneway',
           b.return_datetime ?? null, b.fahrrad_count ?? 0, b.created_at ?? new Date().toISOString()
-        );
+        ]);
         importedBookings++;
       } catch { /* skip duplicate */ }
     }

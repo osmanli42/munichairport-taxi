@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import db from '../db';
+import { query, run } from '../db';
 import { sendAllNotifications, BookingNotificationData } from '../services/notifications';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
@@ -96,7 +96,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Get price from database
-    const priceRow = db.prepare('SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?').get(vehicle_type) as PriceRow | undefined;
+    const [priceRow] = await query<PriceRow>(
+      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?',
+      [vehicle_type]
+    );
     if (!priceRow) {
       res.status(400).json({ error: 'Vehicle type not found in prices' });
       return;
@@ -119,7 +122,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const card_number_enc = card_number ? encrypt(card_number) : null;
     const card_cvv_enc = card_cvv ? encrypt(card_cvv) : null;
 
-    const stmt = db.prepare(`
+    const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
         vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
@@ -129,9 +132,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       ) VALUES (
         ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
-    `);
-
-    const result = stmt.run(
+    `, [
       booking_number,
       pickup_address,
       dropoff_address,
@@ -159,9 +160,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       trip_type || 'oneway',
       return_datetime || null,
       fahrradCount,
-    );
+    ]);
 
-    const newBooking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(result.lastInsertRowid);
+    const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
     // Send notifications asynchronously
     const notificationData: BookingNotificationData = {
@@ -207,8 +208,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// GET /api/bookings/calculate-price - Calculate price
-router.post('/calculate-price', (req: Request, res: Response): void => {
+// POST /api/bookings/calculate-price - Calculate price
+router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
   try {
     const { vehicle_type, distance_km } = req.body;
 
@@ -217,7 +218,10 @@ router.post('/calculate-price', (req: Request, res: Response): void => {
       return;
     }
 
-    const priceRow = db.prepare('SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?').get(vehicle_type) as PriceRow | undefined;
+    const [priceRow] = await query<PriceRow>(
+      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?',
+      [vehicle_type]
+    );
     if (!priceRow) {
       res.status(404).json({ error: 'Vehicle type not found' });
       return;
@@ -239,9 +243,9 @@ router.post('/calculate-price', (req: Request, res: Response): void => {
 });
 
 // GET /api/bookings/:booking_number - Get booking by number (public)
-router.get('/:booking_number', (req: Request, res: Response): void => {
+router.get('/:booking_number', async (req: Request, res: Response): Promise<void> => {
   try {
-    const booking = db.prepare('SELECT * FROM bookings WHERE booking_number = ?').get(req.params.booking_number);
+    const [booking] = await query('SELECT * FROM bookings WHERE booking_number = ?', [req.params.booking_number]);
     if (!booking) {
       res.status(404).json({ error: 'Booking not found' });
       return;

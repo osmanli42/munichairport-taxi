@@ -61,10 +61,15 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 // Initialize database and start server
-initializeDatabase();
-
-app.listen(PORT, () => {
-  console.log(`Munich Airport Taxi API running on port ${PORT}`);
-});
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Munich Airport Taxi API running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  });
 
 export default app;

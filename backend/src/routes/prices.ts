@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import db from '../db';
+import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -18,14 +18,14 @@ interface PriceRow {
 }
 
 // GET /api/prices - Get all prices (public)
-router.get('/', (req: Request, res: Response): void => {
-  const prices = db.prepare('SELECT * FROM prices ORDER BY id').all();
+router.get('/', async (req: Request, res: Response): Promise<void> => {
+  const prices = await query('SELECT * FROM prices ORDER BY id');
   res.json(prices);
 });
 
 // GET /api/prices/:vehicle_type - Get price for specific vehicle (public)
-router.get('/:vehicle_type', (req: Request, res: Response): void => {
-  const price = db.prepare('SELECT * FROM prices WHERE vehicle_type = ?').get(req.params.vehicle_type) as PriceRow | undefined;
+router.get('/:vehicle_type', async (req: Request, res: Response): Promise<void> => {
+  const [price] = await query<PriceRow>('SELECT * FROM prices WHERE vehicle_type = ?', [req.params.vehicle_type]);
   if (!price) {
     res.status(404).json({ error: 'Price not found' });
     return;
@@ -34,7 +34,7 @@ router.get('/:vehicle_type', (req: Request, res: Response): void => {
 });
 
 // PUT /api/prices/:vehicle_type - Update price (admin only)
-router.put('/:vehicle_type', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage } = req.body;
   const { vehicle_type } = req.params;
 
@@ -64,7 +64,7 @@ router.put('/:vehicle_type', authenticateAdmin, (req: AuthRequest, res: Response
   const maxPassengers = max_passengers !== undefined ? parseInt(max_passengers) : undefined;
   const maxLuggage = max_luggage !== undefined ? parseInt(max_luggage) : undefined;
 
-  db.prepare(`
+  await run(`
     UPDATE prices SET
       base_price = ?,
       price_per_km = ?,
@@ -73,11 +73,11 @@ router.put('/:vehicle_type', authenticateAdmin, (req: AuthRequest, res: Response
       fahrrad_enabled = COALESCE(?, fahrrad_enabled),
       max_passengers = COALESCE(?, max_passengers),
       max_luggage = COALESCE(?, max_luggage),
-      updated_at = datetime('now')
+      updated_at = NOW()
     WHERE vehicle_type = ?
-  `).run(parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, vehicle_type);
+  `, [parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, vehicle_type]);
 
-  const updated = db.prepare('SELECT * FROM prices WHERE vehicle_type = ?').get(vehicle_type);
+  const [updated] = await query('SELECT * FROM prices WHERE vehicle_type = ?', [vehicle_type]);
   res.json(updated);
 });
 
