@@ -251,4 +251,48 @@ router.post('/change-password', authenticateAdmin, (req: AuthRequest, res: Respo
   res.json({ success: true, message: 'Password changed successfully' });
 });
 
+// POST /api/admin/import-db — one-time data import (admin protected)
+router.post('/import-db', authenticateAdmin, (req: AuthRequest, res: Response): void => {
+  const { bookings, prices } = req.body;
+  let importedBookings = 0;
+  let importedPrices = 0;
+
+  if (Array.isArray(prices)) {
+    for (const p of prices) {
+      try {
+        db.prepare(`
+          INSERT OR REPLACE INTO prices (vehicle_type, base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(p.vehicle_type, p.base_price, p.price_per_km, p.roundtrip_discount ?? 5, p.fahrrad_price ?? 10, p.fahrrad_enabled ?? 0, p.max_passengers ?? 8, p.max_luggage ?? 10, p.updated_at ?? new Date().toISOString());
+        importedPrices++;
+      } catch { /* skip duplicate */ }
+    }
+  }
+
+  if (Array.isArray(bookings)) {
+    for (const b of bookings) {
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO bookings (
+            booking_number, status, pickup_address, dropoff_address, pickup_datetime,
+            vehicle_type, passengers, name, phone, email, flight_number, pickup_sign,
+            child_seat, child_seat_details, luggage_count, notes, distance_km,
+            duration_minutes, price, payment_method, language, trip_type,
+            return_datetime, fahrrad_count, created_at
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `).run(
+          b.booking_number, b.status, b.pickup_address, b.dropoff_address, b.pickup_datetime,
+          b.vehicle_type, b.passengers, b.name, b.phone, b.email, b.flight_number ?? null, b.pickup_sign ?? null,
+          b.child_seat, b.child_seat_details ?? null, b.luggage_count, b.notes ?? null, b.distance_km ?? null,
+          b.duration_minutes ?? null, b.price, b.payment_method, b.language ?? 'de', b.trip_type ?? 'oneway',
+          b.return_datetime ?? null, b.fahrrad_count ?? 0, b.created_at ?? new Date().toISOString()
+        );
+        importedBookings++;
+      } catch { /* skip duplicate */ }
+    }
+  }
+
+  res.json({ success: true, importedBookings, importedPrices });
+});
+
 export default router;
