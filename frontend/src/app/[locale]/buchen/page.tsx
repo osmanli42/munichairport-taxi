@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft } from 'lucide-react';
@@ -92,6 +92,9 @@ function BuchenContent() {
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
+  const cardNumberRef = useRef<HTMLInputElement>(null);
+  const cardExpiryRef = useRef<HTMLInputElement>(null);
+  const cardCvvRef = useRef<HTMLInputElement>(null);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -704,42 +707,37 @@ function BuchenContent() {
                 <div className="space-y-3 animate-fade-in">
                   <input value={cardHolder} onChange={e => setCardHolder(e.target.value)} className={inputCls} placeholder={tx.cardHolder} />
                   <input
+                    ref={cardNumberRef}
                     value={cardNumber}
-                    onKeyDown={e => {
-                      if (!['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) && !/^\d$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
-                        e.preventDefault();
-                      }
+                    onChange={e => {
+                      const formatted = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+                      setCardNumber(formatted);
+                      if (cardNumberRef.current) cardNumberRef.current.value = formatted;
                     }}
-                    onPaste={e => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 16);
-                      setCardNumber(pasted.replace(/(.{4})/g, '$1 ').trim());
-                    }}
-                    onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
                     maxLength={19} className={inputCls} placeholder="1234 5678 9012 3456" inputMode="numeric"
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <input
+                      ref={cardExpiryRef}
                       value={cardExpiry}
-                      onKeyDown={e => {
-                        if (!['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) && !/^\d$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onPaste={e => {
-                        e.preventDefault();
-                        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-                        const formatted = pasted.length > 2 ? pasted.slice(0, 2) + '/' + pasted.slice(2) : pasted;
-                        setCardExpiry(formatted);
-                      }}
                       onChange={e => {
                         const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
                         const formatted = raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw;
                         setCardExpiry(formatted);
+                        if (cardExpiryRef.current) cardExpiryRef.current.value = formatted;
                       }}
                       className={inputCls} placeholder="MM/YY" maxLength={5} inputMode="numeric"
                     />
-                    <input value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, ''))} maxLength={4} className={inputCls} placeholder="CVV" />
+                    <input
+                      ref={cardCvvRef}
+                      value={cardCvv}
+                      onChange={e => {
+                        const formatted = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setCardCvv(formatted);
+                        if (cardCvvRef.current) cardCvvRef.current.value = formatted;
+                      }}
+                      maxLength={4} className={inputCls} placeholder="CVV" inputMode="numeric"
+                    />
                   </div>
                   {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
                 </div>
