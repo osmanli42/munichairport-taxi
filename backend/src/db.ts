@@ -122,14 +122,19 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 // Diagnostic: test MySQL connectivity
-export async function testConnection(): Promise<{ ok: boolean; error?: string }> {
+export async function testConnection(): Promise<{ ok: boolean; error?: string; code?: string; host?: string }> {
   try {
     const conn = await mysql.createConnection(dbConfig);
     const [rows] = await conn.execute('SELECT 1 as test') as any;
     await conn.end().catch(() => {});
-    return { ok: true };
+    return { ok: true, host: dbConfig.host || 'not set' };
   } catch (err: any) {
-    return { ok: false, error: err.message };
+    return {
+      ok: false,
+      error: err.message || String(err),
+      code: err.code || err.errno || 'unknown',
+      host: dbConfig.host || 'not set',
+    };
   }
 }
 
