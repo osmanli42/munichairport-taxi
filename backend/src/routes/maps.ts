@@ -87,7 +87,39 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
     const distance_km = element.distance.value / 1000;
     const duration_minutes = Math.ceil(element.duration.value / 60);
 
-    res.json({ distance_km, duration_minutes });
+    // Check if Anfahrt distance is needed (non-airport trip)
+    let anfahrt_distance_km: number | undefined;
+    if (req.body.check_anfahrt) {
+      const AIRPORT_KEYWORDS = ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'];
+      const originLower = (origin as string).toLowerCase();
+      const destLower = (destination as string).toLowerCase();
+      const isAirportTrip = AIRPORT_KEYWORDS.some(kw => originLower.includes(kw) || destLower.includes(kw));
+
+      if (!isAirportTrip) {
+        // Calculate distance from Freising to pickup (origin)
+        const anfahrtUrl = new URL('https://maps.googleapis.com/maps/api/distancematrix/json');
+        anfahrtUrl.searchParams.set('origins', 'Freising, Germany');
+        anfahrtUrl.searchParams.set('destinations', origin as string);
+        anfahrtUrl.searchParams.set('key', GOOGLE_API_KEY);
+        anfahrtUrl.searchParams.set('mode', 'driving');
+        anfahrtUrl.searchParams.set('units', 'metric');
+
+        const anfahrtResponse = await fetch(anfahrtUrl.toString());
+        const anfahrtData = await anfahrtResponse.json() as {
+          status: string;
+          rows: { elements: { status: string; distance: { value: number }; duration: { value: number } }[] }[];
+        };
+
+        if (anfahrtData.status === 'OK') {
+          const anfahrtElement = anfahrtData.rows[0]?.elements[0];
+          if (anfahrtElement?.status === 'OK') {
+            anfahrt_distance_km = anfahrtElement.distance.value / 1000;
+          }
+        }
+      }
+    }
+
+    res.json({ distance_km, duration_minutes, ...(anfahrt_distance_km !== undefined && { anfahrt_distance_km }) });
   } catch (error) {
     console.error('Distance calculation error:', error);
     res.status(500).json({ error: 'Distance calculation failed' });

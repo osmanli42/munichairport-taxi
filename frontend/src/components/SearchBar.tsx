@@ -411,6 +411,14 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Settings (stadtfahrt toggle)
+  const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  useEffect(() => {
+    fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
+      if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
+    }).catch(() => {});
+  }, []);
+
   // Return trip
   const [hasReturn, setHasReturn] = useState(init?.hasReturn || false);
   const returnDefault = new Date();
@@ -478,8 +486,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     if (!pickupVal) { setFormError(l.errFrom); return; }
     if (!dropoffVal) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
-    // At least one address must be airport or nearby area
-    if (!isAirportArea(pickupVal) && !isAirportArea(dropoffVal)) {
+    // At least one address must be airport or nearby area (unless stadtfahrt enabled)
+    const isAirportTrip = isAirportArea(pickupVal) || isAirportArea(dropoffVal);
+    if (!isAirportTrip && !stadtfahrtEnabled) {
       setFormError(l.errAirport); return;
     }
     setFormError('');
@@ -488,7 +497,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       const res = await fetch(`${API_URL}/maps/distance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin: pickupVal, destination: dropoffVal, language: locale }),
+        body: JSON.stringify({ origin: pickupVal, destination: dropoffVal, language: locale, check_anfahrt: !isAirportTrip }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error('Route not found');
@@ -500,6 +509,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
         duration: String(data.duration_minutes),
         trip_type: hasReturn ? 'roundtrip' : 'oneway',
       });
+      if (data.anfahrt_distance_km) {
+        params.set('anfahrt_km', String(data.anfahrt_distance_km));
+      }
       if (hasReturn) {
         params.set('return_date', returnDate);
         params.set('return_time', returnTime);

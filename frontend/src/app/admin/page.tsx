@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi, pricesApi, Booking, Price } from '@/lib/api';
+import { adminApi, pricesApi, settingsApi, Booking, Price } from '@/lib/api';
 import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
@@ -41,6 +41,8 @@ export default function AdminPage() {
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70' });
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
@@ -119,7 +121,10 @@ export default function AdminPage() {
     if (isLoggedIn) {
       if (activeTab === 'dashboard') loadStats();
       if (activeTab === 'bookings') loadBookings();
-      if (activeTab === 'prices') loadPrices();
+      if (activeTab === 'prices') {
+        loadPrices();
+        settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
+      }
     }
   }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices]);
 
@@ -493,6 +498,78 @@ export default function AdminPage() {
                 {priceSuccess}
               </div>
             )}
+
+            {/* Global Settings */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+              <h3 className="font-bold text-gray-900 text-lg mb-4">⚙️ Allgemeine Einstellungen</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Stadtfahrt toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="font-semibold text-gray-700">Stadtfahrt erlauben</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Nicht-Flughafen-Fahrten erlauben (Anfahrtskosten werden berechnet)</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.stadtfahrt_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ stadtfahrt_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Stadtfahrt aktiviert' : 'Stadtfahrt deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors',
+                        settings.stadtfahrt_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.stadtfahrt_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                </div>
+                {/* Anfahrt price per km */}
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Anfahrtskosten pro km (€)</label>
+                  <p className="text-xs text-gray-500 mb-2">Preis pro km für Anfahrt von Freising zum Abholort (nur bei Nicht-Flughafen-Fahrten)</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.10"
+                      min="0"
+                      value={settings.anfahrt_price_per_km || '1.70'}
+                      onChange={(e) => setSettings(prev => ({ ...prev, anfahrt_price_per_km: e.target.value }))}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <span className="text-gray-500 text-sm">€/km</span>
+                    <button
+                      onClick={async () => {
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ anfahrt_price_per_km: settings.anfahrt_price_per_km });
+                          setSettings(updated);
+                          setPriceSuccess('Anfahrtskosten aktualisiert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      disabled={settingsSaving}
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {settingsSaving ? '...' : 'Speichern'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {prices.map((price) => (
                 <div key={price.vehicle_type} className="bg-white rounded-2xl shadow-sm p-6">

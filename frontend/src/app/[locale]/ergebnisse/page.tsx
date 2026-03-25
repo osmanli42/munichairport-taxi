@@ -76,16 +76,28 @@ function ResultsContent() {
   const returnTime = params.get('return_time') || '';
   const isRoundtrip = tripType === 'roundtrip';
 
-  // Airport transfer filter — redirect if neither address is airport area
+  // Anfahrtskosten
+  const anfahrtKm = Number(params.get('anfahrt_km') || 0);
+  const [anfahrtPricePerKm, setAnfahrtPricePerKm] = useState(1.70);
+  const anfahrtCost = anfahrtKm > 0 ? anfahrtKm * anfahrtPricePerKm : 0;
+
+  // Airport transfer filter — redirect if neither address is airport area (unless stadtfahrt enabled)
   const isAirportArea = (addr: string) => {
     const lower = addr.toLowerCase();
     return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
   };
+  const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
   useEffect(() => {
-    if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff)) {
+    fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
+      if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
+      if (s.anfahrt_price_per_km) setAnfahrtPricePerKm(parseFloat(s.anfahrt_price_per_km));
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff) && !stadtfahrtEnabled) {
       router.replace(`/${locale}`);
     }
-  }, [pickup, dropoff, locale, router]);
+  }, [pickup, dropoff, locale, router, stadtfahrtEnabled]);
 
   // Return trip picker state
   const [showReturnPicker, setShowReturnPicker] = useState(false);
@@ -164,6 +176,10 @@ function ResultsContent() {
     if (isRoundtrip && returnDate) {
       bp.set('return_date', returnDate);
       bp.set('return_time', returnTime);
+    }
+    if (anfahrtKm > 0) {
+      bp.set('anfahrt_km', String(anfahrtKm));
+      bp.set('anfahrt_cost', anfahrtCost.toFixed(2));
     }
     const prefix = locale === 'de' ? '' : `/${locale}`;
     router.push(`${prefix}/buchen?${bp.toString()}`);
@@ -323,7 +339,8 @@ function ResultsContent() {
             const discount = priceData.roundtrip_discount || 0;
             const fullRoundtripPrice = oneWayPrice * 2;
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
-            const finalPrice = isRoundtrip ? discountedRoundtripPrice : oneWayPrice;
+            const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayPrice;
+            const finalPrice = tripPrice + anfahrtCost;
             const tooMany = passengers > vehicle.maxPassengers;
 
             return (
@@ -357,7 +374,7 @@ function ResultsContent() {
                         {isRoundtrip ? (
                           <>
                             <div className="text-xs text-gray-400 mb-0.5">{t.roundtrip_price}</div>
-                            <div className="text-sm text-gray-400 line-through">{formatPrice(fullRoundtripPrice)}</div>
+                            <div className="text-sm text-gray-400 line-through">{formatPrice(fullRoundtripPrice + anfahrtCost)}</div>
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                             <div className="flex items-center gap-1 justify-end mt-0.5">
                               <Tag size={11} className="text-green-600" />
@@ -369,6 +386,11 @@ function ResultsContent() {
                             <div className="text-xs text-gray-400 mb-0.5">{t.total}</div>
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                           </>
+                        )}
+                        {anfahrtCost > 0 && (
+                          <div className="text-xs text-amber-600 font-medium mt-0.5">
+                            {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}
+                          </div>
                         )}
                         <div className="text-xs text-green-600 font-semibold mt-0.5">{t.fixed}</div>
                       </div>

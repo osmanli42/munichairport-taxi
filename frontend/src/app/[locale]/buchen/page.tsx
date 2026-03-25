@@ -39,16 +39,25 @@ function BuchenContent() {
 
   const vehicleLabel = VEHICLE_LABELS[vehicle]?.[locale] || VEHICLE_LABELS[vehicle]?.de || vehicle;
 
-  // Airport transfer filter — redirect if neither address is airport area
+  // Anfahrtskosten from URL params
+  const anfahrtCost = Number(params.get('anfahrt_cost') || 0);
+
+  // Airport transfer filter — redirect if neither address is airport area (unless stadtfahrt enabled)
   const isAirportArea = (addr: string) => {
     const lower = addr.toLowerCase();
     return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
   };
+  const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
   useEffect(() => {
-    if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff)) {
+    fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
+      if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff) && !stadtfahrtEnabled) {
       router.replace(`/${locale}`);
     }
-  }, [pickup, dropoff, locale, router]);
+  }, [pickup, dropoff, locale, router, stadtfahrtEnabled]);
 
   // Form state
   const [name, setName] = useState('');
@@ -98,7 +107,7 @@ function BuchenContent() {
   // Dynamic total price including extras and roundtrip
   const oneWayPrice = basePrice;
   const roundtripPrice = oneWayPrice * 2 * (1 - roundtripDiscount / 100);
-  const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice);
+  const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice) + anfahrtCost;
 
   const [cardHolder, setCardHolder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -197,6 +206,7 @@ function BuchenContent() {
         language: locale,
         trip_type: tripType,
         return_datetime: returnDatetime,
+        anfahrt_cost: anfahrtCost > 0 ? anfahrtCost : undefined,
       };
       if (payment === 'card') {
         body.card_holder = cardHolder;
@@ -854,6 +864,9 @@ function BuchenContent() {
                   </div>
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1">🏷️ {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
+                  )}
+                  {anfahrtCost > 0 && (
+                    <p className="text-xs text-amber-600 font-medium mt-1">🚗 {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
                   )}
                   <p className="text-xs text-green-600 font-medium mt-1">✅ {locale === 'de' ? 'Inkl. Maut & Gepäck' : locale === 'en' ? 'Incl. tolls & luggage' : 'Otoyol & bagaj dahil'}</p>
                 </div>

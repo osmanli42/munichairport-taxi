@@ -6,6 +6,7 @@ import bookingsRouter from './routes/bookings';
 import adminRouter from './routes/admin';
 import pricesRouter from './routes/prices';
 import mapsRouter from './routes/maps';
+import settingsRouter from './routes/settings';
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/maps', mapsRouter);
+app.use('/api/settings', settingsRouter);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

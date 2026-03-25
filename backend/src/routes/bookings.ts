@@ -79,6 +79,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       trip_type,
       return_datetime,
       fahrrad_count,
+      anfahrt_cost,
     } = req.body;
 
     // Validation
@@ -119,7 +120,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const tripPrice = isRoundtrip
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
-    const price = tripPrice + fahrradCost;
+    const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
+    const price = tripPrice + fahrradCost + parsedAnfahrtCost;
 
     const booking_number = generateBookingNumber();
 
@@ -133,9 +135,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
-        trip_type, return_datetime, fahrrad_count
+        trip_type, return_datetime, fahrrad_count, anfahrt_cost
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -165,6 +167,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       trip_type || 'oneway',
       return_datetime || null,
       fahrradCount,
+      parsedAnfahrtCost || null,
     ]);
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
@@ -198,6 +201,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       fahrrad_count: fahrradCount || 0,
       fahrrad_price: fahrradCount > 0 ? priceRow.fahrrad_price : undefined,
       fahrrad_total: fahrradCount > 0 ? fahrradCost : undefined,
+      anfahrt_cost: parsedAnfahrtCost || undefined,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));

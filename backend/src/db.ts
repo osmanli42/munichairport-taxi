@@ -99,6 +99,32 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE prices ADD COLUMN min_price_km DOUBLE NOT NULL DEFAULT 15`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Settings table for global configuration
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS settings (
+        setting_key VARCHAR(50) PRIMARY KEY,
+        setting_value TEXT NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed default settings if not exist
+    const defaultSettings = [
+      ['stadtfahrt_enabled', '0'],
+      ['anfahrt_price_per_km', '1.70'],
+    ];
+    for (const [key, value] of defaultSettings) {
+      await conn.execute(
+        `INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`,
+        [key, value]
+      );
+    }
+
+    // Migration: add anfahrt_cost to bookings
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN anfahrt_cost DOUBLE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,

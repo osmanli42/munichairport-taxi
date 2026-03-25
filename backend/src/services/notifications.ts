@@ -35,6 +35,7 @@ export interface BookingNotificationData {
   fahrrad_count?: number;
   fahrrad_price?: number;
   fahrrad_total?: number;
+  anfahrt_cost?: number;
 }
 
 function getVehicleLabel(vehicle_type: string, lang: string): string {
@@ -118,6 +119,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       <div class="row"><span class="label">× 2 Hin & Rück:</span><span class="value">€${formatPrice(booking.oneway_price * 2)}</span></div>
       <div class="row"><span class="label">Rabatt:</span><span class="value" style="color:#16a34a;font-weight:bold;">−${booking.roundtrip_discount ?? 0}%</span></div>
       <div class="row"><span class="label"><strong>Endpreis:</strong></span><span class="value"><strong>€${formatPrice(booking.price)}</strong></span></div>` : ''}
+      ${booking.anfahrt_cost ? `<div class="row"><span class="label">🚗 Anfahrtskosten:</span><span class="value">€${formatPrice(booking.anfahrt_cost)}</span></div>` : ''}
     </div>
 
     ${(booking.child_seat || (booking.fahrrad_count && booking.fahrrad_count > 0)) ? `
@@ -335,6 +337,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <div class="row"><span class="label">× 2 ${lang === 'de' ? 'Hin & Rück' : lang === 'tr' ? 'Gidiş-Dönüş' : 'Round trip'}:</span><span class="value">€${formatPrice(booking.oneway_price * 2)}</span></div>
       <div class="row"><span class="label">${lang === 'de' ? 'Rabatt' : lang === 'tr' ? 'İndirim' : 'Discount'}:</span><span class="value" style="color:#16a34a;font-weight:bold;">−${booking.roundtrip_discount ?? 0}%</span></div>
       <div class="row"><span class="label"><strong>${lang === 'de' ? 'Endpreis' : lang === 'tr' ? 'Son Fiyat' : 'Final Price'}:</strong></span><span class="value"><strong>€${formatPrice(booking.price)}</strong></span></div>` : ''}
+      ${booking.anfahrt_cost ? `<div class="row"><span class="label">🚗 ${lang === 'de' ? 'Anfahrtskosten' : lang === 'tr' ? 'Yaklaşım Ücreti' : 'Approach Fee'}:</span><span class="value">€${formatPrice(booking.anfahrt_cost)}</span></div>` : ''}
       <div class="row"><span class="label">${t.luggage}:</span><span class="value">${booking.luggage_count} ${t.pieces}</span></div>
       <div class="row"><span class="label">${t.payment}:</span><span class="value">${booking.payment_method === 'cash' ? t.cash : t.card}</span></div>
     </div>

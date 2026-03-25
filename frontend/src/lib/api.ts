@@ -45,6 +45,7 @@ export interface BookingFormData {
   card_number?: string;
   card_expiry?: string;
   card_cvv?: string;
+  anfahrt_cost?: number;
 }
 
 export interface Booking {
@@ -119,6 +120,13 @@ export const pricesApi = {
   },
 };
 
+export const settingsApi = {
+  getAll: async (): Promise<Record<string, string>> => {
+    const response = await api.get('/settings');
+    return response.data;
+  },
+};
+
 // Admin API
 export const adminApi = {
   login: async (username: string, password: string) => {
@@ -166,6 +174,11 @@ export const adminApi = {
 
   changePassword: async (currentPassword: string, newPassword: string) => {
     const response = await api.post('/admin/change-password', { currentPassword, newPassword });
+    return response.data;
+  },
+
+  updateSettings: async (settings: Record<string, string>) => {
+    const response = await api.put('/settings', settings);
     return response.data;
   },
 };
