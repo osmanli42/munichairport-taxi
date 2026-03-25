@@ -444,7 +444,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
 
   const labels: Record<string, {
     from: string; to: string; search: string; searching: string;
-    errFrom: string; errTo: string; errDate: string; errRoute: string;
+    errFrom: string; errTo: string; errDate: string; errRoute: string; errAirport: string;
     arrival: string; addReturn: string; returnFlight: string;
     swap: string; persons: string; person: string;
   }> = {
