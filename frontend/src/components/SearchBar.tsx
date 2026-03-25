@@ -494,7 +494,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto">
       {/* ─── DESKTOP ─── */}
       <div className="hidden lg:block">
         <div className="border-[3px] border-gold-400 rounded-2xl shadow-2xl overflow-visible bg-white">
