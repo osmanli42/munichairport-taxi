@@ -703,7 +703,21 @@ function BuchenContent() {
               {payment === 'card' && (
                 <div className="space-y-3 animate-fade-in">
                   <input value={cardHolder} onChange={e => setCardHolder(e.target.value)} className={inputCls} placeholder={tx.cardHolder} />
-                  <input value={cardNumber} onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())} maxLength={19} className={inputCls} placeholder="1234 5678 9012 3456" />
+                  <input
+                    value={cardNumber}
+                    onKeyDown={e => {
+                      if (!['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) && !/^\d$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={e => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 16);
+                      setCardNumber(pasted.replace(/(.{4})/g, '$1 ').trim());
+                    }}
+                    onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
+                    maxLength={19} className={inputCls} placeholder="1234 5678 9012 3456" inputMode="numeric"
+                  />
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       value={cardExpiry}
@@ -711,6 +725,12 @@ function BuchenContent() {
                         if (!['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) && !/^\d$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
                           e.preventDefault();
                         }
+                      }}
+                      onPaste={e => {
+                        e.preventDefault();
+                        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+                        const formatted = pasted.length > 2 ? pasted.slice(0, 2) + '/' + pasted.slice(2) : pasted;
+                        setCardExpiry(formatted);
                       }}
                       onChange={e => {
                         const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
