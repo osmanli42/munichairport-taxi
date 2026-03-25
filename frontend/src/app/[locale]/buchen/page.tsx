@@ -705,11 +705,20 @@ function BuchenContent() {
                   <input value={cardHolder} onChange={e => setCardHolder(e.target.value)} className={inputCls} placeholder={tx.cardHolder} />
                   <input value={cardNumber} onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())} maxLength={19} className={inputCls} placeholder="1234 5678 9012 3456" />
                   <div className="grid grid-cols-2 gap-3">
-                    <input value={cardExpiry} onChange={e => {
-                      const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      const formatted = raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw;
-                      setCardExpiry(formatted);
-                    }} className={inputCls} placeholder="MM/YY" maxLength={5} inputMode="numeric" />
+                    <input
+                      value={cardExpiry}
+                      onKeyDown={e => {
+                        if (!['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key) && !/^\d$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        const formatted = raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw;
+                        setCardExpiry(formatted);
+                      }}
+                      className={inputCls} placeholder="MM/YY" maxLength={5} inputMode="numeric"
+                    />
                     <input value={cardCvv} onChange={e => setCardCvv(e.target.value.replace(/\D/g, ''))} maxLength={4} className={inputCls} placeholder="CVV" />
                   </div>
                   {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
