@@ -39,6 +39,17 @@ function BuchenContent() {
 
   const vehicleLabel = VEHICLE_LABELS[vehicle]?.[locale] || VEHICLE_LABELS[vehicle]?.de || vehicle;
 
+  // Airport transfer filter — redirect if neither address is airport area
+  const isAirportArea = (addr: string) => {
+    const lower = addr.toLowerCase();
+    return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
+  };
+  useEffect(() => {
+    if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff)) {
+      router.replace(`/${locale}`);
+    }
+  }, [pickup, dropoff, locale, router]);
+
   // Form state
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
