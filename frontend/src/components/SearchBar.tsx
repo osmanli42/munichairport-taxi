@@ -362,7 +362,22 @@ function DateTimeField({
 }
 
 /* ─── Main SearchBar ─── */
-export default function SearchBar() {
+interface SearchBarProps {
+  initialValues?: {
+    pickup: string;
+    dropoff: string;
+    date: string;
+    time: string;
+    passengers: number;
+    hasReturn: boolean;
+    returnDate?: string;
+    returnTime?: string;
+  };
+  onSearchComplete?: (params: URLSearchParams) => void;
+  compact?: boolean;
+}
+
+export default function SearchBar({ initialValues, onSearchComplete, compact }: SearchBarProps = {}) {
   const locale = useLocale();
   const router = useRouter();
 
@@ -371,22 +386,22 @@ export default function SearchBar() {
   const defaultDate = tomorrow.toISOString().split('T')[0];
   const minDate = new Date().toISOString().split('T')[0];
 
-  const [pickup, setPickup] = useState('');
-  const [pickupVal, setPickupVal] = useState('');
-  const [dropoff, setDropoff] = useState('');
-  const [dropoffVal, setDropoffVal] = useState('');
-  const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState('10:00');
-  const [passengers, setPassengers] = useState(2);
+  const [pickup, setPickup] = useState(initialValues?.pickup || '');
+  const [pickupVal, setPickupVal] = useState(initialValues?.pickup || '');
+  const [dropoff, setDropoff] = useState(initialValues?.dropoff || '');
+  const [dropoffVal, setDropoffVal] = useState(initialValues?.dropoff || '');
+  const [date, setDate] = useState(initialValues?.date || defaultDate);
+  const [time, setTime] = useState(initialValues?.time || '10:00');
+  const [passengers, setPassengers] = useState(initialValues?.passengers || 2);
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Return trip
-  const [hasReturn, setHasReturn] = useState(false);
+  const [hasReturn, setHasReturn] = useState(initialValues?.hasReturn || false);
   const returnDefault = new Date();
   returnDefault.setDate(returnDefault.getDate() + 3);
-  const [returnDate, setReturnDate] = useState(returnDefault.toISOString().split('T')[0]);
-  const [returnTime, setReturnTime] = useState('16:00');
+  const [returnDate, setReturnDate] = useState(initialValues?.returnDate || returnDefault.toISOString().split('T')[0]);
+  const [returnTime, setReturnTime] = useState(initialValues?.returnTime || '16:00');
 
   // Auto-correct return date/time: must be after departure
   useEffect(() => {
@@ -460,8 +475,12 @@ export default function SearchBar() {
         params.set('return_date', returnDate);
         params.set('return_time', returnTime);
       }
-      const prefix = locale === 'de' ? '' : `/${locale}`;
-      router.push(`${prefix}/ergebnisse?${params.toString()}`);
+      if (onSearchComplete) {
+        onSearchComplete(params);
+      } else {
+        const prefix = locale === 'de' ? '' : `/${locale}`;
+        router.push(`${prefix}/ergebnisse?${params.toString()}`);
+      }
     } catch {
       setFormError(l.errRoute);
     } finally {
