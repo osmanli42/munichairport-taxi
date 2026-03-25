@@ -509,6 +509,61 @@ function BuchenContent() {
               </div>
             </div>
 
+            {/* Return trip */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
+              {tripType === 'roundtrip' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-xl px-4 py-3">
+                    <span className="text-sm text-primary-700 font-medium">
+                      ⇄ {locale === 'de' ? 'Rückfahrt aktiviert' : locale === 'en' ? 'Return trip added' : 'Dönüş eklendi'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); }}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium"
+                    >
+                      ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+                      <label className="text-xs text-gray-500 font-medium">
+                        {locale === 'de' ? 'Rückfahrtdatum' : locale === 'en' ? 'Return date' : 'Dönüş tarihi'}
+                      </label>
+                      <input
+                        type="date"
+                        value={returnDate}
+                        min={date}
+                        onChange={e => setReturnDate(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                      <label className="text-xs text-gray-500 font-medium">
+                        {locale === 'de' ? 'Rückfahrtzeit' : locale === 'en' ? 'Return time' : 'Dönüş saati'}
+                      </label>
+                      <input
+                        type="time"
+                        value={returnTime}
+                        onChange={e => setReturnTime(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTripType('roundtrip')}
+                  className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+                >
+                  <span>⇄</span>
+                  {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
+                </button>
+              )}
+            </div>
+
             {/* Extras */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">🎒 Extras</h3>

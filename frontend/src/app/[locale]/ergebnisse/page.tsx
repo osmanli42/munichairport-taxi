@@ -74,6 +74,29 @@ function ResultsContent() {
   const returnTime = params.get('return_time') || '';
   const isRoundtrip = tripType === 'roundtrip';
 
+  // Return trip picker state
+  const [showReturnPicker, setShowReturnPicker] = useState(false);
+  const [localReturnDate, setLocalReturnDate] = useState('');
+  const [localReturnTime, setLocalReturnTime] = useState('10:00');
+
+  function addReturnTrip() {
+    if (!localReturnDate) return;
+    const sp = new URLSearchParams(params.toString());
+    sp.set('trip_type', 'roundtrip');
+    sp.set('return_date', localReturnDate);
+    sp.set('return_time', localReturnTime);
+    router.replace(`?${sp.toString()}`);
+    setShowReturnPicker(false);
+  }
+
+  function removeReturnTrip() {
+    const sp = new URLSearchParams(params.toString());
+    sp.set('trip_type', 'oneway');
+    sp.delete('return_date');
+    sp.delete('return_time');
+    router.replace(`?${sp.toString()}`);
+  }
+
   // Fetch prices from API
   const [apiPrices, setApiPrices] = useState<Record<string, PriceData> | null>(null);
   useEffect(() => {
@@ -188,6 +211,79 @@ function ResultsContent() {
             </div>
           ))}
         </div>
+
+        {/* Return trip banner */}
+        {isRoundtrip ? (
+          <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 mb-4">
+            <div className="flex items-center gap-2 text-sm text-primary-700 font-medium">
+              <span>⇄</span>
+              <span>
+                {locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}{' '}
+                {new Date(returnDate + 'T00:00:00').toLocaleDateString(
+                  locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
+                  { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }
+                )} · {returnTime}
+              </span>
+            </div>
+            <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-medium">
+              ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+            </button>
+          </div>
+        ) : showReturnPicker ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3">
+            <p className="text-sm font-semibold text-primary-700">
+              {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500 font-medium">
+                  {locale === 'de' ? 'Datum' : locale === 'en' ? 'Date' : 'Tarih'}
+                </label>
+                <input
+                  type="date"
+                  value={localReturnDate}
+                  min={date}
+                  onChange={e => setLocalReturnDate(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500 font-medium">
+                  {locale === 'de' ? 'Uhrzeit' : locale === 'en' ? 'Time' : 'Saat'}
+                </label>
+                <input
+                  type="time"
+                  value={localReturnTime}
+                  onChange={e => setLocalReturnTime(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={addReturnTrip}
+                disabled={!localReturnDate}
+                className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                {locale === 'de' ? 'Bestätigen' : locale === 'en' ? 'Confirm' : 'Onayla'}
+              </button>
+              <button onClick={() => setShowReturnPicker(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
+                {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowReturnPicker(true)}
+            className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors mb-4 justify-center"
+          >
+            <span className="text-lg">⇄</span>
+            {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
+            {locale === 'de' && <span className="text-xs font-normal text-green-600 ml-1">(5% Rabatt)</span>}
+            {locale === 'en' && <span className="text-xs font-normal text-green-600 ml-1">(5% discount)</span>}
+            {locale === 'tr' && <span className="text-xs font-normal text-green-600 ml-1">(%5 indirim)</span>}
+          </button>
+        )}
 
         {/* Vehicle cards */}
         <div className="space-y-4">
