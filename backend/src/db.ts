@@ -84,10 +84,20 @@ export async function initializeDatabase(): Promise<void> {
         fahrrad_enabled TINYINT NOT NULL DEFAULT 0,
         max_passengers INT NOT NULL DEFAULT 8,
         max_luggage INT NOT NULL DEFAULT 10,
+        min_price DOUBLE NOT NULL DEFAULT 0,
+        min_price_km DOUBLE NOT NULL DEFAULT 15,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id)
       )
     `);
+
+    // Migration: add min_price columns if not exist
+    try {
+      await conn.execute(`ALTER TABLE prices ADD COLUMN min_price DOUBLE NOT NULL DEFAULT 0`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE prices ADD COLUMN min_price_km DOUBLE NOT NULL DEFAULT 15`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (

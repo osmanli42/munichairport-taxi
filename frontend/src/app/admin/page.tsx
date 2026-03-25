@@ -37,7 +37,7 @@ export default function AdminPage() {
   const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '' });
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string }>>({});
+  const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
@@ -95,7 +95,7 @@ export default function AdminPage() {
     try {
       const data = await pricesApi.getAll();
       setPrices(data);
-      const edits: Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string }> = {};
+      const edits: Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }> = {};
       data.forEach((p: Price) => {
         edits[p.vehicle_type] = {
           base_price: p.base_price.toString(),
@@ -105,6 +105,8 @@ export default function AdminPage() {
           fahrrad_enabled: p.fahrrad_enabled !== 0,
           max_passengers: (p.max_passengers ?? 8).toString(),
           max_luggage: (p.max_luggage ?? 10).toString(),
+          min_price: (p.min_price ?? 0).toString(),
+          min_price_km: (p.min_price_km ?? 15).toString(),
         };
       });
       setPriceEdits(edits);
@@ -137,7 +139,7 @@ export default function AdminPage() {
     const edit = priceEdits[vehicleType];
     if (!edit) return;
     try {
-      await adminApi.updatePrice(vehicleType, parseFloat(edit.base_price), parseFloat(edit.price_per_km), parseFloat(edit.roundtrip_discount), parseFloat(edit.fahrrad_price), edit.fahrrad_enabled, parseInt(edit.max_passengers), parseInt(edit.max_luggage));
+      await adminApi.updatePrice(vehicleType, parseFloat(edit.base_price), parseFloat(edit.price_per_km), parseFloat(edit.roundtrip_discount), parseFloat(edit.fahrrad_price), edit.fahrrad_enabled, parseInt(edit.max_passengers), parseInt(edit.max_luggage), parseFloat(edit.min_price), parseFloat(edit.min_price_km));
       setPriceSuccess(`Preis für ${vehicleType} gespeichert!`);
       setTimeout(() => setPriceSuccess(''), 3000);
       await loadPrices();
@@ -546,6 +548,40 @@ export default function AdminPage() {
                       />
                       <p className="text-xs text-gray-400 mt-1">Rabatt bei Hin- & Rückfahrt (z.B. 5 = 5%)</p>
                     </div>
+                    <div className="border-t border-gray-100 pt-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">📍 Mindestgebühr</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Mindestpreis (€)</label>
+                          <input
+                            type="number"
+                            step="0.50"
+                            min="0"
+                            value={priceEdits[price.vehicle_type]?.min_price ?? ''}
+                            onChange={(e) => setPriceEdits(prev => ({
+                              ...prev,
+                              [price.vehicle_type]: { ...prev[price.vehicle_type], min_price: e.target.value }
+                            }))}
+                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gültig bis (km)</label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={priceEdits[price.vehicle_type]?.min_price_km ?? ''}
+                            onChange={(e) => setPriceEdits(prev => ({
+                              ...prev,
+                              [price.vehicle_type]: { ...prev[price.vehicle_type], min_price_km: e.target.value }
+                            }))}
+                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Bis zu diesem km-Wert wird die Mindestgebühr angewendet (0 = deaktiviert)</p>
+                    </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-xs text-gray-500 uppercase tracking-wide">🚲 Fahrrad</label>
@@ -639,6 +675,7 @@ export default function AdminPage() {
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm text-blue-700 space-y-1">
               <p><strong>Preisformel (Einfach):</strong> Gesamtpreis = Grundpreis + (Distanz in km × Preis/km)</p>
               <p><strong>Preisformel (Hin- & Rückfahrt):</strong> Gesamtpreis = (Einfach × 2) − Rabatt %</p>
+              <p><strong>Mindestgebühr:</strong> Wenn Distanz ≤ km-Limit und berechneter Preis &lt; Mindestpreis → Mindestpreis wird angewendet</p>
             </div>
           </div>
         )}

@@ -14,6 +14,8 @@ interface PriceRow {
   fahrrad_enabled: number;
   max_passengers: number;
   max_luggage: number;
+  min_price: number;
+  min_price_km: number;
   updated_at: string;
 }
 
@@ -35,7 +37,7 @@ router.get('/:vehicle_type', async (req: Request, res: Response): Promise<void> 
 
 // PUT /api/prices/:vehicle_type - Update price (admin only)
 router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage } = req.body;
+  const { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, min_price, min_price_km } = req.body;
   const { vehicle_type } = req.params;
 
   if (!['kombi', 'van', 'grossraumtaxi'].includes(vehicle_type)) {
@@ -63,6 +65,8 @@ router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Re
   const fahrradEnabled = fahrrad_enabled !== undefined ? (fahrrad_enabled ? 1 : 0) : undefined;
   const maxPassengers = max_passengers !== undefined ? parseInt(max_passengers) : undefined;
   const maxLuggage = max_luggage !== undefined ? parseInt(max_luggage) : undefined;
+  const minPrice = min_price !== undefined ? parseFloat(min_price) : undefined;
+  const minPriceKm = min_price_km !== undefined ? parseFloat(min_price_km) : undefined;
 
   await run(`
     UPDATE prices SET
@@ -73,9 +77,11 @@ router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Re
       fahrrad_enabled = COALESCE(?, fahrrad_enabled),
       max_passengers = COALESCE(?, max_passengers),
       max_luggage = COALESCE(?, max_luggage),
+      min_price = COALESCE(?, min_price),
+      min_price_km = COALESCE(?, min_price_km),
       updated_at = NOW()
     WHERE vehicle_type = ?
-  `, [parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, vehicle_type]);
+  `, [parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, minPrice ?? null, minPriceKm ?? null, vehicle_type]);
 
   const [updated] = await query('SELECT * FROM prices WHERE vehicle_type = ?', [vehicle_type]);
   res.json(updated);

@@ -46,6 +46,8 @@ interface PriceRow {
   roundtrip_discount: number;
   fahrrad_price: number;
   fahrrad_enabled: number;
+  min_price: number;
+  min_price_km: number;
 }
 
 // POST /api/bookings - Create new booking
@@ -97,7 +99,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Get price from database
     const [priceRow] = await query<PriceRow>(
-      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?',
+      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, min_price, min_price_km FROM prices WHERE vehicle_type = ?',
       [vehicle_type]
     );
     if (!priceRow) {
@@ -108,7 +110,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const km = parseFloat(distance_km) || 0;
     const fahrradCount = priceRow.fahrrad_enabled ? (parseInt(fahrrad_count) || 0) : 0;
     const fahrradCost = fahrradCount * (priceRow.fahrrad_price || 0);
-    const oneWayPrice = priceRow.base_price + (km * priceRow.price_per_km);
+    const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
+    const oneWayPrice = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
+      ? Math.max(calculatedPrice, priceRow.min_price)
+      : calculatedPrice;
     const isRoundtrip = trip_type === 'roundtrip';
     const discount = priceRow.roundtrip_discount || 0;
     const tripPrice = isRoundtrip
@@ -219,7 +224,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     }
 
     const [priceRow] = await query<PriceRow>(
-      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled FROM prices WHERE vehicle_type = ?',
+      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, min_price, min_price_km FROM prices WHERE vehicle_type = ?',
       [vehicle_type]
     );
     if (!priceRow) {
@@ -228,7 +233,10 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     }
 
     const km = parseFloat(distance_km);
-    const price = priceRow.base_price + (km * priceRow.price_per_km);
+    const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
+    const price = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
+      ? Math.max(calculatedPrice, priceRow.min_price)
+      : calculatedPrice;
 
     res.json({
       vehicle_type,

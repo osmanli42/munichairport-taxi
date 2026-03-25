@@ -55,6 +55,8 @@ interface PriceData {
   base_price: number;
   price_per_km: number;
   roundtrip_discount: number;
+  min_price: number;
+  min_price_km: number;
 }
 
 function ResultsContent() {
@@ -110,9 +112,9 @@ function ResultsContent() {
       .catch(() => {
         // Fallback to hardcoded
         setApiPrices({
-          kombi: { base_price: 8, price_per_km: 2.1, roundtrip_discount: 5 },
-          van: { base_price: 10, price_per_km: 2.2, roundtrip_discount: 5 },
-          grossraumtaxi: { base_price: 15, price_per_km: 2.4, roundtrip_discount: 5 },
+          kombi: { base_price: 8, price_per_km: 2.1, roundtrip_discount: 5, min_price: 0, min_price_km: 15 },
+          van: { base_price: 10, price_per_km: 2.2, roundtrip_discount: 5, min_price: 0, min_price_km: 15 },
+          grossraumtaxi: { base_price: 15, price_per_km: 2.4, roundtrip_discount: 5, min_price: 0, min_price_km: 15 },
         });
       });
   }, []);
@@ -290,7 +292,10 @@ function ResultsContent() {
           {VEHICLES.map(vehicle => {
             const priceData = apiPrices[vehicle.type];
             if (!priceData) return null;
-            const oneWayPrice = priceData.base_price + distanceKm * priceData.price_per_km;
+            const calculatedPrice = priceData.base_price + distanceKm * priceData.price_per_km;
+            const oneWayPrice = (priceData.min_price > 0 && distanceKm <= (priceData.min_price_km || 15))
+              ? Math.max(calculatedPrice, priceData.min_price)
+              : calculatedPrice;
             const discount = priceData.roundtrip_discount || 0;
             const fullRoundtripPrice = oneWayPrice * 2;
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
