@@ -104,12 +104,42 @@ function BuchenContent() {
   const tx = t[locale] || t.de;
   const isAirportPickup = pickup.includes('München-Flughafen');
 
+  function luhnCheck(num: string): boolean {
+    const digits = num.replace(/\s/g, '');
+    if (!/^\d{13,19}$/.test(digits)) return false;
+    let sum = 0;
+    let alt = false;
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let n = parseInt(digits[i], 10);
+      if (alt) { n *= 2; if (n > 9) n -= 9; }
+      sum += n;
+      alt = !alt;
+    }
+    return sum % 10 === 0;
+  }
+
+  function expiryValid(expiry: string): boolean {
+    const match = expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!match) return false;
+    const month = parseInt(match[1], 10);
+    const year = parseInt('20' + match[2], 10);
+    if (month < 1 || month > 12) return false;
+    const now = new Date();
+    const cardDate = new Date(year, month - 1, 1);
+    return cardDate >= new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
   function validate() {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = tx.err_name;
     if (!phone.trim()) errs.phone = tx.err_phone;
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
-    if (payment === 'card' && (!cardHolder || !cardNumber || !cardExpiry || !cardCvv)) errs.card = tx.err_card;
+    if (payment === 'card') {
+      if (!cardHolder.trim()) errs.card = tx.err_card;
+      else if (!luhnCheck(cardNumber)) errs.card = locale === 'de' ? 'Ungültige Kartennummer' : locale === 'en' ? 'Invalid card number' : 'Geçersiz kart numarası';
+      else if (!expiryValid(cardExpiry)) errs.card = locale === 'de' ? 'Ungültiges oder abgelaufenes Ablaufdatum' : locale === 'en' ? 'Invalid or expired expiry date' : 'Geçersiz veya süresi dolmuş son kullanma tarihi';
+      else if (!/^\d{3,4}$/.test(cardCvv)) errs.card = locale === 'de' ? 'Ungültiger CVV' : locale === 'en' ? 'Invalid CVV' : 'Geçersiz CVV';
+    }
     if (isAirportPickup && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
     setErrors(errs);
     return Object.keys(errs).length === 0;
