@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, Clock, Star, Baby, CreditCard, Phone } from 'lucide-react';
+import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { CONTACT_INFO } from '@/lib/utils';
 
@@ -266,6 +266,12 @@ export default function HomePage() {
                 title: 'Mehrsprachiger Service',
                 text: 'Wir sprechen Deutsch, Englisch und Türkisch – für maximalen Komfort.',
                 color: 'bg-red-50 text-red-600',
+              },
+              {
+                icon: BadgePercent,
+                title: 'Keine Kreditkartengebühr',
+                text: 'Zahlen Sie mit Karte – ohne Aufschlag. Bei uns fallen keine zusätzlichen Gebühren an.',
+                color: 'bg-teal-50 text-teal-600',
               },
             ].map(({ icon: Icon, title, text, color }) => (
               <div key={title} className="flex items-start gap-4 p-5 rounded-2xl hover:bg-gray-50 transition-colors">
