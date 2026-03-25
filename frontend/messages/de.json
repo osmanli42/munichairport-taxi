@@ -16,8 +16,7 @@
     "features": {
       "fixed_price": "Festpreise",
       "punctual": "Pünktlicher Service",
-      "247": "24/7 verfügbar",
-      "wifi": "Kostenlos WLAN"
+      "247": "24/7 verfügbar"
     }
   },
   "booking": {
@@ -65,19 +64,19 @@
       "name": "Kombi",
       "persons": "1–3 Personen",
       "description": "Ideal für kleine Gruppen und Einzelreisende. Komfortables Fahrzeug mit ausreichend Kofferraumplatz.",
-      "features": ["Klimaanlage", "WLAN", "Wasserflasche inklusive", "Bis zu 3 Koffer"]
+      "features": ["Klimaanlage", "Wasserflasche inklusive", "Bis zu 3 Koffer"]
     },
     "van": {
       "name": "Van / Minibus",
       "persons": "4–7 Personen",
       "description": "Perfekt für Familien und mittlere Gruppen. Viel Platz für Personen und Gepäck.",
-      "features": ["Klimaanlage", "WLAN", "Großer Kofferraum", "Bis zu 7 Koffer"]
+      "features": ["Klimaanlage", "Großer Kofferraum", "Bis zu 7 Koffer"]
     },
     "grossraumtaxi": {
       "name": "Großraumtaxi",
       "persons": "8+ Personen",
       "description": "Für große Gruppen und Firmentransfers. Maximaler Komfort und Platz.",
-      "features": ["Klimaanlage", "WLAN", "XXL Kofferraum", "Bis zu 12 Koffer"]
+      "features": ["Klimaanlage", "XXL Kofferraum", "Bis zu 12 Koffer"]
     },
     "base_price": "Grundpreis",
     "per_km": "pro km",

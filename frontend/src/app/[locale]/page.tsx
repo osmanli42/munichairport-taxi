@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, Clock, Star, Wifi, Baby, CreditCard, Phone } from 'lucide-react';
+import { Shield, Clock, Star, Baby, CreditCard, Phone } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { CONTACT_INFO } from '@/lib/utils';
 
@@ -60,7 +60,6 @@ export default function HomePage() {
                 { icon: Shield, text: t('features.fixed_price') },
                 { icon: Clock, text: t('features.punctual') },
                 { icon: Star, text: t('features.247') },
-                { icon: Wifi, text: t('features.wifi') },
               ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
                   <Icon size={16} className="text-gold-400" />
@@ -235,12 +234,6 @@ export default function HomePage() {
                 title: 'Flexible Zahlung',
                 text: 'Zahlen Sie bequem bar oder per Karte – ganz wie Sie möchten.',
                 color: 'bg-purple-50 text-purple-600',
-              },
-              {
-                icon: Wifi,
-                title: 'WLAN im Fahrzeug',
-                text: 'Kostenlos surfen während der Fahrt – bleiben Sie immer verbunden.',
-                color: 'bg-orange-50 text-orange-600',
               },
               {
                 icon: Star,

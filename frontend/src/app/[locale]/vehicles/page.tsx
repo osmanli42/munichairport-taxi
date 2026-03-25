@@ -24,7 +24,7 @@ export default function VehiclesPage() {
       name: t('kombi.name'),
       persons: t('kombi.persons'),
       description: t('kombi.description'),
-      features: [t('kombi.features.0'), t('kombi.features.1'), t('kombi.features.2'), t('kombi.features.3')],
+      features: [t('kombi.features.0'), t('kombi.features.1'), t('kombi.features.2')],
       basePrice: 8.0,
       pricePerKm: 2.1,
     },
@@ -33,7 +33,7 @@ export default function VehiclesPage() {
       name: t('van.name'),
       persons: t('van.persons'),
       description: t('van.description'),
-      features: [t('van.features.0'), t('van.features.1'), t('van.features.2'), t('van.features.3')],
+      features: [t('van.features.0'), t('van.features.1'), t('van.features.2')],
       basePrice: 10.0,
       pricePerKm: 2.2,
       featured: true,
@@ -43,7 +43,7 @@ export default function VehiclesPage() {
       name: t('grossraumtaxi.name'),
       persons: t('grossraumtaxi.persons'),
       description: t('grossraumtaxi.description'),
-      features: [t('grossraumtaxi.features.0'), t('grossraumtaxi.features.1'), t('grossraumtaxi.features.2'), t('grossraumtaxi.features.3')],
+      features: [t('grossraumtaxi.features.0'), t('grossraumtaxi.features.1'), t('grossraumtaxi.features.2')],
       basePrice: 15.0,
       pricePerKm: 2.4,
     },
@@ -86,35 +86,6 @@ export default function VehiclesPage() {
         </div>
       </section>
 
-      {/* Price Formula */}
-      <section className="py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-primary-50 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold text-primary-600 mb-4">Preisberechnung</h2>
-            <div className="text-lg text-gray-700 bg-white rounded-xl p-6 shadow-sm inline-block">
-              <span className="font-mono text-primary-600 font-bold">Gesamtpreis = Grundpreis + (km × Preis/km)</span>
-            </div>
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="text-3xl mb-2">🚗</div>
-                <strong>Kombi</strong><br />
-                €8.00 + (km × €2.10)
-              </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="text-3xl mb-2">🚐</div>
-                <strong>Van</strong><br />
-                €10.00 + (km × €2.20)
-              </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="text-3xl mb-2">🚌</div>
-                <strong>Großraumtaxi</strong><br />
-                €15.00 + (km × €2.40)
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Included Services */}
       <section className="py-12 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -122,8 +93,7 @@ export default function VehiclesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               'Klimaanlage',
-              'Kostenloses WLAN',
-              'Kindersitz auf Anfrage (kostenlos)',
+'Kindersitz auf Anfrage (kostenlos)',
               'Flugüberwachung bei Ankunftsfahrten',
               'Namensschild am Flughafen',
               'Keine versteckten Gebühren',

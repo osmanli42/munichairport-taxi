@@ -16,8 +16,7 @@
     "features": {
       "fixed_price": "Fixed Prices",
       "punctual": "Punctual Service",
-      "247": "24/7 Available",
-      "wifi": "Free WiFi"
+      "247": "24/7 Available"
     }
   },
   "booking": {
@@ -65,19 +64,19 @@
       "name": "Kombi",
       "persons": "1–3 Persons",
       "description": "Ideal for small groups and solo travelers. Comfortable vehicle with ample trunk space.",
-      "features": ["Air conditioning", "WiFi", "Water bottle included", "Up to 3 suitcases"]
+      "features": ["Air conditioning", "Water bottle included", "Up to 3 suitcases"]
     },
     "van": {
       "name": "Van / Minibus",
       "persons": "4–7 Persons",
       "description": "Perfect for families and medium-sized groups. Plenty of space for passengers and luggage.",
-      "features": ["Air conditioning", "WiFi", "Large trunk", "Up to 7 suitcases"]
+      "features": ["Air conditioning", "Large trunk", "Up to 7 suitcases"]
     },
     "grossraumtaxi": {
       "name": "Large Taxi",
       "persons": "8+ Persons",
       "description": "For large groups and corporate transfers. Maximum comfort and space.",
-      "features": ["Air conditioning", "WiFi", "XXL trunk", "Up to 12 suitcases"]
+      "features": ["Air conditioning", "XXL trunk", "Up to 12 suitcases"]
     },
     "base_price": "Base price",
     "per_km": "per km",

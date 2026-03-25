@@ -96,11 +96,7 @@ const faqData: Record<string, FAQData> = {
         items: [
           {
             question: 'Welche Fahrzeuge stehen zur Verfügung?',
-            answer: 'Wir bieten drei Fahrzeugkategorien an: Kombi (1–3 Personen), Van/Minibus (4–7 Personen) und Großraumtaxi (8+ Personen). Alle Fahrzeuge sind modern, klimatisiert und mit WLAN ausgestattet.',
-          },
-          {
-            question: 'Ist WLAN im Fahrzeug verfügbar?',
-            answer: 'Ja, alle unsere Fahrzeuge sind mit kostenlosem WLAN ausgestattet. So können Sie während der Fahrt verbunden bleiben.',
+            answer: 'Wir bieten drei Fahrzeugkategorien an: Kombi (1–3 Personen), Van/Minibus (4–7 Personen) und Großraumtaxi (8+ Personen). Alle Fahrzeuge sind modern und klimatisiert.',
           },
           {
             question: 'Wie viel Gepäck kann ich mitnehmen?',
@@ -218,11 +214,7 @@ const faqData: Record<string, FAQData> = {
         items: [
           {
             question: 'What vehicles are available?',
-            answer: 'We offer three vehicle categories: Sedan/Kombi (1–3 passengers), Van/Minibus (4–7 passengers), and Large Taxi (8+ passengers). All vehicles are modern, air-conditioned, and equipped with WiFi.',
-          },
-          {
-            question: 'Is WiFi available in the vehicle?',
-            answer: 'Yes, all our vehicles are equipped with free WiFi so you can stay connected during the ride.',
+            answer: 'We offer three vehicle categories: Sedan/Kombi (1–3 passengers), Van/Minibus (4–7 passengers), and Large Taxi (8+ passengers). All vehicles are modern and air-conditioned.',
           },
           {
             question: 'How much luggage can I bring?',
@@ -340,11 +332,7 @@ const faqData: Record<string, FAQData> = {
         items: [
           {
             question: 'Hangi araçlar mevcut?',
-            answer: 'Üç araç kategorisi sunuyoruz: Kombi (1–3 kişi), Van/Minibüs (4–7 kişi) ve Büyük Taksi (8+ kişi). Tüm araçlar modern, klimali ve WiFi donanımlıdır.',
-          },
-          {
-            question: 'Araçta WiFi mevcut mu?',
-            answer: 'Evet, tüm araçlarımız ücretsiz WiFi ile donatılmıştır. Böylece yolculuk boyunca bağlı kalabilirsiniz.',
+            answer: 'Üç araç kategorisi sunuyoruz: Kombi (1–3 kişi), Van/Minibüs (4–7 kişi) ve Büyük Taksi (8+ kişi). Tüm araçlar modern ve klimalidir.',
           },
           {
             question: 'Ne kadar bagaj getirebilirim?',

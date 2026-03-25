@@ -52,19 +52,6 @@ export default function VehicleCard({
         <p className="text-gold-400 font-medium mt-1">{persons}</p>
       </div>
 
-      {/* Pricing */}
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-around">
-        <div className="text-center">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">{basePriceLabel}</div>
-          <div className="text-xl font-bold text-primary-600">{formatPrice(basePrice)}</div>
-        </div>
-        <div className="w-px bg-gray-200" />
-        <div className="text-center">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">{perKmLabel}</div>
-          <div className="text-xl font-bold text-primary-600">{formatPrice(pricePerKm)}</div>
-        </div>
-      </div>
-
       {/* Content */}
       <div className="p-6">
         <p className="text-gray-600 text-sm mb-4">{description}</p>

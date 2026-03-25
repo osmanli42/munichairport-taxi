@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Wifi, Baby, Shield, Tag } from 'lucide-react';
+import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Baby, Shield, Tag } from 'lucide-react';
 import { formatPrice, cn } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -20,7 +20,7 @@ const VEHICLES = [
     maxPassengers: 3,
     maxLuggage: 3,
     badge: null,
-    features: ['WiFi', 'Klimaanlage', 'Festpreis'],
+    features: ['Klimaanlage', 'Festpreis'],
     color: 'border-gray-200',
   },
   {
@@ -33,7 +33,7 @@ const VEHICLES = [
     maxPassengers: 7,
     maxLuggage: 7,
     badge: 'BELIEBT',
-    features: ['WiFi', 'Klimaanlage', 'Kindersitz kostenlos'],
+    features: ['Klimaanlage', 'Kindersitz kostenlos'],
     color: 'border-primary-400',
   },
   {
@@ -46,7 +46,7 @@ const VEHICLES = [
     maxPassengers: 8,
     maxLuggage: 10,
     badge: null,
-    features: ['WiFi', 'Klimaanlage', 'Max. Kapazität'],
+    features: ['Klimaanlage', 'Max. Kapazität'],
     color: 'border-gray-200',
   },
 ];
@@ -181,8 +181,7 @@ function ResultsContent() {
           {[
             { icon: <Shield size={14} />, text: locale === 'de' ? 'Festpreisgarantie' : locale === 'en' ? 'Fixed price guarantee' : 'Sabit fiyat garantisi' },
             { icon: <Baby size={14} />, text: locale === 'de' ? 'Kindersitz kostenlos' : locale === 'en' ? 'Free child seat' : 'Ücretsiz çocuk koltuğu' },
-            { icon: <Wifi size={14} />, text: locale === 'de' ? 'WiFi im Fahrzeug' : locale === 'en' ? 'WiFi included' : 'WiFi dahil' },
-            { icon: <CheckCircle size={14} />, text: locale === 'de' ? 'Sofortbestätigung' : locale === 'en' ? 'Instant confirmation' : 'Anında onay' },
+{ icon: <CheckCircle size={14} />, text: locale === 'de' ? 'Sofortbestätigung' : locale === 'en' ? 'Instant confirmation' : 'Anında onay' },
           ].map(b => (
             <div key={b.text} className="flex items-center gap-1.5 bg-white text-gray-600 text-xs px-3 py-2 rounded-full shadow-sm border border-gray-100">
               <span className="text-primary-500">{b.icon}</span> {b.text}
