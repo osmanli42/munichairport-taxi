@@ -20,6 +20,7 @@ export interface BookingNotificationData {
   price: number;
   payment_method: string;
   flight_number?: string;
+  pickup_sign?: string;
   child_seat: boolean;
   child_seat_details?: string;
   luggage_count: number;
@@ -127,6 +128,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       <div class="row"><span class="label">Telefon:</span><span class="value"><a href="tel:${booking.phone}">${booking.phone}</a></span></div>
       <div class="row"><span class="label">E-Mail:</span><span class="value"><a href="mailto:${booking.email}">${booking.email}</a></span></div>
       ${booking.flight_number ? `<div class="row"><span class="label">Flugnummer:</span><span class="value">${booking.flight_number}</span></div>` : ''}
+      ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 Abholschild:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
       <div class="row"><span class="label">Gepäck:</span><span class="value">${booking.luggage_count} Stück</span></div>
       <div class="row"><span class="label">Zahlung:</span><span class="value">${booking.payment_method === 'cash' ? 'Bargeld' : 'Kartenzahlung'}</span></div>
       <div class="row"><span class="label">Sprache:</span><span class="value">${booking.language.toUpperCase()}</span></div>
@@ -178,6 +180,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       price: 'Gesamtpreis',
       payment: 'Zahlung',
       flightNumber: 'Flugnummer',
+      pickupSign: 'Abholschild',
       childSeat: 'Kindersitz',
       luggage: 'Gepäck',
       notes: 'Anmerkungen',
@@ -211,6 +214,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       price: 'Total Price',
       payment: 'Payment',
       flightNumber: 'Flight Number',
+      pickupSign: 'Pickup Sign',
       childSeat: 'Child Seat',
       luggage: 'Luggage',
       notes: 'Notes',
@@ -244,6 +248,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       price: 'Toplam Fiyat',
       payment: 'Ödeme',
       flightNumber: 'Uçuş Numarası',
+      pickupSign: 'Karşılama Tabelası',
       childSeat: 'Çocuk Koltuğu',
       luggage: 'Bagaj',
       notes: 'Notlar',
@@ -342,6 +347,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <div class="row"><span class="label">${lang === 'de' ? 'Telefon' : lang === 'tr' ? 'Telefon' : 'Phone'}:</span><span class="value"><a href="tel:${booking.phone}" style="color:#1a365d;text-decoration:none;">${booking.phone}</a></span></div>
       <div class="row"><span class="label">${lang === 'de' ? 'E-Mail' : lang === 'tr' ? 'E-Posta' : 'Email'}:</span><span class="value">${booking.email}</span></div>
       ${booking.flight_number ? `<div class="row"><span class="label">${t.flightNumber}:</span><span class="value">${booking.flight_number}</span></div>` : ''}
+      ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 ${t.pickupSign}:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
       <div class="row"><span class="label">${t.payment}:</span><span class="value">${booking.payment_method === 'cash' ? t.cash : t.card}</span></div>
     </div>
 

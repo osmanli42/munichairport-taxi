@@ -24,6 +24,7 @@ const schema = z.object({
   phone: z.string().min(6, 'Required'),
   email: z.string().email('Invalid email'),
   flight_number: z.string().optional(),
+  pickup_sign: z.string().optional(),
   child_seat: z.boolean().default(false),
   luggage_count: z.number().min(0).max(10).default(1),
   notes: z.string().optional(),
@@ -363,6 +364,7 @@ export default function BookingForm() {
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [pickupValidated, setPickupValidated] = useState('');
   const [dropoffValidated, setDropoffValidated] = useState('');
+  const isAirportPickup = pickupValidated.includes('München-Flughafen');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calViewDate, setCalViewDate] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -503,6 +505,7 @@ export default function BookingForm() {
         phone: data.phone,
         email: data.email,
         flight_number: data.flight_number,
+        pickup_sign: data.pickup_sign || undefined,
         child_seat: totalChildSeats > 0,
         child_seat_details: totalChildSeats > 0 ? `Sitz: ${childSeats.sitz}, Sitzerhöhung: ${childSeats.sitzerhohung}, Babysitz: ${childSeats.babysitz} (${childSeatTotal}€)` : undefined,
         luggage_count: data.luggage_count,
@@ -564,6 +567,7 @@ export default function BookingForm() {
           { label: 'Gepäck', value: `${reviewData.luggage_count} Stück`, key: 'luggage' },
           ...(totalChildSeats > 0 ? [{ label: 'Kindersitz', value: `${totalChildSeats}x kostenlos${childSeats.sitz > 0 ? ` · Sitz: ${childSeats.sitz}` : ''}${childSeats.sitzerhohung > 0 ? ` · Sitzerhöhung: ${childSeats.sitzerhohung}` : ''}${childSeats.babysitz > 0 ? ` · Babysitz: ${childSeats.babysitz}` : ''}`, key: 'child' }] : []),
           ...(reviewData.flight_number ? [{ label: 'Flugnummer', value: reviewData.flight_number, key: 'flight' }] : []),
+          ...(reviewData.pickup_sign ? [{ label: '🪧 Abholschild', value: reviewData.pickup_sign, key: 'pickup_sign' }] : []),
         ],
       },
       {
@@ -1123,6 +1127,22 @@ export default function BookingForm() {
             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
+
+        {/* Abholschild — only when pickup is Munich Airport */}
+        {isAirportPickup && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <span className="flex items-center gap-1">🪧 Abholschild <span className="text-gray-400 font-normal text-xs">(optional)</span></span>
+            </label>
+            <input
+              {...register('pickup_sign')}
+              type="text"
+              placeholder="z.B. Familie Müller"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Name auf dem Abholschild am Flughafen</p>
+          </div>
+        )}
 
         {/* Child seat */}
         <div>

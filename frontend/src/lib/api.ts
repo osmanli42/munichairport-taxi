@@ -29,6 +29,7 @@ export interface BookingFormData {
   phone: string;
   email: string;
   flight_number?: string;
+  pickup_sign?: string;
   child_seat?: boolean;
   child_seat_details?: string;
   luggage_count?: number;

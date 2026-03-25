@@ -77,6 +77,7 @@ export function initializeDatabase(): void {
   try { db.exec(`ALTER TABLE prices ADD COLUMN fahrrad_enabled INTEGER NOT NULL DEFAULT 0`); } catch { /* column exists */ }
   try { db.exec(`ALTER TABLE prices ADD COLUMN max_passengers INTEGER NOT NULL DEFAULT 8`); } catch { /* column exists */ }
   try { db.exec(`ALTER TABLE prices ADD COLUMN max_luggage INTEGER NOT NULL DEFAULT 10`); } catch { /* column exists */ }
+  try { db.exec(`ALTER TABLE bookings ADD COLUMN pickup_sign TEXT`); } catch { /* column exists */ }
 
   // Seed default prices if not exists
   const priceCount = db.prepare('SELECT COUNT(*) as count FROM prices').get() as { count: number };

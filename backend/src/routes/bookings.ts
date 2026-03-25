@@ -61,6 +61,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       phone,
       email,
       flight_number,
+      pickup_sign,
       child_seat,
       luggage_count,
       notes,
@@ -121,12 +122,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const stmt = db.prepare(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
-        vehicle_type, passengers, name, phone, email, flight_number, child_seat,
+        vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
         trip_type, return_datetime, fahrrad_count
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `);
 
@@ -141,6 +142,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       phone,
       email,
       flight_number || null,
+      pickup_sign || null,
       child_seat ? 1 : 0,
       child_seat_details || null,
       parseInt(luggage_count) || 0,
@@ -175,6 +177,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       price: parseFloat(price.toFixed(2)),
       payment_method: payment_method || 'cash',
       flight_number,
+      pickup_sign: pickup_sign || undefined,
       child_seat: !!child_seat,
       child_seat_details: child_seat_details || undefined,
       luggage_count: parseInt(luggage_count) || 0,
