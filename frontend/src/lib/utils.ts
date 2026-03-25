@@ -6,10 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number): string {
+  const rounded = Math.ceil(price * 2) / 2;
   return new Intl.NumberFormat('de-DE', {
     style: 'currency',
     currency: 'EUR',
-  }).format(price);
+  }).format(rounded);
 }
 
 export function formatDate(dateStr: string, locale = 'de-DE'): string {
