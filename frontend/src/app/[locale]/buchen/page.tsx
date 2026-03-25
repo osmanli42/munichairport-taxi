@@ -833,7 +833,7 @@ function BuchenContent() {
                 <div className="border-t-2 border-dashed border-gray-200 pt-4">
                   {tripType === 'roundtrip' && (
                     <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>{locale === 'de' ? 'Einfache Fahrt' : locale === 'en' ? 'One way' : 'Tek yön'}</span>
+                      <span>{locale === 'de' ? 'Hin- & Rückfahrt ohne Rabatt' : locale === 'en' ? 'Round trip without discount' : 'İndirimiz gidiş-dönüş'}</span>
                       <span className="line-through">{formatPrice(oneWayPrice * 2)}</span>
                     </div>
                   )}
