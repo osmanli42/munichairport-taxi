@@ -64,6 +64,7 @@ function BuchenContent() {
   const [fahrradEnabled, setFahrradEnabled] = useState(false);
   const [fahrradPrice, setFahrradPrice] = useState(0);
   const [maxLuggage, setMaxLuggage] = useState(10);
+  const [roundtripDiscount, setRoundtripDiscount] = useState(5);
 
   // Fetch vehicle price config (fahrrad_enabled etc.)
   useEffect(() => {
@@ -75,14 +76,17 @@ function BuchenContent() {
           setFahrradEnabled(data.fahrrad_enabled === 1);
           setFahrradPrice(data.fahrrad_price || 0);
           setMaxLuggage(data.max_luggage ?? 10);
+          setRoundtripDiscount(data.roundtrip_discount || 5);
         }
       } catch { /* ignore */ }
     }
     fetchVehicleConfig();
   }, [vehicle]);
 
-  // Dynamic total price including extras
-  const price = basePrice + (fahrradCount * fahrradPrice);
+  // Dynamic total price including extras and roundtrip
+  const oneWayPrice = basePrice;
+  const roundtripPrice = oneWayPrice * 2 * (1 - roundtripDiscount / 100);
+  const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice);
 
   const [cardHolder, setCardHolder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -461,7 +465,61 @@ function BuchenContent() {
           <div className="lg:col-span-2 space-y-5">
             <h1 className="text-2xl font-bold text-primary-700">{tx.title}</h1>
 
-            {/* Trip type info is shown in sidebar summary */}
+            {/* Return trip — TOP */}
+            {tripType === 'roundtrip' ? (
+              <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-primary-700 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
+                  <button
+                    type="button"
+                    onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+                    <label className="text-xs text-gray-500 font-medium">
+                      {locale === 'de' ? 'Rückfahrtdatum' : locale === 'en' ? 'Return date' : 'Dönüş tarihi'}
+                    </label>
+                    <input
+                      type="date"
+                      value={returnDate}
+                      min={date}
+                      onChange={e => setReturnDate(e.target.value)}
+                      className="border border-primary-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                    <label className="text-xs text-gray-500 font-medium">
+                      {locale === 'de' ? 'Rückfahrtzeit' : locale === 'en' ? 'Return time' : 'Dönüş saati'}
+                    </label>
+                    <input
+                      type="time"
+                      value={returnTime}
+                      onChange={e => setReturnTime(e.target.value)}
+                      className="border border-primary-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-700 font-medium">
+                  🏷️ {roundtripDiscount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt inklusive' : locale === 'en' ? 'Round trip discount included' : 'Gidiş-dönüş indirimi dahil'}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setTripType('roundtrip')}
+                className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 bg-white hover:bg-primary-50 text-primary-600 hover:text-primary-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
+              >
+                <span className="text-lg">⇄</span>
+                {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
+                <span className="text-xs font-normal text-green-600">
+                  ({roundtripDiscount}% {locale === 'de' ? 'Rabatt' : locale === 'en' ? 'discount' : 'indirim'})
+                </span>
+              </button>
+            )}
 
             {/* Personal details */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
@@ -507,61 +565,6 @@ function BuchenContent() {
                 <label className={labelCls}>{tx.notes}</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
               </div>
-            </div>
-
-            {/* Return trip */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
-              {tripType === 'roundtrip' ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-xl px-4 py-3">
-                    <span className="text-sm text-primary-700 font-medium">
-                      ⇄ {locale === 'de' ? 'Rückfahrt aktiviert' : locale === 'en' ? 'Return trip added' : 'Dönüş eklendi'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); }}
-                      className="text-xs text-red-500 hover:text-red-700 font-medium"
-                    >
-                      ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
-                      <label className="text-xs text-gray-500 font-medium">
-                        {locale === 'de' ? 'Rückfahrtdatum' : locale === 'en' ? 'Return date' : 'Dönüş tarihi'}
-                      </label>
-                      <input
-                        type="date"
-                        value={returnDate}
-                        min={date}
-                        onChange={e => setReturnDate(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-                      <label className="text-xs text-gray-500 font-medium">
-                        {locale === 'de' ? 'Rückfahrtzeit' : locale === 'en' ? 'Return time' : 'Dönüş saati'}
-                      </label>
-                      <input
-                        type="time"
-                        value={returnTime}
-                        onChange={e => setReturnTime(e.target.value)}
-                        className="border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setTripType('roundtrip')}
-                  className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
-                >
-                  <span>⇄</span>
-                  {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
-                </button>
-              )}
             </div>
 
             {/* Extras */}
@@ -764,10 +767,19 @@ function BuchenContent() {
                 )}
                 {/* Price */}
                 <div className="border-t-2 border-dashed border-gray-200 pt-4">
+                  {tripType === 'roundtrip' && (
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                      <span>{locale === 'de' ? 'Einfache Fahrt' : locale === 'en' ? 'One way' : 'Tek yön'}</span>
+                      <span className="line-through">{formatPrice(oneWayPrice * 2)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-700">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</span>
                     <span className="text-2xl font-bold text-primary-600">{formatPrice(price)}</span>
                   </div>
+                  {tripType === 'roundtrip' && roundtripDiscount > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-1">🏷️ {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
+                  )}
                   <p className="text-xs text-green-600 font-medium mt-1">✅ {locale === 'de' ? 'Inkl. Maut & Gepäck' : locale === 'en' ? 'Incl. tolls & luggage' : 'Otoyol & bagaj dahil'}</p>
                 </div>
               </div>
