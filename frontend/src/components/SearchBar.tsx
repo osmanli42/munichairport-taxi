@@ -444,6 +444,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       from: 'Abholadresse...', to: 'Zieladresse...', search: 'Suchen', searching: 'Suchen...',
       errFrom: 'Bitte Abholadresse auswählen', errTo: 'Bitte Zieladresse auswählen',
       errDate: 'Bitte Datum auswählen', errRoute: 'Route konnte nicht berechnet werden.',
+      errAirport: 'Wir bieten nur Flughafentransfers an. Bitte wählen Sie den Flughafen München oder eine Adresse in der Nähe (Oberding, Hallbergmoos, Freising) als Abhol- oder Zielort.',
       arrival: 'Hinfahrt', addReturn: 'Rückfahrt hinzufügen', returnFlight: 'Rückfahrt',
       swap: 'Adressen tauschen', persons: 'Personen', person: 'Person',
     },
@@ -451,6 +452,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       from: 'Pickup address...', to: 'Destination...', search: 'Search', searching: 'Searching...',
       errFrom: 'Please select a pickup address', errTo: 'Please select a destination',
       errDate: 'Please select a date', errRoute: 'Could not calculate route.',
+      errAirport: 'We only offer airport transfers. Please select Munich Airport or a nearby address (Oberding, Hallbergmoos, Freising) as pickup or destination.',
       arrival: 'Flight arrival', addReturn: 'Add a return', returnFlight: 'Return flight',
       swap: 'Swap addresses', persons: 'Passengers', person: 'Passenger',
     },
@@ -458,16 +460,28 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       from: 'Alış adresi...', to: 'Varış adresi...', search: 'Ara', searching: 'Aranıyor...',
       errFrom: 'Lütfen alış adresi seçin', errTo: 'Lütfen varış adresi seçin',
       errDate: 'Lütfen tarih seçin', errRoute: 'Rota hesaplanamadı.',
+      errAirport: 'Sadece havalimanı transferi sunuyoruz. Lütfen Münih Havalimanı veya yakın bir adres (Oberding, Hallbergmoos, Freising) seçin.',
       arrival: 'Gidiş', addReturn: 'Dönüş ekle', returnFlight: 'Dönüş',
       swap: 'Adresleri değiştir', persons: 'Kişi', person: 'Kişi',
     },
   };
   const l = labels[locale] || labels.de;
 
+  function isAirportArea(address: string): boolean {
+    const lower = address.toLowerCase();
+    const airportKeywords = ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356'];
+    const nearbyAreas = ['oberding', 'hallbergmoos', 'freising'];
+    return [...airportKeywords, ...nearbyAreas].some(kw => lower.includes(kw));
+  }
+
   async function handleSearch() {
     if (!pickupVal) { setFormError(l.errFrom); return; }
     if (!dropoffVal) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
+    // At least one address must be airport or nearby area
+    if (!isAirportArea(pickupVal) && !isAirportArea(dropoffVal)) {
+      setFormError(l.errAirport); return;
+    }
     setFormError('');
     setSearching(true);
     try {
