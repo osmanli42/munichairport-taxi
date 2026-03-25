@@ -106,6 +106,7 @@ function BuchenContent() {
     if (!phone.trim()) errs.phone = tx.err_phone;
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
     if (payment === 'card' && (!cardHolder || !cardNumber || !cardExpiry || !cardCvv)) errs.card = tx.err_card;
+    if (isAirportPickup && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -497,9 +498,9 @@ function BuchenContent() {
               </div>
               {isAirportPickup && (
                 <div>
-                  <label className={labelCls}><span className="flex items-center gap-1">🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} <span className="text-gray-400 font-normal text-xs">(optional)</span></span></label>
-                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} className={inputCls} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
-                  <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>
+                  <label className={labelCls}><span className="flex items-center gap-1">🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *</span></label>
+                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} className={`${inputCls}${errors.pickupSign ? ' border-red-400' : ''}`} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
+                  {errors.pickupSign ? <p className="text-red-500 text-xs mt-1">{errors.pickupSign}</p> : <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>}
                 </div>
               )}
               <div>
