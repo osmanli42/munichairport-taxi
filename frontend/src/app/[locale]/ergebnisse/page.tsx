@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Baby, Shield, Tag } from 'lucide-react';
 import { formatPrice, cn } from '@/lib/utils';
-import SearchBar from '@/components/SearchBar';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -76,9 +75,6 @@ function ResultsContent() {
   const returnDate = params.get('return_date') || '';
   const returnTime = params.get('return_time') || '';
   const isRoundtrip = tripType === 'roundtrip';
-
-  // Inline search edit
-  const [showSearch, setShowSearch] = useState(false);
 
   // Return trip picker state
   const [showReturnPicker, setShowReturnPicker] = useState(false);
@@ -176,7 +172,20 @@ function ResultsContent() {
       <div className="bg-primary-700 text-white sticky top-16 z-40 shadow-lg">
         <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button onClick={() => setShowSearch(prev => !prev)} className="flex items-center gap-1 text-primary-200 hover:text-white transition-colors mr-2 shrink-0">
+            <button onClick={() => {
+              const sp = new URLSearchParams();
+              sp.set('pickup', pickup);
+              sp.set('dropoff', dropoff);
+              sp.set('date', date);
+              sp.set('time', time);
+              sp.set('passengers', passengers.toString());
+              if (isRoundtrip) {
+                sp.set('trip_type', 'roundtrip');
+                if (returnDate) sp.set('return_date', returnDate);
+                if (returnTime) sp.set('return_time', returnTime);
+              }
+              router.push(`/${locale}?${sp.toString()}`);
+            }} className="flex items-center gap-1 text-primary-200 hover:text-white transition-colors mr-2 shrink-0">
               <ChevronLeft size={16} /> {t.back}
             </button>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -197,31 +206,6 @@ function ResultsContent() {
           </div>
         </div>
       </div>
-
-      {/* Inline search edit panel */}
-      {showSearch && (
-        <div className="bg-white border-b border-gray-200 shadow-md">
-          <div className="max-w-5xl mx-auto px-4 py-6">
-            <SearchBar
-              initialValues={{
-                pickup,
-                dropoff,
-                date,
-                time,
-                passengers,
-                hasReturn: isRoundtrip,
-                returnDate: returnDate || undefined,
-                returnTime: returnTime || undefined,
-              }}
-              onSearchComplete={(newParams) => {
-                router.replace(`?${newParams.toString()}`);
-                setShowSearch(false);
-              }}
-              compact
-            />
-          </div>
-        </div>
-      )}
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}

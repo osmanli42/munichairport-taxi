@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -380,28 +380,43 @@ interface SearchBarProps {
 export default function SearchBar({ initialValues, onSearchComplete, compact }: SearchBarProps = {}) {
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read from URL params if no initialValues provided (e.g. returning from ergebnisse)
+  const urlInit = !initialValues && searchParams.get('pickup') ? {
+    pickup: searchParams.get('pickup') || '',
+    dropoff: searchParams.get('dropoff') || '',
+    date: searchParams.get('date') || '',
+    time: searchParams.get('time') || '10:00',
+    passengers: parseInt(searchParams.get('passengers') || '2', 10),
+    hasReturn: searchParams.get('trip_type') === 'roundtrip',
+    returnDate: searchParams.get('return_date') || undefined,
+    returnTime: searchParams.get('return_time') || undefined,
+  } : undefined;
+
+  const init = initialValues || urlInit;
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const defaultDate = tomorrow.toISOString().split('T')[0];
   const minDate = new Date().toISOString().split('T')[0];
 
-  const [pickup, setPickup] = useState(initialValues?.pickup || '');
-  const [pickupVal, setPickupVal] = useState(initialValues?.pickup || '');
-  const [dropoff, setDropoff] = useState(initialValues?.dropoff || '');
-  const [dropoffVal, setDropoffVal] = useState(initialValues?.dropoff || '');
-  const [date, setDate] = useState(initialValues?.date || defaultDate);
-  const [time, setTime] = useState(initialValues?.time || '10:00');
-  const [passengers, setPassengers] = useState(initialValues?.passengers || 2);
+  const [pickup, setPickup] = useState(init?.pickup || '');
+  const [pickupVal, setPickupVal] = useState(init?.pickup || '');
+  const [dropoff, setDropoff] = useState(init?.dropoff || '');
+  const [dropoffVal, setDropoffVal] = useState(init?.dropoff || '');
+  const [date, setDate] = useState(init?.date || defaultDate);
+  const [time, setTime] = useState(init?.time || '10:00');
+  const [passengers, setPassengers] = useState(init?.passengers || 2);
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Return trip
-  const [hasReturn, setHasReturn] = useState(initialValues?.hasReturn || false);
+  const [hasReturn, setHasReturn] = useState(init?.hasReturn || false);
   const returnDefault = new Date();
   returnDefault.setDate(returnDefault.getDate() + 3);
-  const [returnDate, setReturnDate] = useState(initialValues?.returnDate || returnDefault.toISOString().split('T')[0]);
-  const [returnTime, setReturnTime] = useState(initialValues?.returnTime || '16:00');
+  const [returnDate, setReturnDate] = useState(init?.returnDate || returnDefault.toISOString().split('T')[0]);
+  const [returnTime, setReturnTime] = useState(init?.returnTime || '16:00');
 
   // Auto-correct return date/time: must be after departure
   useEffect(() => {
@@ -494,7 +509,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto">
       {/* ─── DESKTOP ─── */}
       <div className="hidden lg:block">
         <div className="border-[3px] border-gold-400 rounded-2xl shadow-2xl overflow-visible bg-white">
