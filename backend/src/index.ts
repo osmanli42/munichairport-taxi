@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initializeDatabase } from './db';
+import { initializeDatabase, testConnection } from './db';
 import bookingsRouter from './routes/bookings';
 import adminRouter from './routes/admin';
 import pricesRouter from './routes/prices';
@@ -28,6 +28,12 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// DB diagnostic
+app.get('/api/db-test', async (req, res) => {
+  const result = await testConnection();
+  res.json(result);
 });
 
 // Email test (temporary)
