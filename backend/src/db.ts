@@ -5,12 +5,12 @@ dotenv.config();
 
 function getDbConfig(): mysql.ConnectionOptions {
   return {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
+    host: process.env.DB_HOST || 'srv1699.hstgr.io',
+    user: process.env.DB_USER || 'u609144885_FMT',
+    password: process.env.DB_PASS || 'Osman-1977',
+    database: process.env.DB_NAME || 'u609144885_FMT',
     connectTimeout: 10000,
-    ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : undefined,
+    ssl: { rejectUnauthorized: false },
   };
 }
 
