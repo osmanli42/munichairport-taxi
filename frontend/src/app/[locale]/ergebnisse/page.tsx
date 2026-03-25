@@ -381,7 +381,7 @@ function ResultsContent() {
                         <p className="text-sm text-red-500 font-medium">⚠️ {t.notSuitable} {passengers} {t.passengers_label}</p>
                       ) : (
                         <button
-                          onClick={() => handleBook(vehicle.type, finalPrice)}
+                          onClick={() => handleBook(vehicle.type, oneWayPrice)}
                           className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold px-6 py-3 rounded-xl transition-colors text-sm"
                         >
                           {t.book} <ArrowRight size={16} />

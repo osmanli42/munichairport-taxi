@@ -51,6 +51,7 @@ function BuchenContent() {
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
   const paramReturnTime = params.get('return_time') || '10:00';
+  const roundtripFromErgebnisse = paramTripType === 'roundtrip' && !!paramReturnDate;
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>(paramTripType === 'roundtrip' ? 'roundtrip' : 'oneway');
   const [returnDate, setReturnDate] = useState(paramReturnDate);
   const [returnTime, setReturnTime] = useState(paramReturnTime);
@@ -498,8 +499,8 @@ function BuchenContent() {
           <div className="lg:col-span-2 space-y-5">
             <h1 className="text-2xl font-bold text-primary-700">{tx.title}</h1>
 
-            {/* Return trip — TOP */}
-            {tripType === 'roundtrip' ? (
+            {/* Return trip — TOP (hide if already set from ergebnisse) */}
+            {roundtripFromErgebnisse ? null : tripType === 'roundtrip' ? (
               <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-primary-700 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
