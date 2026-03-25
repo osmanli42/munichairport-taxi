@@ -87,17 +87,19 @@ function ResultsContent() {
     return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
   };
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
       if (s.anfahrt_price_per_km) setAnfahrtPricePerKm(parseFloat(s.anfahrt_price_per_km));
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
   useEffect(() => {
+    if (!settingsLoaded) return;
     if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff) && !stadtfahrtEnabled) {
       router.replace(`/${locale}`);
     }
-  }, [pickup, dropoff, locale, router, stadtfahrtEnabled]);
+  }, [pickup, dropoff, locale, router, stadtfahrtEnabled, settingsLoaded]);
 
   // Return trip picker state
   const [showReturnPicker, setShowReturnPicker] = useState(false);

@@ -51,13 +51,15 @@ function BuchenContent() {
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   useEffect(() => {
+    if (!settingsLoaded) return;
     if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff) && !stadtfahrtEnabled) {
       router.replace(`/${locale}`);
     }
-  }, [pickup, dropoff, locale, router, stadtfahrtEnabled]);
+  }, [pickup, dropoff, locale, router, stadtfahrtEnabled, settingsLoaded]);
 
   // Form state
   const [name, setName] = useState('');
