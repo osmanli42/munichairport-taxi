@@ -181,15 +181,45 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { icon: '🚗', name: tVehicles('kombi.name'), persons: tVehicles('kombi.persons'), price: '€8 + €2.10/km' },
-              { icon: '🚐', name: tVehicles('van.name'), persons: tVehicles('van.persons'), price: '€10 + €2.20/km' },
-              { icon: '🚌', name: tVehicles('grossraumtaxi.name'), persons: tVehicles('grossraumtaxi.persons'), price: '€15 + €2.40/km' },
+              {
+                icon: '🚗',
+                name: tVehicles('kombi.name'),
+                model: 'Mercedes E-Klasse',
+                persons: tVehicles('kombi.persons'),
+                price: '€8 + €2.10/km',
+                features: ['Klimaanlage', 'Lederausstattung', 'Großer Kofferraum', 'Komfortabler Kombi'],
+              },
+              {
+                icon: '🚐',
+                name: tVehicles('van.name'),
+                model: 'Mercedes Viano',
+                persons: tVehicles('van.persons'),
+                price: '€10 + €2.20/km',
+                features: ['Klimaanlage', '7 Sitzplätze', 'Schiebetür', 'Viel Gepäckraum'],
+              },
+              {
+                icon: '🚌',
+                name: tVehicles('grossraumtaxi.name'),
+                model: 'Mercedes Vito',
+                persons: tVehicles('grossraumtaxi.persons'),
+                price: '€15 + €2.40/km',
+                features: ['Klimaanlage', '8 Sitzplätze', 'Schiebetüren', 'Maximaler Gepäckraum'],
+              },
             ].map((v) => (
-              <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center">
+              <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
                 <div className="text-5xl mb-3">{v.icon}</div>
                 <h3 className="font-bold text-xl text-primary-600">{v.name}</h3>
+                <p className="text-xs text-gray-400 font-medium mb-1">{v.model}</p>
                 <p className="text-gray-500 text-sm mb-3">{v.persons}</p>
-                <p className="text-lg font-semibold text-gold-600">{v.price}</p>
+                <p className="text-lg font-semibold text-gold-600 mb-4">{v.price}</p>
+                <ul className="text-left space-y-1.5 mt-auto">
+                  {v.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-green-500 font-bold">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
