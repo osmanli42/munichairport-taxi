@@ -9,8 +9,10 @@ const pool = mysql.createPool({
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
-  ssl: { rejectUnauthorized: false },
+  connectionLimit: 5,
+  connectTimeout: 10000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
