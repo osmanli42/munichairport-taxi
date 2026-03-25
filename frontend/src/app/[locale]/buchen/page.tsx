@@ -44,6 +44,7 @@ function BuchenContent() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
+  const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
   const [payment, setPayment] = useState<'cash' | 'card'>('cash');
@@ -97,6 +98,7 @@ function BuchenContent() {
     tr: { title: 'Bilgileriniz', summary: 'Rezervasyon özeti', name: 'Ad Soyad *', phone: 'Telefon numarası *', email: 'E-posta *', flight: 'Uçuş numarası (isteğe bağlı)', luggage: 'Bagaj sayısı', notes: 'Notlar', payment: 'Ödeme yöntemi', cash: '💵 Nakit', card: '💳 Kredi kartı', cardHolder: 'Kart sahibi', cardNumber: 'Kart numarası', cardExpiry: 'Son kullanma tarihi', cardCvv: 'CVV', oneway: '→ Tek yön', roundtrip: '⇄ Gidiş-dönüş', returnDate: 'Dönüş tarihi', returnTime: 'Dönüş saati', submit: 'Kontrol et', submitting: 'Rezervasyon yapılıyor...', success_title: 'Rezervasyon onaylandı! 🎉', success_msg: 'Rezervasyonunuz onaylandı. Kısa süre içinde onay e-postası alacaksınız:', new_booking: 'Yeni rezervasyon', back: '← Araç seçimine dön', err_name: 'Ad gerekli', err_phone: 'Telefon gerekli', err_email: 'Geçerli e-posta gerekli', err_card: 'Kart bilgileri gerekli', err_submit: 'Gönderme hatası. Lütfen tekrar deneyin.', review_title: 'Rezervasyonu kontrol edin', review_subtitle: 'Lütfen rezervasyonu onaylamadan önce bilgilerinizi kontrol edin.', review_route: 'Güzergah', review_datetime: 'Tarih & Saat', review_vehicle: 'Araç', review_contact: 'İletişim bilgileri', review_payment_label: 'Ödeme', review_confirm: 'Rezervasyonu onayla', review_edit: '← Bilgileri düzenle', review_persons: 'Kişi', review_luggage_label: 'Bagaj', review_notes_label: 'Notlar', review_flight_label: 'Uçuş numarası' },
   };
   const tx = t[locale] || t.de;
+  const isAirportPickup = pickup.includes('München-Flughafen');
 
   function validate() {
     const errs: Record<string, string> = {};
@@ -133,6 +135,7 @@ function BuchenContent() {
         phone: phone.trim(),
         email: email.trim(),
         flight_number: flightNumber || undefined,
+        pickup_sign: pickupSign || undefined,
         child_seat: childSeat,
         child_seat_details: childSeat ? buildChildSeatDetails() : undefined,
         luggage_count: luggageCount,
@@ -383,6 +386,7 @@ function BuchenContent() {
                     <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span className="text-gray-800">{phone}</span></div>
                     <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /> <span className="text-gray-800">{email}</span></div>
                     {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> <span className="text-gray-800">{flightNumber}</span></div>}
+                    {pickupSign && <div className="flex items-center gap-2"><span>🪧</span> <span className="text-gray-800 font-medium">{pickupSign}</span></div>}
                   </div>
                 </div>
 
@@ -491,6 +495,13 @@ function BuchenContent() {
                   </div>
                 </div>
               </div>
+              {isAirportPickup && (
+                <div>
+                  <label className={labelCls}><span className="flex items-center gap-1">🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} <span className="text-gray-400 font-normal text-xs">(optional)</span></span></label>
+                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} className={inputCls} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
+                  <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>
+                </div>
+              )}
               <div>
                 <label className={labelCls}>{tx.notes}</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
