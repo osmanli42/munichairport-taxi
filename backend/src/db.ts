@@ -3,17 +3,19 @@ import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const dbConfig: mysql.ConnectionOptions = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  connectTimeout: 10000,
-  ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : undefined,
-};
+function getDbConfig(): mysql.ConnectionOptions {
+  return {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    connectTimeout: 10000,
+    ssl: process.env.DB_HOST ? { rejectUnauthorized: false } : undefined,
+  };
+}
 
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-  const conn = await mysql.createConnection(dbConfig);
+  const conn = await mysql.createConnection(getDbConfig());
   try {
     const [rows] = await conn.execute(sql, params);
     return rows as T[];
@@ -23,7 +25,7 @@ export async function query<T = any>(sql: string, params: any[] = []): Promise<T
 }
 
 export async function run(sql: string, params: any[] = []): Promise<mysql.ResultSetHeader> {
-  const conn = await mysql.createConnection(dbConfig);
+  const conn = await mysql.createConnection(getDbConfig());
   try {
     const [result] = await conn.execute(sql, params);
     return result as mysql.ResultSetHeader;
@@ -33,7 +35,7 @@ export async function run(sql: string, params: any[] = []): Promise<mysql.Result
 }
 
 export async function initializeDatabase(): Promise<void> {
-  const conn = await mysql.createConnection(dbConfig);
+  const conn = await mysql.createConnection(getDbConfig());
   try {
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS bookings (
@@ -124,16 +126,16 @@ export async function initializeDatabase(): Promise<void> {
 // Diagnostic: test MySQL connectivity
 export async function testConnection(): Promise<{ ok: boolean; error?: string; code?: string; host?: string }> {
   try {
-    const conn = await mysql.createConnection(dbConfig);
+    const conn = await mysql.createConnection(getDbConfig());
     const [rows] = await conn.execute('SELECT 1 as test') as any;
     await conn.end().catch(() => {});
-    return { ok: true, host: dbConfig.host || 'not set' };
+    return { ok: true, host: getDbConfig().host || 'not set' };
   } catch (err: any) {
     return {
       ok: false,
       error: err.message || String(err),
       code: err.code || err.errno || 'unknown',
-      host: dbConfig.host || 'not set',
+      host: getDbConfig().host || 'not set',
     };
   }
 }
