@@ -46,6 +46,11 @@ function getVehicleLabel(vehicle_type: string, lang: string): string {
   return labels[vehicle_type]?.[lang] || vehicle_type;
 }
 
+function formatPrice(price: number): string {
+  const rounded = Math.ceil(price * 2) / 2;
+  return rounded.toFixed(2);
+}
+
 function formatDateTime(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleString('de-DE', {
@@ -89,10 +94,10 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
     <span class="badge">Buchungsnummer: ${booking.booking_number}</span>
   </div>
   <div class="content">
-    <div class="price">€${booking.price.toFixed(2)}</div>
+    <div class="price">€${formatPrice(booking.price)}</div>
     ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
     <div style="text-align:center;margin:-8px 0 16px;font-size:13px;color:#666;">
-      <span style="text-decoration:line-through;color:#999;">€${(booking.oneway_price * 2).toFixed(2)}</span>
+      <span style="text-decoration:line-through;color:#999;">€${formatPrice(booking.oneway_price * 2)}</span>
       &nbsp;→&nbsp;
       <span style="color:#16a34a;font-weight:bold;">${booking.roundtrip_discount ?? 0}% Hin- & Rückfahrt Rabatt</span>
     </div>` : ''}
@@ -109,17 +114,17 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       ${booking.distance_km ? `<div class="row"><span class="label">Strecke:</span><span class="value">${booking.distance_km.toFixed(1)} km</span></div>` : ''}
       ${booking.duration_minutes ? `<div class="row"><span class="label">Fahrtdauer:</span><span class="value">ca. ${booking.duration_minutes} Min.</span></div>` : ''}
       ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
-      <div class="row"><span class="label">Einfache Fahrt:</span><span class="value">€${booking.oneway_price.toFixed(2)}</span></div>
-      <div class="row"><span class="label">× 2 Hin & Rück:</span><span class="value">€${(booking.oneway_price * 2).toFixed(2)}</span></div>
+      <div class="row"><span class="label">Einfache Fahrt:</span><span class="value">€${formatPrice(booking.oneway_price)}</span></div>
+      <div class="row"><span class="label">× 2 Hin & Rück:</span><span class="value">€${formatPrice(booking.oneway_price * 2)}</span></div>
       <div class="row"><span class="label">Rabatt:</span><span class="value" style="color:#16a34a;font-weight:bold;">−${booking.roundtrip_discount ?? 0}%</span></div>
-      <div class="row"><span class="label"><strong>Endpreis:</strong></span><span class="value"><strong>€${booking.price.toFixed(2)}</strong></span></div>` : ''}
+      <div class="row"><span class="label"><strong>Endpreis:</strong></span><span class="value"><strong>€${formatPrice(booking.price)}</strong></span></div>` : ''}
     </div>
 
     ${(booking.child_seat || (booking.fahrrad_count && booking.fahrrad_count > 0)) ? `
     <div class="section">
       <h3>Extras</h3>
       ${booking.child_seat ? `<div class="row"><span class="label">👶 Kindersitz:</span><span class="value">Ja (kostenlos)${booking.child_seat_details ? ' — ' + booking.child_seat_details : ''}</span></div>` : ''}
-      ${booking.fahrrad_count && booking.fahrrad_count > 0 ? `<div class="row"><span class="label">🚲 Fahrrad:</span><span class="value">${booking.fahrrad_count}× (€${booking.fahrrad_price?.toFixed(2) || '0.00'}/Stk.) = €${booking.fahrrad_total?.toFixed(2) || '0.00'}</span></div>` : ''}
+      ${booking.fahrrad_count && booking.fahrrad_count > 0 ? `<div class="row"><span class="label">🚲 Fahrrad:</span><span class="value">${booking.fahrrad_count}× (€${formatPrice(booking.fahrrad_price ?? 0)}/Stk.) = €${formatPrice(booking.fahrrad_total ?? 0)}</span></div>` : ''}
     </div>` : ''}
 
     <div class="section">
@@ -152,7 +157,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
   await resend.emails.send({
     from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
     to: ADMIN_EMAIL,
-    subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${booking.price.toFixed(2)}`,
+    subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${formatPrice(booking.price)}`,
     html,
   });
 }
@@ -306,10 +311,10 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       ${t.intro}
     </div>
 
-    <div class="price-box">€${booking.price.toFixed(2)}</div>
+    <div class="price-box">€${formatPrice(booking.price)}</div>
     ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
     <div style="text-align:center;margin:-12px 0 16px;font-size:13px;color:#666;">
-      <span style="text-decoration:line-through;color:#999;">€${(booking.oneway_price * 2).toFixed(2)}</span>
+      <span style="text-decoration:line-through;color:#999;">€${formatPrice(booking.oneway_price * 2)}</span>
       &nbsp;→&nbsp;
       <span style="color:#16a34a;font-weight:bold;">${booking.roundtrip_discount ?? 0}% ${lang === 'de' ? 'Hin- & Rückfahrt Rabatt' : lang === 'tr' ? 'Gidiş-Dönüş İndirimi' : 'Round trip discount'}</span>
     </div>` : ''}
@@ -326,10 +331,10 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       ${booking.distance_km ? `<div class="row"><span class="label">${t.distance}:</span><span class="value">${booking.distance_km.toFixed(1)} km</span></div>` : ''}
       ${booking.duration_minutes ? `<div class="row"><span class="label">${t.duration}:</span><span class="value">ca. ${booking.duration_minutes} ${t.minutes}</span></div>` : ''}
       ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
-      <div class="row"><span class="label">${lang === 'de' ? 'Einfache Fahrt' : lang === 'tr' ? 'Tek Yön' : 'One way'}:</span><span class="value">€${booking.oneway_price.toFixed(2)}</span></div>
-      <div class="row"><span class="label">× 2 ${lang === 'de' ? 'Hin & Rück' : lang === 'tr' ? 'Gidiş-Dönüş' : 'Round trip'}:</span><span class="value">€${(booking.oneway_price * 2).toFixed(2)}</span></div>
+      <div class="row"><span class="label">${lang === 'de' ? 'Einfache Fahrt' : lang === 'tr' ? 'Tek Yön' : 'One way'}:</span><span class="value">€${formatPrice(booking.oneway_price)}</span></div>
+      <div class="row"><span class="label">× 2 ${lang === 'de' ? 'Hin & Rück' : lang === 'tr' ? 'Gidiş-Dönüş' : 'Round trip'}:</span><span class="value">€${formatPrice(booking.oneway_price * 2)}</span></div>
       <div class="row"><span class="label">${lang === 'de' ? 'Rabatt' : lang === 'tr' ? 'İndirim' : 'Discount'}:</span><span class="value" style="color:#16a34a;font-weight:bold;">−${booking.roundtrip_discount ?? 0}%</span></div>
-      <div class="row"><span class="label"><strong>${lang === 'de' ? 'Endpreis' : lang === 'tr' ? 'Son Fiyat' : 'Final Price'}:</strong></span><span class="value"><strong>€${booking.price.toFixed(2)}</strong></span></div>` : ''}
+      <div class="row"><span class="label"><strong>${lang === 'de' ? 'Endpreis' : lang === 'tr' ? 'Son Fiyat' : 'Final Price'}:</strong></span><span class="value"><strong>€${formatPrice(booking.price)}</strong></span></div>` : ''}
       <div class="row"><span class="label">${t.luggage}:</span><span class="value">${booking.luggage_count} ${t.pieces}</span></div>
       <div class="row"><span class="label">${t.payment}:</span><span class="value">${booking.payment_method === 'cash' ? t.cash : t.card}</span></div>
     </div>
@@ -338,7 +343,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
     <div class="section">
       <h3>Extras</h3>
       ${booking.child_seat ? `<div class="row"><span class="label">👶 ${t.childSeat}:</span><span class="value">${t.yes}${booking.child_seat_details ? ' — ' + booking.child_seat_details : ''}</span></div>` : ''}
-      ${booking.fahrrad_count && booking.fahrrad_count > 0 ? `<div class="row"><span class="label">🚲 ${lang === 'de' ? 'Fahrrad' : lang === 'tr' ? 'Bisiklet' : 'Bicycle'}:</span><span class="value">${booking.fahrrad_count}× (€${booking.fahrrad_price?.toFixed(2) || '0.00'}) = €${booking.fahrrad_total?.toFixed(2) || '0.00'}</span></div>` : ''}
+      ${booking.fahrrad_count && booking.fahrrad_count > 0 ? `<div class="row"><span class="label">🚲 ${lang === 'de' ? 'Fahrrad' : lang === 'tr' ? 'Bisiklet' : 'Bicycle'}:</span><span class="value">${booking.fahrrad_count}× (€${formatPrice(booking.fahrrad_price ?? 0)}) = €${formatPrice(booking.fahrrad_total ?? 0)}</span></div>` : ''}
     </div>` : ''}
 
     <div class="section">
