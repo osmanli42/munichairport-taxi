@@ -460,18 +460,15 @@ function BuchenContent() {
                     const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
                     if (!mapsKey) return null;
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const markers = [
-                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
-                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
-                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
-                    ].join('&');
+                    const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&mode=driving`;
                     return (
                       <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
-                        <img
-                          src={`https://maps.googleapis.com/maps/api/staticmap?size=600x200&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
-                          alt="Route map"
-                          className="w-full h-[160px] object-cover"
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-[160px] border-0"
                           loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
                         />
                       </div>
                     );
@@ -1017,18 +1014,15 @@ function BuchenContent() {
                     const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
                     if (!mapsKey) return null;
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const markers = [
-                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
-                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
-                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
-                    ].join('&');
+                    const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&mode=driving`;
                     return (
                       <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
-                        <img
-                          src={`https://maps.googleapis.com/maps/api/staticmap?size=400x150&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
-                          alt="Route map"
-                          className="w-full h-[120px] object-cover"
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-[120px] border-0"
                           loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
                         />
                       </div>
                     );
