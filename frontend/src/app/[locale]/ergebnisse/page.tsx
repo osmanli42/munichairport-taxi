@@ -327,8 +327,8 @@ function ResultsContent() {
           ))}
         </div>
 
-        {/* Return trip banner */}
-        {isRoundtrip ? (
+        {/* Return trip & Zwischenstopp active banners */}
+        {isRoundtrip && (
           <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 mb-4">
             <div className="flex items-center gap-2 text-sm text-primary-700 font-medium">
               <span>⇄</span>
@@ -344,7 +344,24 @@ function ResultsContent() {
               ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
             </button>
           </div>
-        ) : showReturnPicker ? (
+        )}
+        {zwischenstoppEnabled && zwischenstoppAddress && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+            <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
+              <span>📍</span>
+              <span>
+                {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
+                {zwischenstoppAddress}
+              </span>
+            </div>
+            <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium">
+              ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+            </button>
+          </div>
+        )}
+
+        {/* Return trip picker / Zwischenstopp picker / Buttons row */}
+        {showReturnPicker ? (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3">
             <p className="text-sm font-semibold text-primary-700">
               {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
@@ -387,81 +404,68 @@ function ResultsContent() {
               </button>
             </div>
           </div>
-        ) : (
-          <button
-            onClick={() => setShowReturnPicker(true)}
-            className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors mb-4 justify-center"
-          >
-            <span className="text-lg">⇄</span>
-            {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
-            {locale === 'de' && <span className="text-xs font-normal text-green-600 ml-1">(5% Rabatt)</span>}
-            {locale === 'en' && <span className="text-xs font-normal text-green-600 ml-1">(5% discount)</span>}
-            {locale === 'tr' && <span className="text-xs font-normal text-green-600 ml-1">(%5 indirim)</span>}
-          </button>
-        )}
-
-        {/* Zwischenstopp section */}
-        {zwischenstoppEnabled && (
-          zwischenstoppAddress ? (
-            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
-              <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
-                <span>📍</span>
-                <span>
-                  {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
-                  {zwischenstoppAddress}
-                </span>
-              </div>
-              <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium">
-                ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
-              </button>
-            </div>
-          ) : showZwischenstoppPicker ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
-              <p className="text-sm font-semibold text-primary-700">
-                {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
-              </p>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={zwischenstoppInput}
-                  onChange={e => setZwischenstoppInput(e.target.value)}
-                  placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                  autoFocus
-                />
-                {zwischenstoppSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                    {zwischenstoppSuggestions.map((s: any) => (
-                      <button
-                        key={s.place_id}
-                        onClick={() => addZwischenstopp(s.description)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
-                      >
-                        {s.description}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {zwischenstoppLoading && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
-                  {locale === 'de' ? 'Berechne Route...' : locale === 'en' ? 'Calculating route...' : 'Rota hesaplanıyor...'}
+        ) : showZwischenstoppPicker ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
+            <p className="text-sm font-semibold text-primary-700">
+              {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
+            </p>
+            <div className="relative">
+              <input
+                type="text"
+                value={zwischenstoppInput}
+                onChange={e => setZwischenstoppInput(e.target.value)}
+                placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                autoFocus
+              />
+              {zwischenstoppSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  {zwischenstoppSuggestions.map((s: any) => (
+                    <button
+                      key={s.place_id}
+                      onClick={() => addZwischenstopp(s.description)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
+                    >
+                      {s.description}
+                    </button>
+                  ))}
                 </div>
               )}
-              <button onClick={() => { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
-                {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
-              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setShowZwischenstoppPicker(true)}
-              className="flex items-center gap-2 w-full border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors mb-4 justify-center"
-            >
-              <span>📍</span>
-              {locale === 'de' ? '+ Zwischenstopp hinzufügen' : locale === 'en' ? '+ Add intermediate stop' : '+ Ara durak ekle'}
+            {zwischenstoppLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                {locale === 'de' ? 'Berechne Route...' : locale === 'en' ? 'Calculating route...' : 'Rota hesaplanıyor...'}
+              </div>
+            )}
+            <button onClick={() => { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
+              {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
             </button>
-          )
+          </div>
+        ) : (
+          <div className="flex gap-3 mb-4">
+            {!isRoundtrip && (
+              <button
+                onClick={() => setShowReturnPicker(true)}
+                className="flex items-center gap-2 flex-1 border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+              >
+                <span className="text-lg">⇄</span>
+                {locale === 'de' ? '+ Rückfahrt' : locale === 'en' ? '+ Return trip' : '+ Dönüş'}
+                <span className="text-xs font-normal text-green-600 ml-1">
+                  ({locale === 'de' ? '5% Rabatt' : locale === 'en' ? '5% discount' : '%5 indirim'})
+                </span>
+              </button>
+            )}
+            {zwischenstoppEnabled && !zwischenstoppAddress && (
+              <button
+                onClick={() => setShowZwischenstoppPicker(true)}
+                className="flex items-center gap-2 flex-1 border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+              >
+                <span>📍</span>
+                {locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Vehicle cards */}
