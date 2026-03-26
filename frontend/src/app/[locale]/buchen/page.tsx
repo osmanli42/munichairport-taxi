@@ -60,6 +60,9 @@ function BuchenContent() {
   // Zwischenstopp state (only for buchen-page-added stops)
   const zwischenstoppFromErgebnisse = !!params.get('zwischenstopp_address');
   const [localZwischenstopp, setLocalZwischenstopp] = useState('');
+  const [localZwischenstoppDistanceKm, setLocalZwischenstoppDistanceKm] = useState(0);
+  const [localZwischenstoppDuration, setLocalZwischenstoppDuration] = useState(0);
+  const [localZwischenstoppBasePrice, setLocalZwischenstoppBasePrice] = useState(0);
   const [showZwischenstoppPicker, setShowZwischenstoppPicker] = useState(false);
   const [zwischenstoppInput, setZwischenstoppInput] = useState('');
   const [zwischenstoppSuggestions, setZwischenstoppSuggestions] = useState<any[]>([]);
@@ -111,6 +114,7 @@ function BuchenContent() {
   const [fahrradPrice, setFahrradPrice] = useState(0);
   const [maxLuggage, setMaxLuggage] = useState(10);
   const [roundtripDiscount, setRoundtripDiscount] = useState(5);
+  const [vehiclePriceConfig, setVehiclePriceConfig] = useState<{ base_price: number; price_per_km: number; min_price: number; min_price_km: number } | null>(null);
 
   // Fetch vehicle price config (fahrrad_enabled etc.)
   useEffect(() => {
@@ -123,6 +127,12 @@ function BuchenContent() {
           setFahrradPrice(data.fahrrad_price || 0);
           setMaxLuggage(data.max_luggage ?? 10);
           setRoundtripDiscount(data.roundtrip_discount || 5);
+          setVehiclePriceConfig({
+            base_price: data.base_price || 0,
+            price_per_km: data.price_per_km || 0,
+            min_price: data.min_price || 0,
+            min_price_km: data.min_price_km || 15,
+          });
         }
       } catch { /* ignore */ }
     }
@@ -130,9 +140,11 @@ function BuchenContent() {
   }, [vehicle]);
 
   // Dynamic total price including extras and roundtrip
-  const oneWayPrice = basePrice;
+  const oneWayPrice = localZwischenstoppBasePrice > 0 ? localZwischenstoppBasePrice : basePrice;
   const roundtripPrice = oneWayPrice * 2 * (1 - roundtripDiscount / 100);
   const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice) + anfahrtCost;
+  const effectiveDistanceKm = localZwischenstoppDistanceKm > 0 ? localZwischenstoppDistanceKm : distanceKm;
+  const effectiveDuration = localZwischenstoppDuration > 0 ? localZwischenstoppDuration : duration;
 
   const [cardHolder, setCardHolder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -225,8 +237,8 @@ function BuchenContent() {
         luggage_count: luggageCount,
         fahrrad_count: fahrradCount,
         notes: notes || undefined,
-        distance_km: distanceKm,
-        duration_minutes: duration,
+        distance_km: effectiveDistanceKm,
+        duration_minutes: effectiveDuration,
         payment_method: payment,
         language: locale,
         trip_type: tripType,
@@ -393,7 +405,7 @@ function BuchenContent() {
                   <span className="text-3xl">{VEHICLE_LABELS[vehicle]?.[locale]?.split(' ')[0]}</span>
                   <div>
                     <p className="text-white font-bold text-lg">{vehicleLabel}</p>
-                    <p className="text-primary-200 text-sm">{distanceKm.toFixed(1)} km · ca. {duration} Min.</p>
+                    <p className="text-primary-200 text-sm">{effectiveDistanceKm.toFixed(1)} km · ca. {effectiveDuration} Min.</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -627,7 +639,7 @@ function BuchenContent() {
                       {localZwischenstopp}
                     </span>
                   </div>
-                  <button type="button" onClick={() => setLocalZwischenstopp('')} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                  <button type="button" onClick={() => { setLocalZwischenstopp(''); setLocalZwischenstoppBasePrice(0); setLocalZwischenstoppDistanceKm(0); setLocalZwischenstoppDuration(0); }} className="text-xs text-red-500 hover:text-red-700 font-medium">
                     ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                   </button>
                 </div>
@@ -651,11 +663,34 @@ function BuchenContent() {
                           <button
                             key={s.place_id}
                             type="button"
-                            onClick={() => {
-                              setLocalZwischenstopp(s.description);
+                            onClick={async () => {
                               setShowZwischenstoppPicker(false);
                               setZwischenstoppInput('');
                               setZwischenstoppSuggestions([]);
+                              setZwischenstoppLoading(true);
+                              try {
+                                const r = await fetch(`${API_URL}/maps/distance`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ origin: pickup, destination: dropoff, zwischenstopp: s.description, language: locale }),
+                                });
+                                const data = await r.json();
+                                if (data.zwischenstopp_total_km && vehiclePriceConfig) {
+                                  const km = data.zwischenstopp_total_km;
+                                  const calc = vehiclePriceConfig.base_price + km * vehiclePriceConfig.price_per_km;
+                                  const newBasePrice = (vehiclePriceConfig.min_price > 0 && km <= (vehiclePriceConfig.min_price_km || 15))
+                                    ? Math.max(calc, vehiclePriceConfig.min_price)
+                                    : calc;
+                                  setLocalZwischenstoppDistanceKm(km);
+                                  setLocalZwischenstoppDuration(data.zwischenstopp_total_duration || duration);
+                                  setLocalZwischenstoppBasePrice(Math.ceil(newBasePrice * 2) / 2);
+                                }
+                              } catch (e) {
+                                console.error('Zwischenstopp distance calc failed:', e);
+                              } finally {
+                                setZwischenstoppLoading(false);
+                              }
+                              setLocalZwischenstopp(s.description);
                             }}
                             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
                           >
@@ -954,7 +989,7 @@ function BuchenContent() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2"><Users size={13} className="text-primary-400" /><span>{passengers} {locale === 'de' ? 'Person(en)' : locale === 'en' ? 'Passenger(s)' : 'Kişi'}</span></div>
-                  <div className="flex items-center gap-2"><Car size={13} className="text-primary-400" /><span>{distanceKm.toFixed(1)} km · ca. {duration} Min.</span></div>
+                  <div className="flex items-center gap-2"><Car size={13} className="text-primary-400" /><span>{effectiveDistanceKm.toFixed(1)} km · ca. {effectiveDuration} Min.</span></div>
                   {tripType === 'roundtrip' && (
                     <div className="flex items-center gap-2 text-primary-500 font-medium">
                       <ArrowRight size={13} className="text-primary-400" />
