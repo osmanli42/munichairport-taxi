@@ -327,41 +327,8 @@ function ResultsContent() {
           ))}
         </div>
 
-        {/* Return trip & Zwischenstopp active banners */}
-        {isRoundtrip && (
-          <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 mb-4">
-            <div className="flex items-center gap-2 text-sm text-primary-700 font-medium">
-              <span>⇄</span>
-              <span>
-                {locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}{' '}
-                {new Date(returnDate + 'T00:00:00').toLocaleDateString(
-                  locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
-                  { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }
-                )} · {returnTime}
-              </span>
-            </div>
-            <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-medium">
-              ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
-            </button>
-          </div>
-        )}
-        {zwischenstoppEnabled && zwischenstoppAddress && (
-          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
-            <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
-              <span>📍</span>
-              <span>
-                {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
-                {zwischenstoppAddress}
-              </span>
-            </div>
-            <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium">
-              ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
-            </button>
-          </div>
-        )}
-
-        {/* Return trip picker / Zwischenstopp picker / Buttons row */}
-        {showReturnPicker ? (
+        {/* Pickers (full width, shown one at a time) */}
+        {showReturnPicker && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3">
             <p className="text-sm font-semibold text-primary-700">
               {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
@@ -371,32 +338,17 @@ function ResultsContent() {
                 <label className="text-xs text-gray-500 font-medium">
                   {locale === 'de' ? 'Datum' : locale === 'en' ? 'Date' : 'Tarih'}
                 </label>
-                <input
-                  type="date"
-                  value={localReturnDate}
-                  min={date}
-                  onChange={e => setLocalReturnDate(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                />
+                <input type="date" value={localReturnDate} min={date} onChange={e => setLocalReturnDate(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-500 font-medium">
                   {locale === 'de' ? 'Uhrzeit' : locale === 'en' ? 'Time' : 'Saat'}
                 </label>
-                <input
-                  type="time"
-                  value={localReturnTime}
-                  onChange={e => setLocalReturnTime(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                />
+                <input type="time" value={localReturnTime} onChange={e => setLocalReturnTime(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" />
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={addReturnTrip}
-                disabled={!localReturnDate}
-                className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
+              <button onClick={addReturnTrip} disabled={!localReturnDate} className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
                 {locale === 'de' ? 'Bestätigen' : locale === 'en' ? 'Confirm' : 'Onayla'}
               </button>
               <button onClick={() => setShowReturnPicker(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
@@ -404,30 +356,18 @@ function ResultsContent() {
               </button>
             </div>
           </div>
-        ) : showZwischenstoppPicker ? (
+        )}
+        {showZwischenstoppPicker && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
             <p className="text-sm font-semibold text-primary-700">
               {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
             </p>
             <div className="relative">
-              <input
-                type="text"
-                value={zwischenstoppInput}
-                onChange={e => setZwischenstoppInput(e.target.value)}
-                placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                autoFocus
-              />
+              <input type="text" value={zwischenstoppInput} onChange={e => setZwischenstoppInput(e.target.value)} placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" autoFocus />
               {zwischenstoppSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                   {zwischenstoppSuggestions.map((s: any) => (
-                    <button
-                      key={s.place_id}
-                      onClick={() => addZwischenstopp(s.description)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
-                    >
-                      {s.description}
-                    </button>
+                    <button key={s.place_id} onClick={() => addZwischenstopp(s.description)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0">{s.description}</button>
                   ))}
                 </div>
               )}
@@ -442,9 +382,29 @@ function ResultsContent() {
               {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
             </button>
           </div>
-        ) : (
+        )}
+
+        {/* Rückfahrt + Zwischenstopp — always same row (active banners + add buttons) */}
+        {!showReturnPicker && !showZwischenstoppPicker && (
           <div className="flex gap-3 mb-4">
-            {!isRoundtrip && (
+            {/* Rückfahrt: active banner OR add button */}
+            {isRoundtrip ? (
+              <div className="flex items-center justify-between flex-1 bg-primary-50 border border-primary-200 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2 text-sm text-primary-700 font-medium truncate">
+                  <span>⇄</span>
+                  <span className="truncate">
+                    {locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}{' '}
+                    {new Date(returnDate + 'T00:00:00').toLocaleDateString(
+                      locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
+                      { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }
+                    )} · {returnTime}
+                  </span>
+                </div>
+                <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
+                  ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                </button>
+              </div>
+            ) : (
               <button
                 onClick={() => setShowReturnPicker(true)}
                 className="flex items-center gap-2 flex-1 border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
@@ -456,14 +416,28 @@ function ResultsContent() {
                 </span>
               </button>
             )}
-            {zwischenstoppEnabled && !zwischenstoppAddress && (
-              <button
-                onClick={() => setShowZwischenstoppPicker(true)}
-                className="flex items-center gap-2 flex-1 border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
-              >
-                <span>📍</span>
-                {locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}
-              </button>
+
+            {/* Zwischenstopp: active banner OR add button */}
+            {zwischenstoppEnabled && (
+              zwischenstoppAddress ? (
+                <div className="flex items-center justify-between flex-1 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-700 font-medium truncate">
+                    <span>📍</span>
+                    <span className="truncate">{zwischenstoppAddress}</span>
+                  </div>
+                  <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
+                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowZwischenstoppPicker(true)}
+                  className="flex items-center gap-2 flex-1 border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+                >
+                  <span>📍</span>
+                  {locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}
+                </button>
+              )
             )}
           </div>
         )}
