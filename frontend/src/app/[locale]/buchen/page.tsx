@@ -323,25 +323,14 @@ function BuchenContent() {
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <span className="text-gray-700">{dropoff}</span>
                   </div>
-                  {/* Mini route map */}
+                  {/* Route link */}
                   {(() => {
-                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    if (!mapsKey) return null;
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const markers = [
-                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
-                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
-                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
-                    ].join('&');
+                    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
-                      <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
-                        <img
-                          src={`https://maps.googleapis.com/maps/api/staticmap?size=600x200&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
-                          alt="Route map"
-                          className="w-full h-[140px] object-cover"
-                          loading="lazy"
-                        />
-                      </div>
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-600 hover:text-gray-800 transition-colors">
+                        <span>🗺️</span> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
+                      </a>
                     );
                   })()}
                 </div>
@@ -455,22 +444,14 @@ function BuchenContent() {
                       <p className="text-gray-800 text-sm">{dropoff}</p>
                     </div>
                   </div>
-                  {/* Mini route map */}
+                  {/* Route link */}
                   {(() => {
-                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    if (!mapsKey) return null;
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&mode=driving`;
+                    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
-                      <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
-                        <iframe
-                          src={embedUrl}
-                          className="w-full h-[160px] border-0"
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
-                      </div>
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-600 hover:text-gray-800 transition-colors">
+                        <span>🗺️</span> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
+                      </a>
                     );
                   })()}
                 </div>
@@ -1009,22 +990,14 @@ function BuchenContent() {
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <p className="text-gray-700 text-xs leading-relaxed">{dropoff}</p>
                   </div>
-                  {/* Mini route map */}
+                  {/* Route link */}
                   {(() => {
-                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-                    if (!mapsKey) return null;
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const embedUrl = `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&mode=driving`;
+                    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
-                        <iframe
-                          src={embedUrl}
-                          className="w-full h-[120px] border-0"
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
-                      </div>
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 hover:text-gray-800 transition-colors">
+                        <span>🗺️</span> {locale === 'de' ? 'Route anzeigen' : locale === 'en' ? 'View route' : 'Rotayı göster'}
+                      </a>
                     );
                   })()}
                 </div>
