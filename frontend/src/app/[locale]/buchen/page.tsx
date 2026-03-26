@@ -323,6 +323,27 @@ function BuchenContent() {
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <span className="text-gray-700">{dropoff}</span>
                   </div>
+                  {/* Mini route map */}
+                  {(() => {
+                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                    if (!mapsKey) return null;
+                    const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
+                    const markers = [
+                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
+                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
+                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
+                    ].join('&');
+                    return (
+                      <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/staticmap?size=600x200&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
+                          alt="Route map"
+                          className="w-full h-[140px] object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Date/Time */}
@@ -434,6 +455,27 @@ function BuchenContent() {
                       <p className="text-gray-800 text-sm">{dropoff}</p>
                     </div>
                   </div>
+                  {/* Mini route map */}
+                  {(() => {
+                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                    if (!mapsKey) return null;
+                    const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
+                    const markers = [
+                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
+                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
+                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
+                    ].join('&');
+                    return (
+                      <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/staticmap?size=600x200&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
+                          alt="Route map"
+                          className="w-full h-[160px] object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <hr className="border-gray-100" />
