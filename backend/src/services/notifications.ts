@@ -36,6 +36,7 @@ export interface BookingNotificationData {
   fahrrad_price?: number;
   fahrrad_total?: number;
   anfahrt_cost?: number;
+  zwischenstopp_address?: string;
 }
 
 function getVehicleLabel(vehicle_type: string, lang: string): string {
@@ -106,6 +107,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
     <div class="section">
       <h3>Fahrtdetails</h3>
       <div class="row"><span class="label">Abholung:</span><span class="value">${booking.pickup_address}</span></div>
+      ${booking.zwischenstopp_address ? `<div class="row"><span class="label">📍 Zwischenstopp:</span><span class="value" style="color:#2563eb;font-weight:bold;">${booking.zwischenstopp_address}</span></div>` : ''}
       <div class="row"><span class="label">Ziel:</span><span class="value">${booking.dropoff_address}</span></div>
       <div class="row"><span class="label">Fahrttyp:</span><span class="value">${booking.trip_type === 'roundtrip' ? '⇄ Hin & Rückfahrt' : '→ Einfache Fahrt'}</span></div>
       <div class="row"><span class="label">Abfahrt:</span><span class="value">${formattedDate}</span></div>
@@ -324,6 +326,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
     <div class="section">
       <h3>${t.tripDetails}</h3>
       <div class="row"><span class="label">${t.pickup}:</span><span class="value">${booking.pickup_address}</span></div>
+      ${booking.zwischenstopp_address ? `<div class="row"><span class="label">📍 ${lang === 'de' ? 'Zwischenstopp' : lang === 'tr' ? 'Ara Durak' : 'Intermediate Stop'}:</span><span class="value" style="color:#2563eb;font-weight:bold;">${booking.zwischenstopp_address}</span></div>` : ''}
       <div class="row"><span class="label">${t.destination}:</span><span class="value">${booking.dropoff_address}</span></div>
       <div class="row"><span class="label">${t.tripType}:</span><span class="value">${booking.trip_type === 'roundtrip' ? t.roundtrip : t.oneway}</span></div>
       <div class="row"><span class="label">${t.datetime}:</span><span class="value">${formattedDate}</span></div>

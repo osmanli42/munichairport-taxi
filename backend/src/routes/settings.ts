@@ -33,13 +33,13 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
 
-      if (key === 'stadtfahrt_enabled' && !['0', '1'].includes(String(value))) {
-        res.status(400).json({ error: 'stadtfahrt_enabled must be 0 or 1' });
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled') && !['0', '1'].includes(String(value))) {
+        res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }
 

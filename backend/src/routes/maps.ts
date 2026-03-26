@@ -119,7 +119,47 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    res.json({ distance_km, duration_minutes, ...(anfahrt_distance_km !== undefined && { anfahrt_distance_km }) });
+    // Zwischenstopp: calculate multi-leg distance (Pickup → Stop → Dropoff)
+    let zwischenstopp_total_km: number | undefined;
+    let zwischenstopp_total_duration: number | undefined;
+    if (req.body.zwischenstopp) {
+      const stop = req.body.zwischenstopp as string;
+      // Leg 1: origin → zwischenstopp
+      const leg1Url = new URL('https://maps.googleapis.com/maps/api/distancematrix/json');
+      leg1Url.searchParams.set('origins', origin as string);
+      leg1Url.searchParams.set('destinations', stop);
+      leg1Url.searchParams.set('key', GOOGLE_API_KEY);
+      leg1Url.searchParams.set('mode', 'driving');
+      leg1Url.searchParams.set('units', 'metric');
+
+      // Leg 2: zwischenstopp → destination
+      const leg2Url = new URL('https://maps.googleapis.com/maps/api/distancematrix/json');
+      leg2Url.searchParams.set('origins', stop);
+      leg2Url.searchParams.set('destinations', destination as string);
+      leg2Url.searchParams.set('key', GOOGLE_API_KEY);
+      leg2Url.searchParams.set('mode', 'driving');
+      leg2Url.searchParams.set('units', 'metric');
+
+      const [leg1Res, leg2Res] = await Promise.all([
+        fetch(leg1Url.toString()).then(r => r.json()) as Promise<any>,
+        fetch(leg2Url.toString()).then(r => r.json()) as Promise<any>,
+      ]);
+
+      const leg1El = leg1Res?.rows?.[0]?.elements?.[0];
+      const leg2El = leg2Res?.rows?.[0]?.elements?.[0];
+
+      if (leg1El?.status === 'OK' && leg2El?.status === 'OK') {
+        zwischenstopp_total_km = (leg1El.distance.value + leg2El.distance.value) / 1000;
+        zwischenstopp_total_duration = Math.ceil((leg1El.duration.value + leg2El.duration.value) / 60);
+      }
+    }
+
+    res.json({
+      distance_km,
+      duration_minutes,
+      ...(anfahrt_distance_km !== undefined && { anfahrt_distance_km }),
+      ...(zwischenstopp_total_km !== undefined && { zwischenstopp_total_km, zwischenstopp_total_duration }),
+    });
   } catch (error) {
     console.error('Distance calculation error:', error);
     res.status(500).json({ error: 'Distance calculation failed' });

@@ -112,6 +112,7 @@ export async function initializeDatabase(): Promise<void> {
     const defaultSettings = [
       ['stadtfahrt_enabled', '0'],
       ['anfahrt_price_per_km', '1.70'],
+      ['zwischenstopp_enabled', '0'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
@@ -123,6 +124,11 @@ export async function initializeDatabase(): Promise<void> {
     // Migration: add anfahrt_cost to bookings
     try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN anfahrt_cost DOUBLE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
+    // Migration: add zwischenstopp_address to bookings
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN zwischenstopp_address TEXT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     await conn.execute(`

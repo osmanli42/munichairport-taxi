@@ -87,11 +87,13 @@ function ResultsContent() {
     return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
   };
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  const [zwischenstoppEnabled, setZwischenstoppEnabled] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
       if (s.anfahrt_price_per_km) setAnfahrtPricePerKm(parseFloat(s.anfahrt_price_per_km));
+      if (s.zwischenstopp_enabled === '1') setZwischenstoppEnabled(true);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
   useEffect(() => {
@@ -121,6 +123,72 @@ function ResultsContent() {
     sp.set('trip_type', 'oneway');
     sp.delete('return_date');
     sp.delete('return_time');
+    router.replace(`?${sp.toString()}`);
+  }
+
+  // Zwischenstopp state
+  const zwischenstoppAddress = params.get('zwischenstopp_address') || '';
+  const [showZwischenstoppPicker, setShowZwischenstoppPicker] = useState(false);
+  const [zwischenstoppInput, setZwischenstoppInput] = useState('');
+  const [zwischenstoppSuggestions, setZwischenstoppSuggestions] = useState<any[]>([]);
+  const [zwischenstoppLoading, setZwischenstoppLoading] = useState(false);
+  // Store original distance for when zwischenstopp is removed
+  const originalDistanceKm = Number(params.get('original_distance_km') || 0);
+  const originalDuration = Number(params.get('original_duration') || 0);
+
+  // Autocomplete for zwischenstopp
+  useEffect(() => {
+    if (zwischenstoppInput.length < 3) { setZwischenstoppSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(zwischenstoppInput)}&language=${locale}`);
+        const data = await r.json();
+        setZwischenstoppSuggestions(data.predictions || []);
+      } catch { setZwischenstoppSuggestions([]); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [zwischenstoppInput, locale]);
+
+  async function addZwischenstopp(address: string) {
+    setZwischenstoppLoading(true);
+    try {
+      const r = await fetch(`${API_URL}/maps/distance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ origin: pickup, destination: dropoff, zwischenstopp: address, language: locale }),
+      });
+      const data = await r.json();
+      if (data.zwischenstopp_total_km) {
+        const sp = new URLSearchParams(params.toString());
+        sp.set('zwischenstopp_address', address);
+        // Save original distance if not already saved
+        if (!sp.get('original_distance_km')) {
+          sp.set('original_distance_km', String(distanceKm));
+          sp.set('original_duration', String(duration));
+        }
+        sp.set('distance_km', String(data.zwischenstopp_total_km));
+        sp.set('duration', String(data.zwischenstopp_total_duration));
+        router.replace(`?${sp.toString()}`);
+      }
+    } catch (e) {
+      console.error('Zwischenstopp distance calc failed:', e);
+    } finally {
+      setZwischenstoppLoading(false);
+      setShowZwischenstoppPicker(false);
+      setZwischenstoppInput('');
+      setZwischenstoppSuggestions([]);
+    }
+  }
+
+  function removeZwischenstopp() {
+    const sp = new URLSearchParams(params.toString());
+    sp.delete('zwischenstopp_address');
+    if (originalDistanceKm > 0) {
+      sp.set('distance_km', String(originalDistanceKm));
+      sp.set('duration', String(originalDuration));
+    }
+    sp.delete('original_distance_km');
+    sp.delete('original_duration');
     router.replace(`?${sp.toString()}`);
   }
 
@@ -182,6 +250,9 @@ function ResultsContent() {
     if (anfahrtKm > 0) {
       bp.set('anfahrt_km', String(anfahrtKm));
       bp.set('anfahrt_cost', anfahrtCost.toFixed(2));
+    }
+    if (zwischenstoppAddress) {
+      bp.set('zwischenstopp_address', zwischenstoppAddress);
     }
     const prefix = locale === 'de' ? '' : `/${locale}`;
     router.push(`${prefix}/buchen?${bp.toString()}`);
@@ -327,6 +398,70 @@ function ResultsContent() {
             {locale === 'en' && <span className="text-xs font-normal text-green-600 ml-1">(5% discount)</span>}
             {locale === 'tr' && <span className="text-xs font-normal text-green-600 ml-1">(%5 indirim)</span>}
           </button>
+        )}
+
+        {/* Zwischenstopp section */}
+        {zwischenstoppEnabled && (
+          zwischenstoppAddress ? (
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+              <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
+                <span>📍</span>
+                <span>
+                  {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
+                  {zwischenstoppAddress}
+                </span>
+              </div>
+              <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+              </button>
+            </div>
+          ) : showZwischenstoppPicker ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
+              <p className="text-sm font-semibold text-primary-700">
+                {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
+              </p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={zwischenstoppInput}
+                  onChange={e => setZwischenstoppInput(e.target.value)}
+                  placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                  autoFocus
+                />
+                {zwischenstoppSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    {zwischenstoppSuggestions.map((s: any) => (
+                      <button
+                        key={s.place_id}
+                        onClick={() => addZwischenstopp(s.description)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
+                      >
+                        {s.description}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {zwischenstoppLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                  {locale === 'de' ? 'Berechne Route...' : locale === 'en' ? 'Calculating route...' : 'Rota hesaplanıyor...'}
+                </div>
+              )}
+              <button onClick={() => { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
+                {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowZwischenstoppPicker(true)}
+              className="flex items-center gap-2 w-full border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors mb-4 justify-center"
+            >
+              <span>📍</span>
+              {locale === 'de' ? '+ Zwischenstopp hinzufügen' : locale === 'en' ? '+ Add intermediate stop' : '+ Ara durak ekle'}
+            </button>
+          )
         )}
 
         {/* Vehicle cards */}

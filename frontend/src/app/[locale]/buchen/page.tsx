@@ -48,12 +48,35 @@ function BuchenContent() {
     return ['flughafen münchen', 'munich airport', 'münchen-flughafen', 'munchen-flughafen', '85356', 'oberding', 'hallbergmoos', 'freising'].some(kw => lower.includes(kw));
   };
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  const [zwischenstoppEnabled, setZwischenstoppEnabled] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
+      if (s.zwischenstopp_enabled === '1') setZwischenstoppEnabled(true);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  // Zwischenstopp state (only for buchen-page-added stops)
+  const zwischenstoppFromErgebnisse = !!params.get('zwischenstopp_address');
+  const [localZwischenstopp, setLocalZwischenstopp] = useState('');
+  const [showZwischenstoppPicker, setShowZwischenstoppPicker] = useState(false);
+  const [zwischenstoppInput, setZwischenstoppInput] = useState('');
+  const [zwischenstoppSuggestions, setZwischenstoppSuggestions] = useState<any[]>([]);
+  const [zwischenstoppLoading, setZwischenstoppLoading] = useState(false);
+
+  // Autocomplete for zwischenstopp
+  useEffect(() => {
+    if (zwischenstoppInput.length < 3) { setZwischenstoppSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(zwischenstoppInput)}&language=${locale}`);
+        const data = await r.json();
+        setZwischenstoppSuggestions(data.predictions || []);
+      } catch { setZwischenstoppSuggestions([]); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [zwischenstoppInput, locale]);
   useEffect(() => {
     if (!settingsLoaded) return;
     if (pickup && dropoff && !isAirportArea(pickup) && !isAirportArea(dropoff) && !stadtfahrtEnabled) {
@@ -209,6 +232,7 @@ function BuchenContent() {
         trip_type: tripType,
         return_datetime: returnDatetime,
         anfahrt_cost: anfahrtCost > 0 ? anfahrtCost : undefined,
+        zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
       };
       if (payment === 'card') {
         body.card_holder = cardHolder;
@@ -277,6 +301,12 @@ function BuchenContent() {
                     <MapPin size={14} className="text-green-500 mt-0.5 shrink-0" />
                     <span className="text-gray-700">{pickup}</span>
                   </div>
+                  {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
+                    <div className="flex items-start gap-2">
+                      <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                      <span className="text-blue-700 font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</span>
+                    </div>
+                  )}
                   <div className="flex items-start gap-2">
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <span className="text-gray-700">{dropoff}</span>
@@ -381,6 +411,12 @@ function BuchenContent() {
                       <MapPin size={16} className="text-green-500 mt-0.5 shrink-0" />
                       <p className="text-gray-800 text-sm">{pickup}</p>
                     </div>
+                    {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
+                      <div className="flex items-start gap-3">
+                        <MapPin size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                        <p className="text-blue-700 text-sm font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</p>
+                      </div>
+                    )}
                     <div className="flex items-start gap-3">
                       <MapPin size={16} className="text-red-500 mt-0.5 shrink-0" />
                       <p className="text-gray-800 text-sm">{dropoff}</p>
@@ -578,6 +614,76 @@ function BuchenContent() {
                   ({roundtripDiscount}% {locale === 'de' ? 'Rabatt' : locale === 'en' ? 'discount' : 'indirim'})
                 </span>
               </button>
+            )}
+
+            {/* Zwischenstopp — only show if not already added from ergebnisse */}
+            {zwischenstoppEnabled && !zwischenstoppFromErgebnisse && (
+              localZwischenstopp ? (
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
+                    <span>📍</span>
+                    <span>
+                      {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
+                      {localZwischenstopp}
+                    </span>
+                  </div>
+                  <button type="button" onClick={() => setLocalZwischenstopp('')} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                  </button>
+                </div>
+              ) : showZwischenstoppPicker ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 space-y-3 relative">
+                  <p className="text-sm font-semibold text-primary-700">
+                    {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
+                  </p>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={zwischenstoppInput}
+                      onChange={e => setZwischenstoppInput(e.target.value)}
+                      placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
+                      autoFocus
+                    />
+                    {zwischenstoppSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {zwischenstoppSuggestions.map((s: any) => (
+                          <button
+                            key={s.place_id}
+                            type="button"
+                            onClick={() => {
+                              setLocalZwischenstopp(s.description);
+                              setShowZwischenstoppPicker(false);
+                              setZwischenstoppInput('');
+                              setZwischenstoppSuggestions([]);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
+                          >
+                            {s.description}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {zwischenstoppLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <button type="button" onClick={() => { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
+                    {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowZwischenstoppPicker(true)}
+                  className="flex items-center gap-2 w-full border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
+                >
+                  <span>📍</span>
+                  {locale === 'de' ? '+ Zwischenstopp hinzufügen' : locale === 'en' ? '+ Add intermediate stop' : '+ Ara durak ekle'}
+                </button>
+              )
             )}
 
             {/* Personal details */}
@@ -811,6 +917,17 @@ function BuchenContent() {
                     <MapPin size={14} className="text-green-500 mt-0.5 shrink-0" />
                     <p className="text-gray-700 text-xs leading-relaxed">{pickup}</p>
                   </div>
+                  {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
+                    <>
+                      <div className="flex items-center gap-2 pl-6">
+                        <ArrowRight size={12} className="text-blue-400" />
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                        <p className="text-blue-700 text-xs leading-relaxed font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</p>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center gap-2 pl-6">
                     <ArrowRight size={12} className="text-gray-300" />
                   </div>

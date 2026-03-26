@@ -41,7 +41,7 @@ export default function AdminPage() {
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
@@ -564,6 +564,38 @@ export default function AdminPage() {
                       className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
                     >
                       {settingsSaving ? '...' : 'Speichern'}
+                    </button>
+                  </div>
+                </div>
+                {/* Zwischenstopp toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="font-semibold text-gray-700">Zwischenstopp erlauben</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Kunden können einen Zwischenstopp zur Fahrt hinzufügen</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.zwischenstopp_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ zwischenstopp_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Zwischenstopp aktiviert' : 'Zwischenstopp deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors',
+                        settings.zwischenstopp_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.zwischenstopp_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
                     </button>
                   </div>
                 </div>
