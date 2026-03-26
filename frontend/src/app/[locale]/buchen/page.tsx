@@ -262,6 +262,13 @@ function BuchenContent() {
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
       setSubmitState('success');
+      // Google Ads conversion tracking
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'conversion', {
+          send_to: 'AW-829027982/VhRbCJL0oXgQju2niwM',
+          transaction_id: data.booking_number || '',
+        });
+      }
       setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
     } catch {
       setSubmitState('error');
