@@ -1012,6 +1012,27 @@ function BuchenContent() {
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <p className="text-gray-700 text-xs leading-relaxed">{dropoff}</p>
                   </div>
+                  {/* Mini route map */}
+                  {(() => {
+                    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+                    if (!mapsKey) return null;
+                    const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
+                    const markers = [
+                      `markers=color:green|label:A|${encodeURIComponent(pickup)}`,
+                      ...(zwStop ? [`markers=color:blue|label:B|${encodeURIComponent(zwStop)}`] : []),
+                      `markers=color:red|label:${zwStop ? 'C' : 'B'}|${encodeURIComponent(dropoff)}`,
+                    ].join('&');
+                    return (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/staticmap?size=400x150&scale=2&maptype=roadmap&${markers}&key=${mapsKey}`}
+                          alt="Route map"
+                          className="w-full h-[120px] object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
                 {/* Info */}
                 <div className="space-y-2 text-xs text-gray-600 border-t border-gray-100 pt-4">
