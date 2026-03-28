@@ -12,7 +12,7 @@ const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 const VEHICLES = [
   {
     type: 'kombi' as const,
-    emoji: '🚗',
+    image: '/images/kombi.PNG',
     nameDE: 'Kombi', nameEN: 'Sedan', nameTR: 'Kombi',
     descDE: 'Ideal für Einzelreisende & Paare',
     descEN: 'Ideal for solo travelers & couples',
@@ -25,7 +25,7 @@ const VEHICLES = [
   },
   {
     type: 'van' as const,
-    emoji: '🚐',
+    image: '/images/van.PNG',
     nameDE: 'Van / Minibus', nameEN: 'Van / Minibus', nameTR: 'Van / Minibüs',
     descDE: 'Perfekt für Familien & Gruppen',
     descEN: 'Perfect for families & groups',
@@ -38,7 +38,7 @@ const VEHICLES = [
   },
   {
     type: 'grossraumtaxi' as const,
-    emoji: '🚌',
+    image: '/images/van.PNG',
     nameDE: 'Großraumtaxi', nameEN: 'Large Taxi', nameTR: 'Büyük Taksi',
     descDE: 'Für große Gruppen mit viel Gepäck',
     descEN: 'For large groups with lots of luggage',
@@ -473,9 +473,9 @@ function ResultsContent() {
                 )}
 
                 <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-5">
-                  {/* Emoji icon */}
-                  <div className="text-7xl shrink-0 flex items-center justify-center w-24 h-24 bg-gray-50 rounded-2xl border border-gray-100">
-                    {vehicle.emoji}
+                  {/* Vehicle image */}
+                  <div className="shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-gray-100">
+                    <img src={vehicle.image} alt={getVehicleName(vehicle)} className="w-full h-full object-cover" />
                   </div>
 
                   {/* Details */}
