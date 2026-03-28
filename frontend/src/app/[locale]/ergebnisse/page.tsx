@@ -474,7 +474,7 @@ function ResultsContent() {
 
                 <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-5">
                   {/* Vehicle image */}
-                  <div className="shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-gray-100">
+                  <div className="shrink-0 w-36 h-36 rounded-2xl overflow-hidden border border-gray-100">
                     <img src={vehicle.image} alt={getVehicleName(vehicle)} className="w-full h-full object-cover" />
                   </div>
 
