@@ -57,6 +57,8 @@ interface PriceData {
   roundtrip_discount: number;
   min_price: number;
   min_price_km: number;
+  max_passengers?: number;
+  max_luggage?: number;
 }
 
 function ResultsContent() {
@@ -456,7 +458,7 @@ function ResultsContent() {
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
             const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayPrice;
             const finalPrice = tripPrice + anfahrtCost;
-            const tooMany = passengers > vehicle.maxPassengers;
+            const tooMany = passengers > (priceData.max_passengers ?? vehicle.maxPassengers);
 
             return (
               <div
@@ -515,11 +517,11 @@ function ResultsContent() {
                     <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">
                       <div className="flex items-center gap-1.5">
                         <Users size={15} className="text-primary-400" />
-                        <span>{locale === 'de' ? 'Bis zu' : locale === 'en' ? 'Up to' : 'Max.'} {vehicle.maxPassengers} {t.persons}</span>
+                        <span>{locale === 'de' ? 'Bis zu' : locale === 'en' ? 'Up to' : 'Max.'} {priceData.max_passengers ?? vehicle.maxPassengers} {t.persons}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Luggage size={15} className="text-primary-400" />
-                        <span>{vehicle.maxLuggage} {t.luggage}</span>
+                        <span>{priceData.max_luggage ?? vehicle.maxLuggage} {t.luggage}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Clock size={15} className="text-primary-400" />
