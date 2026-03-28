@@ -182,21 +182,21 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                icon: '🚗',
+                image: '/images/kombi.PNG',
                 name: tVehicles('kombi.name'),
                 model: 'Mercedes E-Klasse',
                 persons: tVehicles('kombi.persons'),
                 features: ['Klimaanlage', 'Lederausstattung', 'Großer Kofferraum', 'Komfortabler Kombi'],
               },
               {
-                icon: '🚐',
+                image: '/images/van.PNG',
                 name: tVehicles('van.name'),
                 model: 'Mercedes Viano',
                 persons: tVehicles('van.persons'),
                 features: ['Klimaanlage', '7 Sitzplätze', 'Schiebetür', 'Viel Gepäckraum'],
               },
               {
-                icon: '🚌',
+                image: '/images/van.PNG',
                 name: tVehicles('grossraumtaxi.name'),
                 model: 'Mercedes Vito',
                 persons: tVehicles('grossraumtaxi.persons'),
@@ -204,7 +204,9 @@ export default function HomePage() {
               },
             ].map((v) => (
               <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
-                <div className="text-5xl mb-3">{v.icon}</div>
+                <div className="w-full h-36 overflow-hidden rounded-lg mb-3">
+                  <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
+                </div>
                 <h3 className="font-bold text-xl text-primary-600">{v.name}</h3>
                 <p className="text-xs text-gray-400 font-medium mb-1">{v.model}</p>
                 <p className="text-gray-500 text-sm mb-4">{v.persons}</p>
