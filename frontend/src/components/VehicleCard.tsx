@@ -47,7 +47,7 @@ export default function VehicleCard({
 
       {/* Header */}
       <div className="bg-primary-600 p-6 text-center">
-        <div className="w-24 h-16 mx-auto mb-2 overflow-hidden rounded-lg">
+        <div className="w-full h-40 overflow-hidden rounded-lg mb-2">
           <img src={vehicleImage[type]} alt={name} className="w-full h-full object-cover" />
         </div>
         <h3 className="text-2xl font-bold text-white">{name}</h3>
