@@ -50,6 +50,7 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
             <img src="/images/logo.PNG" alt="Munich Airport Taxi" className="h-10 w-auto" />
+            <span className="hidden sm:block text-white font-bold text-lg">Flughafen-muenchen.<span className="text-gold-400">TAXI</span></span>
           </Link>
 
           {/* Desktop Navigation */}
