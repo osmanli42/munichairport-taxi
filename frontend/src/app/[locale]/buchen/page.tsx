@@ -10,9 +10,15 @@ const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
 const VEHICLE_LABELS: Record<string, Record<string, string>> = {
-  kombi: { de: '🚗 Kombi', en: '🚗 Sedan', tr: '🚗 Kombi' },
-  van: { de: '🚐 Van / Minibus', en: '🚐 Van / Minibus', tr: '🚐 Van / Minibüs' },
-  grossraumtaxi: { de: '🚌 Großraumtaxi', en: '🚌 Large Taxi', tr: '🚌 Büyük Taksi' },
+  kombi: { de: 'Kombi', en: 'Sedan', tr: 'Kombi' },
+  van: { de: 'Van / Minibus', en: 'Van / Minibus', tr: 'Van / Minibüs' },
+  grossraumtaxi: { de: 'Großraumtaxi', en: 'Large Taxi', tr: 'Büyük Taksi' },
+};
+
+const VEHICLE_IMAGES: Record<string, string> = {
+  kombi: '/images/kombi.PNG',
+  van: '/images/van.PNG',
+  grossraumtaxi: '/images/van.PNG',
 };
 
 function BuchenContent() {
@@ -308,7 +314,9 @@ function BuchenContent() {
                 {/* Vehicle & Price */}
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{VEHICLE_LABELS[vehicle]?.[locale]?.split(' ')[0]}</span>
+                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0">
+                      <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.PNG'} alt={vehicleLabel} className="w-full h-full object-cover" />
+                    </div>
                     <span className="font-semibold text-gray-800">{vehicleLabel}</span>
                   </div>
                   <span className="text-xl font-bold text-primary-600">{formatPrice(price)}</span>
@@ -419,7 +427,9 @@ function BuchenContent() {
               {/* Vehicle & Price header */}
               <div className="bg-primary-600 px-6 py-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{VEHICLE_LABELS[vehicle]?.[locale]?.split(' ')[0]}</span>
+                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
+                    <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.PNG'} alt={vehicleLabel} className="w-full h-full object-cover" />
+                  </div>
                   <div>
                     <p className="text-white font-bold text-lg">{vehicleLabel}</p>
                     <p className="text-primary-200 text-sm">{effectiveDistanceKm.toFixed(1)} km · ca. {effectiveDuration} Min.</p>
@@ -967,7 +977,9 @@ function BuchenContent() {
               <div className="p-5 space-y-4 text-sm">
                 {/* Vehicle */}
                 <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                  <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-3xl">{VEHICLE_LABELS[vehicle]?.[locale]?.split(' ')[0]}</div>
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
+                    <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.PNG'} alt={vehicleLabel} className="w-full h-full object-cover" />
+                  </div>
                   <div>
                     <p className="font-semibold text-gray-900">{vehicleLabel}</p>
                     <p className="text-gray-500 text-xs">{locale === 'de' ? 'Festpreis garantiert' : locale === 'en' ? 'Fixed price guaranteed' : 'Sabit fiyat garantili'}</p>
