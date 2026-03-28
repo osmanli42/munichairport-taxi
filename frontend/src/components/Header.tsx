@@ -49,13 +49,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
-            <div className="w-10 h-10 bg-gold-400 rounded-full flex items-center justify-center">
-              <span className="text-primary-600 font-bold text-lg">M</span>
-            </div>
-            <div className="hidden sm:block">
-              <div className="text-white font-bold text-lg leading-tight">Munich Airport</div>
-              <div className="text-gold-400 text-sm font-medium leading-tight">Taxi</div>
-            </div>
+            <img src="/images/logo.PNG" alt="Munich Airport Taxi" className="h-10 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
