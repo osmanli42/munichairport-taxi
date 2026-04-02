@@ -54,5 +54,5 @@ export const CONTACT_INFO = {
   email: 'info@flughafen-muenchen.taxi',
   address: 'Eisvogelweg 2, 85356 Freising, Deutschland',
   owners: 'Osman Nar & M.Ali Nar',
-  website: 'www.munichairport.taxi',
+  website: 'www.flughafen-muenchen.taxi',
 };
