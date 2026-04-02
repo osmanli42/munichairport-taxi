@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.munichairport.taxi';
   const locales = ['', '/en', '/tr'];
-  const pages = ['', '/vehicles', '/about', '/contact'];
+  const pages = ['', '/vehicles', '/about', '/contact', '/faq'];
 
   const routes: MetadataRoute.Sitemap = [];
 

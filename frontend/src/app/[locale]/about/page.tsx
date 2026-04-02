@@ -10,7 +10,20 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  return { title: t('about_title') };
+  const baseUrl = 'https://www.munichairport.taxi';
+  const path = '/about';
+  return {
+    title: t('about_title'),
+    description: t('about_description'),
+    alternates: {
+      canonical: locale === 'de' ? `${baseUrl}${path}` : `${baseUrl}/${locale}${path}`,
+      languages: {
+        'de': `${baseUrl}${path}`,
+        'en': `${baseUrl}/en${path}`,
+        'tr': `${baseUrl}/tr${path}`,
+      },
+    },
+  };
 }
 
 export default function AboutPage() {

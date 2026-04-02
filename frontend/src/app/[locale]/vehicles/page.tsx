@@ -10,8 +10,19 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
+  const baseUrl = 'https://www.munichairport.taxi';
+  const path = '/vehicles';
   return {
     title: t('vehicles_title'),
+    description: t('vehicles_description'),
+    alternates: {
+      canonical: locale === 'de' ? `${baseUrl}${path}` : `${baseUrl}/${locale}${path}`,
+      languages: {
+        'de': `${baseUrl}${path}`,
+        'en': `${baseUrl}/en${path}`,
+        'tr': `${baseUrl}/tr${path}`,
+      },
+    },
   };
 }
 
