@@ -53,6 +53,6 @@ export const CONTACT_INFO = {
   whatsapp: 'https://wa.me/4915141620000',
   email: 'info@munichairport.taxi',
   address: 'Eisvogelweg 2, 85356 Freising, Deutschland',
-  owners: 'Osman Nar & Muhammed Ali Nar',
+  owners: 'Osman Nar & M.Ali Nar',
   website: 'www.munichairport.taxi',
 };

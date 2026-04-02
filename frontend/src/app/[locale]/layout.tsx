@@ -25,7 +25,7 @@ export async function generateMetadata({
     },
     description: t('home_description'),
     keywords: 'Munich Airport Taxi, Flughafen München Taxi, Airport Transfer Munich, Flughafentransfer München',
-    authors: [{ name: 'Osman Nar & Muhammed Ali Nar' }],
+    authors: [{ name: 'Osman Nar & M.Ali Nar' }],
     openGraph: {
       title: t('home_title'),
       description: t('home_description'),
@@ -33,11 +33,20 @@ export async function generateMetadata({
       siteName: 'Munich Airport Taxi',
       type: 'website',
       locale: locale === 'de' ? 'de_DE' : locale === 'en' ? 'en_US' : 'tr_TR',
+      images: [
+        {
+          url: '/og-image.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'Munich Airport Taxi – Flughafentransfer München',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: t('home_title'),
       description: t('home_description'),
+      images: ['/og-image.jpg'],
     },
     robots: {
       index: true,
