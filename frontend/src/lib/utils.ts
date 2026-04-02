@@ -51,7 +51,7 @@ export const CONTACT_INFO = {
   phone: '+49 151 41620000',
   phoneHref: 'tel:+4915141620000',
   whatsapp: 'https://wa.me/4915141620000',
-  email: 'info@munichairport.taxi',
+  email: 'info@flughafen-muenchen.taxi',
   address: 'Eisvogelweg 2, 85356 Freising, Deutschland',
   owners: 'Osman Nar & M.Ali Nar',
   website: 'www.munichairport.taxi',
