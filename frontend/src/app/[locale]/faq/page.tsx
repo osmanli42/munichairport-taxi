@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
-import FAQClient, { faqData } from './FAQClient';
+import FAQClient from './FAQClient';
+import { faqData } from './faqData';
 
 export async function generateMetadata({
   params: { locale },
