@@ -1070,6 +1070,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.ispo.com',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'ISPO München 2024 | Sportmesse | Flughafen Taxi buchen',
+      en: 'ISPO Munich 2024 | Sports Fair | Airport Taxi Book',
+    },
+    seoDescription: {
+      de: 'ISPO München - Sportausrüstung & Outdoor Messe. Zuverlässiger Taxi-Transfer. 3-6 Juni.',
+      en: 'ISPO Munich sports equipment fair. Reliable airport taxi transfer. June 3-6, 2024.',
+    },
+    seoKeywords: {
+      de: ['ispo', 'sportmesse', 'outdoormesse', 'sportausrüstung', 'flughafen transfer'],
+      en: ['ispo', 'sports fair', 'outdoor fair', 'sports equipment', 'airport transfer'],
+    },
+    ogImage: '⚽',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'ISPO - Internationale Sportmesse',
+      startDate: '2024-06-03',
+      endDate: '2024-06-06',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '⚽',
+      description: 'Internationale Sportmesse für Ausrüstung und Outdoor',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/ispo',
+    },
+    relatedEvents: ['iaa', 'electronica', 'analytica'],
   },
   {
     id: 'heim-handwerk',
