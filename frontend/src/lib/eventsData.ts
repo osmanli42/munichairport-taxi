@@ -1519,6 +1519,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.tollwood.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'Tollwood München Winter | Christmasmarkt | Taxi Service',
+      en: 'Tollwood Munich Winter | Christmas Market | Taxi Service',
+    },
+    seoDescription: {
+      de: 'Tollwood Winter Kulturfestival München. Weihnacht, Märkte. Nov-Januar. Taxi Transfer.',
+      en: 'Tollwood winter festival Munich. Christmas, markets. Nov-Jan. Airport taxi service.',
+    },
+    seoKeywords: {
+      de: ['tollwood', 'winter festival', 'weihnachtsfestival', 'münchen dezember', 'taxi'],
+      en: ['tollwood', 'winter festival', 'christmas festival', 'munich', 'taxi service'],
+    },
+    ogImage: '❄️',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Tollwood Winter',
+      startDate: '2024-11-16',
+      endDate: '2025-01-05',
+      location: {
+        '@type': 'Place',
+        name: 'Theresienwiese',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Theresienwiese',
+          addressLocality: 'Munich',
+          postalCode: '80336',
+          addressCountry: 'DE',
+        },
+      },
+      image: '❄️',
+      description: 'Winter-Kulturfestival',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/tollwood-winter',
+    },
+    relatedEvents: ['christkindlmarkt', 'tollwood-sommer', 'neujahr'],
   },
   {
     id: 'opera-festival',
