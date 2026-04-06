@@ -1295,6 +1295,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.christkindlmarkt.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'Christkindlmarkt München 2024 | Weihnacht | Taxi Service',
+      en: 'Christkindl Market Munich 2024 | Christmas Fair | Taxi',
+    },
+    seoDescription: {
+      de: 'Christkindl Weihnachtsmarkt München. Weihnachts-Taxi-Transfer. Dezember 2024.',
+      en: 'Christkindl Christmas market Munich. Holiday taxi transfer service. December 2024.',
+    },
+    seoKeywords: {
+      de: ['christkindlmarkt', 'weihnachtsmarkt', 'weihnacht', 'münchen dezember', 'holiday'],
+      en: ['christkindl market', 'christmas market', 'holiday market', 'munich christmas', 'winter'],
+    },
+    ogImage: '🎄',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Christkindlmarkt München',
+      startDate: '2024-11-27',
+      endDate: '2024-12-24',
+      location: {
+        '@type': 'Place',
+        name: 'Marienplatz',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Marienplatz',
+          addressLocality: 'Munich',
+          postalCode: '80331',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🎄',
+      description: 'Traditioneller Weihnachtsmarkt',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/christkindlmarkt',
+    },
+    relatedEvents: ['tollwood-winter', 'starkbierfest', 'fruehlingsfest'],
   },
   {
     id: 'tollwood-sommer',
