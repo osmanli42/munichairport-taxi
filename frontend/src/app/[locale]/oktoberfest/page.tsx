@@ -181,7 +181,7 @@ export default function OktoberfestPage() {
           <div className="absolute bottom-10 left-1/3 text-7xl">🥨</div>
           <div className="absolute bottom-20 right-10 text-8xl">🎠</div>
         </div>
-        <div className="relative max-w-5xl mx-auto px-4 py-20 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 py-12 text-center">
           <div className="inline-block bg-yellow-400 text-blue-900 font-black text-sm px-4 py-1 rounded-full mb-4 uppercase tracking-wider">
             {ui.dates}
           </div>
