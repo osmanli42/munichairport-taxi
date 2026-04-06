@@ -1855,6 +1855,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.fruehlingsfest.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'Frühlingsfest München 2024 | Volksfest | Taxi buchen',
+      en: 'Spring Festival Munich 2024 | Volksfest | Book Taxi',
+    },
+    seoDescription: {
+      de: 'Frühlingsfest München April 2024. Volksfest mit Bier & Musik. Taxi zum Festgelände.',
+      en: 'Spring festival Munich April 2024. Volksfest with beer & music. Airport taxi to venue.',
+    },
+    seoKeywords: {
+      de: ['frühlingsfest', 'volksfest', 'münchen april', 'fest', 'flughafen transfer'],
+      en: ['spring festival', 'volksfest', 'munich april', 'beer fest', 'airport transfer'],
+    },
+    ogImage: '🎉',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Frühlingsfest München',
+      startDate: '2024-04-20',
+      endDate: '2024-05-05',
+      location: {
+        '@type': 'Place',
+        name: 'Theresienwiese',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Theresienwiese',
+          addressLocality: 'Munich',
+          postalCode: '80336',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🎉',
+      description: 'Frühlingsfest Volksfest',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/fruehlingsfest',
+    },
+    relatedEvents: ['starkbierfest', 'christkindlmarkt', 'oktoberfest'],
   },
   {
     id: 'csd',
