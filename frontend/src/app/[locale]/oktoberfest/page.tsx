@@ -174,7 +174,7 @@ export default function OktoberfestPage() {
   return (
     <main className="min-h-screen bg-white">
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 text-white">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 text-9xl">🍺</div>
           <div className="absolute top-20 right-20 text-8xl">🎪</div>
