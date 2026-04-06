@@ -7,7 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
   const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
-  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', ...cityPages];
+  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...cityPages];
 
   const routes: MetadataRoute.Sitemap = [];
 
