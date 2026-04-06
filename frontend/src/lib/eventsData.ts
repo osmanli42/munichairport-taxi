@@ -1967,6 +1967,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.csd-muenchen.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'München CSD Pride 2024 | LGBTQ+ Festival | Taxi Service',
+      en: 'Munich CSD Pride 2024 | LGBTQ+ Festival | Taxi Service',
+    },
+    seoDescription: {
+      de: 'München CSD Pride Festival Juli 2024. LGBTQ+ Veranstaltung. Zuverlässiger Taxi-Transfer.',
+      en: 'Munich CSD Pride Festival July 2024. LGBTQ+ event. Reliable taxi transfer service.',
+    },
+    seoKeywords: {
+      de: ['csd münchen', 'pride', 'lgbtq', 'festival', 'münchen juli'],
+      en: ['csd munich', 'pride festival', 'lgbtq event', 'munich july', 'festival'],
+    },
+    ogImage: '🏳️‍🌈',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Munich CSD Pride Festival',
+      startDate: '2024-07-13',
+      endDate: '2024-07-14',
+      location: {
+        '@type': 'Place',
+        name: 'Marienplatz',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Marienplatz',
+          addressLocality: 'Munich',
+          postalCode: '80331',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🏳️‍🌈',
+      description: 'LGBTQ+ Pride Festival',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/csd',
+    },
+    relatedEvents: ['tollwood-sommer', 'opera-festival', 'fruehlingsfest'],
   },
   {
     id: 'bayern-football',
