@@ -2303,5 +2303,46 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.muenchen-marathon.de',
     category: 'sports',
+    // SEO Fields
+    seoTitle: {
+      de: 'München Marathon 2024 | Lauf-Event | Taxi-Service',
+      en: 'Munich Marathon 2024 | Running Event | Taxi Service',
+    },
+    seoDescription: {
+      de: 'München Marathon Oktober 2024. Lauf-Event mit Zuverlässiger Taxi Flughafen Transfer.',
+      en: 'Munich marathon October 2024. Running event. Reliable airport taxi transfer service.',
+    },
+    seoKeywords: {
+      de: ['münchen marathon', 'lauf', 'sport event', 'marathon', 'oktober'],
+      en: ['munich marathon', 'running', 'sport event', 'marathon', 'october'],
+    },
+    ogImage: '🏃',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'München Marathon',
+      startDate: '2024-10-13',
+      endDate: '2024-10-13',
+      location: {
+        '@type': 'Place',
+        name: 'Münchner Innenstadt',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Theresienwiese',
+          addressLocality: 'Munich',
+          postalCode: '80336',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🏃',
+      description: 'München Marathon Lauf-Event',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/munich-marathon',
+    },
+    relatedEvents: ['ispo', 'bayern-football', 'bmw-golf'],
   },
 ];
