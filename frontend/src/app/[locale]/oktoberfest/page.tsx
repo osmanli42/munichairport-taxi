@@ -231,13 +231,10 @@ export default function OktoberfestPage() {
             </a>
           </div>
 
-        </div>
-      </section>
-
-      {/* Search Bar */}
-      <section className="bg-white py-8 shadow-md">
-        <div className="max-w-4xl mx-auto px-4">
-          <SearchBar />
+          {/* Search Bar – overlaps into stats section */}
+          <div className="relative z-10 max-w-4xl mx-auto w-full mt-8 -mb-16 pb-4">
+            <SearchBar />
+          </div>
         </div>
       </section>
 
