@@ -19,6 +19,12 @@ export interface CityData {
   description_en?: string;
   history_en?: string;
   known_for_en?: string;
+  highlight?: {
+    titleDE: string;
+    titleEN: string;
+    textDE: string;
+    textEN: string;
+  }[];
   kombi_price: number;
   van_price: number;
 }
@@ -460,6 +466,14 @@ const cities: CityData[] = [
       'Romantische Straße Radweg',
     ],
     known_for: 'Romantische Straße, mittelalterliche Stadtmauer, Lechtal',
+    highlight: [
+      {
+        titleDE: 'Schloss Hohenschwangau – Der unterschätzte Nachbar von Neuschwanstein',
+        titleEN: 'Hohenschwangau Castle – Neuschwanstein\'s Underrated Neighbour',
+        textDE: 'Schloss Hohenschwangau (ca. 25 km von Schongau) ist der weniger bekannte, aber nicht minder beeindruckende Nachbar von Schloss Neuschwanstein. König Maximilian II. ließ es 1832–1837 im neugotischen Stil erbauen, und es war die eigentliche Kindheits- und Jugendheimat von König Ludwig II. Die üppige Innenausstattung mit Wandmalereien, die mittelalterliche Sagen darstellen, ist hervorragend erhalten. Zusammen bilden beide Schlösser ein einzigartiges Ensemble über dem Alpsee.',
+        textEN: 'Hohenschwangau Castle (approx. 25 km from Schongau) is the lesser-known but equally impressive neighbour of Neuschwanstein Castle. King Maximilian II had it built in 1832–1837 in Neo-Gothic style, and it was King Ludwig II\'s actual childhood and adolescent home. The lavish interior with wall paintings depicting medieval legends is superbly preserved. Together, both castles form a unique ensemble above the Alpsee lake.',
+      }
+    ],
     description_en: 'Schongau is a historic town on the Romantic Road, situated on a plateau above the Lech river. It boasts an almost completely preserved medieval town wall and is a charming stopover between Munich and the Alps.',
     history_en: 'Schongau was an important trading and transshipment town on the Lech in the Middle Ages. The nearly complete 14th-century town wall is the city\'s most significant monument. The Ballenhaus, one of the oldest merchant houses in Bavaria, testifies to its medieval economic importance.',
     known_for_en: 'Romantic Road, medieval town wall, Lech valley',
@@ -962,6 +976,14 @@ const cities: CityData[] = [
       'Wettersteingebirge Panorama',
     ],
     known_for: 'Blaue Reiter Kunstbewegung, Staffelsee, Alpenblick',
+    highlight: [
+      {
+        titleDE: 'Herzogstand – Aussichtsberg in den Bayerischen Voralpen',
+        titleEN: 'Herzogstand – Panoramic Mountain in the Bavarian Prealps',
+        textDE: 'Der Herzogstand (1.731 m) über dem Walchensee ist einer der schönsten und abwechslungsreichsten Aussichtspunkte in den Bayerischen Voralpen. Per Seilbahn oder zu Fuß (2,5 h Aufstieg) erreichbar, belohnt der Gipfel mit einem grandiosen 360-Grad-Panorama über den Walchensee, den Kochelsee, bis zum Chiemsee und den Alpen. Das historische Bergrestaurant Herzogstand lädt zur Einkehr ein. Für erfahrene Wanderer bietet der Übergang zum Heimgarten (1.790 m) weitere Highlights.',
+        textEN: 'The Herzogstand (1,731 m) above Lake Walchensee is one of the most beautiful and varied viewpoints in the Bavarian Prealps. Accessible by cable car or on foot (2.5 h ascent), the summit rewards with a magnificent 360-degree panorama over the Walchensee, Kochelsee, as far as the Chiemsee and the Alps. The historic Herzogstand mountain restaurant invites you to stop for refreshments. For experienced hikers, the crossing to the Heimgarten (1,790 m) offers further highlights.',
+      }
+    ],
     ...calcPrice(125),
   },
   {
@@ -990,6 +1012,20 @@ const cities: CityData[] = [
       'Wank (Bergbahn, Alpenblick)',
     ],
     known_for: 'Zugspitze, Wintersport, Olympia 1936',
+    highlight: [
+      {
+        titleDE: 'Zugspitze (2.962 m) – Deutschlands höchster Gipfel',
+        titleEN: 'Zugspitze (2,962 m) – Germany\'s Highest Peak',
+        textDE: 'Die Zugspitze ist mit 2.962 Metern der höchste Berg Deutschlands und eines der spektakulärsten Ausflugsziele Bayerns. Per Zahnradbahn oder Seilbahn gelangen Sie auf den Gipfel – mit einem einzigartigen Panorama über Bayern, Österreich, die Schweiz und Italien. Oben erwartet Sie das Zugspitzplatt mit Europas höchstgelegenem Gletscher, Restaurants, und 360-Grad-Aussicht. Ein Muss für jeden Bayern-Besucher.',
+        textEN: 'The Zugspitze at 2,962 metres is Germany\'s highest mountain and one of Bavaria\'s most spectacular destinations. Reach the summit by cog railway or cable car, with a unique panorama over Bavaria, Austria, Switzerland and Italy. At the top you\'ll find the Zugspitzplatt glacier, restaurants, and a breathtaking 360-degree view – a must for every visitor to Bavaria.',
+      },
+      {
+        titleDE: 'Schloss Neuschwanstein – Der Traum von Bayerns Märchenkönig',
+        titleEN: 'Neuschwanstein Castle – The Dream of Bavaria\'s Fairy-tale King',
+        textDE: 'Schloss Neuschwanstein bei Füssen (ca. 60 km von Garmisch-Partenkirchen) ist das bekannteste Schloss der Welt und die Vorlage für Walt Disneys Dornröschenschloss. König Ludwig II. ließ es ab 1869 als romantischen Rückzugsort erbauen. Die Romanische und Gotische Architektur auf einem Felssporn über dem Alpsee ist von atemberaubender Schönheit. Täglich kommen tausende Besucher aus aller Welt hierher.',
+        textEN: 'Neuschwanstein Castle near Füssen (approx. 60 km from Garmisch-Partenkirchen) is the world\'s most famous castle and Walt Disney\'s inspiration for Sleeping Beauty\'s castle. King Ludwig II had it built from 1869 as a romantic retreat. The Romanesque and Gothic architecture perched on a rocky crag above the Alpsee is breathtaking. Thousands of visitors from around the world come here every day.',
+      }
+    ],
     ...calcPrice(123),
   },
   {
@@ -1046,6 +1082,20 @@ const cities: CityData[] = [
       'Nationalpark Berchtesgaden',
     ],
     known_for: 'Königssee, Nationalpark, Obersalzberg',
+    highlight: [
+      {
+        titleDE: 'Königssee und Watzmann im Nationalpark Berchtesgaden',
+        titleEN: 'Königssee and Watzmann in Berchtesgaden National Park',
+        textDE: 'Der Königssee ist einer der malerischsten Bergseen Deutschlands. Eingebettet zwischen senkrechten Felswänden des Watzmanns liegt das kristallklare, türkisgrüne Wasser – ein Naturjuwel im Nationalpark Berchtesgaden. Mit der traditionellen Holzboot-Fähre erreichen Sie die berühmte Wallfahrtskirche St. Bartholomä am Westufer. Der Watzmann (2.713 m), Deutschlands drittgrößter Berg, bietet zudem anspruchsvolle Alpintouren.',
+        textEN: 'The Königssee is one of Germany\'s most picturesque mountain lakes. Nestled between the sheer rock faces of the Watzmann, its crystal-clear turquoise water is a natural gem in Berchtesgaden National Park. The traditional wooden boat ferry takes you to the famous St. Bartholomä pilgrimage church on the western shore. The Watzmann (2,713 m), Germany\'s third-highest mountain, also offers challenging alpine tours.',
+      },
+      {
+        titleDE: 'Kehlsteinhaus – Das berühmte „Eagle\'s Nest"',
+        titleEN: 'Kehlsteinhaus – The Famous Eagle\'s Nest',
+        textDE: 'Das Kehlsteinhaus auf 1.834 Metern Höhe, international bekannt als „Eagle\'s Nest", thront auf dem Kehlstein bei Berchtesgaden. Ursprünglich 1938 als Teegerätehaus für Hitler erbaut, ist es heute ein Ausflugsziel mit einmaligem Alpenpanorama. Mit einem historischen Aufzug durch den Fels gelangt man direkt in das Gebäude. Das Restaurant bietet bayerische Küche mit Blick auf Berchtesgaden, den Königssee und die Salzburger Alpen.',
+        textEN: 'The Kehlsteinhaus at 1,834 metres elevation, internationally known as the "Eagle\'s Nest", crowns the Kehlstein mountain near Berchtesgaden. Originally built in 1938 as a teahouse gift for Hitler, today it is a tourist attraction with an unrivalled alpine panorama. A historic elevator through the rock takes you directly into the building. The restaurant offers Bavarian cuisine with views of Berchtesgaden, the Königssee and the Salzburg Alps.',
+      }
+    ],
     ...calcPrice(162),
   },
   {
@@ -1101,6 +1151,14 @@ const cities: CityData[] = [
       'Kampenwand (Seilbahn, 1.669 m)',
     ],
     known_for: 'Chiemsee, Schloss Herrenchiemsee, König Ludwig II.',
+    highlight: [
+      {
+        titleDE: 'Chiemsee – Baden, Segeln und Surfen im Bayerischen Meer',
+        titleEN: 'Chiemsee – Swimming, Sailing and Surfing on the Bavarian Sea',
+        textDE: 'Der Chiemsee ist mit 79,9 km² der größte See Bayerns und wird liebevoll „Bayerisches Meer" genannt. Neben Wassersport wie Segeln, Surfen und Kitesurfen locken die drei Inseln Herreninsel (mit Schloss Herrenchiemsee, König Ludwigs II. Versailles-Kopie), Fraueninsel (mit klösterlicher Tradition seit 782) und die winzige Krautinsel. Das milde Klima und die herrliche Alpenkulisse machen den Chiemsee zu einem der beliebtesten Ausflugsziele Bayerns.',
+        textEN: 'At 79.9 km², the Chiemsee is Bavaria\'s largest lake and affectionately known as the "Bavarian Sea". Besides water sports like sailing, surfing and kitesurfing, three islands beckon: Herreninsel (with Herrenchiemsee Palace, Ludwig II\'s copy of Versailles), Fraueninsel (with monastic tradition since 782), and the tiny Krautinsel. The mild climate and magnificent alpine backdrop make the Chiemsee one of Bavaria\'s most popular destinations.',
+      }
+    ],
     ...calcPrice(95),
   },
   {
@@ -1185,6 +1243,14 @@ const cities: CityData[] = [
       'Glasmuseum Passau',
     ],
     known_for: 'Dreiflüssestadt, Dom-Orgel, Barockaltstadt',
+    highlight: [
+      {
+        titleDE: 'Nationalpark Bayerischer Wald – Auf den Spuren der Luchse',
+        titleEN: 'Bavarian Forest National Park – On the Trail of the Lynx',
+        textDE: 'Der Nationalpark Bayerischer Wald (nahe Passau) war 1970 der erste Nationalpark Deutschlands und ist mit 24.250 Hektar der größte Waldnationalpark Mitteleuropas. In dem ursprünglichen Urwald leben wieder Luchse, Wölfe, Otter und Wildkatzen. Das Nationalparkzentrum Lusen und das Tier-Freigelände Neuschönau, wo man Bären, Wölfe und Luchse beobachten kann, sind Besuchermagneten. Über 250 km markierte Wanderwege führen durch malerische Ur- und Bergwälder.',
+        textEN: 'The Bavarian Forest National Park (near Passau) was Germany\'s first national park in 1970 and at 24,250 hectares is Central Europe\'s largest forest national park. In the primeval forest, lynx, wolves, otters and wildcats roam once more. The Lusen National Park Centre and the Neuschönau wildlife enclosure, where you can observe bears, wolves and lynx, are major visitor attractions. Over 250 km of marked hiking trails lead through picturesque primeval and mountain forests.',
+      }
+    ],
     ...calcPrice(170),
   },
   {
@@ -1241,6 +1307,20 @@ const cities: CityData[] = [
       'Albrecht-Dürer-Haus',
     ],
     known_for: 'Christkindlesmarkt, Burg, Nürnberger Prozesse, Dürer',
+    highlight: [
+      {
+        titleDE: 'Nürnberg – Malerische Altstadt aus dem Mittelalter',
+        titleEN: 'Nuremberg – Picturesque Medieval Old Town',
+        textDE: 'Nürnbergs mittelalterliche Altstadt gehört zu den schönsten Deutschlands. Die imposante Kaiserburg thront hoch über der Stadt, und das gut erhaltene Stadtmauer-System umfasst noch heute 4,3 km Ringmauer mit 80 Türmen. Die Hauptmarkt mit dem gotischen Schönen Brunnen (1385), die Lorenzkirche und das Germanische Nationalmuseum locken Millionen Besucher jährlich. Nürnberg ist zudem Heimat des weltberühmten Christkindlesmarkts.',
+        textEN: 'Nuremberg\'s medieval old town is among Germany\'s most beautiful. The impressive Imperial Castle towers high above the city, and the well-preserved city wall system still includes 4.3 km of ring wall with 80 towers. The Hauptmarkt with its Gothic Beautiful Fountain (1385), the St. Lorenz Church and the Germanic National Museum attract millions of visitors every year. Nuremberg is also home to the world-famous Christkindlesmarkt.',
+      },
+      {
+        titleDE: 'Bamberg – UNESCO-Weltkulturerbe und Universitätsstadt',
+        titleEN: 'Bamberg – UNESCO World Heritage Site and University City',
+        textDE: 'Bamberg (ca. 60 km nördlich von Nürnberg) ist eine der am besten erhaltenen Altstädte Deutschlands und seit 1993 UNESCO-Weltkulturerbe. Das „Fränkische Rom" beeindruckt mit seinem Dom (erbauter Bamberger Reiter), dem Alten Rathaus auf einer Flussinsel und den Klein-Venedig genannten Fischerhäusern an der Regnitz. Die Stadt ist außerdem bekannt für ihre einzigartige Rauchbier-Braukultur.',
+        textEN: 'Bamberg (approx. 60 km north of Nuremberg) is one of Germany\'s best-preserved old towns and a UNESCO World Heritage Site since 1993. The "Franconian Rome" impresses with its cathedral (home of the famous Bamberg Rider sculpture), the Old Town Hall on a river island, and the fishermen\'s houses along the Regnitz known as Little Venice. The city is also renowned for its unique smoked beer brewing culture.',
+      }
+    ],
     ...calcPrice(178),
   },
   {
@@ -1849,6 +1929,14 @@ const cities: CityData[] = [
     history: 'Heinrich der Löwe gründete München 1158 am Isarufer. Im 19. Jahrhundert wurde es unter König Ludwig I. zur prächtigen Residenzstadt. Das Hofbräuhaus, die Frauenkirche und die Pinakotheken sind weltbekannt. München ist heute ein globales Zentrum für Technologie, Medien und Kunst.',
     sights: ['Marienplatz & Neues Rathaus', 'Englischer Garten', 'Frauenkirche', 'Deutsches Museum', 'Olympiapark'],
     known_for: 'Oktoberfest, FC Bayern, Residenz, Weltstadt',
+    highlight: [
+      {
+        titleDE: 'Marienplatz – Herzstück der Landeshauptstadt',
+        titleEN: 'Marienplatz – The Heart of Bavaria\'s Capital',
+        textDE: 'Der Marienplatz ist das Zentrum Münchens und Treffpunkt der Weltstadt. Das Neue Rathaus mit seinem weltberühmten Glockenspiel (täglich um 11 und 12 Uhr, im Sommer auch 17 Uhr) ist ein Muss für jeden Besucher. Die Mariensäule (1638) auf dem Platz gibt der City ihren Namen. Umgeben ist der Platz von prächtigen Kaufhäusern, dem Alten Rathaus und unzähligen Cafés – der perfekte Start für eine München-Erkundung.',
+        textEN: 'Marienplatz is the centre of Munich and the meeting point of this cosmopolitan city. The New Town Hall with its world-famous Glockenspiel (daily at 11am and noon, also 5pm in summer) is a must for every visitor. The Marian Column (1638) on the square gives the city centre its name. Surrounded by magnificent department stores, the Old Town Hall and countless cafés – the perfect starting point for exploring Munich.',
+      }
+    ],
     ...calcPrice(38),
   },
   {
@@ -1945,6 +2033,20 @@ const cities: CityData[] = [
     history: 'Das Bistum Eichstätt wurde 741 gegründet. Im 17. Jahrhundert wurde die Stadt nach dem Dreißigjährigen Krieg prachtvoll im Barockstil wiederaufgebaut. Der Steinbruch Solnhofen bei Eichstätt lieferte weltberühmte Fossilien – darunter den Archaeopteryx.',
     sights: ['Dom zu Eichstätt', 'Willibaldsburg', 'Juramuseum (Archaeopteryx)', 'Altmühltal Naturpark', 'Residenzplatz'],
     known_for: 'Barockstadt, Archaeopteryx, Altmühltal, Bischofsresidenzen',
+    highlight: [
+      {
+        titleDE: 'Felsburg Tüchersfeld – Jurazeit trifft Mittelalter',
+        titleEN: 'Tüchersfeld Cliff Castle – Jurassic Rocks Meet the Middle Ages',
+        textDE: 'Tüchersfeld in der Fränkischen Schweiz (ca. 60 km von Eichstätt) ist eines der malerischsten Dörfer Deutschlands. Die dramatischen Jurafelsen, auf denen mittelalterliche Gebäude zu balancieren scheinen, schufen eine einzigartige Kulisse. Das Fränkische-Schweiz-Museum zeigt die Geschichte der Region. Die gesamte Fränkische Schweiz mit über 1.000 Felsen und Höhlen gilt als das Kletterparadies Deutschlands schlechthin.',
+        textEN: 'Tüchersfeld in Franconian Switzerland (approx. 60 km from Eichstätt) is one of Germany\'s most picturesque villages. The dramatic Jurassic limestone rocks, upon which medieval buildings seem to balance, create a unique backdrop. The Franconian Switzerland Museum showcases the region\'s history. The entire Franconian Switzerland area, with over 1,000 rocks and caves, is considered Germany\'s premier climbing paradise.',
+      },
+      {
+        titleDE: 'Teufelshöhle – Die schönste Tropfsteinhöhle Bayerns',
+        titleEN: 'Teufelshöhle – Bavaria\'s Most Beautiful Stalactite Cave',
+        textDE: 'Die Teufelshöhle bei Pottenstein (ca. 65 km von Eichstätt) ist die schönste und beeindruckendste Tropfsteinhöhle Bayerns. Auf einem 800 Meter langen, beleuchteten Rundgang entdeckt man riesige Stalaktiten und Stalagmiten, unterirdische Seen und bizarre Felsformationen. Besonders bekannt ist der „Dom" – ein 30 Meter hoher Hohlraum mit eindrucksvollen Tropfsteingebilden. Entdeckt und erschlossen wurde die Höhle 1922.',
+        textEN: 'The Teufelshöhle near Pottenstein (approx. 65 km from Eichstätt) is Bavaria\'s most beautiful and impressive stalactite cave. On an 800-metre illuminated tour you discover enormous stalactites and stalagmites, underground lakes and bizarre rock formations. Particularly famous is the "Cathedral" – a 30-metre-high cavern with impressive stalactite formations. The cave was discovered and opened to visitors in 1922.',
+      }
+    ],
     ...calcPrice(95),
   },
   {
@@ -1964,6 +2066,14 @@ const cities: CityData[] = [
     history: 'Kelheim war keltische Siedlung und römisches Kastell. Die Befreiungshalle auf dem Michelsberg wurde von König Ludwig I. zum Gedenken an die Befreiungskriege gegen Napoleon erbaut (1842–1863). Der Donaudurchbruch zwischen Kelheim und Weltenburg ist ein Naturwunder.',
     sights: ['Befreiungshalle (König Ludwig I.)', 'Donaudurchbruch (Schifffahrt)', 'Kloster Weltenburg (älteste Klosterbrauerei)', 'Altmühltal Panoramaweg', 'Stadtmauer Kelheim'],
     known_for: 'Befreiungshalle, Donaudurchbruch, Kloster Weltenburg',
+    highlight: [
+      {
+        titleDE: 'Donaudurchbruch – Kloster Weltenburg bei Kelheim',
+        titleEN: 'Danube Gorge – Weltenburg Monastery near Kelheim',
+        textDE: 'Der Donaudurchbruch bei Kelheim ist einer der spektakulärsten Naturräume Bayerns: Die Donau zwängt sich auf 5,7 Kilometern durch enge Kalkfelsen, die bis zu 70 Meter senkrecht aus dem Wasser ragen. Am Ende der Schlucht liegt Kloster Weltenburg – das älteste Kloster Bayerns (ca. 620 n. Chr.) mit einer prächtigen Barockkirche von Cosmas Damian Asam. Die Klosterbrauerei Weltenburg braut das älteste Klosterbier der Welt. Per Schiff oder zu Fuß erreichbar.',
+        textEN: 'The Danube Gorge near Kelheim is one of Bavaria\'s most spectacular natural landscapes: the Danube squeezes through 5.7 kilometres of narrow limestone cliffs rising up to 70 metres vertically from the water. At the end of the gorge lies Weltenburg Monastery – Bavaria\'s oldest monastery (approx. 620 AD) with a magnificent Baroque church by Cosmas Damian Asam. The Weltenburg monastery brewery produces the world\'s oldest monastery beer. Accessible by boat or on foot.',
+      }
+    ],
     ...calcPrice(80),
   },
   {
@@ -2140,6 +2250,14 @@ const cities: CityData[] = [
     history: 'Donauwörth war Freie Reichsstadt und erlebte im 30-jährigen Krieg erhebliche Zerstörungen. Die Reichsstraße mit farbenprächtigen Bürgerhäusern ist eine der eindrucksvollsten Altstadtstraßen Bayerns. Das Fuggerhaus erinnert an die Handelsbeziehungen zu den Augsburger Fuggern.',
     sights: ['Reichsstraße (Prachtstraße)', 'Fuggerhaus', 'Heilig-Kreuz-Kirche (Wallfahrt)', 'Donau-Radweg', 'Stadtmuseum'],
     known_for: 'Romantische Straße, Reichsstraße, Donau-Wörnitz-Zusammenfluss',
+    highlight: [
+      {
+        titleDE: 'Rothenburg ob der Tauber – Windschiefe Fachwerkhäuser',
+        titleEN: 'Rothenburg ob der Tauber – Crooked Half-timbered Houses',
+        textDE: 'Rothenburg ob der Tauber (ca. 75 km von Donauwörth) ist die am besten erhaltene mittelalterliche Stadtanlage Deutschlands. Die vollständig erhaltene Stadtmauer mit ihren Türmen, die engen Gassen mit schiefen Fachwerkhäusern und der prächtige Marktplatz machen die Stadt zu einem einzigartigen Freilichtmuseum. Besonders bekannt ist das Kriminalmuseum, das „Schneeball"-Gebäck und der historische Weihnachtsmarkt. Jährlich besuchen über 2 Millionen Touristen diese Kulissenstädt.',
+        textEN: 'Rothenburg ob der Tauber (approx. 75 km from Donauwörth) is Germany\'s best-preserved medieval town. The fully intact town wall with its towers, the narrow alleys with leaning half-timbered houses and the magnificent market square make the town a unique open-air museum. Particularly famous are the Criminal Museum, "Schneeball" pastry and the historic Christmas market. Over 2 million tourists visit this picture-postcard town each year.',
+      }
+    ],
     ...calcPrice(108),
   },
   {
@@ -2218,6 +2336,14 @@ const cities: CityData[] = [
     history: 'Oberstdorf entwickelte sich im 19. Jahrhundert vom Bauerndorf zum Tourismusdestination. Die Vier-Schanzen-Tournee (Neujahrsspringen seit 1953) macht Oberstdorf international bekannt. Das Fellhorn, Nebelhorn und Kleinwalsertal sind bedeutende Skigebiete.',
     sights: ['Nebelhorn (2.224 m, Seilbahn)', 'Fellhorn (2.038 m)', 'Breitachklamm (Wandern)', 'Vierschanzentournee-Schanze', 'Kleinwalsertal (Österreich, 5 km)'],
     known_for: 'Vierschanzentournee, Südlichster Ort Deutschlands, Allgäuer Alpen',
+    highlight: [
+      {
+        titleDE: 'Breitachklamm – Die tiefste Felsenschlucht Deutschlands',
+        titleEN: 'Breitachklamm – Germany\'s Deepest Rock Gorge',
+        textDE: 'Die Breitachklamm bei Oberstdorf ist mit bis zu 100 Meter hohen Felswänden die tiefste Schlucht Deutschlands. Der Fluss Breitach hat sich über Jahrmillionen durch den Fels gegraben und schafft bizarre Felsformationen, tosende Wasserfälle und faszinierende Eisgebilde im Winter. Auf dem gut gesicherten, 2 km langen Wanderweg durch die Schlucht erleben Besucher ein einzigartiges Naturschauspiel – ein Highlight für jede Jahreszeit.',
+        textEN: 'The Breitachklamm near Oberstdorf, with rock walls up to 100 metres high, is Germany\'s deepest gorge. Over millions of years, the Breitach river has carved its way through the rock, creating bizarre formations, thundering waterfalls, and fascinating ice sculptures in winter. The well-secured 2 km hiking path through the gorge offers visitors a unique natural spectacle – a highlight for every season.',
+      }
+    ],
     ...calcPrice(215),
   },
 
