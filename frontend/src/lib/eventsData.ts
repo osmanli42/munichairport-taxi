@@ -1631,6 +1631,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.bavarian-state-opera.de',
     category: 'cultural',
+    // SEO Fields
+    seoTitle: {
+      de: 'München Opernfestival | Kulturveranstaltung | Taxi zum',
+      en: 'Munich Opera Festival | Cultural Event | Taxi Service',
+    },
+    seoDescription: {
+      de: 'Opernfestival München Juni-Juli. Klassische Musik & Theater. Zuverlässiger Taxi-Transfer.',
+      en: 'Munich opera festival June-July. Classical music & theater. Reliable airport taxi.',
+    },
+    seoKeywords: {
+      de: ['opernfestival', 'oper münchen', 'klassische musik', 'theater', 'kulturveranstaltung'],
+      en: ['opera festival', 'munich opera', 'classical music', 'theater', 'cultural event'],
+    },
+    ogImage: '🎭',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Opernfestival München',
+      startDate: '2024-06-01',
+      endDate: '2024-07-31',
+      location: {
+        '@type': 'Place',
+        name: 'Bayerische Staatsoper',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Max-Joseph-Platz 2',
+          addressLocality: 'Munich',
+          postalCode: '80539',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🎭',
+      description: 'Opernfestival München',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/opera-festival',
+    },
+    relatedEvents: ['tollwood-sommer', 'tollwood-winter', 'csd'],
   },
   {
     id: 'starkbierfest',
