@@ -211,7 +211,7 @@ export default function EventPage({ params }: PageProps) {
           <div className="p-8">
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <div className="bg-blue-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
                   {language === 'de' ? 'Zeitraum' : 'Dates'}
                 </h3>
                 <p className="text-2xl font-bold text-blue-600">
