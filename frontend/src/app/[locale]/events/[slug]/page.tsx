@@ -388,22 +388,21 @@ export default function EventPage({ params }: PageProps) {
 
         <div className="mt-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            {language === 'de' ? 'Weitere Events' : 'More Events'}
+            {language === 'de' ? 'Verwandte Events' : 'Related Events'}
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {eventsData
-              .filter((e) => e.slug !== slug)
-              .slice(0, 3)
-              .map((relatedEvent) => (
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {event.relatedEvents
+              .map((relatedSlug) => eventsData.find((e) => e.slug === relatedSlug))
+              .filter(Boolean)
+              .map((relatedEvent) => relatedEvent && (
                 <Link
                   key={relatedEvent.id}
                   href={`/${locale}/events/${relatedEvent.slug}`}
                   className="bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300 overflow-hidden group"
+                  rel="related"
                 >
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-32 flex items-center justify-center">
-                    <p className="text-white text-center font-bold px-4">
-                      {isGerman ? relatedEvent.title.de : relatedEvent.title.en}
-                    </p>
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-32 flex items-center justify-center text-4xl">
+                    {relatedEvent.ogImage || '📍'}
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-gray-600 mb-2">{relatedEvent.dateRange.month}</p>
@@ -413,6 +412,43 @@ export default function EventPage({ params }: PageProps) {
                   </div>
                 </Link>
               ))}
+          </div>
+
+          {/* Additional Events Grid */}
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+            {language === 'de' ? 'Weitere Events' : 'More Events'}
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {eventsData
+              .filter((e) => e.slug !== slug && !event.relatedEvents.includes(e.slug))
+              .slice(0, 3)
+              .map((relatedEvent) => (
+                <Link
+                  key={relatedEvent.id}
+                  href={`/${locale}/events/${relatedEvent.slug}`}
+                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300 overflow-hidden group"
+                >
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-32 flex items-center justify-center text-4xl">
+                    {relatedEvent.ogImage || '📍'}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-2">{relatedEvent.dateRange.month}</p>
+                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition">
+                      {isGerman ? relatedEvent.shortDescription.de : relatedEvent.shortDescription.en}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+          </div>
+
+          {/* Link to main events page */}
+          <div className="mt-12 text-center">
+            <Link
+              href={`/${locale}/events`}
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
+            >
+              {language === 'de' ? 'Alle Events anzeigen' : 'View All Events'}
+            </Link>
           </div>
         </div>
       </div>
