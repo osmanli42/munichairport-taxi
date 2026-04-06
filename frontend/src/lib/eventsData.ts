@@ -392,6 +392,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.ifat.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'IFAT München 2024 | Wassertechnik Messe | Taxi Service',
+      en: 'IFAT Munich 2024 | Water Fair | Airport Taxi Service',
+    },
+    seoDescription: {
+      de: 'Zuverlässiger Taxi-Transfer zur IFAT München. Umwelttechnik & Wasserwirtschaft. 27-31 Mai.',
+      en: 'Reliable taxi to IFAT Munich environmental fair. Fixed prices, 24/7. May 27-31, 2024.',
+    },
+    seoKeywords: {
+      de: ['ifat münchen', 'wassertechnik', 'umweltmesse', 'flughafen münchen', 'event transfer'],
+      en: ['ifat munich', 'water technology', 'environmental fair', 'airport service', 'event taxi'],
+    },
+    ogImage: '💧',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'IFAT - Messe für Umwelttechnik und Wasser',
+      startDate: '2024-05-27',
+      endDate: '2024-05-31',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '💧',
+      description: 'Weltleitmesse für Umwelt- und Wassertechnik',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/ifat',
+    },
+    relatedEvents: ['bauma', 'electronica', 'intersolar'],
   },
   {
     id: 'electronica',
