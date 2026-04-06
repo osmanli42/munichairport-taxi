@@ -166,6 +166,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.bauma.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'bauma München 2024 | Flughafen Transfer | Taxi buchen',
+      en: 'bauma Munich 2024 | Airport Taxi Transfer | Book Now',
+    },
+    seoDescription: {
+      de: 'Taxi vom Flughafen München zur bauma. Festpreise, pünktlich, online buchen. 8-14 April 2024.',
+      en: 'Airport taxi to bauma Munich. Fixed prices, punctual, book online. April 8-14, 2024.',
+    },
+    seoKeywords: {
+      de: ['bauma münchen', 'messe münchen', 'flughafen taxi', 'baumaschinen messe', 'messeevent'],
+      en: ['bauma munich', 'construction fair', 'airport taxi', 'trade fair transfer', 'Munich events'],
+    },
+    ogImage: '🏗️',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'bauma - Weltleitmesse für Baumaschinen',
+      startDate: '2024-04-08',
+      endDate: '2024-04-14',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🏗️',
+      description: 'Weltleitmesse für Baumaschinen und Baugeräte',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/bauma',
+    },
+    relatedEvents: ['ifat', 'expo-real', 'electronica'],
   },
   {
     id: 'iaa',
