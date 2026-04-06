@@ -1183,6 +1183,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.heim-handwerk.de',
     category: 'cultural',
+    // SEO Fields
+    seoTitle: {
+      de: 'Heim + Handwerk München | Heimwerk Messe | Taxi Service',
+      en: 'Heim + Handwerk Munich | Home Fair | Taxi Service',
+    },
+    seoDescription: {
+      de: 'Heimwerk & Handwerk Messe Taxi. Heim + Handwerk Sept. 2024. Flughafen München Transfer.',
+      en: 'Home & crafts fair taxi service. Heim + Handwerk September 2024. Airport transfer service.',
+    },
+    seoKeywords: {
+      de: ['heim handwerk', 'heimwerk', 'handwerk messe', 'do-it-yourself', 'münchen'],
+      en: ['heim handwerk', 'home crafts', 'diy fair', 'craft fair', 'munich'],
+    },
+    ogImage: '🔨',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Heim+Handwerk - Messe für Handwerk und Wohnen',
+      startDate: '2024-09-19',
+      endDate: '2024-09-22',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🔨',
+      description: 'Heimwerk und Handwerksmesse',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/heim-handwerk',
+    },
+    relatedEvents: ['expo-real', 'inhorgenta', 'ispo'],
   },
   {
     id: 'christkindlmarkt',
