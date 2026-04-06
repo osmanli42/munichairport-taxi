@@ -957,6 +957,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.inhorgenta.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'inhorgenta 2024 München | Schmuck Messe | Taxi Transfer',
+      en: 'inhorgenta 2024 Munich | Jewelry Fair | Taxi Transfer',
+    },
+    seoDescription: {
+      de: 'Schmuck & Uhren Messe Taxi-Service. inhorgenta München 16-19 Feb. Flughafen Transfer.',
+      en: 'Jewelry & watch fair taxi service. inhorgenta Munich Feb 16-19. Airport transfer included.',
+    },
+    seoKeywords: {
+      de: ['inhorgenta', 'schmuck messe', 'uhren messe', 'luxus', 'münchen events'],
+      en: ['inhorgenta', 'jewelry fair', 'watch fair', 'luxury', 'munich events'],
+    },
+    ogImage: '💎',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'inhorgenta - Internationale Schmuck- und Uhrmesse',
+      startDate: '2024-02-16',
+      endDate: '2024-02-19',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '💎',
+      description: 'Internationale Schmuck- und Uhrenmesse',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/inhorgenta',
+    },
+    relatedEvents: ['heim-handwerk', 'christkindlmarkt', 'expo-real'],
   },
   {
     id: 'ispo',
