@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
@@ -17,8 +18,12 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
+  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const baseUrl = `https://${host}`;
+  const localePrefix = locale === 'de' ? '' : `/${locale}`;
 
   return {
+    metadataBase: new URL(baseUrl),
     title: {
       default: t('home_title'),
       template: '%s | Munich Airport Taxi',
@@ -29,7 +34,7 @@ export async function generateMetadata({
     openGraph: {
       title: t('home_title'),
       description: t('home_description'),
-      url: 'https://www.munichairport.taxi',
+      url: `${baseUrl}${localePrefix}`,
       siteName: 'Munich Airport Taxi',
       type: 'website',
       locale: locale === 'de' ? 'de_DE' : locale === 'en' ? 'en_US' : 'tr_TR',
@@ -53,11 +58,11 @@ export async function generateMetadata({
       follow: true,
     },
     alternates: {
-      canonical: 'https://www.munichairport.taxi',
+      canonical: `${baseUrl}${localePrefix}`,
       languages: {
-        'de': 'https://www.munichairport.taxi',
-        'en': 'https://www.munichairport.taxi/en',
-        'tr': 'https://www.munichairport.taxi/tr',
+        'de': baseUrl,
+        'en': `${baseUrl}/en`,
+        'tr': `${baseUrl}/tr`,
       },
     },
   };
@@ -71,6 +76,8 @@ export default async function LocaleLayout({
   params: { locale: string };
 }) {
   const messages = await getMessages();
+  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const baseUrl = `https://${host}`;
 
   return (
     <html lang={locale}>
@@ -101,7 +108,7 @@ export default async function LocaleLayout({
               '@context': 'https://schema.org',
               '@type': 'TaxiService',
               'name': 'Munich Airport Taxi',
-              'url': 'https://www.munichairport.taxi',
+              'url': baseUrl,
               'telephone': '+4915141620000',
               'email': 'info@munichairport.taxi',
               'address': {

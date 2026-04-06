@@ -1,9 +1,11 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://www.munichairport.taxi';
+  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
-  const pages = ['', '/vehicles', '/about', '/contact', '/faq'];
+  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen'];
 
   const routes: MetadataRoute.Sitemap = [];
 
