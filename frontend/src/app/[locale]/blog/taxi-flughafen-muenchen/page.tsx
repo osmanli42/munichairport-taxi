@@ -172,8 +172,8 @@ export default function TaxiFlughafenMuenchenPage() {
 
           <h3 className="text-xl font-bold text-gray-800 mt-8 mb-3">Festpreis vs. Taxameter – was ist günstiger?</h3>
           <p>
-            Ein normales Münchner Taxi mit Taxameter berechnet <strong>5,50 € Grundgebühr + 2,30 € pro Kilometer</strong>.
-            Bei 38 km wären das mindestens 93 € – ohne Wartezeit im Stau.
+            Ein normales Münchner Taxi mit Taxameter berechnet <strong>5,90 € Grundgebühr + 2,70 € pro Kilometer</strong>.
+            Bei 38 km wären das mindestens 109 € – ohne Wartezeit im Stau.
             Bei 20 Minuten Stau kommen schnell weitere 15–20 € dazu.
           </p>
           <p>
