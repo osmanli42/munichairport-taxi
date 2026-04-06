@@ -2079,6 +2079,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.fcbayern.com',
     category: 'sports',
+    // SEO Fields
+    seoTitle: {
+      de: 'FC Bayern München Spiele | Fußball | Allianz Arena Taxi',
+      en: 'FC Bayern Munich Games | Football | Allianz Arena Taxi',
+    },
+    seoDescription: {
+      de: 'Fußball Taxi zum FC Bayern München Spiel. Allianz Arena Transfer. Schnell & zuverlässig.',
+      en: 'Football taxi to Bayern Munich games. Allianz Arena. Fast & reliable airport service.',
+    },
+    seoKeywords: {
+      de: ['fc bayern', 'allianz arena', 'fußball', 'münchen spiele', 'stadium transfer'],
+      en: ['fc bayern', 'allianz arena', 'football', 'soccer', 'stadium transfer'],
+    },
+    ogImage: '⚽',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'FC Bayern München Spiele',
+      startDate: '2024-08-16',
+      endDate: '2025-05-31',
+      location: {
+        '@type': 'Place',
+        name: 'Allianz Arena',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Werner-Heynkes-Straße 10',
+          addressLocality: 'Munich',
+          postalCode: '80939',
+          addressCountry: 'DE',
+        },
+      },
+      image: '⚽',
+      description: 'FC Bayern München Spiele',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/bayern-football',
+    },
+    relatedEvents: ['bmw-golf', 'ispo', 'munich-marathon'],
   },
   {
     id: 'bmw-golf',
