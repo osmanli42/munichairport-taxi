@@ -5,13 +5,11 @@ import { Phone, MapPin, Clock, Users, ArrowRight } from 'lucide-react';
 import { citiesBySlug, allCitySlugs, CityData } from '@/lib/citiesData';
 import { CONTACT_INFO } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 const CITY_BASE_URL = 'https://www.flughafen-muenchen.taxi';
 
 type Props = { params: { citySlug: string; locale: string } };
-
-export async function generateStaticParams() {
-  return allCitySlugs.map((slug) => ({ citySlug: slug }));
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const city = citiesBySlug[params.citySlug];
