@@ -505,6 +505,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.electronica.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'electronica München 2024 | Elektronik Messe | Taxi buchen',
+      en: 'electronica Munich 2024 | Electronics Fair | Book Taxi',
+    },
+    seoDescription: {
+      de: 'Schneller Airport-Transfer zur electronica München. Halbleiter, IoT, Elektronik. 12-15 Nov.',
+      en: 'Fast airport transfer to electronica Munich electronics fair. Semiconductors, IoT. Nov 12-15.',
+    },
+    seoKeywords: {
+      de: ['electronica münchen', 'elektronik messe', 'halbleiter', 'technik messe', 'business transfer'],
+      en: ['electronica munich', 'electronics fair', 'semiconductors', 'tech expo', 'business transfer'],
+    },
+    ogImage: '⚡',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'electronica - Internationale Elektronikmesse',
+      startDate: '2024-11-12',
+      endDate: '2024-11-15',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '⚡',
+      description: 'Internationale Elektronik- und Halbleitermesse',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/electronica',
+    },
+    relatedEvents: ['bauma', 'ispo', 'intersolar'],
   },
   {
     id: 'expo-real',
