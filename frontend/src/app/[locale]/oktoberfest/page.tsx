@@ -12,10 +12,11 @@ const OKTOBERFEST_END = new Date('2026-10-04T23:59:59');
 
 type TimeLeft = { days: number; hours: number; minutes: number; seconds: number };
 
-function useCountdown(target: Date): TimeLeft | null {
+function useCountdown(target: Date): TimeLeft {
+  const zero = { days: 0, hours: 0, minutes: 0, seconds: 0 };
   const calc = () => {
     const diff = target.getTime() - Date.now();
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    if (diff <= 0) return zero;
     return {
       days: Math.floor(diff / 86400000),
       hours: Math.floor((diff % 86400000) / 3600000),
@@ -23,13 +24,15 @@ function useCountdown(target: Date): TimeLeft | null {
       seconds: Math.floor((diff % 60000) / 1000),
     };
   };
-  const [t, setT] = useState<TimeLeft | null>(null); // null until client mounts
+  const [t, setT] = useState<TimeLeft>(zero);
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     setT(calc());
     const id = setInterval(() => setT(calc()), 1000);
     return () => clearInterval(id);
   }, []);
-  return t;
+  return mounted ? t : zero;
 }
 
 export default function OktoberfestPage() {
@@ -191,7 +194,7 @@ export default function OktoberfestPage() {
           {/* Countdown */}
           <div className="mb-10">
             <p className="text-blue-200 text-lg mb-4 font-medium">{ui.countdownTitle}</p>
-            {!isOver && countdown && (
+            {!isOver && (
               <div className="flex justify-center gap-3 md:gap-6">
                 {[
                   { v: countdown.days, l: ui.daysLabel },
@@ -199,20 +202,10 @@ export default function OktoberfestPage() {
                   { v: countdown.minutes, l: ui.minLabel },
                   { v: countdown.seconds, l: ui.secLabel },
                 ].map(({ v, l }) => (
-                  <div key={l} className="bg-white/10 backdrop-blur rounded-2xl px-4 md:px-8 py-4 md:py-5 min-w-[72px] md:min-w-[100px]">
-                    <div className="text-4xl md:text-6xl font-black tabular-nums leading-none">
+                  <div key={l} className="bg-white/10 backdrop-blur rounded-2xl px-4 md:px-8 py-4 md:py-5 min-w-[72px] md:min-w-[100px]" suppressHydrationWarning>
+                    <div className="text-4xl md:text-6xl font-black tabular-nums leading-none" suppressHydrationWarning>
                       {String(v).padStart(2, '0')}
                     </div>
-                    <div className="text-blue-200 text-xs md:text-sm mt-1 uppercase tracking-wider">{l}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!isOver && !countdown && (
-              <div className="flex justify-center gap-3 md:gap-6">
-                {[ui.daysLabel, ui.hoursLabel, ui.minLabel, ui.secLabel].map((l) => (
-                  <div key={l} className="bg-white/10 backdrop-blur rounded-2xl px-4 md:px-8 py-4 md:py-5 min-w-[72px] md:min-w-[100px]">
-                    <div className="text-4xl md:text-6xl font-black tabular-nums leading-none">--</div>
                     <div className="text-blue-200 text-xs md:text-sm mt-1 uppercase tracking-wider">{l}</div>
                   </div>
                 ))}
