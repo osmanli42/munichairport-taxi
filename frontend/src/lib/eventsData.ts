@@ -844,6 +844,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.analytica.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'analytica München 2024 | Labortechnik Messe | Taxi buchen',
+      en: 'analytica Munich 2024 | Lab Technology Fair | Book Taxi',
+    },
+    seoDescription: {
+      de: 'Schneller Taxi-Transfer zur analytica München. Labortechnik, Analytik. 25-28 Juni 2024.',
+      en: 'Fast taxi to analytica Munich laboratory technology fair. Analytics, lab equipment. June.',
+    },
+    seoKeywords: {
+      de: ['analytica', 'labortechnik', 'labormesse', 'analytik', 'flughafen münchen'],
+      en: ['analytica', 'laboratory technology', 'lab fair', 'analytical equipment', 'airport taxi'],
+    },
+    ogImage: '🔬',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'analytica - Internationale Fachmesse für Labortechnik',
+      startDate: '2024-06-25',
+      endDate: '2024-06-28',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🔬',
+      description: 'Internationale Fachmesse für Labortechnik und Analytik',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/analytica',
+    },
+    relatedEvents: ['intersolar', 'ifat', 'electronica'],
   },
   {
     id: 'inhorgenta',
