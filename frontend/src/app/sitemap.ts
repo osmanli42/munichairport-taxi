@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
 import { allCitySlugs } from '@/lib/citiesData';
+import { eventsData } from '@/lib/eventsData';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const host = headers().get('host') ?? 'www.munichairport.taxi';

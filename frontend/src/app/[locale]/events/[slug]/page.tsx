@@ -2,395 +2,328 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Phone } from 'lucide-react';
-import { CONTACT_INFO } from '@/lib/utils';
 import { useParams } from 'next/navigation';
+import { eventsData, Event } from '@/lib/eventsData';
 import SearchBar from '@/components/SearchBar';
-import { eventsData } from '@/lib/eventsData';
-import { notFound } from 'next/navigation';
+import { useTranslation } from '@/contexts/LanguageContext';
 
-type TimeLeft = { days: number; hours: number; minutes: number; seconds: number };
-
-function useCountdown(target: Date): TimeLeft {
-  const zero = { days: 0, hours: 0, minutes: 0, seconds: 0 };
-  const calc = () => {
-    const diff = target.getTime() - Date.now();
-    if (diff <= 0) return zero;
-    return {
-      days: Math.floor(diff / 86400000),
-      hours: Math.floor((diff % 86400000) / 3600000),
-      minutes: Math.floor((diff % 3600000) / 60000),
-      seconds: Math.floor((diff % 60000) / 1000),
-    };
+interface PageProps {
+  params: {
+    locale: string;
+    slug: string;
   };
-  const [t, setT] = useState<TimeLeft>(zero);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    setT(calc());
-    const id = setInterval(() => setT(calc()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return mounted ? t : zero;
 }
 
-export default function EventPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
-  const locale = (params?.locale as string) ?? 'de';
-  const isEN = locale === 'en';
+export default function EventPage({ params }: PageProps) {
+  const { locale, slug } = params;
+  const { t, language } = useTranslation();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find event by slug
-  const event = eventsData.find(e => e.slug === slug);
-  if (!event) {
-    notFound();
+  useEffect(() => {
+    const foundEvent = eventsData.find((e) => e.slug === slug);
+    setEvent(foundEvent || null);
+    setLoading(false);
+  }, [slug]);
+
+  useEffect(() => {
+    if (!event) return;
+
+    const updateCountdown = () => {
+      const dateStr = event.dateRange.start;
+      const [day, month, year] = dateStr.split('.');
+      const eventDate = new Date(`${year}-${month}-${day}`).getTime();
+      const now = new Date().getTime();
+      const distance = eventDate - now;
+
+      if (distance > 0) {
+        setCountdown({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((distance / 1000 / 60) % 60),
+          seconds: Math.floor((distance / 1000) % 60),
+        });
+      } else {
+        setCountdown(null);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [event]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">{language === 'de' ? 'Lädt...' : 'Loading...'}</p>
+        </div>
+      </div>
+    );
   }
 
-  const now = new Date();
-  const isLive = now >= event.startDate && now <= event.endDate;
-  const isOver = now > event.endDate;
-  const isFuture = now < event.startDate;
-  const countdown = useCountdown(isLive ? event.endDate : event.startDate);
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <SearchBar />
+        <div className="container mx-auto px-4 py-12 text-center">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            {language === 'de' ? 'Event nicht gefunden' : 'Event not found'}
+          </h1>
+          <p className="text-gray-600 mb-6">
+            {language === 'de'
+              ? 'Das gesuchte Event existiert nicht.'
+              : 'The requested event does not exist.'}
+          </p>
+          <Link href={`/${locale}/events`} className="text-blue-600 hover:text-blue-800 font-semibold">
+            {language === 'de' ? 'Zurück zu Events' : 'Back to Events'}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  const ui = isEN ? {
-    title: event.titleEN,
-    subtitle: event.subtitleEN,
-    dates: event.datesEN,
-    location: event.locationEN,
-    description: event.descriptionEN,
-    daysLabel: 'Days',
-    hoursLabel: 'Hours',
-    minLabel: 'Min',
-    secLabel: 'Sec',
-    countdownTitle: isLive
-      ? `⏳ Event is LIVE – ends in:`
-      : isOver
-        ? `🎉 See you next time!`
-        : `📅 Countdown to ${event.titleEN}`,
-    aboutTitle: 'About the Event',
-    about: event.aboutEN,
-    tipsTitle: 'Visitor Tips',
-    visitorTitle: 'Visitor Information',
-    visitorNumbers: event.visitorNumbers,
-    internationality: event.internationality,
-    taxiTitle: `Taxi to ${event.titleEN} – Fixed Price from Munich Airport`,
-    taxiSubtitle: 'We take you directly from Munich Airport (MUC) to the event – stress-free, on time, fixed price.',
-    bookBtn: 'Book taxi now',
-    callBtn: 'Call now',
-    statsTitle: 'Event in Numbers',
-  } : {
-    title: event.titleDE,
-    subtitle: event.subtitleDE,
-    dates: event.datesDE,
-    location: event.locationDE,
-    description: event.descriptionDE,
-    daysLabel: 'Tage',
-    hoursLabel: 'Std.',
-    minLabel: 'Min.',
-    secLabel: 'Sek.',
-    countdownTitle: isLive
-      ? `⏳ Das Event läuft – endet in:`
-      : isOver
-        ? `🎉 Bis zum nächsten Mal!`
-        : `📅 Countdown zu ${event.titleDE}`,
-    aboutTitle: 'Über das Event',
-    about: event.aboutDE,
-    tipsTitle: 'Tipps für Besucher',
-    visitorTitle: 'Besucherinformation',
-    visitorNumbers: event.visitorNumbers,
-    internationality: event.internationality,
-    taxiTitle: `Taxi zu ${event.titleDE} – Festpreis vom Flughafen München`,
-    taxiSubtitle: 'Wir bringen Sie direkt vom Flughafen München (MUC) zum Event – stressfrei, pünktlich, Festpreis.',
-    bookBtn: 'Taxi jetzt buchen',
-    callBtn: 'Jetzt anrufen',
-    statsTitle: 'Das Event in Zahlen',
-  };
-
-  // Determine icon color and gradient based on event type
-  const getColorScheme = () => {
-    if (slug.includes('christmas') || slug.includes('christkindl')) {
-      return {
-        gradient: 'from-red-900 via-red-800 to-green-700',
-        accentFrom: 'from-green-500',
-        accentTo: 'to-red-500',
-        accent: 'bg-red-400',
-        accentBright: 'text-red-400',
-      };
-    }
-    if (slug.includes('beer') || slug.includes('oktober') || slug.includes('starkbier') || slug.includes('fruhjahrs')) {
-      return {
-        gradient: 'from-amber-900 via-amber-800 to-amber-700',
-        accentFrom: 'from-amber-500',
-        accentTo: 'to-yellow-400',
-        accent: 'bg-amber-400',
-        accentBright: 'text-amber-400',
-      };
-    }
-    if (slug.includes('csd') || slug.includes('pride')) {
-      return {
-        gradient: 'from-purple-900 via-pink-800 to-red-700',
-        accentFrom: 'from-pink-500',
-        accentTo: 'to-purple-500',
-        accent: 'bg-pink-400',
-        accentBright: 'text-pink-400',
-      };
-    }
-    if (slug.includes('toll') || slug.includes('opern')) {
-      return {
-        gradient: 'from-purple-900 via-indigo-800 to-blue-700',
-        accentFrom: 'from-purple-500',
-        accentTo: 'to-pink-500',
-        accent: 'bg-purple-400',
-        accentBright: 'text-purple-400',
-      };
-    }
-    if (slug.includes('bauma') || slug.includes('analytica') || slug.includes('expo-real') || slug.includes('inhorgenta')) {
-      return {
-        gradient: 'from-slate-900 via-slate-800 to-gray-700',
-        accentFrom: 'from-blue-600',
-        accentTo: 'to-cyan-500',
-        accent: 'bg-blue-400',
-        accentBright: 'text-blue-400',
-      };
-    }
-    if (slug.includes('iaa') || slug.includes('motor') || slug.includes('bayern') || slug.includes('marathon')) {
-      return {
-        gradient: 'from-blue-900 via-blue-800 to-blue-700',
-        accentFrom: 'from-blue-500',
-        accentTo: 'to-cyan-400',
-        accent: 'bg-blue-400',
-        accentBright: 'text-blue-400',
-      };
-    }
-    if (slug.includes('heim') || slug.includes('handwerk')) {
-      return {
-        gradient: 'from-amber-900 via-orange-800 to-yellow-700',
-        accentFrom: 'from-orange-500',
-        accentTo: 'to-yellow-400',
-        accent: 'bg-orange-400',
-        accentBright: 'text-orange-400',
-      };
-    }
-    if (slug.includes('ispo') || slug.includes('golf') || slug.includes('bayern')) {
-      return {
-        gradient: 'from-green-900 via-green-800 to-emerald-700',
-        accentFrom: 'from-green-500',
-        accentTo: 'to-emerald-400',
-        accent: 'bg-green-400',
-        accentBright: 'text-green-400',
-      };
-    }
-    // Default blue scheme
-    return {
-      gradient: 'from-blue-900 via-blue-800 to-blue-700',
-      accentFrom: 'from-yellow-400',
-      accentTo: 'to-orange-400',
-      accent: 'bg-yellow-400',
-      accentBright: 'text-yellow-400',
-    };
-  };
-
-  const colors = getColorScheme();
+  const isGerman = language === 'de';
+  const title = isGerman ? event.title.de : event.title.en;
+  const shortDesc = isGerman ? event.shortDescription.de : event.shortDescription.en;
+  const description = isGerman ? event.description.de : event.description.en;
+  const locationName = isGerman ? event.location.de : event.location.en;
+  const highlights = isGerman ? event.highlights.de : event.highlights.en;
+  const highlightsDesc = isGerman ? event.highlights_description.de : event.highlights_description.en;
 
   return (
-    <main className="min-h-screen bg-white">
-      {/* Hero */}
-      <section className={`relative bg-gradient-to-br ${colors.gradient} text-white`}>
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 text-9xl">🎪</div>
-          <div className="absolute top-20 right-20 text-8xl">🎉</div>
-          <div className="absolute bottom-10 left-1/3 text-7xl">🎭</div>
-          <div className="absolute bottom-20 right-10 text-8xl">🎊</div>
+    <div className="min-h-screen bg-gray-50">
+      <SearchBar />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href={`/${locale}/events`} className="text-blue-600 hover:text-blue-800 font-semibold">
+            {language === 'de' ? '← Zurück zu Events' : '← Back to Events'}
+          </Link>
         </div>
-        <div className="relative max-w-5xl mx-auto px-4 py-12 text-center">
-          <div className={`inline-block ${colors.accent} text-gray-900 font-black text-sm px-4 py-1 rounded-full mb-4 uppercase tracking-wider`}>
-            {ui.dates}
+
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
+            <p className="text-xl opacity-90">{shortDesc}</p>
           </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-4 leading-tight">
-            {ui.title}
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-200 mb-3 font-light">
-            {ui.subtitle}
-          </p>
-          <p className="text-lg text-gray-300 mb-10">
-            📍 {ui.location}
-          </p>
 
-          {/* Countdown */}
-          {isFuture && (
-            <div className="mb-10">
-              <p className="text-gray-200 text-lg mb-4 font-medium">{ui.countdownTitle}</p>
-              <div className="flex justify-center gap-3 md:gap-6">
-                {[
-                  { v: countdown.days, l: ui.daysLabel },
-                  { v: countdown.hours, l: ui.hoursLabel },
-                  { v: countdown.minutes, l: ui.minLabel },
-                  { v: countdown.seconds, l: ui.secLabel },
-                ].map(({ v, l }) => (
-                  <div key={l} className="bg-white/10 backdrop-blur rounded-2xl px-4 md:px-8 py-4 md:py-5 min-w-[72px] md:min-w-[100px]" suppressHydrationWarning>
-                    <div className="text-4xl md:text-6xl font-black tabular-nums leading-none" suppressHydrationWarning>
-                      {String(v).padStart(2, '0')}
-                    </div>
-                    <div className="text-gray-300 text-xs md:text-sm mt-1 uppercase tracking-wider">{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {isLive && (
-            <div className="mb-10 text-center">
-              <div className="inline-block bg-red-500 text-white font-black px-6 py-3 rounded-full text-lg animate-pulse mb-4">
-                🔴 {isEN ? 'LIVE NOW' : 'LÄUFT JETZT'}
-              </div>
-              <p className="text-gray-200 text-lg font-medium">{ui.countdownTitle}</p>
-              <div className="flex justify-center gap-3 md:gap-6 mt-4">
-                {[
-                  { v: countdown.days, l: ui.daysLabel },
-                  { v: countdown.hours, l: ui.hoursLabel },
-                  { v: countdown.minutes, l: ui.minLabel },
-                  { v: countdown.seconds, l: ui.secLabel },
-                ].map(({ v, l }) => (
-                  <div key={l} className="bg-white/10 backdrop-blur rounded-2xl px-4 md:px-8 py-4 md:py-5 min-w-[72px] md:min-w-[100px]" suppressHydrationWarning>
-                    <div className="text-4xl md:text-6xl font-black tabular-nums leading-none" suppressHydrationWarning>
-                      {String(v).padStart(2, '0')}
-                    </div>
-                    <div className="text-gray-300 text-xs md:text-sm mt-1 uppercase tracking-wider">{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {isOver && (
-            <div className="mb-10 text-center">
-              <p className="text-gray-200 text-lg font-medium">{ui.countdownTitle}</p>
-            </div>
-          )}
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Link
-              href={`/${locale}/buchen`}
-              className={`${colors.accent} hover:opacity-90 text-gray-900 font-black py-4 px-8 rounded-xl text-lg transition-colors`}
-            >
-              🚕 {ui.bookBtn}
-            </Link>
-            <a
-              href={`tel:${CONTACT_INFO.phone}`}
-              className="bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl text-lg transition-colors border border-white/30"
-            >
-              <Phone className="inline w-5 h-5 mr-2 -mt-0.5" />
-              {ui.callBtn}
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Search Bar */}
-      <section className="bg-white py-6 shadow-lg">
-        <div className="max-w-5xl mx-auto px-4">
-          <SearchBar />
-        </div>
-      </section>
-
-      {/* Description */}
-      <section className="bg-gray-50 py-12">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="bg-white rounded-3xl p-8 border-l-8" style={{ borderColor: colors.accent.replace('bg-', 'border-') }}>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {ui.description}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className={`bg-gradient-to-r ${colors.accentFrom} ${colors.accentTo} py-16`}>
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl font-black text-white text-center mb-10">{ui.statsTitle}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-            {event.stats.map((s, i) => (
-              <div key={i} className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center shadow-sm border border-white/20">
-                <div className="text-4xl mb-2">{s.icon}</div>
-                <div className="text-3xl font-black text-white mb-1">{isEN ? s.valueEN : s.valueDE}</div>
-                <div className="text-sm text-white/80">{isEN ? s.labelEN : s.labelDE}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Visitor Information */}
-      <section className="bg-white py-16">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl font-black text-gray-900 mb-8">{ui.visitorTitle}</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
-              <div className="text-5xl font-black text-blue-900 mb-2">{ui.visitorNumbers}</div>
-              <p className="text-gray-700">
-                {isEN ? 'Approximate number of visitors per year or event' : 'Ungefähre Anzahl der Besucher pro Jahr oder Event'}
-              </p>
-            </div>
-            <div className="bg-purple-50 rounded-2xl p-8 border border-purple-200">
-              <div className="text-5xl font-black text-purple-900 mb-2">{ui.internationality}</div>
-              <p className="text-gray-700">
-                {isEN ? 'International visitor share' : 'Anteil internationaler Besucher'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="max-w-5xl mx-auto px-4 py-16 space-y-16">
-
-        {/* About */}
-        <section>
-          <h2 className="text-3xl font-black text-gray-900 mb-8">{ui.aboutTitle}</h2>
-          <div className="prose prose-lg max-w-none">
-            {ui.about.split('\n\n').map((para, i) => (
-              <p key={i} className="text-gray-700 leading-relaxed text-lg mb-6">
-                {para}
-              </p>
-            ))}
-          </div>
-        </section>
-
-        {/* Tips */}
-        <section>
-          <h2 className="text-3xl font-black text-gray-900 mb-8">{ui.tipsTitle}</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {event.tips.map((tip, i) => (
-              <div key={i} className="flex items-start gap-4 bg-blue-50 rounded-2xl p-5 border border-blue-100">
-                <span className="text-3xl flex-shrink-0">{tip.icon}</span>
-                <p className="text-gray-700 leading-relaxed">
-                  {isEN ? tip.tipEN : tip.tipDE}
+          <div className="p-8">
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-blue-50 p-6 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  {language === 'de' ? 'Zeitraum' : 'Dates'}
+                </h3>
+                <p className="text-2xl font-bold text-blue-600">
+                  {event.dateRange.start} - {event.dateRange.end}
                 </p>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="bg-green-50 p-6 rounded-lg">
+                <h3 className="font-semibold text-green-900 mb-2">
+                  {language === 'de' ? 'Besucher' : 'Visitors'}
+                </h3>
+                <p className="text-2xl font-bold text-green-600">{event.stats.visitors}</p>
+              </div>
+              <div className="bg-purple-50 p-6 rounded-lg">
+                <h3 className="font-semibold text-purple-900 mb-2">
+                  {language === 'de' ? 'Dauer' : 'Duration'}
+                </h3>
+                <p className="text-2xl font-bold text-purple-600">{event.stats.duration}</p>
+              </div>
+            </div>
 
-        {/* Taxi CTA */}
-        <section className={`bg-gradient-to-br ${colors.gradient} text-white rounded-3xl p-10 text-center`}>
-          <div className="text-5xl mb-4">🚕</div>
-          <h2 className="text-3xl font-black mb-4">{ui.taxiTitle}</h2>
-          <p className="text-gray-200 text-lg mb-8 max-w-2xl mx-auto">{ui.taxiSubtitle}</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href={`/${locale}/buchen`}
-              className={`${colors.accent} hover:opacity-90 text-gray-900 font-black py-4 px-8 rounded-xl text-lg transition-colors`}
-            >
-              🎫 {ui.bookBtn}
-            </Link>
-            <a
-              href={`tel:${CONTACT_INFO.phone}`}
-              className="bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl text-lg transition-colors border border-white/30"
-            >
-              <Phone className="inline w-5 h-5 mr-2 -mt-0.5" />
-              {CONTACT_INFO.phone}
-            </a>
+            {countdown && (
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-8 mb-8">
+                <h2 className="text-2xl font-bold text-yellow-800 mb-6 text-center">
+                  {language === 'de' ? 'Zeit bis zum Event' : 'Time Until Event'}
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-4xl font-bold text-yellow-600">{countdown.days}</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {language === 'de' ? 'Tage' : 'Days'}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-4xl font-bold text-yellow-600">{countdown.hours}</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {language === 'de' ? 'Stunden' : 'Hours'}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-4xl font-bold text-yellow-600">{countdown.minutes}</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {language === 'de' ? 'Minuten' : 'Minutes'}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-4xl font-bold text-yellow-600">{countdown.seconds}</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {language === 'de' ? 'Sekunden' : 'Seconds'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  {language === 'de' ? 'Über das Event' : 'About the Event'}
+                </h2>
+                <p className="text-gray-700 leading-relaxed text-lg">{description}</p>
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  {language === 'de' ? 'Standort' : 'Location'}
+                </h2>
+                <div className="bg-gray-100 p-6 rounded-lg">
+                  <p className="font-semibold text-lg text-gray-900 mb-2">{locationName}</p>
+                  <p className="text-gray-600">{event.location.address}</p>
+
+                  <div className="mt-6 pt-6 border-t border-gray-300">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      {language === 'de' ? 'Event-Details' : 'Event Details'}
+                    </h3>
+                    <div className="space-y-2 text-sm text-gray-700">
+                      <p>
+                        <span className="font-semibold">
+                          {language === 'de' ? 'Preis: ' : 'Price: '}
+                        </span>
+                        {event.stats.price || 'Kostenlos / Free'}
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          {language === 'de' ? 'Website: ' : 'Website: '}
+                        </span>
+                        {event.website ? (
+                          <a
+                            href={event.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            {event.website}
+                          </a>
+                        ) : (
+                          'N/A'
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {language === 'de' ? 'Highlights' : 'Highlights'}
+              </h2>
+              <p className="text-gray-700 mb-6">{highlightsDesc}</p>
+              <ul className="grid md:grid-cols-2 gap-4">
+                {highlights.map((highlight, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="inline-block w-6 h-6 bg-blue-600 text-white rounded-full text-center text-sm font-bold mr-3 flex-shrink-0">
+                      ✓
+                    </span>
+                    <span className="text-gray-800">{highlight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                {language === 'de' ? 'Tipps für Besucher' : 'Visitor Tips'}
+              </h2>
+              <div className="space-y-4">
+                {event.tips.map((tip, index) => (
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-gray-800 font-semibold mb-2">
+                      {language === 'de' ? `Tipp ${index + 1}` : `Tip ${index + 1}`}
+                    </p>
+                    <p className="text-gray-700">{isGerman ? tip.de : tip.en}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-gray-200">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  {language === 'de' ? 'Benötigen Sie ein Taxi?' : 'Need a Taxi?'}
+                </h3>
+                <p className="text-gray-700 mb-6">
+                  {language === 'de'
+                    ? 'Buchen Sie ein Taxi zum Event oder zum Flughafen München'
+                    : 'Book a taxi to the event or to Munich Airport'}
+                </p>
+                <a
+                  href={`tel:+498912911`}
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300"
+                >
+                  {language === 'de' ? 'Taxi buchen' : 'Book Taxi'}
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-between items-center">
+              <Link href={`/${locale}/events`} className="text-blue-600 hover:text-blue-800 font-semibold">
+                {language === 'de' ? '← Alle Events' : '← All Events'}
+              </Link>
+              {event.website && (
+                <a
+                  href={event.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300"
+                >
+                  {language === 'de' ? 'Offizielle Website →' : 'Official Website →'}
+                </a>
+              )}
+            </div>
           </div>
-        </section>
+        </div>
+
+        <div className="mt-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">
+            {language === 'de' ? 'Weitere Events' : 'More Events'}
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {eventsData
+              .filter((e) => e.slug !== slug)
+              .slice(0, 3)
+              .map((relatedEvent) => (
+                <Link
+                  key={relatedEvent.id}
+                  href={`/${locale}/events/${relatedEvent.slug}`}
+                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition duration-300 overflow-hidden group"
+                >
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-32 flex items-center justify-center">
+                    <p className="text-white text-center font-bold px-4">
+                      {isGerman ? relatedEvent.title.de : relatedEvent.title.en}
+                    </p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-2">{relatedEvent.dateRange.month}</p>
+                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition">
+                      {isGerman ? relatedEvent.shortDescription.de : relatedEvent.shortDescription.en}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
