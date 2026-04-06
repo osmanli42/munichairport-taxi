@@ -8,7 +8,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
   const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
-  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...cityPages];
+  const eventPages = eventsData.map((event) => `/events/${event.slug}`);
+  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...eventPages, ...cityPages];
 
   const routes: MetadataRoute.Sitemap = [];
 
