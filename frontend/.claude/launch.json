@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "/Users/osman/.nvm/versions/node/v20.20.1/bin/npm",
+      "runtimeExecutable": "/Users/osman/.nvm/versions/node/v20.20.2/bin/npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
     }
