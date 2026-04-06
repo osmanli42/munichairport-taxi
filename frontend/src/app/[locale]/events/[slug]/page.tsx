@@ -225,7 +225,7 @@ export default function EventPage({ params }: PageProps) {
                 <p className="text-2xl font-bold text-green-600">{event.stats.visitors}</p>
               </div>
               <div className="bg-purple-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-purple-900 mb-2">
+                <h3 className="text-lg font-semibold text-purple-900 mb-2">
                   {language === 'de' ? 'Dauer' : 'Duration'}
                 </h3>
                 <p className="text-2xl font-bold text-purple-600">{event.stats.duration}</p>
