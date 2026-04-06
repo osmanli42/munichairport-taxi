@@ -1,11 +1,13 @@
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
+import { allCitySlugs } from '@/lib/citiesData';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const host = headers().get('host') ?? 'www.munichairport.taxi';
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
-  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen'];
+  const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
+  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', ...cityPages];
 
   const routes: MetadataRoute.Sitemap = [];
 
