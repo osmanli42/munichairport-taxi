@@ -618,6 +618,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.exporeal.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'EXPO REAL München 2024 | Immobilien Messe | Taxi Service',
+      en: 'EXPO REAL Munich 2024 | Real Estate Fair | Taxi Service',
+    },
+    seoDescription: {
+      de: 'Immobilien-Messe Taxi Transfer. EXPO REAL mit Investoren & Entwicklern. 1-3 Oktober 2024.',
+      en: 'Real estate fair taxi service. EXPO REAL with investors & developers. Oct 1-3, 2024.',
+    },
+    seoKeywords: {
+      de: ['expo real', 'immobilien messe', 'realitätenmesse', 'investmentmesse', 'münchen taxi'],
+      en: ['expo real', 'real estate fair', 'property fair', 'investment fair', 'munich taxi'],
+    },
+    ogImage: '🏢',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'EXPO REAL - Internationale Messe für Immobilien und Investitionen',
+      startDate: '2024-10-01',
+      endDate: '2024-10-03',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🏢',
+      description: 'Europas führende Immobilien- und Investitionsmesse',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/expo-real',
+    },
+    relatedEvents: ['iaa', 'bauma', 'heim-handwerk'],
   },
   {
     id: 'intersolar',
