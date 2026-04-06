@@ -1407,6 +1407,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.tollwood.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'Tollwood München Sommer | Kulturfestival | Flughafen Taxi',
+      en: 'Tollwood Munich Summer | Cultural Festival | Airport Taxi',
+    },
+    seoDescription: {
+      de: 'Tollwood Sommer-Kulturfestival München. Musik, Kunst, Kulinarik. Juni-Juli 2024.',
+      en: 'Tollwood summer cultural festival Munich. Music, art, food. June-July 2024.',
+    },
+    seoKeywords: {
+      de: ['tollwood', 'sommer festival', 'kulturprogramm', 'konzerte', 'flughafen taxi'],
+      en: ['tollwood', 'summer festival', 'cultural festival', 'concerts', 'airport taxi'],
+    },
+    ogImage: '🎪',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Tollwood Sommer',
+      startDate: '2024-06-14',
+      endDate: '2024-08-04',
+      location: {
+        '@type': 'Place',
+        name: 'Theresienwiese',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Theresienwiese',
+          addressLocality: 'Munich',
+          postalCode: '80336',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🎪',
+      description: 'Sommer-Kulturfestival',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/tollwood-sommer',
+    },
+    relatedEvents: ['tollwood-winter', 'opera-festival', 'csd'],
   },
   {
     id: 'tollwood-winter',
