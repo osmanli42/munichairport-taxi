@@ -198,6 +198,14 @@ export default function EventPage({ params }: PageProps) {
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
             <p className="text-xl opacity-90">{shortDesc}</p>
+            {event.ogImage && (
+              <img
+                src={event.ogImage}
+                alt={title}
+                className="mt-6 w-20 h-20 object-cover rounded-lg"
+                loading="lazy"
+              />
+            )}
           </div>
 
           <div className="p-8">
