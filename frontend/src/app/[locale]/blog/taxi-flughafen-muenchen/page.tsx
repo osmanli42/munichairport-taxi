@@ -140,15 +140,8 @@ export default function TaxiFlughafenMuenchenPage() {
           </h2>
           <p>
             Bei uns zahlen Sie immer einen <strong>Festpreis</strong> – unabhängig von Staus oder Umwegen.
-            Die Preise berechnen sich aus einem Startpreis plus Kilometerpreis:
+            Der genaue Preis hängt von Ihrem Abholort ab:
           </p>
-
-          {/* Price formula */}
-          <div className="bg-gray-50 rounded-xl p-4 my-4 text-sm font-mono">
-            <span className="text-primary-600 font-bold">Kombi:</span> 8,00 € + 2,10 € × km<br />
-            <span className="text-primary-600 font-bold">Van / Minibus:</span> 10,00 € + 2,20 € × km<br />
-            <span className="text-primary-600 font-bold">Großraumtaxi:</span> 15,00 € + 2,40 € × km
-          </div>
 
           {/* Price table */}
           <div className="overflow-x-auto my-6">
