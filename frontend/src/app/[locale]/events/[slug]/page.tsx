@@ -219,7 +219,7 @@ export default function EventPage({ params }: PageProps) {
                 </p>
               </div>
               <div className="bg-green-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-green-900 mb-2">
+                <h3 className="text-lg font-semibold text-green-900 mb-2">
                   {language === 'de' ? 'Besucher' : 'Visitors'}
                 </h3>
                 <p className="text-2xl font-bold text-green-600">{event.stats.visitors}</p>
