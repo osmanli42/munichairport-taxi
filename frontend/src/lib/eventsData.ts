@@ -279,6 +279,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.iaa.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'IAA München 2025 | Automobilmesse | Flughafen Taxi',
+      en: 'IAA Munich 2025 | Motor Show | Airport Taxi Service',
+    },
+    seoDescription: {
+      de: 'Taxi zur IAA München mit fixem Preis. Elektrofahrzeuge, autonomes Fahren. 5-14 Sept. 2025.',
+      en: 'Taxi to IAA Munich with fixed price. Electric cars, autonomous driving. Sept 5-14, 2025.',
+    },
+    seoKeywords: {
+      de: ['iaa münchen', 'automobilmesse', 'elektrofahrzeuge', 'airport transfer', 'businessataxi'],
+      en: ['iaa munich', 'motor show', 'electric vehicles', 'airport transfer', 'business taxi'],
+    },
+    ogImage: '🚗',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'IAA - Internationale Automobil Ausstellung',
+      startDate: '2025-09-05',
+      endDate: '2025-09-14',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🚗',
+      description: 'Internationale Automobil Ausstellung',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/iaa',
+    },
+    relatedEvents: ['expo-real', 'ispo', 'analytica'],
   },
   {
     id: 'ifat',
