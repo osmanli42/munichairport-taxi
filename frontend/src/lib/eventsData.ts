@@ -1743,6 +1743,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.starkbierfest.de',
     category: 'festival',
+    // SEO Fields
+    seoTitle: {
+      de: 'Starkbierfest München 2024 | Bierfestival | Taxi Service',
+      en: 'Starkbier Festival Munich 2024 | Beer Festival | Taxi',
+    },
+    seoDescription: {
+      de: 'Starkbierfest München März 2024. Bayerisches Bierfestival. Flughafen Taxi-Transfer.',
+      en: 'Starkbier festival Munich March 2024. Bavarian beer festival. Airport taxi transfer.',
+    },
+    seoKeywords: {
+      de: ['starkbierfest', 'bierfest', 'bayern fest', 'münchen march', 'iftea'],
+      en: ['starkbier festival', 'beer festival', 'bavarian fest', 'munich march', 'beer'],
+    },
+    ogImage: '🍺',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Starkbierfest München',
+      startDate: '2024-03-16',
+      endDate: '2024-04-01',
+      location: {
+        '@type': 'Place',
+        name: 'Theresienwiese',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Theresienwiese',
+          addressLocality: 'Munich',
+          postalCode: '80336',
+          addressCountry: 'DE',
+        },
+      },
+      image: '🍺',
+      description: 'Bayerisches Bierfestival',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/starkbierfest',
+    },
+    relatedEvents: ['fruehlingsfest', 'christkindlmarkt', 'tollwood-winter'],
   },
   {
     id: 'fruehlingsfest',
