@@ -12,6 +12,33 @@ export interface EventStats {
   price?: string;
 }
 
+export interface EventSchema {
+  '@context': string;
+  '@type': string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  location: {
+    '@type': string;
+    name: string;
+    address: {
+      '@type': string;
+      streetAddress: string;
+      addressLocality: string;
+      postalCode: string;
+      addressCountry: string;
+    };
+  };
+  image: string;
+  description: string;
+  organizer: {
+    '@type': string;
+    name: string;
+    url: string;
+  };
+  url: string;
+}
+
 export interface Event {
   id: string;
   slug: string;
@@ -49,6 +76,22 @@ export interface Event {
   };
   website?: string;
   category: 'trade' | 'cultural' | 'festival' | 'sports' | 'market';
+  // SEO Fields
+  seoTitle: {
+    de: string;
+    en: string;
+  };
+  seoDescription: {
+    de: string;
+    en: string;
+  };
+  seoKeywords: {
+    de: string[];
+    en: string[];
+  };
+  ogImage: string;
+  schema: EventSchema;
+  relatedEvents: string[];
 }
 
 export const eventsData: Event[] = [
