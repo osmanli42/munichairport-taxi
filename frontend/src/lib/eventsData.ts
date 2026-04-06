@@ -2191,6 +2191,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.bmw-international-open.de',
     category: 'sports',
+    // SEO Fields
+    seoTitle: {
+      de: 'BMW Golf Tournament München | Golfturnier | Taxi Service',
+      en: 'BMW Golf Tournament Munich | Golf Event | Taxi Service',
+    },
+    seoDescription: {
+      de: 'Golf-Tournament München. Flughafen zum Golfplatz Taxi. BMW Event Juni 2024.',
+      en: 'Golf tournament Munich. Airport to golf course taxi. BMW event June 2024.',
+    },
+    seoKeywords: {
+      de: ['golf tournament', 'bmw golf', 'münchen golf', 'golfplatz', 'airport transfer'],
+      en: ['golf tournament', 'bmw golf', 'munich golf', 'golf course', 'airport taxi'],
+    },
+    ogImage: '⛳',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'BMW International Open Golf Tournament',
+      startDate: '2024-06-20',
+      endDate: '2024-06-23',
+      location: {
+        '@type': 'Place',
+        name: 'Golfclub München Nord-Eichenried',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Eichenried 1',
+          addressLocality: 'Munich',
+          postalCode: '80639',
+          addressCountry: 'DE',
+        },
+      },
+      image: '⛳',
+      description: 'BMW International Open Golf Tournament',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/bmw-golf',
+    },
+    relatedEvents: ['ispo', 'bayern-football', 'iaa'],
   },
   {
     id: 'munich-marathon',
