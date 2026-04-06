@@ -74,6 +74,10 @@ export default function EventPage({ params }: PageProps) {
   if (!event) {
     return (
       <div className="min-h-screen bg-gray-50">
+        <Head>
+          <title>{language === 'de' ? 'Event nicht gefunden' : 'Event not found'} | flughafen-muenchen.taxi</title>
+          <meta name="robots" content="noindex" />
+        </Head>
         <SearchBar />
         <div className="container mx-auto px-4 py-12 text-center">
           <h1 className="text-3xl font-bold text-gray-800 mb-4">
