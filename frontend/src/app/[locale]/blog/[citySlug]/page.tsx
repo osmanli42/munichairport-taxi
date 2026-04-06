@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { Phone, MapPin, Clock, Users, ArrowRight } from 'lucide-react';
 import { citiesBySlug, allCitySlugs, CityData } from '@/lib/citiesData';
 import { CONTACT_INFO } from '@/lib/utils';
+
+const CITY_BASE_URL = 'https://www.flughafen-muenchen.taxi';
 
 type Props = { params: { citySlug: string; locale: string } };
 
@@ -41,8 +42,7 @@ export default function CityBlogPage({ params }: Props) {
 
   const locale = params.locale;
   const phoneHref = `tel:${CONTACT_INFO.phone}`;
-  const host = headers().get('host') ?? 'www.munichairport.taxi';
-  const baseUrl = `https://${host}`;
+  const baseUrl = CITY_BASE_URL;
 
   const schema = {
     '@context': 'https://schema.org',
