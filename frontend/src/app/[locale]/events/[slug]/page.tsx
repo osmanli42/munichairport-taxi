@@ -98,14 +98,93 @@ export default function EventPage({ params }: PageProps) {
 
   const isGerman = language === 'de';
   const title = isGerman ? event.title.de : event.title.en;
+  const seoTitle = isGerman ? event.seoTitle.de : event.seoTitle.en;
+  const seoDescription = isGerman ? event.seoDescription.de : event.seoDescription.en;
+  const seoKeywords = isGerman ? event.seoKeywords.de : event.seoKeywords.en;
   const shortDesc = isGerman ? event.shortDescription.de : event.shortDescription.en;
   const description = isGerman ? event.description.de : event.description.en;
   const locationName = isGerman ? event.location.de : event.location.en;
   const highlights = isGerman ? event.highlights.de : event.highlights.en;
   const highlightsDesc = isGerman ? event.highlights_description.de : event.highlights_description.en;
 
+  // Build canonical URL
+  const canonicalUrl = `https://flughafen-muenchen.taxi/${locale}/events/${event.slug}`;
+
+  // Generate breadcrumb schema
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: language === 'de' ? 'Startseite' : 'Home',
+        item: `https://flughafen-muenchen.taxi/${locale}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: language === 'de' ? 'Events' : 'Events',
+        item: `https://flughafen-muenchen.taxi/${locale}/events`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: title,
+        item: canonicalUrl,
+      },
+    ],
+  };
+
+  // Generate organization schema
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'flughafen-muenchen.taxi',
+    url: 'https://flughafen-muenchen.taxi',
+    logo: 'https://flughafen-muenchen.taxi/logo.png',
+    description: language === 'de'
+      ? 'Zuverlässiger Taxi-Service vom/zum Flughafen München zu Events'
+      : 'Reliable taxi service from/to Munich Airport to events',
+    contact: {
+      '@type': 'ContactPoint',
+      telephone: '+49-89-129-11',
+      contactType: language === 'de' ? 'Kundensupport' : 'Customer Support',
+    },
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <Head>
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription} />
+        <meta name="keywords" content={seoKeywords.join(', ')} />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        {/* Open Graph Tags */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={seoTitle} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image" content={event.ogImage || '📍'} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="flughafen-muenchen.taxi" />
+        <meta property="og:locale" content={locale === 'de' ? 'de_DE' : 'en_US'} />
+
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        <meta name="twitter:image" content={event.ogImage || '📍'} />
+
+        {/* Canonical Link */}
+        <link rel="canonical" href={canonicalUrl} />
+
+        {/* JSON-LD Schemas */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(event.schema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+      </Head>
+
       <SearchBar />
 
       <div className="container mx-auto px-4 py-8">
