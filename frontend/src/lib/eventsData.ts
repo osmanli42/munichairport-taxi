@@ -731,6 +731,47 @@ export const eventsData: Event[] = [
     },
     website: 'https://www.intersolar.de',
     category: 'trade',
+    // SEO Fields
+    seoTitle: {
+      de: 'Intersolar München 2024 | Solar Messe | Flughafen Taxi',
+      en: 'Intersolar Munich 2024 | Solar Fair | Airport Taxi',
+    },
+    seoDescription: {
+      de: 'Taxi zur Intersolar München - Energiewende & Solarenergie. 19-21 Juni 2024.',
+      en: 'Taxi to Intersolar Munich solar energy fair. Renewable energy, solar tech. June 19-21.',
+    },
+    seoKeywords: {
+      de: ['intersolar', 'solarenergie', 'energiewende', 'photovoltaik', 'münchen messe'],
+      en: ['intersolar', 'solar energy', 'renewable energy', 'photovoltaic', 'munich fair'],
+    },
+    ogImage: '☀️',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Intersolar - Internationale Fachmesse für Solarwirtschaft',
+      startDate: '2024-06-19',
+      endDate: '2024-06-21',
+      location: {
+        '@type': 'Place',
+        name: 'München Messe',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'Messegelände',
+          addressLocality: 'Munich',
+          postalCode: '81823',
+          addressCountry: 'DE',
+        },
+      },
+      image: '☀️',
+      description: 'Weltführende Messe für Solarenergie und Photovoltaik',
+      organizer: {
+        '@type': 'Organization',
+        name: 'flughafen-muenchen.taxi',
+        url: 'https://flughafen-muenchen.taxi',
+      },
+      url: 'https://flughafen-muenchen.taxi/de/events/intersolar',
+    },
+    relatedEvents: ['ifat', 'analytica', 'electronica'],
   },
   {
     id: 'analytica',
