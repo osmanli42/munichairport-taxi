@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { Phone, MapPin, Clock, Users, ArrowRight } from 'lucide-react';
 import { citiesBySlug, allCitySlugs, CityData } from '@/lib/citiesData';
 import { CONTACT_INFO } from '@/lib/utils';
@@ -40,6 +41,8 @@ export default function CityBlogPage({ params }: Props) {
 
   const locale = params.locale;
   const phoneHref = `tel:${CONTACT_INFO.phone}`;
+  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const baseUrl = `https://${host}`;
 
   const schema = {
     '@context': 'https://schema.org',
@@ -84,8 +87,8 @@ export default function CityBlogPage({ params }: Props) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.munichairport.taxi' },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://www.munichairport.taxi/blog/taxi-flughafen-muenchen' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: baseUrl },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${baseUrl}/blog/taxi-flughafen-muenchen` },
       { '@type': 'ListItem', position: 3, name: `Taxi ${city.nameDE} Flughafen München` },
     ],
   };
