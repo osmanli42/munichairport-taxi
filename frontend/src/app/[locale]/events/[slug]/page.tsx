@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import Head from 'next/head';
 import { eventsData, Event } from '@/lib/eventsData';
 import SearchBar from '@/components/SearchBar';
 import { useTranslation } from '@/contexts/LanguageContext';
