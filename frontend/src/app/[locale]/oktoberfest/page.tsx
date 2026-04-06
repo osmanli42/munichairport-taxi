@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Phone } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 import { useParams } from 'next/navigation';
+import SearchBar from '@/components/SearchBar';
 
 // Oktoberfest 2026: 19. September – 4. Oktober
 const OKTOBERFEST_START = new Date('2026-09-19T12:00:00');
@@ -214,7 +215,7 @@ export default function OktoberfestPage() {
           </div>
 
           {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Link
               href={`/${locale}/buchen`}
               className="bg-yellow-400 hover:bg-yellow-300 text-blue-900 font-black py-4 px-8 rounded-xl text-lg transition-colors"
@@ -228,6 +229,11 @@ export default function OktoberfestPage() {
               <Phone className="inline w-5 h-5 mr-2 -mt-0.5" />
               {ui.callBtn}
             </a>
+          </div>
+
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto w-full">
+            <SearchBar />
           </div>
         </div>
       </section>
