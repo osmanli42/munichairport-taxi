@@ -128,52 +128,93 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-20" style={{ background: 'linear-gradient(160deg, #0f1b2d 0%, #162440 60%, #1a2d47 100%)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-primary-600">So einfach funktioniert's</h2>
-            <p className="text-gray-600 mt-2">In 3 Schritten zum stressfreien Flughafentransfer</p>
+          {/* Header */}
+          <div className="text-center mb-16">
+            <div className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1 rounded-full mb-4"
+              style={{ background: 'rgba(201,168,76,.12)', border: '1px solid rgba(201,168,76,.3)', color: '#c9a84c' }}>
+              So einfach geht&apos;s
+            </div>
+            <h2 className="text-4xl font-extrabold text-white tracking-tight mb-3">
+              In 3 Schritten zum Transfer
+            </h2>
+            <p style={{ color: '#7a9ab8' }} className="text-base max-w-xl mx-auto">
+              Schnell, einfach und transparent – Ihr Festpreis steht in unter einer Minute fest.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connector line (desktop only) */}
-            <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-0.5 bg-primary-200 z-0" />
+          {/* Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            {/* Connector line desktop */}
+            <div className="hidden md:block absolute top-14 left-[calc(33%-1px)] right-[calc(33%-1px)] h-px z-0"
+              style={{ background: 'linear-gradient(to right, transparent, rgba(201,168,76,.4), transparent)' }} />
 
             {[
               {
-                step: '1',
+                step: '01',
                 icon: '📍',
                 title: 'Adresse eingeben',
-                text: 'Geben Sie Abholadresse, Ziel, Datum und Uhrzeit ein – dauert nur 60 Sekunden.',
+                text: 'Abholadresse, Ziel, Datum und Uhrzeit eingeben – dauert nur 60 Sekunden.',
               },
               {
-                step: '2',
+                step: '02',
                 icon: '🚗',
                 title: 'Fahrzeug & Preis wählen',
-                text: 'Wählen Sie Ihr Fahrzeug. Ihr Festpreis wird sofort angezeigt – ohne Taxameter.',
+                text: 'Fahrzeug auswählen. Ihr Festpreis wird sofort angezeigt – kein Taxameter.',
+                featured: true,
               },
               {
-                step: '3',
+                step: '03',
                 icon: '✈️',
                 title: 'Entspannt ankommen',
-                text: 'Unser Fahrer ist pünktlich vor Ort. Bei Flugverspätungen warten wir 60 Minuten kostenlos.',
+                text: 'Pünktliche Abholung, kostenlose Wartezeit bei Flugverspätung bis 60 Min.',
               },
-            ].map(({ step, icon, title, text }) => (
-              <div key={step} className="relative z-10 flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-shadow">
-                <div className="w-16 h-16 bg-primary-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-lg">
+            ].map(({ step, icon, title, text, featured }) => (
+              <div
+                key={step}
+                className="relative z-10 flex flex-col items-center text-center rounded-2xl p-8 transition-all duration-300"
+                style={{
+                  background: featured ? 'linear-gradient(160deg, #1e2f47, #162440)' : '#111e30',
+                  border: featured ? '1px solid rgba(201,168,76,.5)' : '1px solid rgba(255,255,255,.07)',
+                  boxShadow: featured ? '0 8px 40px rgba(201,168,76,.12)' : 'none',
+                }}
+              >
+                {/* Step number */}
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-extrabold mb-5 tracking-tight"
+                  style={{
+                    background: featured ? '#c9a84c' : 'rgba(201,168,76,.1)',
+                    border: featured ? 'none' : '1px solid rgba(201,168,76,.3)',
+                    color: featured ? '#0f1b2d' : '#c9a84c',
+                    boxShadow: featured ? '0 4px 20px rgba(201,168,76,.35)' : 'none',
+                  }}
+                >
                   {step}
                 </div>
-                <div className="text-4xl mb-3">{icon}</div>
-                <h3 className="font-bold text-lg text-primary-600 mb-2">{title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{text}</p>
+                {/* Icon */}
+                <div className="text-4xl mb-4">{icon}</div>
+                {/* Title */}
+                <h3 className="font-bold text-lg mb-2" style={{ color: featured ? '#c9a84c' : '#ffffff' }}>
+                  {title}
+                </h3>
+                {/* Text */}
+                <p className="text-sm leading-relaxed" style={{ color: '#6a8aab' }}>
+                  {text}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="text-center mt-10">
+          <div className="text-center mt-12">
             <a
               href="#booking"
-              className="bg-gold-400 hover:bg-gold-500 text-primary-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors inline-block shadow-md"
+              className="inline-flex items-center gap-2 font-bold text-base px-8 py-4 rounded-xl transition-all hover:-translate-y-0.5"
+              style={{
+                background: '#c9a84c',
+                color: '#0f1b2d',
+                boxShadow: '0 4px 24px rgba(201,168,76,.35)',
+              }}
             >
               Jetzt kostenlos Preis berechnen →
             </a>
