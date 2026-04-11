@@ -29,7 +29,7 @@ export default function AGBPage() {
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 3 Preise und Zahlung</h2>
               <ul className="list-disc pl-5 space-y-2">
                 <li>Alle angegebenen Preise sind Festpreise inklusive aller Gebühren und Steuern.</li>
-                <li>Die Zahlung erfolgt am Ende der Fahrt (bar oder per Karte).</li>
+                <li>Die Zahlung per Kreditkarte erfolgt vor Fahrtantritt. Barzahlung ist am Ende der Fahrt möglich.</li>
                 <li>Online-Vorauszahlung wird nicht angeboten.</li>
                 <li>Kindersitze werden kostenlos bereitgestellt.</li>
               </ul>
