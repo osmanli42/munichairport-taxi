@@ -25,7 +25,7 @@ export default function HomePage() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-visible">
         {/* Background taxi image — right side fading in */}
         <div
           className="absolute inset-0 pointer-events-none"
