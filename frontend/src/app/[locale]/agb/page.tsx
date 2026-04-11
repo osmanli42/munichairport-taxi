@@ -40,7 +40,7 @@ export default function AGBPage() {
               <ul className="list-disc pl-5 space-y-2">
                 <li>Munich Airport Taxi erscheint pünktlich zur vereinbarten Zeit am vereinbarten Abholort.</li>
                 <li>Bei Abholungen am Flughafen wird der Flug überwacht. Der Fahrer wartet bis zu 60 Minuten nach der tatsächlichen Landezeit.</li>
-                <li>Für weitere Wartezeiten kann eine Wartegebühr von €10/30 Minuten berechnet werden.</li>
+                <li>Für weitere Wartezeiten wird eine Wartegebühr von 45 € pro angefangene Stunde berechnet.</li>
               </ul>
             </section>
 
