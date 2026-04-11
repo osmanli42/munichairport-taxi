@@ -47,9 +47,8 @@ export default function AGBPage() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 5 Stornierung</h2>
               <ul className="list-disc pl-5 space-y-2">
-                <li>Stornierungen sind kostenlos möglich bis 24 Stunden vor der Fahrt.</li>
-                <li>Bei Stornierung zwischen 12 und 24 Stunden vor der Fahrt: 50% des Fahrpreises.</li>
-                <li>Bei Stornierung weniger als 12 Stunden vor der Fahrt: 100% des Fahrpreises.</li>
+                <li>Stornierungen sind kostenlos möglich bis 3 Stunden vor der Fahrt.</li>
+                <li>Bei Stornierung weniger als 3 Stunden vor der Fahrt: 100% des Fahrpreises.</li>
                 <li>Stornierungen müssen telefonisch oder per E-Mail an {CONTACT_INFO.email} mitgeteilt werden.</li>
               </ul>
             </section>
