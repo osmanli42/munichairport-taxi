@@ -25,13 +25,24 @@ export default function HomePage() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-visible">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10 overflow-hidden">
-          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white" />
-          <div className="absolute bottom-10 right-10 w-60 h-60 rounded-full bg-gold-400" />
-          <div className="absolute top-1/2 left-1/3 w-20 h-20 rounded-full bg-white" />
-        </div>
+      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-hidden">
+        {/* Background taxi image — right side fading in */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "url('/images/hero-taxis.PNG')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center right',
+            opacity: 0.18,
+          }}
+        />
+        {/* Dark overlay gradient — keeps left side readable */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to right, rgba(26,54,93,0.92) 0%, rgba(26,54,93,0.75) 50%, rgba(26,54,93,0.35) 100%)',
+          }}
+        />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
           {/* Hero text - centered top */}
