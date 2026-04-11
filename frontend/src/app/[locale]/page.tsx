@@ -176,7 +176,7 @@ export default function HomePage() {
                 {/* Big number + icon side */}
                 <div className="flex-shrink-0 flex flex-col items-center justify-center rounded-2xl w-full md:w-72"
                   style={{
-                    background: 'linear-gradient(135deg, #0f1b2d 0%, #1a2d47 100%)',
+                    background: 'linear-gradient(135deg, #1e3a5f 0%, #2a5080 100%)',
                     minHeight: '200px',
                     padding: '36px 32px',
                     position: 'relative',
