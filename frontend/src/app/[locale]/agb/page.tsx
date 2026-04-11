@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'AGB - Munich Airport Taxi',
+  title: 'AGB - Flughafen-München.TAXI',
   robots: { index: false },
 };
 
@@ -12,17 +12,17 @@ export default function AGBPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-2xl shadow-sm p-8 lg:p-12">
           <h1 className="text-3xl font-bold text-primary-600 mb-2">Allgemeine Geschäftsbedingungen (AGB)</h1>
-          <p className="text-sm text-gray-500 mb-8">Munich Airport Taxi | Stand: März 2025</p>
+          <p className="text-sm text-gray-500 mb-8">Flughafen-München.TAXI | Stand: März 2025</p>
 
           <div className="space-y-8 text-gray-700">
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 1 Geltungsbereich</h2>
-              <p>Diese Allgemeinen Geschäftsbedingungen gelten für alle Beförderungsverträge, die zwischen Munich Airport Taxi ({CONTACT_INFO.owners}, Eisvogelweg 2, 85356 Freising) und dem Kunden geschlossen werden.</p>
+              <p>Diese Allgemeinen Geschäftsbedingungen gelten für alle Beförderungsverträge, die zwischen Flughafen-München.TAXI ({CONTACT_INFO.owners}, Eisvogelweg 2, 85356 Freising) und dem Kunden geschlossen werden.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 2 Vertragsschluss</h2>
-              <p>Eine Buchung kommt durch die Bestätigung seitens Munich Airport Taxi zustande. Die Buchungsanfrage des Kunden (online, telefonisch oder per WhatsApp) stellt ein Angebot zum Vertragsschluss dar. Munich Airport Taxi kann dieses Angebot annehmen oder ablehnen.</p>
+              <p>Eine Buchung kommt durch die Bestätigung seitens Flughafen-München.TAXI zustande. Die Buchungsanfrage des Kunden (online, telefonisch oder per WhatsApp) stellt ein Angebot zum Vertragsschluss dar. Flughafen-München.TAXI kann dieses Angebot annehmen oder ablehnen.</p>
             </section>
 
             <section>
@@ -38,7 +38,7 @@ export default function AGBPage() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 4 Pünktlichkeit und Wartezeit</h2>
               <ul className="list-disc pl-5 space-y-2">
-                <li>Munich Airport Taxi erscheint pünktlich zur vereinbarten Zeit am vereinbarten Abholort.</li>
+                <li>Flughafen-München.TAXI erscheint pünktlich zur vereinbarten Zeit am vereinbarten Abholort.</li>
                 <li>Bei Abholungen am Flughafen wird der Flug überwacht. Der Fahrer wartet bis zu 60 Minuten nach der tatsächlichen Landezeit.</li>
                 <li>Für weitere Wartezeiten wird eine Wartegebühr von 45 € pro angefangene Stunde berechnet.</li>
               </ul>
@@ -55,7 +55,7 @@ export default function AGBPage() {
 
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 6 Haftung</h2>
-              <p className="mb-2">Munich Airport Taxi haftet für Schäden, die durch Vorsatz oder grobe Fahrlässigkeit entstanden sind. Die Haftung für leichte Fahrlässigkeit ist auf vorhersehbare, vertragstypische Schäden beschränkt.</p>
+              <p className="mb-2">Flughafen-München.TAXI haftet für Schäden, die durch Vorsatz oder grobe Fahrlässigkeit entstanden sind. Die Haftung für leichte Fahrlässigkeit ist auf vorhersehbare, vertragstypische Schäden beschränkt.</p>
               <p>Der Fahrgast haftet für Schäden am Fahrzeug, die durch sein Verschulden entstanden sind.</p>
             </section>
 
@@ -77,7 +77,7 @@ export default function AGBPage() {
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-3">§ 10 Kontakt</h2>
               <div className="space-y-1">
-                <p>Munich Airport Taxi</p>
+                <p>Flughafen-München.TAXI</p>
                 <p>{CONTACT_INFO.owners}</p>
                 <p>Eisvogelweg 2, 85356 Freising</p>
                 <p>Telefon: <a href={CONTACT_INFO.phoneHref} className="text-primary-600 hover:underline">{CONTACT_INFO.phone}</a></p>
