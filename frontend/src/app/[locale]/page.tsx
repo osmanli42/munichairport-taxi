@@ -128,18 +128,18 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-20" style={{ background: 'linear-gradient(160deg, #0f1b2d 0%, #162440 60%, #1a2d47 100%)' }}>
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-16">
-            <div className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1 rounded-full mb-4"
-              style={{ background: 'rgba(201,168,76,.12)', border: '1px solid rgba(201,168,76,.3)', color: '#c9a84c' }}>
+          <div className="text-center mb-14">
+            <div className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
+              style={{ background: '#fdf8ec', border: '1px solid #f0d890', color: '#a07820' }}>
               So einfach geht&apos;s
             </div>
-            <h2 className="text-4xl font-extrabold text-white tracking-tight mb-3">
+            <h2 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: '#0f1b2d' }}>
               In 3 Schritten zum Transfer
             </h2>
-            <p style={{ color: '#7a9ab8' }} className="text-base max-w-xl mx-auto">
+            <p className="text-base max-w-xl mx-auto" style={{ color: '#6b7c93' }}>
               Schnell, einfach und transparent – Ihr Festpreis steht in unter einer Minute fest.
             </p>
           </div>
@@ -148,7 +148,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             {/* Connector line desktop */}
             <div className="hidden md:block absolute top-14 left-[calc(33%-1px)] right-[calc(33%-1px)] h-px z-0"
-              style={{ background: 'linear-gradient(to right, transparent, rgba(201,168,76,.4), transparent)' }} />
+              style={{ background: 'linear-gradient(to right, #f0d890, #c9a84c, #f0d890)' }} />
 
             {[
               {
@@ -156,6 +156,7 @@ export default function HomePage() {
                 icon: '📍',
                 title: 'Adresse eingeben',
                 text: 'Abholadresse, Ziel, Datum und Uhrzeit eingeben – dauert nur 60 Sekunden.',
+                featured: false,
               },
               {
                 step: '02',
@@ -169,25 +170,28 @@ export default function HomePage() {
                 icon: '✈️',
                 title: 'Entspannt ankommen',
                 text: 'Pünktliche Abholung, kostenlose Wartezeit bei Flugverspätung bis 60 Min.',
+                featured: false,
               },
             ].map(({ step, icon, title, text, featured }) => (
               <div
                 key={step}
-                className="relative z-10 flex flex-col items-center text-center rounded-2xl p-8 transition-all duration-300"
+                className="relative z-10 flex flex-col items-center text-center rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
                 style={{
-                  background: featured ? 'linear-gradient(160deg, #1e2f47, #162440)' : '#111e30',
-                  border: featured ? '1px solid rgba(201,168,76,.5)' : '1px solid rgba(255,255,255,.07)',
-                  boxShadow: featured ? '0 8px 40px rgba(201,168,76,.12)' : 'none',
+                  background: featured ? 'linear-gradient(160deg, #0f1b2d, #162440)' : '#fff',
+                  border: featured ? '1px solid rgba(201,168,76,.5)' : '1px solid #e5edf5',
+                  boxShadow: featured
+                    ? '0 12px 48px rgba(201,168,76,.18)'
+                    : '0 2px 16px rgba(15,27,45,.06)',
                 }}
               >
                 {/* Step number */}
                 <div
                   className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-extrabold mb-5 tracking-tight"
                   style={{
-                    background: featured ? '#c9a84c' : 'rgba(201,168,76,.1)',
-                    border: featured ? 'none' : '1px solid rgba(201,168,76,.3)',
-                    color: featured ? '#0f1b2d' : '#c9a84c',
-                    boxShadow: featured ? '0 4px 20px rgba(201,168,76,.35)' : 'none',
+                    background: featured ? '#c9a84c' : '#fdf8ec',
+                    border: featured ? 'none' : '1px solid #f0d890',
+                    color: featured ? '#0f1b2d' : '#a07820',
+                    boxShadow: featured ? '0 4px 20px rgba(201,168,76,.4)' : 'none',
                   }}
                 >
                   {step}
@@ -195,11 +199,13 @@ export default function HomePage() {
                 {/* Icon */}
                 <div className="text-4xl mb-4">{icon}</div>
                 {/* Title */}
-                <h3 className="font-bold text-lg mb-2" style={{ color: featured ? '#c9a84c' : '#ffffff' }}>
+                <h3 className="font-bold text-lg mb-2"
+                  style={{ color: featured ? '#c9a84c' : '#0f1b2d' }}>
                   {title}
                 </h3>
                 {/* Text */}
-                <p className="text-sm leading-relaxed" style={{ color: '#6a8aab' }}>
+                <p className="text-sm leading-relaxed"
+                  style={{ color: featured ? '#7a9ab8' : '#6b7c93' }}>
                   {text}
                 </p>
               </div>
@@ -213,7 +219,7 @@ export default function HomePage() {
               style={{
                 background: '#c9a84c',
                 color: '#0f1b2d',
-                boxShadow: '0 4px 24px rgba(201,168,76,.35)',
+                boxShadow: '0 4px 24px rgba(201,168,76,.3)',
               }}
             >
               Jetzt kostenlos Preis berechnen →
