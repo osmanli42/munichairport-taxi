@@ -108,20 +108,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trust Indicators */}
-      <section className="bg-white py-10 border-b border-gray-100">
+      {/* Stats Strip */}
+      <section className="bg-primary-900 border-b border-primary-800 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
-              { value: '20+', label: 'Jahre Erfahrung', icon: '🏆' },
-              { value: '100.000+', label: 'Zufriedene Kunden', icon: '👥' },
-              { value: '100%', label: 'Festpreise', icon: '💰' },
-              { value: '24/7', label: 'Verfügbar', icon: '📱' },
+              { value: '20+', label: 'JAHRE ERFAHRUNG' },
+              { value: '4,9 ★', label: 'Ø BEWERTUNG' },
+              { value: '100%', label: 'FESTPREISE' },
+              { value: '24/7', label: 'VERFÜGBAR' },
             ].map((stat) => (
               <div key={stat.label} className="flex flex-col items-center">
-                <div className="text-2xl mb-1">{stat.icon}</div>
-                <div className="text-3xl font-bold text-primary-600">{stat.value}</div>
-                <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
+                <div className="text-4xl font-extrabold text-gold-400 leading-tight tracking-tight">{stat.value}</div>
+                <div className="text-xs font-bold text-primary-300 mt-1 tracking-widest uppercase">{stat.label}</div>
               </div>
             ))}
           </div>
