@@ -139,12 +139,12 @@ function AddressField({
         {(loading || validating) && <Loader2 size={14} className="animate-spin text-gray-400 shrink-0" />}
       </div>
       {fieldError && (
-        <div className="absolute left-0 top-full mt-1 flex items-center gap-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded-lg px-3 py-1.5 shadow-sm z-[70] whitespace-nowrap">
+        <div className="absolute left-0 top-full mt-1 flex items-center gap-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded-lg px-3 py-1.5 shadow-sm z-[9999] whitespace-nowrap">
           <AlertCircle size={10} /> {fieldError}
         </div>
       )}
       {open && showAirport && (
-        <ul className="absolute z-[70] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 overflow-hidden">
+        <ul className="absolute z-[9999] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 overflow-hidden">
           <li className="px-4 py-2.5 text-xs font-bold text-primary-600 bg-primary-50 border-b border-gray-100">
             ✈️ Flughafen München — Terminal wählen
           </li>
@@ -157,7 +157,7 @@ function AddressField({
         </ul>
       )}
       {open && !showAirport && predictions.length > 0 && (
-        <ul className="absolute z-[70] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
+        <ul className="absolute z-[9999] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
           {predictions.map(p => (
             <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className="px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors">
               <MapPin size={12} className="text-gray-400 shrink-0" />
