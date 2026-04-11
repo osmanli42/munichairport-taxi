@@ -30,7 +30,7 @@ export default function AGBPage() {
               <ul className="list-disc pl-5 space-y-2">
                 <li>Alle angegebenen Preise sind Festpreise inklusive aller Gebühren und Steuern.</li>
                 <li>Die Zahlung per Kreditkarte erfolgt vor Fahrtantritt. Barzahlung ist am Ende der Fahrt möglich.</li>
-                <li>Online-Vorauszahlung wird nicht angeboten.</li>
+                <li>Online-Vorauszahlung ist auf Wunsch des Kunden möglich.</li>
                 <li>Kindersitze werden kostenlos bereitgestellt.</li>
               </ul>
             </section>
