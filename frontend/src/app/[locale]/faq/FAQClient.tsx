@@ -1,32 +1,84 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Phone, MessageCircle } from 'lucide-react';
+import { Phone, MessageCircle } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { CONTACT_INFO } from '@/lib/utils';
-import { cn } from '@/lib/utils';
 import { faqData } from './faqData';
 
 function FAQAccordion({ items }: { items: { question: string; answer: string }[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {items.map((item, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div
+          key={i}
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: '#fff',
+            border: openIndex === i ? '1px solid #c9a84c' : '1px solid #e5edf5',
+            boxShadow: openIndex === i
+              ? '0 4px 20px rgba(201,168,76,.12)'
+              : '0 2px 12px rgba(15,27,45,.04)',
+            transition: 'all .2s',
+          }}
+        >
           <button
-            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-6 py-4 text-left"
             onClick={() => setOpenIndex(openIndex === i ? null : i)}
           >
-            <span className="font-medium text-gray-800 pr-4 text-sm md:text-base">{item.question}</span>
-            {openIndex === i
-              ? <ChevronUp size={18} className="shrink-0 text-primary-600" />
-              : <ChevronDown size={18} className="shrink-0 text-gray-400" />
-            }
+            <div className="flex items-center gap-3 pr-4">
+              <span
+                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{
+                  background: openIndex === i
+                    ? 'linear-gradient(135deg, #0f1b2d, #1e3a5f)'
+                    : '#f4f7fb',
+                  color: openIndex === i ? '#c9a84c' : '#6b7c93',
+                  transition: 'all .2s',
+                }}
+              >
+                {i + 1}
+              </span>
+              <span
+                className="font-semibold text-sm md:text-base"
+                style={{ color: openIndex === i ? '#0f1b2d' : '#2a3f5f' }}
+              >
+                {item.question}
+              </span>
+            </div>
+            <span
+              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: openIndex === i ? '#fdf8ec' : '#f4f7fb',
+                border: openIndex === i ? '1px solid #f0d890' : '1px solid #e5edf5',
+                transform: openIndex === i ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'all .25s',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke={openIndex === i ? '#c9a84c' : '#8a9bb0'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
           </button>
+
           {openIndex === i && (
-            <div className="px-5 pb-5 pt-1 text-sm text-gray-600 leading-relaxed border-t border-gray-50">
-              {item.answer}
+            <div
+              className="px-6 pb-5 pt-0 text-sm leading-relaxed"
+              style={{
+                borderTop: '1px solid #f0f4f8',
+                color: '#4a6280',
+                paddingTop: '1rem',
+              }}
+            >
+              <div className="flex gap-3">
+                <span
+                  className="flex-shrink-0 mt-0.5 w-1 rounded-full"
+                  style={{ background: '#c9a84c', minHeight: '100%' }}
+                />
+                <p>{item.answer}</p>
+              </div>
             </div>
           )}
         </div>
@@ -40,69 +92,161 @@ export default function FAQClient() {
   const data = faqData[locale] || faqData.de;
   const [activeCategory, setActiveCategory] = useState(0);
 
+  const categoryIcons = ['🚗', '✈️', '🚐', '📍'];
+
   return (
-    <>
+    <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
+
       {/* Hero */}
-      <section className="bg-primary-600 text-white py-14">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">{data.title}</h1>
-          <p className="text-primary-200 text-lg">{data.subtitle}</p>
+      <section
+        className="py-16 text-white text-center"
+        style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)' }}
+      >
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
+            style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
+          >
+            Support
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4" style={{ color: '#fff' }}>
+            {data.title}
+          </h1>
+          <p className="text-lg" style={{ color: '#7a9ab8' }}>{data.subtitle}</p>
+
+          {/* Quick stats */}
+          <div className="mt-10 flex flex-wrap justify-center gap-6">
+            {[
+              { v: '24/7', l: 'Erreichbar' },
+              { v: '60 Min', l: 'Wartezeit Flughafen' },
+              { v: '3 Std', l: 'Kostenlos stornieren' },
+              { v: '100%', l: 'Festpreise' },
+            ].map(s => (
+              <div key={s.l} className="text-center">
+                <div className="text-2xl font-extrabold" style={{ color: '#c9a84c' }}>{s.v}</div>
+                <div className="text-xs font-medium mt-0.5" style={{ color: '#5a7a99' }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="py-12 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Main */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-          {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {data.categories.map((cat, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveCategory(i)}
-                className={cn(
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all',
-                  activeCategory === i
-                    ? 'bg-primary-600 text-white shadow-md'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-primary-300 hover:text-primary-600'
-                )}
-              >
-                {cat.label}
-              </button>
-            ))}
+        {/* Category tabs */}
+        <div className="flex flex-wrap gap-2 mb-8 justify-center">
+          {data.categories.map((cat, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveCategory(i)}
+              className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
+              style={
+                activeCategory === i
+                  ? {
+                      background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)',
+                      color: '#c9a84c',
+                      border: '1px solid transparent',
+                      boxShadow: '0 4px 16px rgba(15,27,45,.25)',
+                    }
+                  : {
+                      background: '#fff',
+                      color: '#3a5070',
+                      border: '1px solid #e5edf5',
+                    }
+              }
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Active category header card */}
+        <div
+          className="rounded-2xl overflow-hidden mb-6"
+          style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+        >
+          <div
+            className="flex items-center gap-4 px-7 py-5"
+            style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
+          >
+            <div
+              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+              style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
+            >
+              {categoryIcons[activeCategory]}
+            </div>
+            <div>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
+                Kategorie {activeCategory + 1} / {data.categories.length}
+              </span>
+              <h2 className="text-lg font-bold text-white leading-tight">
+                {data.categories[activeCategory].label.replace(/^[^\s]+\s/, '')}
+              </h2>
+            </div>
+            <span
+              className="ml-auto text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: 'rgba(201,168,76,.15)', color: '#c9a84c', border: '1px solid rgba(201,168,76,.3)' }}
+            >
+              {data.categories[activeCategory].items.length} Fragen
+            </span>
           </div>
+        </div>
 
-          {/* FAQ Items */}
-          <div className="mb-12">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">{data.categories[activeCategory].label}</h2>
-            <FAQAccordion items={data.categories[activeCategory].items} />
-          </div>
+        {/* FAQ accordion */}
+        <div className="mb-10">
+          <FAQAccordion items={data.categories[activeCategory].items} />
+        </div>
 
-          {/* CTA Box */}
-          <div className="bg-primary-600 rounded-2xl p-8 text-center text-white">
-            <h3 className="text-2xl font-bold mb-2">{data.cta_title}</h3>
-            <p className="text-primary-200 mb-6">{data.cta_text}</p>
+        {/* CTA card */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)',
+            border: '1px solid rgba(201,168,76,.3)',
+          }}
+        >
+          <div className="px-8 py-8 text-center">
+            <div
+              className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
+              style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
+            >
+              Kontakt
+            </div>
+            <h3 className="text-2xl font-extrabold text-white mb-2">{data.cta_title}</h3>
+            <p className="mb-7" style={{ color: '#7a9ab8' }}>{data.cta_text}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href={CONTACT_INFO.phoneHref}
-                className="flex items-center justify-center gap-2 bg-gold-400 hover:bg-gold-500 text-primary-600 font-bold px-6 py-3 rounded-xl transition-colors"
+                className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #c9a84c, #d4af6a)',
+                  color: '#0f1b2d',
+                  boxShadow: '0 4px 16px rgba(201,168,76,.3)',
+                }}
               >
-                <Phone size={18} />
+                <Phone size={17} />
                 {data.cta_call}
               </a>
               <a
                 href={CONTACT_INFO.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+                className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
+                style={{
+                  background: '#25d366',
+                  color: '#fff',
+                  boxShadow: '0 4px 16px rgba(37,211,102,.25)',
+                }}
               >
-                <MessageCircle size={18} />
+                <MessageCircle size={17} />
                 {data.cta_whatsapp}
               </a>
             </div>
           </div>
         </div>
-      </section>
-    </>
+
+      </div>
+    </div>
   );
 }
