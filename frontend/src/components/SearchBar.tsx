@@ -275,7 +275,7 @@ function DateTimeField({
       {/* Popup */}
       {open && (
         <div
-          className="absolute z-[80] top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200" style={{ width: '340px' }}
+          className="absolute z-[9999] top-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-200" style={{ width: '340px' }}
           onMouseDown={e => e.stopPropagation()}
         >
           {pickerStep === 'date' ? (
