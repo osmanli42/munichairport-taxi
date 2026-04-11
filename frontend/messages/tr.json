@@ -64,19 +64,31 @@
       "name": "Kombi",
       "persons": "1–3 Kişi",
       "description": "Küçük gruplar ve tekil yolcular için ideal. Geniş bagaj alanıyla konforlu araç.",
-      "features": ["Klima", "Su şişesi dahil", "3 valiz'e kadar"]
+      "features": [
+        "Klima",
+        "Su şişesi dahil",
+        "3 valiz'e kadar"
+      ]
     },
     "van": {
       "name": "Van / Minibüs",
       "persons": "4–7 Kişi",
       "description": "Aileler ve orta büyüklükteki gruplar için mükemmel. Yolcu ve bagaj için bol alan.",
-      "features": ["Klima", "Geniş bagaj", "7 valiz'e kadar"]
+      "features": [
+        "Klima",
+        "Geniş bagaj",
+        "7 valiz'e kadar"
+      ]
     },
     "grossraumtaxi": {
       "name": "Büyük Taksi",
       "persons": "8+ Kişi",
       "description": "Büyük gruplar ve kurumsal transferler için. Maksimum konfor ve alan.",
-      "features": ["Klima", "XXL bagaj", "12 valiz'e kadar"]
+      "features": [
+        "Klima",
+        "XXL bagaj",
+        "12 valiz'e kadar"
+      ]
     },
     "base_price": "Başlangıç ücreti",
     "per_km": "km başına",
@@ -86,10 +98,10 @@
     "fixed_price_info": "Tüm fiyatlar sabittir. Gizli ücret yoktur."
   },
   "about": {
-    "title": "Munich Airport Taxi Hakkında",
-    "subtitle": "Havalimanı transferlerinde güvenilir ortağınız – Bavyera, Avusturya & daha fazlası",
-    "description": "Munich Airport Taxi, yolculara Münih Havalimanı'na ve havalimanından güvenilir, dakik ve konforlu transfer hizmeti sunmak için kuruldu. Tüm Bavyera'ya, Avusturya'ya ve tüm komşu ülke ve bölgelere gidiş-dönüş seferler düzenliyoruz. Müşterilerimize adil sabit fiyatlı profesyonel hizmet sunmaktan gurur duyuyoruz.",
-    "why_us": "Neden Munich Airport Taxi?",
+    "title": "Flughafen-München.TAXI Hakkında",
+    "subtitle": "Profesyonel havalimanı transferlerinde güvenilir ortağınız – Bavyera, Avusturya ve daha fazlası",
+    "description": "Flughafen-München.TAXI, yolculara Münih Havalimanina ve havalimaninden güvenilir, dakik ve konforlu transfer hizmeti sunmak amaci ile kurulmustur. Tüm Bavyera, Avusturya ve tüm komsu ülke ve bölgelere hizmet veriyoruz.",
+    "why_us": "Neden Flughafen-München.TAXI?",
     "reasons": {
       "experience": {
         "title": "Deneyim",

@@ -64,19 +64,31 @@
       "name": "Kombi",
       "persons": "1–3 Persons",
       "description": "Ideal for small groups and solo travelers. Comfortable vehicle with ample trunk space.",
-      "features": ["Air conditioning", "Water bottle included", "Up to 3 suitcases"]
+      "features": [
+        "Air conditioning",
+        "Water bottle included",
+        "Up to 3 suitcases"
+      ]
     },
     "van": {
       "name": "Van / Minibus",
       "persons": "4–7 Persons",
       "description": "Perfect for families and medium-sized groups. Plenty of space for passengers and luggage.",
-      "features": ["Air conditioning", "Large trunk", "Up to 7 suitcases"]
+      "features": [
+        "Air conditioning",
+        "Large trunk",
+        "Up to 7 suitcases"
+      ]
     },
     "grossraumtaxi": {
       "name": "Large Taxi",
       "persons": "8+ Persons",
       "description": "For large groups and corporate transfers. Maximum comfort and space.",
-      "features": ["Air conditioning", "XXL trunk", "Up to 12 suitcases"]
+      "features": [
+        "Air conditioning",
+        "XXL trunk",
+        "Up to 12 suitcases"
+      ]
     },
     "base_price": "Base price",
     "per_km": "per km",
@@ -86,10 +98,10 @@
     "fixed_price_info": "All prices are fixed. No hidden costs."
   },
   "about": {
-    "title": "About Munich Airport Taxi",
-    "subtitle": "Your trusted partner for airport transfers – Bavaria, Austria & beyond",
-    "description": "Munich Airport Taxi was founded to provide travelers with a reliable, punctual, and comfortable transfer service to and from Munich Airport. We travel throughout Bavaria, Austria, and all neighboring countries and regions – both one-way and as round trips. We are proud to offer our customers professional service at a fair fixed price.",
-    "why_us": "Why Munich Airport Taxi?",
+    "title": "About Flughafen-München.TAXI",
+    "subtitle": "Your reliable partner for professional airport transfers – Bavaria, Austria & more",
+    "description": "Flughafen-München.TAXI was founded to provide travellers with a reliable, punctual and comfortable transfer service to and from Munich Airport. We serve all of Bavaria, Austria and all neighbouring countries and regions. With over 20 years of experience and fixed prices with no hidden costs, we are your partner for stress-free travel.",
+    "why_us": "Why Flughafen-München.TAXI?",
     "reasons": {
       "experience": {
         "title": "Experience",
