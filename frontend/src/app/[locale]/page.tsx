@@ -128,90 +128,108 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20" style={{ background: '#f4f7fb' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
           {/* Header */}
-          <div className="text-center mb-14">
-            <div className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
-              style={{ background: '#fdf8ec', border: '1px solid #f0d890', color: '#a07820' }}>
+          <div className="text-center mb-16">
+            <p className="text-xs font-bold tracking-[.18em] uppercase mb-3" style={{ color: '#c9a84c' }}>
               So einfach geht&apos;s
-            </div>
-            <h2 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: '#0f1b2d' }}>
+            </p>
+            <h2 className="text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
               In 3 Schritten zum Transfer
             </h2>
-            <p className="text-base max-w-xl mx-auto" style={{ color: '#6b7c93' }}>
-              Schnell, einfach und transparent – Ihr Festpreis steht in unter einer Minute fest.
-            </p>
           </div>
 
-          {/* Steps */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            {/* Connector line desktop */}
-            <div className="hidden md:block absolute top-14 left-[calc(33%-1px)] right-[calc(33%-1px)] h-px z-0"
-              style={{ background: 'linear-gradient(to right, #f0d890, #c9a84c, #f0d890)' }} />
-
+          {/* Steps — alternating left/right rows */}
+          <div className="flex flex-col gap-6">
             {[
               {
-                step: '01',
+                step: 1,
                 icon: '📍',
-                title: 'Adresse eingeben',
-                text: 'Abholadresse, Ziel, Datum und Uhrzeit eingeben – dauert nur 60 Sekunden.',
-                featured: false,
+                title: 'Adresse & Zeit eingeben',
+                text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter einer Minute.',
+                extra: ['✓ Google Maps Integration', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'],
+                reverse: false,
               },
               {
-                step: '02',
+                step: 2,
                 icon: '🚗',
                 title: 'Fahrzeug & Preis wählen',
-                text: 'Fahrzeug auswählen. Ihr Festpreis wird sofort angezeigt – kein Taxameter.',
-                featured: true,
+                text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Kein Taxameter, kein Stauaufpreis – Ihr Preis bleibt fest.',
+                extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'],
+                reverse: true,
               },
               {
-                step: '03',
+                step: 3,
                 icon: '✈️',
                 title: 'Entspannt ankommen',
-                text: 'Pünktliche Abholung, kostenlose Wartezeit bei Flugverspätung bis 60 Min.',
-                featured: false,
+                text: 'Ihr Fahrer wartet pünktlich am Ausgang – mit Namensschild. Bei Flugverspätung warten wir 60 Minuten kostenlos.',
+                extra: ['✓ Meet & Greet Service', '✓ 60 Min. Wartezeit gratis', '✓ Gepäckhilfe inklusive'],
+                reverse: false,
               },
-            ].map(({ step, icon, title, text, featured }) => (
+            ].map(({ step, icon, title, text, extra, reverse }) => (
               <div
                 key={step}
-                className="relative z-10 flex flex-col items-center text-center rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1"
-                style={{
-                  background: featured ? 'linear-gradient(160deg, #0f1b2d, #162440)' : '#fff',
-                  border: featured ? '1px solid rgba(201,168,76,.5)' : '1px solid #e5edf5',
-                  boxShadow: featured
-                    ? '0 12px 48px rgba(201,168,76,.18)'
-                    : '0 2px 16px rgba(15,27,45,.06)',
-                }}
+                className={`flex flex-col md:flex-row items-center gap-8 ${reverse ? 'md:flex-row-reverse' : ''}`}
               >
-                {/* Step number */}
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-extrabold mb-5 tracking-tight"
+                {/* Big number + icon side */}
+                <div className="flex-shrink-0 flex flex-col items-center justify-center rounded-2xl w-full md:w-72"
                   style={{
-                    background: featured ? '#c9a84c' : '#fdf8ec',
-                    border: featured ? 'none' : '1px solid #f0d890',
-                    color: featured ? '#0f1b2d' : '#a07820',
-                    boxShadow: featured ? '0 4px 20px rgba(201,168,76,.4)' : 'none',
-                  }}
-                >
-                  {step}
+                    background: 'linear-gradient(135deg, #0f1b2d 0%, #1a2d47 100%)',
+                    minHeight: '200px',
+                    padding: '36px 32px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}>
+                  {/* Big faded step number in background */}
+                  <span style={{
+                    position: 'absolute',
+                    fontSize: '120px',
+                    fontWeight: 900,
+                    color: 'rgba(255,255,255,.04)',
+                    lineHeight: 1,
+                    bottom: '-10px',
+                    right: '16px',
+                    userSelect: 'none',
+                    letterSpacing: '-0.04em',
+                  }}>{step}</span>
+                  {/* Step pill */}
+                  <div className="mb-4 text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full"
+                    style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}>
+                    Schritt {step}
+                  </div>
+                  {/* Emoji icon */}
+                  <div style={{ fontSize: '52px', lineHeight: 1 }}>{icon}</div>
                 </div>
-                {/* Icon */}
-                <div className="text-4xl mb-4">{icon}</div>
-                {/* Title */}
-                <h3 className="font-bold text-lg mb-2"
-                  style={{ color: featured ? '#c9a84c' : '#0f1b2d' }}>
-                  {title}
-                </h3>
-                {/* Text */}
-                <p className="text-sm leading-relaxed"
-                  style={{ color: featured ? '#7a9ab8' : '#6b7c93' }}>
-                  {text}
-                </p>
+
+                {/* Text side */}
+                <div className="flex-1 rounded-2xl p-8"
+                  style={{
+                    background: '#fff',
+                    border: '1px solid #e5edf5',
+                    boxShadow: '0 2px 20px rgba(15,27,45,.05)',
+                  }}>
+                  <h3 className="text-2xl font-extrabold mb-3 tracking-tight" style={{ color: '#0f1b2d' }}>
+                    {title}
+                  </h3>
+                  <p className="text-base mb-5 leading-relaxed" style={{ color: '#6b7c93' }}>
+                    {text}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {extra.map(e => (
+                      <span key={e} className="text-sm font-semibold px-3 py-1.5 rounded-lg"
+                        style={{ background: '#fdf8ec', color: '#a07820', border: '1px solid #f0e0a0' }}>
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
+          {/* CTA */}
           <div className="text-center mt-12">
             <a
               href="#booking"
