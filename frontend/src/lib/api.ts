@@ -215,6 +215,11 @@ export const adminApi = {
     return response.data;
   },
 
+  autoSyncStripe: async (month: number, year: number) => {
+    const response = await api.post('/admin/stripe/auto-sync', { month, year });
+    return response.data;
+  },
+
   getFinanzamtReport: (month: number, year: number) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
     return `${API_BASE_URL}/admin/report/finanzamt?month=${month}&year=${year}&token=${token}`;
