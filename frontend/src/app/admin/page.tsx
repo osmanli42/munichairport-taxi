@@ -1181,6 +1181,31 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Stripe Zahlungsdatum - only for card payments */}
+              {selectedBooking.payment_method === 'card' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Stripe Zahlungsdatum:</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      defaultValue={selectedBooking.stripe_payment_date ? selectedBooking.stripe_payment_date.substring(0, 10) : ''}
+                      className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      onChange={async (e) => {
+                        const val = e.target.value || null;
+                        try {
+                          const updated = await adminApi.setStripeDate(selectedBooking.id, val ? `${val}T12:00:00` : null);
+                          setSelectedBooking(prev => prev ? { ...prev, stripe_payment_date: val ? `${val}T12:00:00` : null } : null);
+                          setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { ...b, stripe_payment_date: val ? `${val}T12:00:00` : null } : b));
+                        } catch (err) { console.error(err); }
+                      }}
+                    />
+                    {selectedBooking.stripe_payment_date && (
+                      <span className="text-xs text-green-600 font-medium">gesetzt</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {[
                 { label: 'Abholung', value: selectedBooking.pickup_address },
                 { label: 'Ziel', value: selectedBooking.dropoff_address },
