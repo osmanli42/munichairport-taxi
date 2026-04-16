@@ -462,7 +462,8 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
         doc.font('Helvetica').fontSize(7.5);
       }
 
-      const zahlDatum = b.created_at ? new Date(b.created_at).toLocaleDateString('de-DE') : '—';
+      const zahlDatumRaw = b.stripe_payment_date || b.created_at;
+      const zahlDatum = zahlDatumRaw ? new Date(zahlDatumRaw).toLocaleDateString('de-DE') : '—';
       const fahrtDatum = b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleDateString('de-DE') : '—';
       const name = (b.name || '').substring(0, 22);
       const pickup = (b.pickup_address || '').replace(/, Deutschland$/, '').substring(0, 35);
