@@ -607,7 +607,7 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       // Per-group summary — ensure enough space (need ~80px for summary block)
       if (doc.y > 470) {
         doc.addPage();
-        drawHeader();
+        drawColHeader();
         doc.font('Helvetica').fontSize(7.5);
       }
       doc.moveDown(0.4);
