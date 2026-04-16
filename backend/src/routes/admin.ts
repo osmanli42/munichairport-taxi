@@ -638,4 +638,88 @@ router.get('/stripe/unmatched', authenticateAdmin, async (req: AuthRequest, res:
   }
 });
 
+// POST /api/admin/stripe/auto-sync - Fetch charges directly from Stripe and match bookings
+router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!stripe) {
+      res.status(500).json({ error: 'Stripe not configured (STRIPE_SECRET_KEY missing)' });
+      return;
+    }
+
+    const { month, year } = req.body;
+    if (!month || !year) {
+      res.status(400).json({ error: 'month and year required' });
+      return;
+    }
+
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+    const dateFrom = new Date(yearNum, monthNum - 1, 1);
+    const dateTo = new Date(yearNum, monthNum, 1);
+
+    // Fetch all successful charges in the given month
+    const charges: Stripe.Charge[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined = undefined;
+
+    while (hasMore) {
+      const params: Stripe.ChargeListParams = {
+        created: { gte: Math.floor(dateFrom.getTime() / 1000), lt: Math.floor(dateTo.getTime() / 1000) },
+        limit: 100,
+      };
+      if (startingAfter) params.starting_after = startingAfter;
+
+      const page = await stripe.charges.list(params);
+      charges.push(...page.data.filter(c => c.paid && !c.refunded));
+      hasMore = page.has_more;
+      if (page.data.length > 0) startingAfter = page.data[page.data.length - 1].id;
+    }
+
+    let matched = 0;
+    let unmatched = 0;
+    const details: any[] = [];
+
+    for (const charge of charges) {
+      const chargeDate = new Date(charge.created * 1000);
+      const chargeMin = new Date(chargeDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const chargeMax = new Date(chargeDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const candidates = await query(`
+        SELECT id, booking_number, price, pickup_datetime
+        FROM bookings
+        WHERE payment_method = 'card'
+          AND status != 'cancelled'
+          AND stripe_charge_id IS NULL
+          AND pickup_datetime >= ?
+          AND pickup_datetime <= ?
+      `, [chargeMin.toISOString(), chargeMax.toISOString()]);
+
+      let foundMatch = false;
+      for (const b of candidates as any[]) {
+        const roundedCents = Math.round(Math.ceil(b.price * 2) / 2 * 100);
+        if (roundedCents === charge.amount) {
+          await run(
+            'UPDATE bookings SET stripe_charge_id = ?, stripe_payment_date = ? WHERE id = ?',
+            [charge.id, chargeDate.toISOString(), b.id]
+          );
+          matched++;
+          details.push({ charge_id: charge.id, booking_number: b.booking_number, amount: charge.amount / 100, status: 'matched' });
+          foundMatch = true;
+          break;
+        }
+      }
+
+      if (!foundMatch) {
+        unmatched++;
+        details.push({ charge_id: charge.id, amount: charge.amount / 100, date: chargeDate.toISOString(), status: 'unmatched' });
+      }
+    }
+
+    res.json({ total: charges.length, matched, unmatched, details });
+  } catch (error: any) {
+    console.error('Stripe auto-sync error:', error);
+    res.status(500).json({ error: error.message || 'Failed to sync with Stripe' });
+  }
+});
+
 export default router;
