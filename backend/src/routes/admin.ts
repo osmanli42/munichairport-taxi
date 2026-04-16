@@ -365,7 +365,7 @@ router.post('/import-db', authenticateAdmin, async (req: AuthRequest, res: Respo
   res.json({ success: true, importedBookings, importedPrices });
 });
 
-// GET /api/admin/report/finanzamt - Generate PDF report for Finanzamt
+// GET /api/admin/report/finanzamt - Generate PDF report for Finanzamt grouped by Stripe payout
 router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const month = parseInt(req.query.month as string);
@@ -382,18 +382,92 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     const nextYear = month === 12 ? year + 1 : year;
     const dateTo = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
 
-    // Filter by stripe_payment_date (actual payment received date)
+    // Fetch all card bookings for the month (by stripe_payment_date)
     const bookings = await query(`
-      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz, stripe_payment_date
+      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address,
+             price, steuersatz, stripe_payment_date, stripe_charge_id, stripe_payout_id
       FROM bookings
       WHERE payment_method = 'card' AND status != 'cancelled'
         AND stripe_payment_date IS NOT NULL
         AND DATE(stripe_payment_date) >= ? AND DATE(stripe_payment_date) < ?
-      ORDER BY stripe_payment_date ASC
+      ORDER BY stripe_payout_id ASC, stripe_payment_date ASC
     `, [dateFrom, dateTo]);
+
+    // Fetch payout metadata from Stripe if available (arrival_date, amount, fee)
+    // Map: payoutId -> { arrival_date, amount, fee }
+    const payoutMeta: Record<string, { arrivalDate: Date; grossCents: number; feeCents: number; netCents: number }> = {};
+
+    if (stripe) {
+      // Collect unique payout IDs from bookings
+      const payoutIds = [...new Set((bookings as any[]).map((b: any) => b.stripe_payout_id).filter(Boolean))];
+      for (const pid of payoutIds) {
+        try {
+          const po = await (stripe.payouts.retrieve as any)(pid);
+          payoutMeta[pid] = {
+            arrivalDate: new Date(po.arrival_date * 1000),
+            grossCents: po.amount,
+            feeCents: 0, // will not be available directly here; we'll compute from balance transactions sum
+            netCents: po.amount,
+          };
+          // Fetch balance transactions to compute gross/fees
+          const bts: any[] = [];
+          let btHasMore = true;
+          let btCursor: string | undefined = undefined;
+          while (btHasMore) {
+            const btParams: any = { payout: pid, limit: 100 };
+            if (btCursor) btParams.starting_after = btCursor;
+            const btPage = await (stripe.balanceTransactions.list as any)(btParams);
+            bts.push(...btPage.data);
+            btHasMore = btPage.has_more;
+            if (btPage.data.length > 0) btCursor = btPage.data[btPage.data.length - 1].id;
+          }
+          let grossSum = 0;
+          let feeSum = 0;
+          for (const bt of bts) {
+            if (bt.type === 'charge') {
+              grossSum += bt.amount;
+              feeSum += bt.fee;
+            } else if (bt.type === 'refund') {
+              grossSum += bt.amount; // negative
+              feeSum += bt.fee;
+            }
+          }
+          payoutMeta[pid].grossCents = grossSum;
+          payoutMeta[pid].feeCents = feeSum;
+          payoutMeta[pid].netCents = grossSum - feeSum;
+        } catch (e) {
+          // If retrieval fails, leave meta blank — we'll fallback to booking sums
+        }
+      }
+    }
 
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     const title = `Kreditkartenzahlungen — ${monthNames[month - 1]} ${year}`;
+
+    // Helper: round price same as frontend
+    const formatPriceForPDF = (price: number): number => Math.ceil(price * 2) / 2;
+
+    const fmt = (n: number) => n.toFixed(2).replace('.', ',') + ' €';
+    const fmtDate = (d: Date) => d.toLocaleDateString('de-DE');
+
+    // Group bookings by payout id (null → "Nicht zugeordnet")
+    interface GroupedPayout {
+      payoutId: string | null;
+      bookings: any[];
+    }
+    const groups: GroupedPayout[] = [];
+    const groupMap: Record<string, GroupedPayout> = {};
+
+    for (const b of bookings as any[]) {
+      const pid: string | null = b.stripe_payout_id || null;
+      const key = pid || '__none__';
+      if (!groupMap[key]) {
+        const group: GroupedPayout = { payoutId: pid, bookings: [] };
+        groupMap[key] = group;
+        groups.push(group);
+      }
+      groupMap[key].bookings.push(b);
+    }
 
     // Use A4 landscape for more space
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
@@ -406,12 +480,9 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       res.send(pdfBuffer);
     });
 
-    // Page width in landscape = 841.89, margins 30 each side → usable = 781
     const pageW = 781;
     const startX = 30;
 
-    // Column definitions: [x, width, label, align]
-    // Buchungsnr(105) | Zahldatum(65) | Fahrtdatum(65) | Name(100) | Von(140) | Nach(140) | Preis(60) | MwSt(50)
     const cols = [
       { x: startX,       w: 105, label: 'Buchungsnr.',  align: 'left'  as const },
       { x: startX+105,   w: 65,  label: 'Zahldatum',    align: 'left'  as const },
@@ -419,26 +490,31 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       { x: startX+235,   w: 105, label: 'Name',         align: 'left'  as const },
       { x: startX+340,   w: 155, label: 'Von',          align: 'left'  as const },
       { x: startX+495,   w: 155, label: 'Nach',         align: 'left'  as const },
-      { x: startX+650,   w: 65,  label: 'Preis',        align: 'right' as const },
+      { x: startX+650,   w: 65,  label: 'Brutto',       align: 'right' as const },
       { x: startX+715,   w: 50,  label: 'MwSt.',        align: 'center'as const },
     ];
 
-    const drawHeader = () => {
-      doc.fontSize(8).font('Helvetica-Bold');
+    const drawColHeader = () => {
+      doc.fontSize(7.5).font('Helvetica-Bold');
       const hy = doc.y;
       cols.forEach(c => {
         doc.text(c.label, c.x, hy, { width: c.w, align: c.align, lineBreak: false });
       });
       doc.moveDown(0.15);
       const lineY = doc.y + 2;
-      doc.moveTo(startX, lineY).lineTo(startX + pageW, lineY).lineWidth(0.5).stroke();
+      doc.moveTo(startX, lineY).lineTo(startX + pageW, lineY).lineWidth(0.4).stroke();
       doc.y = lineY + 4;
     };
+
+    // Grand-total accumulators
+    let grandTotal7 = 0, grandTotal19 = 0, grandTotalUnset = 0;
+    let grandCount7 = 0, grandCount19 = 0, grandCountUnset = 0;
+    const ROW_H = 14;
 
     // Title
     doc.fontSize(14).font('Helvetica-Bold').text(title, startX, 30, { width: pageW, align: 'center' });
     doc.fontSize(8).font('Helvetica').text(
-      `Erstellt am: ${new Date().toLocaleDateString('de-DE')} | Zeitraum: ${monthNames[month - 1]} ${year} (nach Zahlungsdatum)`,
+      `Erstellt am: ${new Date().toLocaleDateString('de-DE')} | Zeitraum: ${monthNames[month - 1]} ${year} | Gruppiert nach Stripe-Auszahlung`,
       startX, doc.y + 4, { width: pageW, align: 'center' }
     );
     doc.moveDown(0.8);
@@ -449,85 +525,160 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       return;
     }
 
-    drawHeader();
+    for (const group of groups) {
+      // --- Payout header bar ---
+      const meta = group.payoutId ? payoutMeta[group.payoutId] : undefined;
 
-    let total7 = 0, total19 = 0, totalUnset = 0;
-    let count7 = 0, count19 = 0, countUnset = 0;
-    const ROW_H = 14;
+      // Compute booking-level sums for this group
+      let gBrutto = 0;
+      for (const b of group.bookings) gBrutto += formatPriceForPDF(b.price || 0);
 
-    // Helper function to apply same rounding as frontend's formatPrice
-    const formatPriceForPDF = (price: number): number => {
-      return Math.ceil(price * 2) / 2;
-    };
-
-    doc.font('Helvetica').fontSize(7.5);
-    for (const b of bookings) {
-      if (doc.y > 530) {
-        doc.addPage();
-        drawHeader();
-        doc.font('Helvetica').fontSize(7.5);
+      let headerLabel: string;
+      if (!group.payoutId) {
+        headerLabel = 'Nicht zugeordnet (kein Stripe-Payout)';
+      } else if (meta) {
+        const arrStr = fmtDate(meta.arrivalDate);
+        const gross = meta.grossCents / 100;
+        const fee = meta.feeCents / 100;
+        const net = meta.netCents / 100;
+        headerLabel = `Auszahlung ${arrStr}   Brutto: ${fmt(gross)}   Gebühren: -${fmt(Math.abs(fee))}   Netto: ${fmt(net)}`;
+      } else {
+        headerLabel = `Auszahlung ${group.payoutId}`;
       }
 
-      const zahlDatumRaw = b.stripe_payment_date || b.created_at;
-      const zahlDatum = zahlDatumRaw ? new Date(zahlDatumRaw).toLocaleDateString('de-DE') : '—';
-      const fahrtDatum = b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleDateString('de-DE') : '—';
-      const name = (b.name || '').substring(0, 22);
-      const pickup = (b.pickup_address || '').replace(/, Deutschland$/, '').substring(0, 35);
-      const dropoff = (b.dropoff_address || '').replace(/, Deutschland$/, '').substring(0, 35);
-      const roundedPrice = formatPriceForPDF(b.price || 0);
-      const priceStr = `${roundedPrice.toFixed(2)} €`;
-      const tax = b.steuersatz ? `${b.steuersatz}%` : '—';
+      // Ensure enough space for header; add page if needed
+      if (doc.y > 490) doc.addPage();
 
-      if (b.steuersatz === 7) { total7 += roundedPrice; count7++; }
-      else if (b.steuersatz === 19) { total19 += roundedPrice; count19++; }
-      else { totalUnset += roundedPrice; countUnset++; }
+      // Draw thick separator line
+      const sepY = doc.y;
+      doc.moveTo(startX, sepY).lineTo(startX + pageW, sepY).lineWidth(1.5).stroke();
+      doc.y = sepY + 5;
 
-      // Draw alternating row background
-      const rowY = doc.y;
-      const values = [b.booking_number || '', zahlDatum, fahrtDatum, name, pickup, dropoff, priceStr, tax];
-      const aligns: Array<'left'|'right'|'center'> = ['left','left','left','left','left','left','right','center'];
-      cols.forEach((c, i) => {
-        doc.text(values[i], c.x, rowY, { width: c.w, align: aligns[i], lineBreak: false });
-      });
-      doc.y = rowY + ROW_H;
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1a1a6e')
+        .text(headerLabel, startX, doc.y, { width: pageW, lineBreak: false });
+      doc.fillColor('black');
+
+      const sepY2 = doc.y + 12;
+      doc.moveTo(startX, sepY2).lineTo(startX + pageW, sepY2).lineWidth(1.5).stroke();
+      doc.y = sepY2 + 5;
+
+      drawColHeader();
+
+      // Per-group accumulators
+      let g7 = 0, g19 = 0, gUnset = 0;
+      let gc7 = 0, gc19 = 0, gcUnset = 0;
+
+      doc.font('Helvetica').fontSize(7.5);
+      for (const b of group.bookings) {
+        if (doc.y > 530) {
+          doc.addPage();
+          drawColHeader();
+          doc.font('Helvetica').fontSize(7.5);
+        }
+
+        const zahlDatumRaw = b.stripe_payment_date || b.created_at;
+        const zahlDatum = zahlDatumRaw ? fmtDate(new Date(zahlDatumRaw)) : '—';
+        const fahrtDatum = b.pickup_datetime ? fmtDate(new Date(b.pickup_datetime)) : '—';
+        const name = (b.name || '').substring(0, 22);
+        const pickup = (b.pickup_address || '').replace(/, Deutschland$/, '').substring(0, 35);
+        const dropoff = (b.dropoff_address || '').replace(/, Deutschland$/, '').substring(0, 35);
+        const roundedPrice = formatPriceForPDF(b.price || 0);
+        const priceStr = fmt(roundedPrice);
+        const tax = b.steuersatz ? `${b.steuersatz}%` : '—';
+
+        if (b.steuersatz === 7)       { g7 += roundedPrice; gc7++; }
+        else if (b.steuersatz === 19) { g19 += roundedPrice; gc19++; }
+        else                          { gUnset += roundedPrice; gcUnset++; }
+
+        const rowY = doc.y;
+        const values = [b.booking_number || '', zahlDatum, fahrtDatum, name, pickup, dropoff, priceStr, tax];
+        const aligns: Array<'left'|'right'|'center'> = ['left','left','left','left','left','left','right','center'];
+        cols.forEach((c, i) => {
+          doc.text(values[i], c.x, rowY, { width: c.w, align: aligns[i], lineBreak: false });
+        });
+        doc.y = rowY + ROW_H;
+      }
+
+      // Accumulate into grand totals
+      grandTotal7 += g7; grandCount7 += gc7;
+      grandTotal19 += g19; grandCount19 += gc19;
+      grandTotalUnset += gUnset; grandCountUnset += gcUnset;
+
+      // Per-group summary
+      doc.moveDown(0.4);
+      const gsumY = doc.y;
+      doc.moveTo(startX + 400, gsumY).lineTo(startX + pageW, gsumY).lineWidth(0.4).stroke();
+      doc.y = gsumY + 4;
+
+      doc.fontSize(8).font('Helvetica');
+      const sumRowY = doc.y;
+      if (gc7 > 0) {
+        doc.text(`7% MwSt.: ${gc7} Fahrten`, startX + 400, sumRowY, { width: 160, lineBreak: false });
+        doc.font('Helvetica-Bold').text(fmt(g7), startX + 560, sumRowY, { width: 80, align: 'right', lineBreak: false });
+        doc.font('Helvetica');
+        doc.y = sumRowY + 13;
+      }
+      const sumRowY2 = doc.y;
+      if (gc19 > 0) {
+        doc.text(`19% MwSt.: ${gc19} Fahrten`, startX + 400, sumRowY2, { width: 160, lineBreak: false });
+        doc.font('Helvetica-Bold').text(fmt(g19), startX + 560, sumRowY2, { width: 80, align: 'right', lineBreak: false });
+        doc.font('Helvetica');
+        doc.y = sumRowY2 + 13;
+      }
+      const sumRowY3 = doc.y;
+      doc.font('Helvetica-Bold').fontSize(8.5);
+      doc.text(`Summe: ${group.bookings.length} Fahrten`, startX + 400, sumRowY3, { width: 160, lineBreak: false });
+      doc.text(fmt(g7 + g19 + gUnset), startX + 560, sumRowY3, { width: 80, align: 'right', lineBreak: false });
+      doc.font('Helvetica');
+
+      if (gcUnset > 0) {
+        doc.y = sumRowY3 + 14;
+        doc.fontSize(7.5).fillColor('#cc0000').text(
+          `! ${gcUnset} Fahrten ohne Steuersatz (${fmt(gUnset)})`,
+          startX + 400, doc.y, { width: 340 }
+        );
+        doc.fillColor('black');
+      }
+
+      doc.moveDown(1.2);
     }
 
-    // Summary
-    doc.moveDown(0.8);
-    const sumLineY = doc.y;
-    doc.moveTo(startX, sumLineY).lineTo(startX + pageW, sumLineY).lineWidth(0.8).stroke();
-    doc.y = sumLineY + 6;
+    // === Grand Total Summary ===
+    if (doc.y > 490) doc.addPage();
 
-    doc.fontSize(10).font('Helvetica-Bold').text('Zusammenfassung', startX, doc.y);
-    doc.moveDown(0.4);
+    const gtLineY = doc.y;
+    doc.moveTo(startX, gtLineY).lineTo(startX + pageW, gtLineY).lineWidth(1.5).stroke();
+    doc.y = gtLineY + 8;
+
+    doc.fontSize(11).font('Helvetica-Bold').text('Gesamtzusammenfassung', startX, doc.y);
+    doc.moveDown(0.5);
     doc.fontSize(9).font('Helvetica');
 
-    // Two-column summary layout
     const colLeft = startX;
-    const colRight = startX + 300;
-    const sumY = doc.y;
+    const colRight = startX + 320;
+    const gtY = doc.y;
 
-    doc.text(`7% MwSt.:`, colLeft, sumY, { width: 100, lineBreak: false });
-    doc.text(`${count7} Fahrten`, colLeft + 100, sumY, { width: 100, lineBreak: false });
-    doc.font('Helvetica-Bold').text(`${total7.toFixed(2)} €`, colLeft + 200, sumY, { width: 80, align: 'right', lineBreak: false });
+    doc.text(`7% MwSt.:`, colLeft, gtY, { width: 110, lineBreak: false });
+    doc.text(`${grandCount7} Fahrten`, colLeft + 110, gtY, { width: 100, lineBreak: false });
+    doc.font('Helvetica-Bold').text(fmt(grandTotal7), colLeft + 210, gtY, { width: 90, align: 'right', lineBreak: false });
     doc.font('Helvetica');
 
-    doc.text(`19% MwSt.:`, colRight, sumY, { width: 100, lineBreak: false });
-    doc.text(`${count19} Fahrten`, colRight + 100, sumY, { width: 100, lineBreak: false });
-    doc.font('Helvetica-Bold').text(`${total19.toFixed(2)} €`, colRight + 200, sumY, { width: 80, align: 'right', lineBreak: false });
+    doc.text(`19% MwSt.:`, colRight, gtY, { width: 110, lineBreak: false });
+    doc.text(`${grandCount19} Fahrten`, colRight + 110, gtY, { width: 100, lineBreak: false });
+    doc.font('Helvetica-Bold').text(fmt(grandTotal19), colRight + 210, gtY, { width: 90, align: 'right', lineBreak: false });
     doc.font('Helvetica');
 
-    doc.y = sumY + 16;
+    doc.y = gtY + 18;
     const totalY = doc.y;
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text(`Gesamt: ${bookings.length} Fahrten`, colLeft, totalY, { width: 200, lineBreak: false });
-    doc.text(`${(total7 + total19 + totalUnset).toFixed(2)} €`, colLeft + 200, totalY, { width: 80, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10.5);
+    doc.text(`Gesamt: ${bookings.length} Fahrten`, colLeft, totalY, { width: 210, lineBreak: false });
+    doc.text(fmt(grandTotal7 + grandTotal19 + grandTotalUnset), colLeft + 210, totalY, { width: 90, align: 'right', lineBreak: false });
     doc.font('Helvetica').fontSize(9);
 
-    if (countUnset > 0) {
-      doc.y = totalY + 20;
+    if (grandCountUnset > 0) {
+      doc.y = totalY + 22;
       doc.fillColor('#cc0000').text(
-        `⚠  ${countUnset} Fahrten ohne Steuersatz (${totalUnset.toFixed(2)} €) — bitte vor Abgabe ergänzen!`,
+        `! ${grandCountUnset} Fahrten ohne Steuersatz (${fmt(grandTotalUnset)}) — bitte vor Abgabe ergänzen!`,
         colLeft, doc.y
       );
       doc.fillColor('black');
