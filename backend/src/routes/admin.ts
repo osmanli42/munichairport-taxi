@@ -534,4 +534,103 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
   }
 });
 
+// PATCH /api/admin/bookings/:id/stripe-date - Set stripe payment date manually
+router.patch('/bookings/:id/stripe-date', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { stripe_payment_date } = req.body;
+
+  if (!stripe_payment_date && stripe_payment_date !== null) {
+    res.status(400).json({ error: 'stripe_payment_date required (or null to clear)' });
+    return;
+  }
+
+  const result = await run(
+    'UPDATE bookings SET stripe_payment_date = ? WHERE id = ? AND payment_method = ?',
+    [stripe_payment_date || null, req.params.id, 'card']
+  );
+  if (result.affectedRows === 0) {
+    res.status(404).json({ error: 'Booking not found or not a card payment' });
+    return;
+  }
+
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+  res.json(decryptBooking(booking));
+});
+
+// POST /api/admin/stripe/sync - Sync Stripe charges with bookings
+router.post('/stripe/sync', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { month, year, charges } = req.body;
+
+    if (!month || !year || !Array.isArray(charges)) {
+      res.status(400).json({ error: 'month, year, and charges array required' });
+      return;
+    }
+
+    let matched = 0;
+    let unmatched = 0;
+    const details: any[] = [];
+
+    for (const charge of charges) {
+      const { id: chargeId, amount, created } = charge;
+      const chargeDate = new Date(created * 1000);
+      const chargeMin = new Date(chargeDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const chargeMax = new Date(chargeDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      // Find matching booking
+      const candidates = await query(`
+        SELECT id, booking_number, price, pickup_datetime
+        FROM bookings
+        WHERE payment_method = 'card'
+          AND status != 'cancelled'
+          AND stripe_charge_id IS NULL
+          AND pickup_datetime >= ?
+          AND pickup_datetime <= ?
+      `, [chargeMin.toISOString(), chargeMax.toISOString()]);
+
+      let foundMatch = false;
+      for (const b of candidates) {
+        const roundedCents = Math.ceil((b as any).price * 2) / 2 * 100;
+        if (Math.round(roundedCents) === Math.round(amount)) {
+          await run(
+            'UPDATE bookings SET stripe_charge_id = ?, stripe_payment_date = ? WHERE id = ?',
+            [chargeId, chargeDate.toISOString(), (b as any).id]
+          );
+          matched++;
+          details.push({ charge_id: chargeId, booking_number: (b as any).booking_number, status: 'matched' });
+          foundMatch = true;
+          break;
+        }
+      }
+
+      if (!foundMatch) {
+        unmatched++;
+        details.push({ charge_id: chargeId, amount, created, status: 'unmatched' });
+      }
+    }
+
+    res.json({ matched, unmatched, details });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to sync Stripe charges' });
+  }
+});
+
+// GET /api/admin/stripe/unmatched - Card bookings without stripe_payment_date
+router.get('/stripe/unmatched', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const bookings = await query(`
+      SELECT id, booking_number, name, pickup_datetime, price, status, created_at
+      FROM bookings
+      WHERE payment_method = 'card'
+        AND status != 'cancelled'
+        AND stripe_payment_date IS NULL
+      ORDER BY created_at DESC
+    `);
+    res.json(bookings);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch unmatched bookings' });
+  }
+});
+
 export default router;
