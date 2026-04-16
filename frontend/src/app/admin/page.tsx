@@ -45,6 +45,8 @@ export default function AdminPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [stripeSyncing, setStripeSyncing] = useState(false);
+  const [stripeSyncResult, setStripeSyncResult] = useState<{ matched: number; unmatched: number; total: number } | null>(null);
   const [tomorrowCards, setTomorrowCards] = useState<Booking[]>([]);
   const [tomorrowCardBooking, setTomorrowCardBooking] = useState<Booking | null>(null);
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
