@@ -382,13 +382,14 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     const nextYear = month === 12 ? year + 1 : year;
     const dateTo = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
 
-    // Filter by created_at (payment date) — for Finanzamt, income is reported when payment received
+    // Filter by stripe_payment_date (actual payment received date)
     const bookings = await query(`
       SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz, stripe_payment_date
       FROM bookings
       WHERE payment_method = 'card' AND status != 'cancelled'
-        AND DATE(created_at) >= ? AND DATE(created_at) < ?
-      ORDER BY created_at ASC
+        AND stripe_payment_date IS NOT NULL
+        AND DATE(stripe_payment_date) >= ? AND DATE(stripe_payment_date) < ?
+      ORDER BY stripe_payment_date ASC
     `, [dateFrom, dateTo]);
 
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
