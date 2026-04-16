@@ -510,7 +510,33 @@ export default function AdminPage() {
                 >
                   PDF herunterladen
                 </a>
+                <button
+                  onClick={async () => {
+                    setStripeSyncing(true);
+                    setStripeSyncResult(null);
+                    try {
+                      const result = await adminApi.autoSyncStripe(reportMonth, reportYear);
+                      setStripeSyncResult(result);
+                      fetchBookings();
+                    } catch (err: any) {
+                      alert('Stripe Sync Fehler: ' + (err.response?.data?.error || err.message));
+                    } finally {
+                      setStripeSyncing(false);
+                    }
+                  }}
+                  disabled={stripeSyncing}
+                  className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  {stripeSyncing ? 'Synchronisiere...' : '⚡ Stripe Sync'}
+                </button>
               </div>
+              {stripeSyncResult && (
+                <div className="mt-3 text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-2">
+                  ✅ <strong>{stripeSyncResult.matched}</strong> Zahlungen zugeordnet
+                  {stripeSyncResult.unmatched > 0 && <> · <span className="text-orange-600">⚠ {stripeSyncResult.unmatched} nicht zugeordnet</span></>}
+                  {' '}(von {stripeSyncResult.total} Stripe-Zahlungen)
+                </div>
+              )}
             </div>
 
             {/* Recent Bookings */}
