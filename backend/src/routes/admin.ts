@@ -659,12 +659,12 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
     const dateTo = new Date(yearNum, monthNum, 1);
 
     // Fetch all successful charges in the given month
-    const charges: Stripe.Charge[] = [];
+    const charges: any[] = [];
     let hasMore = true;
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const params: Stripe.ChargeListParams = {
+      const params: any = {
         created: { gte: Math.floor(dateFrom.getTime() / 1000), lt: Math.floor(dateTo.getTime() / 1000) },
         limit: 100,
       };
