@@ -143,6 +143,9 @@ export async function initializeDatabase(): Promise<void> {
     try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN stripe_payment_date DATETIME DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN stripe_payout_id VARCHAR(100) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
