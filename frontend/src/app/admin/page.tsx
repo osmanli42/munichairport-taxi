@@ -280,6 +280,45 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Finanzamt Report */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-4">Finanzamt — Kreditkartenbericht</h3>
+              <div className="flex items-end gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Monat</label>
+                  <select
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    {['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'].map((m, i) => (
+                      <option key={i} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Jahr</label>
+                  <select
+                    value={reportYear}
+                    onChange={(e) => setReportYear(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    {[2025, 2026, 2027].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <a
+                  href={adminApi.getFinanzamtReport(reportMonth, reportYear)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  PDF herunterladen
+                </a>
+              </div>
+            </div>
+
             {/* Recent Bookings */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-4">Letzte Buchungen</h3>
