@@ -604,7 +604,12 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       grandTotal19 += g19; grandCount19 += gc19;
       grandTotalUnset += gUnset; grandCountUnset += gcUnset;
 
-      // Per-group summary
+      // Per-group summary — ensure enough space (need ~80px for summary block)
+      if (doc.y > 470) {
+        doc.addPage();
+        drawHeader();
+        doc.font('Helvetica').fontSize(7.5);
+      }
       doc.moveDown(0.4);
       const gsumY = doc.y;
       doc.moveTo(startX + 400, gsumY).lineTo(startX + pageW, gsumY).lineWidth(0.4).stroke();
