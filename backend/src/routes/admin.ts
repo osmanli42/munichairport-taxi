@@ -1,9 +1,14 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import PDFDocument from 'pdfkit';
+import Stripe from 'stripe';
 import { query, run } from '../db';
 import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-03-31.basil' })
+  : null;
 
 function decryptBooking(booking: any) {
   if (!booking) return booking;
