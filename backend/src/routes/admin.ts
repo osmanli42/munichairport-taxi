@@ -809,7 +809,7 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
     const dateFrom = new Date(yearNum, monthNum - 1, 1);
     const dateTo = new Date(yearNum, monthNum, 1);
 
-    // Fetch all successful charges in the given month
+    // Fetch all successful charges in the given month (with balance_transaction expanded for payout info)
     const charges: any[] = [];
     let hasMore = true;
     let startingAfter: string | undefined = undefined;
@@ -818,13 +818,15 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
       const params: any = {
         created: { gte: Math.floor(dateFrom.getTime() / 1000), lt: Math.floor(dateTo.getTime() / 1000) },
         limit: 100,
+        expand: ['data.balance_transaction'],
       };
       if (startingAfter) params.starting_after = startingAfter;
 
-      const page = await stripe.charges.list(params);
-      charges.push(...page.data.filter(c => c.paid && !c.refunded));
+      const page = await (stripe as any).charges.list(params);
+      charges.push(...page.data.filter((c: any) => c.paid && !c.refunded));
       hasMore = page.has_more;
       if (page.data.length > 0) startingAfter = page.data[page.data.length - 1].id;
+      else break;
     }
 
     let matched = 0;
