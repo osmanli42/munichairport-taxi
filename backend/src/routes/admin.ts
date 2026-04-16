@@ -379,7 +379,7 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
 
     // Filter by created_at (payment date) — for Finanzamt, income is reported when payment received
     const bookings = await query(`
-      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz
+      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz, stripe_payment_date
       FROM bookings
       WHERE payment_method = 'card' AND status != 'cancelled'
         AND DATE(created_at) >= ? AND DATE(created_at) < ?
