@@ -183,6 +183,11 @@ export const adminApi = {
     return response.data;
   },
 
+  getTodayBookings: async (): Promise<Booking[]> => {
+    const response = await api.get('/admin/bookings/today');
+    return response.data;
+  },
+
   getTomorrowCards: async (): Promise<Booking[]> => {
     const response = await api.get('/admin/bookings/tomorrow-cards');
     return response.data;
