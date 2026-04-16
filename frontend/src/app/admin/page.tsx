@@ -43,6 +43,8 @@ export default function AdminPage() {
   const [cardVisible, setCardVisible] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
