@@ -409,7 +409,19 @@ export default function AdminPage() {
                               <div className="text-xs text-gray-500">{booking.phone}</div>
                             </td>
                             <td className="py-3 px-4 capitalize">{booking.vehicle_type}</td>
-                            <td className="py-3 px-4 font-bold text-primary-600">{formatPrice(booking.price)}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-bold text-primary-600">{formatPrice(booking.price)}</span>
+                              {booking.payment_method === 'card' && (
+                                <span className={cn(
+                                  'ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                                  booking.steuersatz === 7 ? 'bg-green-100 text-green-700'
+                                    : booking.steuersatz === 19 ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-red-100 text-red-600'
+                                )}>
+                                  {booking.steuersatz ? `${booking.steuersatz}%` : 'MwSt?'}
+                                </span>
+                              )}
+                            </td>
                             <td className="py-3 px-4">
                               <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[booking.status]}`}>
                                 {STATUS_LABELS[booking.status]}
