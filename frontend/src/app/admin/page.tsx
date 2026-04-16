@@ -123,7 +123,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      if (activeTab === 'dashboard') loadStats();
+      if (activeTab === 'dashboard') {
+        loadStats();
+        adminApi.getTomorrowCards().then(setTomorrowCards).catch(() => {});
+      }
       if (activeTab === 'bookings') loadBookings();
       if (activeTab === 'prices') {
         loadPrices();
