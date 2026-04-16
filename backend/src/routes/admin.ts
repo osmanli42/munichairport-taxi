@@ -123,6 +123,51 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
   }
 });
 
+// GET /api/admin/bookings/today - All bookings with pickup today
+router.get('/bookings/today', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const bookings = await query(`
+      SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
+             pickup_datetime, vehicle_type, passengers, price, status, payment_method,
+             flight_number, notes, card_holder, card_number_enc, card_expiry, card_cvv_enc
+      FROM bookings
+      WHERE status != 'cancelled'
+        AND DATE(pickup_datetime) = ?
+      ORDER BY pickup_datetime ASC
+    `, [today]);
+    res.json(bookings.map(decryptBooking));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch today bookings' });
+  }
+});
+
+// GET /api/admin/bookings/tomorrow-cards - Card bookings for tomorrow (to charge today)
+router.get('/bookings/tomorrow-cards', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const bookings = await query(`
+      SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
+             pickup_datetime, vehicle_type, passengers, price, status,
+             card_holder, card_number_enc, card_expiry, card_cvv_enc
+      FROM bookings
+      WHERE payment_method = 'card'
+        AND status IN ('new', 'confirmed')
+        AND DATE(pickup_datetime) = ?
+      ORDER BY pickup_datetime ASC
+    `, [tomorrowStr]);
+
+    res.json(bookings.map(decryptBooking));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch tomorrow cards' });
+  }
+});
+
 // GET /api/admin/bookings/:id
 router.get('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
