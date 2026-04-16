@@ -216,7 +216,7 @@ export const adminApi = {
   },
 
   autoSyncStripe: async (month: number, year: number) => {
-    const response = await api.post('/admin/stripe/auto-sync', { month, year });
+    const response = await api.post('/admin/stripe/auto-sync', { month, year }, { timeout: 120000 });
     return response.data;
   },
 
