@@ -7,7 +7,7 @@ import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/aut
 import { decrypt } from './bookings';
 
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-03-31.basil' })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-03-25.dahlia' as any })
   : null;
 
 function decryptBooking(booking: any) {
