@@ -182,6 +182,16 @@ export const adminApi = {
     const response = await api.put('/settings', settings);
     return response.data;
   },
+
+  updateSteuersatz: async (id: number, steuersatz: number | null) => {
+    const response = await api.patch(`/admin/bookings/${id}/steuersatz`, { steuersatz });
+    return response.data;
+  },
+
+  getFinanzamtReport: (month: number, year: number) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    return `${API_BASE_URL}/admin/report/finanzamt?month=${month}&year=${year}&token=${token}`;
+  },
 };
 
 export default api;
