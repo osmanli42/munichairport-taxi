@@ -91,7 +91,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 </head>
 <body>
   <div class="header">
-    <h1>Munich Airport Taxi</h1>
+    <h1>Flughafen-muenchen.TAXI</h1>
     <p style="margin:8px 0">Neue Buchungsanfrage</p>
     <span class="badge">Buchungsnummer: ${booking.booking_number}</span>
   </div>
@@ -150,7 +150,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
     </div>` : ''}
   </div>
   <div class="footer">
-    Munich Airport Taxi | Eisvogelweg 2, 85356 Freising | Tel: +49 151 41620000<br>
+    Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising | Tel: +49 151 41620000<br>
     Diese E-Mail wurde automatisch generiert.
   </div>
 </body>
@@ -159,7 +159,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
-    from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: ADMIN_EMAIL,
     subject: `[NEUE BUCHUNG] ${booking.booking_number} - ${formattedDate} - €${formatPrice(booking.price)}`,
     html,
@@ -174,7 +174,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 
   const translations: Record<string, Record<string, string>> = {
     de: {
-      subject: `Buchungsbestätigung ${booking.booking_number} - Munich Airport Taxi`,
+      subject: `Buchungsbestätigung ${booking.booking_number} - Flughafen-muenchen.TAXI`,
       title: 'Ihre Buchungsbestätigung',
       subtitle: 'Vielen Dank für Ihre Buchung!',
       intro: 'Wir haben Ihre Buchungsanfrage erhalten und werden uns in Kürze bei Ihnen melden.',
@@ -205,10 +205,10 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       roundtrip: '⇄ Hin- & Rückfahrt',
       returnTrip: 'Rückfahrt',
       greeting: 'Hallo',
-      footer: 'Munich Airport Taxi | Eisvogelweg 2, 85356 Freising',
+      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
     },
     en: {
-      subject: `Booking Confirmation ${booking.booking_number} - Munich Airport Taxi`,
+      subject: `Booking Confirmation ${booking.booking_number} - Flughafen-muenchen.TAXI`,
       title: 'Your Booking Confirmation',
       subtitle: 'Thank you for your booking!',
       intro: 'We have received your booking request and will contact you shortly.',
@@ -239,10 +239,10 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       roundtrip: '⇄ Round trip',
       returnTrip: 'Return',
       greeting: 'Hello',
-      footer: 'Munich Airport Taxi | Eisvogelweg 2, 85356 Freising',
+      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
     },
     tr: {
-      subject: `Rezervasyon Onayı ${booking.booking_number} - Munich Airport Taxi`,
+      subject: `Rezervasyon Onayı ${booking.booking_number} - Flughafen-muenchen.TAXI`,
       title: 'Rezervasyon Onayınız',
       subtitle: 'Rezervasyonunuz için teşekkürler!',
       intro: 'Rezervasyon talebinizi aldık, en kısa sürede sizinle iletişime geçeceğiz.',
@@ -273,7 +273,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       roundtrip: '⇄ Gidiş-Dönüş',
       returnTrip: 'Dönüş',
       greeting: 'Merhaba',
-      footer: 'Munich Airport Taxi | Eisvogelweg 2, 85356 Freising',
+      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
     },
   };
 
@@ -304,7 +304,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 </head>
 <body>
   <div class="header">
-    <h1>Munich Airport Taxi</h1>
+    <h1>Flughafen-muenchen.TAXI</h1>
     <p style="margin:8px 0 4px">${t.title}</p>
     <span class="badge">${booking.booking_number}</span>
   </div>
@@ -385,7 +385,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
-    from: 'Munich Airport Taxi <info@flughafen-muenchen.taxi>',
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: booking.email,
     subject: t.subject,
     html,
