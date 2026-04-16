@@ -372,12 +372,12 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <p style="margin:0 0 8px">${t.contact}</p>
       <p style="margin:4px 0"><a href="tel:+4915141620000">📞 +49 151 41620000</a></p>
       <p style="margin:4px 0"><a href="https://wa.me/4915141620000">💬 WhatsApp</a></p>
-      <p style="margin:4px 0"><a href="mailto:info@munichairport.taxi">✉️ info@munichairport.taxi</a></p>
+      <p style="margin:4px 0"><a href="mailto:info@flughafen-muenchen.taxi">✉️ info@flughafen-muenchen.taxi</a></p>
     </div>
   </div>
   <div class="footer">
     ${t.footer}<br>
-    www.munichairport.taxi
+    www.flughafen-muenchen.taxi
   </div>
 </body>
 </html>
