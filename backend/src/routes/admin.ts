@@ -834,44 +834,68 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
       else break;
     }
 
+    // Load all unmatched card bookings in ONE query
+    const allDateFrom = new Date(yearNum, monthNum - 1, 1);
+    allDateFrom.setMonth(allDateFrom.getMonth() - 1); // 1 month buffer
+    const allDateTo = new Date(yearNum, monthNum, 31);
+    const unmatchedBookings: any[] = await query(`
+      SELECT id, booking_number, price, pickup_datetime
+      FROM bookings
+      WHERE payment_method = 'card' AND status != 'cancelled' AND stripe_charge_id IS NULL
+        AND pickup_datetime >= ? AND pickup_datetime <= ?
+    `, [allDateFrom.toISOString(), allDateTo.toISOString()]);
+
     let matched = 0;
     let unmatched = 0;
     const details: any[] = [];
+    const chargeUpdates: Array<{ id: number; chargeId: string; paymentDate: string; payoutId: string | null }> = [];
 
     for (const charge of charges) {
       const chargeDate = new Date(charge.created * 1000);
-      const chargeMin = new Date(chargeDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const chargeMax = new Date(chargeDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-      const candidates = await query(`
-        SELECT id, booking_number, price, pickup_datetime
-        FROM bookings
-        WHERE payment_method = 'card'
-          AND status != 'cancelled'
-          AND stripe_charge_id IS NULL
-          AND pickup_datetime >= ?
-          AND pickup_datetime <= ?
-      `, [chargeMin.toISOString(), chargeMax.toISOString()]);
+      const chargeMin = chargeDate.getTime() - 7 * 24 * 60 * 60 * 1000;
+      const chargeMax = chargeDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+      const bt = charge.balance_transaction;
+      const payoutId = bt && typeof bt === 'object'
+        ? (typeof bt.payout === 'string' ? bt.payout : bt.payout?.id) || null
+        : null;
 
       let foundMatch = false;
-      for (const b of candidates as any[]) {
-        const roundedCents = Math.round(Math.ceil(b.price * 2) / 2 * 100);
-        if (roundedCents === charge.amount) {
-          await run(
-            'UPDATE bookings SET stripe_charge_id = ?, stripe_payment_date = ? WHERE id = ?',
-            [charge.id, chargeDate.toISOString(), b.id]
-          );
-          matched++;
-          details.push({ charge_id: charge.id, booking_number: b.booking_number, amount: charge.amount / 100, status: 'matched' });
-          foundMatch = true;
-          break;
+      for (const b of unmatchedBookings) {
+        const pt = new Date(b.pickup_datetime).getTime();
+        if (pt >= chargeMin && pt <= chargeMax) {
+          const roundedCents = Math.round(Math.ceil(b.price * 2) / 2 * 100);
+          if (roundedCents === charge.amount) {
+            chargeUpdates.push({ id: b.id, chargeId: charge.id, paymentDate: chargeDate.toISOString(), payoutId });
+            b.stripe_charge_id = charge.id; // mark as matched in memory
+            matched++;
+            details.push({ charge_id: charge.id, booking_number: b.booking_number, amount: charge.amount / 100, status: 'matched' });
+            foundMatch = true;
+            break;
+          }
         }
       }
-
       if (!foundMatch) {
         unmatched++;
-        details.push({ charge_id: charge.id, amount: charge.amount / 100, date: chargeDate.toISOString(), status: 'unmatched' });
+        details.push({ charge_id: charge.id, amount: charge.amount / 100, status: 'unmatched' });
       }
+    }
+
+    // Batch update: charge matches
+    if (chargeUpdates.length > 0) {
+      const placeholders = chargeUpdates.map(() => 'WHEN id = ? THEN ?').join(' ');
+      const datePlaceholders = chargeUpdates.map(() => 'WHEN id = ? THEN ?').join(' ');
+      const ids = chargeUpdates.map(u => u.id);
+      await run(
+        `UPDATE bookings SET
+          stripe_charge_id = CASE ${placeholders} END,
+          stripe_payment_date = CASE ${datePlaceholders} END
+         WHERE id IN (${ids.map(() => '?').join(',')})`,
+        [
+          ...chargeUpdates.flatMap(u => [u.id, u.chargeId]),
+          ...chargeUpdates.flatMap(u => [u.id, u.paymentDate]),
+          ...ids,
+        ]
+      );
     }
 
     // --- Payout linking via balance_transaction.payout on each charge ---
@@ -879,16 +903,25 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
     let payoutError: string | null = null;
 
     try {
+      // Build payout map from charges
+      const payoutMap: Record<string, string> = {}; // chargeId -> payoutId
       for (const charge of charges) {
         const bt = charge.balance_transaction;
         if (!bt || typeof bt !== 'object') continue;
         const payoutId = typeof bt.payout === 'string' ? bt.payout : bt.payout?.id;
-        if (!payoutId || !charge.id) continue;
+        if (payoutId && charge.id) payoutMap[charge.id] = payoutId;
+      }
+
+      const chargeIds = Object.keys(payoutMap);
+      if (chargeIds.length > 0) {
+        // Single query to update all payout IDs at once
+        const cases = chargeIds.map(() => 'WHEN stripe_charge_id = ? THEN ?').join(' ');
         const result = await run(
-          'UPDATE bookings SET stripe_payout_id = ? WHERE stripe_charge_id = ? AND stripe_payout_id IS NULL',
-          [payoutId, charge.id]
+          `UPDATE bookings SET stripe_payout_id = CASE ${cases} END
+           WHERE stripe_charge_id IN (${chargeIds.map(() => '?').join(',')}) AND stripe_payout_id IS NULL`,
+          [...chargeIds.flatMap(cid => [cid, payoutMap[cid]]), ...chargeIds]
         );
-        if (result.affectedRows > 0) payoutLinked++;
+        payoutLinked = result.affectedRows || 0;
       }
     } catch (pe: any) {
       console.error('Payout linking error (non-fatal):', pe);
