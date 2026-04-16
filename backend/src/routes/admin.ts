@@ -332,18 +332,20 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     const nextYear = month === 12 ? year + 1 : year;
     const dateTo = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
 
+    // Filter by created_at (payment date) — for Finanzamt, income is reported when payment received
     const bookings = await query(`
-      SELECT booking_number, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz
+      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz
       FROM bookings
       WHERE payment_method = 'card' AND status != 'cancelled'
-        AND pickup_datetime >= ? AND pickup_datetime < ?
-      ORDER BY pickup_datetime ASC
+        AND DATE(created_at) >= ? AND DATE(created_at) < ?
+      ORDER BY created_at ASC
     `, [dateFrom, dateTo]);
 
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     const title = `Kreditkartenzahlungen — ${monthNames[month - 1]} ${year}`;
 
-    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    // Use A4 landscape for more space
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => {
@@ -353,61 +355,83 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       res.send(pdfBuffer);
     });
 
+    // Page width in landscape = 841.89, margins 30 each side → usable = 781
+    const pageW = 781;
+    const startX = 30;
+
+    // Column definitions: [x, width, label, align]
+    // Buchungsnr(105) | Zahldatum(65) | Fahrtdatum(65) | Name(100) | Von(140) | Nach(140) | Preis(60) | MwSt(50)
+    const cols = [
+      { x: startX,       w: 105, label: 'Buchungsnr.',  align: 'left'  as const },
+      { x: startX+105,   w: 65,  label: 'Zahldatum',    align: 'left'  as const },
+      { x: startX+170,   w: 65,  label: 'Fahrtdatum',   align: 'left'  as const },
+      { x: startX+235,   w: 105, label: 'Name',         align: 'left'  as const },
+      { x: startX+340,   w: 155, label: 'Von',          align: 'left'  as const },
+      { x: startX+495,   w: 155, label: 'Nach',         align: 'left'  as const },
+      { x: startX+650,   w: 65,  label: 'Preis',        align: 'right' as const },
+      { x: startX+715,   w: 50,  label: 'MwSt.',        align: 'center'as const },
+    ];
+
+    const drawHeader = () => {
+      doc.fontSize(8).font('Helvetica-Bold');
+      const hy = doc.y;
+      cols.forEach(c => {
+        doc.text(c.label, c.x, hy, { width: c.w, align: c.align, lineBreak: false });
+      });
+      doc.moveDown(0.15);
+      const lineY = doc.y + 2;
+      doc.moveTo(startX, lineY).lineTo(startX + pageW, lineY).lineWidth(0.5).stroke();
+      doc.y = lineY + 4;
+    };
+
     // Title
-    doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(9).font('Helvetica').text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, { align: 'center' });
-    doc.moveDown(1);
+    doc.fontSize(14).font('Helvetica-Bold').text(title, startX, 30, { width: pageW, align: 'center' });
+    doc.fontSize(8).font('Helvetica').text(
+      `Erstellt am: ${new Date().toLocaleDateString('de-DE')} | Zeitraum: ${monthNames[month - 1]} ${year} (nach Zahlungsdatum)`,
+      startX, doc.y + 4, { width: pageW, align: 'center' }
+    );
+    doc.moveDown(0.8);
 
     if (bookings.length === 0) {
-      doc.fontSize(12).text('Keine Kreditkartenzahlungen in diesem Zeitraum.', { align: 'center' });
+      doc.fontSize(11).text('Keine Kreditkartenzahlungen in diesem Zeitraum.', { align: 'center' });
       doc.end();
       return;
     }
 
-    // Table header
-    const colX = [40, 120, 210, 310, 440, 510];
-    const colLabels = ['Buchungsnr.', 'Datum', 'Name', 'Strecke', 'Preis', 'MwSt.'];
-    doc.fontSize(8).font('Helvetica-Bold');
-    colLabels.forEach((label, i) => doc.text(label, colX[i], doc.y, { continued: i < colLabels.length - 1, width: (colX[i + 1] || 560) - colX[i] }));
-    doc.moveDown(0.3);
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-    doc.moveDown(0.3);
+    drawHeader();
 
     let total7 = 0, total19 = 0, totalUnset = 0;
     let count7 = 0, count19 = 0, countUnset = 0;
+    const ROW_H = 14;
 
     doc.font('Helvetica').fontSize(7.5);
     for (const b of bookings) {
-      if (doc.y > 750) {
+      if (doc.y > 530) {
         doc.addPage();
-        doc.fontSize(8).font('Helvetica-Bold');
-        colLabels.forEach((label, i) => doc.text(label, colX[i], doc.y, { continued: i < colLabels.length - 1, width: (colX[i + 1] || 560) - colX[i] }));
-        doc.moveDown(0.3);
-        doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-        doc.moveDown(0.3);
+        drawHeader();
         doc.font('Helvetica').fontSize(7.5);
       }
 
-      const dateStr = b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleDateString('de-DE') : '—';
-      const pickup = (b.pickup_address || '').substring(0, 20);
-      const dropoff = (b.dropoff_address || '').substring(0, 20);
-      const route = `${pickup} → ${dropoff}`;
-      const price = `${(b.price || 0).toFixed(2)} €`;
+      const zahlDatum = b.created_at ? new Date(b.created_at).toLocaleDateString('de-DE') : '—';
+      const fahrtDatum = b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleDateString('de-DE') : '—';
+      const name = (b.name || '').substring(0, 22);
+      const pickup = (b.pickup_address || '').replace(/, Deutschland$/, '').substring(0, 35);
+      const dropoff = (b.dropoff_address || '').replace(/, Deutschland$/, '').substring(0, 35);
+      const priceStr = `${(b.price || 0).toFixed(2)} €`;
       const tax = b.steuersatz ? `${b.steuersatz}%` : '—';
 
       if (b.steuersatz === 7) { total7 += b.price || 0; count7++; }
       else if (b.steuersatz === 19) { total19 += b.price || 0; count19++; }
       else { totalUnset += b.price || 0; countUnset++; }
 
+      // Draw alternating row background
       const rowY = doc.y;
-      doc.text(b.booking_number || '', colX[0], rowY, { width: 75 });
-      doc.text(dateStr, colX[1], rowY, { width: 85 });
-      doc.text((b.name || '').substring(0, 20), colX[2], rowY, { width: 95 });
-      doc.text(route, colX[3], rowY, { width: 125 });
-      doc.text(price, colX[4], rowY, { width: 65 });
-      doc.text(tax, colX[5], rowY, { width: 45 });
-      doc.moveDown(0.4);
+      const values = [b.booking_number || '', zahlDatum, fahrtDatum, name, pickup, dropoff, priceStr, tax];
+      const aligns: Array<'left'|'right'|'center'> = ['left','left','left','left','left','left','right','center'];
+      cols.forEach((c, i) => {
+        doc.text(values[i], c.x, rowY, { width: c.w, align: aligns[i], lineBreak: false });
+      });
+      doc.y = rowY + ROW_H;
     }
 
     // Summary
