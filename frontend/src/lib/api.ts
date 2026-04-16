@@ -200,6 +200,21 @@ export const adminApi = {
     return response.data;
   },
 
+  setStripeDate: async (id: number, stripe_payment_date: string | null) => {
+    const response = await api.patch(`/admin/bookings/${id}/stripe-date`, { stripe_payment_date });
+    return response.data;
+  },
+
+  syncStripeCharges: async (month: number, year: number, charges: Array<{id: string, amount: number, created: number}>) => {
+    const response = await api.post('/admin/stripe/sync', { month, year, charges });
+    return response.data;
+  },
+
+  getUnmatchedBookings: async (): Promise<Booking[]> => {
+    const response = await api.get('/admin/stripe/unmatched');
+    return response.data;
+  },
+
   getFinanzamtReport: (month: number, year: number) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
     return `${API_BASE_URL}/admin/report/finanzamt?month=${month}&year=${year}&token=${token}`;
