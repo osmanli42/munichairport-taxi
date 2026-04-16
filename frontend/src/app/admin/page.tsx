@@ -517,7 +517,7 @@ export default function AdminPage() {
                     try {
                       const result = await adminApi.autoSyncStripe(reportMonth, reportYear);
                       setStripeSyncResult(result);
-                      fetchBookings();
+                      loadBookings();
                     } catch (err: any) {
                       alert('Stripe Sync Fehler: ' + (err.response?.data?.error || err.message));
                     } finally {
