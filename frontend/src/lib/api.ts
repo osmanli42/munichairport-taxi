@@ -183,6 +183,11 @@ export const adminApi = {
     return response.data;
   },
 
+  getTomorrowCards: async (): Promise<Booking[]> => {
+    const response = await api.get('/admin/bookings/tomorrow-cards');
+    return response.data;
+  },
+
   updateSteuersatz: async (id: number, steuersatz: number | null) => {
     const response = await api.patch(`/admin/bookings/${id}/steuersatz`, { steuersatz });
     return response.data;
