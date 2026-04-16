@@ -906,6 +906,36 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Steuersatz - only for card payments */}
+              {selectedBooking.payment_method === 'card' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Steuersatz:</span>
+                  <div className="flex gap-2">
+                    {[7, 19].map((rate) => (
+                      <button
+                        key={rate}
+                        onClick={async () => {
+                          const newRate = selectedBooking.steuersatz === rate ? null : rate;
+                          try {
+                            const updated = await adminApi.updateSteuersatz(selectedBooking.id, newRate);
+                            setSelectedBooking(prev => prev ? { ...prev, steuersatz: newRate } : null);
+                            setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { ...b, steuersatz: newRate } : b));
+                          } catch (err) { console.error(err); }
+                        }}
+                        className={cn(
+                          'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                          selectedBooking.steuersatz === rate
+                            ? rate === 7 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        )}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {[
                 { label: 'Abholung', value: selectedBooking.pickup_address },
                 { label: 'Ziel', value: selectedBooking.dropoff_address },
