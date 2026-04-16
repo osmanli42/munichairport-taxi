@@ -152,6 +152,25 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
   res.json(booking);
 });
 
+// PATCH /api/admin/bookings/:id/steuersatz - Update tax rate
+router.patch('/bookings/:id/steuersatz', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { steuersatz } = req.body;
+
+  if (steuersatz !== null && steuersatz !== 7 && steuersatz !== 19) {
+    res.status(400).json({ error: 'Steuersatz must be 7, 19, or null' });
+    return;
+  }
+
+  const result = await run('UPDATE bookings SET steuersatz = ? WHERE id = ? AND payment_method = ?', [steuersatz, req.params.id, 'card']);
+  if (result.affectedRows === 0) {
+    res.status(404).json({ error: 'Booking not found or not a card payment' });
+    return;
+  }
+
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+  res.json(decryptBooking(booking));
+});
+
 // DELETE /api/admin/bookings/:id
 router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const result = await run('DELETE FROM bookings WHERE id = ?', [req.params.id]);
