@@ -127,6 +127,7 @@ export default function AdminPage() {
       if (activeTab === 'dashboard') {
         loadStats();
         adminApi.getTomorrowCards().then(setTomorrowCards).catch(() => {});
+        adminApi.getTodayBookings().then(setTodayBookings).catch(() => {});
       }
       if (activeTab === 'bookings') loadBookings();
       if (activeTab === 'prices') {
