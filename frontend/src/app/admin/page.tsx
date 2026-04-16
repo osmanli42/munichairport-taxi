@@ -45,6 +45,8 @@ export default function AdminPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [tomorrowCards, setTomorrowCards] = useState<Booking[]>([]);
+  const [tomorrowCardBooking, setTomorrowCardBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
