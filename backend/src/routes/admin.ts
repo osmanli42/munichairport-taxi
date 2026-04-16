@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import PDFDocument from 'pdfkit';
 import { query, run } from '../db';
 import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
