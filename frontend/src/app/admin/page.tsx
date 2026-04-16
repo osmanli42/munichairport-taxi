@@ -285,6 +285,100 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Morgen zu belasten */}
+            {(() => {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowLabel = tomorrow.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+              return (
+                <div className={cn(
+                  'rounded-2xl p-6 shadow-sm',
+                  tomorrowCards.length > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-white'
+                )}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">💳</span>
+                      <div>
+                        <h3 className="font-bold text-gray-900">Morgen zu belasten</h3>
+                        <p className="text-xs text-gray-500">{tomorrowLabel}</p>
+                      </div>
+                    </div>
+                    {tomorrowCards.length > 0 && (
+                      <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                        {tomorrowCards.length} Karte{tomorrowCards.length > 1 ? 'n' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {tomorrowCards.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">✓ Keine Kreditkartenzahlungen für morgen</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-amber-200">
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Buchung</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Uhrzeit</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Kunde</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Strecke</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Preis</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Karteninhaber</th>
+                            <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Kartennr.</th>
+                            <th className="py-2 px-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amber-100">
+                          {tomorrowCards.map((b) => (
+                            <tr key={b.id} className="hover:bg-amber-100/50">
+                              <td className="py-2 px-2 font-mono text-xs text-primary-600">{b.booking_number}</td>
+                              <td className="py-2 px-2 font-medium text-xs whitespace-nowrap">
+                                {b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'} Uhr
+                              </td>
+                              <td className="py-2 px-2">
+                                <div className="font-medium">{b.name}</div>
+                                <div className="text-xs text-gray-500">{b.phone}</div>
+                              </td>
+                              <td className="py-2 px-2 text-xs text-gray-600 max-w-[180px]">
+                                <div className="truncate">{b.pickup_address}</div>
+                                <div className="truncate text-gray-400">→ {b.dropoff_address}</div>
+                              </td>
+                              <td className="py-2 px-2 font-bold text-primary-600 whitespace-nowrap">{formatPrice(b.price)}</td>
+                              <td className="py-2 px-2 text-xs">{b.card_holder || '—'}</td>
+                              <td className="py-2 px-2 font-mono text-xs">
+                                {b.card_number ? `•••• •••• •••• ${b.card_number.slice(-4)}` : '—'}
+                              </td>
+                              <td className="py-2 px-2">
+                                <button
+                                  onClick={() => {
+                                    setTomorrowCardBooking(b);
+                                    setSelectedBooking(b);
+                                    setShowCardPopup(true);
+                                    setCardVisible(false);
+                                  }}
+                                  className="flex items-center gap-1 text-xs bg-primary-600 hover:bg-primary-700 text-white px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-colors"
+                                >
+                                  <Eye size={12} />
+                                  Karte
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="mt-3 pt-3 border-t border-amber-200 flex justify-between items-center">
+                        <span className="text-sm text-gray-600">
+                          Gesamt zu belasten:
+                        </span>
+                        <span className="text-lg font-bold text-primary-600">
+                          {formatPrice(tomorrowCards.reduce((sum, b) => sum + b.price, 0))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Finanzamt Report */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-4">Finanzamt — Kreditkartenbericht</h3>
