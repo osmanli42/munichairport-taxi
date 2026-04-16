@@ -435,20 +435,43 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     }
 
     // Summary
-    doc.moveDown(1);
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-    doc.moveDown(0.5);
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text('Zusammenfassung', 40);
-    doc.moveDown(0.5);
+    doc.moveDown(0.8);
+    const sumLineY = doc.y;
+    doc.moveTo(startX, sumLineY).lineTo(startX + pageW, sumLineY).lineWidth(0.8).stroke();
+    doc.y = sumLineY + 6;
+
+    doc.fontSize(10).font('Helvetica-Bold').text('Zusammenfassung', startX, doc.y);
+    doc.moveDown(0.4);
     doc.fontSize(9).font('Helvetica');
-    doc.text(`7% MwSt.: ${count7} Fahrten — ${total7.toFixed(2)} €`);
-    doc.text(`19% MwSt.: ${count19} Fahrten — ${total19.toFixed(2)} €`);
-    doc.text(`Gesamt: ${bookings.length} Fahrten — ${(total7 + total19 + totalUnset).toFixed(2)} €`);
+
+    // Two-column summary layout
+    const colLeft = startX;
+    const colRight = startX + 300;
+    const sumY = doc.y;
+
+    doc.text(`7% MwSt.:`, colLeft, sumY, { width: 100, lineBreak: false });
+    doc.text(`${count7} Fahrten`, colLeft + 100, sumY, { width: 100, lineBreak: false });
+    doc.font('Helvetica-Bold').text(`${total7.toFixed(2)} €`, colLeft + 200, sumY, { width: 80, align: 'right', lineBreak: false });
+    doc.font('Helvetica');
+
+    doc.text(`19% MwSt.:`, colRight, sumY, { width: 100, lineBreak: false });
+    doc.text(`${count19} Fahrten`, colRight + 100, sumY, { width: 100, lineBreak: false });
+    doc.font('Helvetica-Bold').text(`${total19.toFixed(2)} €`, colRight + 200, sumY, { width: 80, align: 'right', lineBreak: false });
+    doc.font('Helvetica');
+
+    doc.y = sumY + 16;
+    const totalY = doc.y;
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.text(`Gesamt: ${bookings.length} Fahrten`, colLeft, totalY, { width: 200, lineBreak: false });
+    doc.text(`${(total7 + total19 + totalUnset).toFixed(2)} €`, colLeft + 200, totalY, { width: 80, align: 'right', lineBreak: false });
+    doc.font('Helvetica').fontSize(9);
 
     if (countUnset > 0) {
-      doc.moveDown(0.5);
-      doc.fontSize(8).fillColor('red').text(`⚠ ${countUnset} Fahrten ohne Steuersatz (${totalUnset.toFixed(2)} €)`);
+      doc.y = totalY + 20;
+      doc.fillColor('#cc0000').text(
+        `⚠  ${countUnset} Fahrten ohne Steuersatz (${totalUnset.toFixed(2)} €) — bitte vor Abgabe ergänzen!`,
+        colLeft, doc.y
+      );
       doc.fillColor('black');
     }
 
