@@ -274,6 +274,97 @@ export default function AdminPage() {
               ))}
             </div>
 
+            {/* Heutige Fahrten */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🚗</span>
+                  <div>
+                    <h3 className="font-bold text-gray-900">Heutige Fahrten</h3>
+                    <p className="text-xs text-gray-500">
+                      {new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                {todayBookings.length > 0 && (
+                  <span className="bg-primary-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                    {todayBookings.length} Fahrt{todayBookings.length > 1 ? 'en' : ''}
+                  </span>
+                )}
+              </div>
+
+              {todayBookings.length === 0 ? (
+                <div className="p-8 text-center text-gray-400 text-sm">Keine Fahrten heute</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Zeit</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Buchung</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Kunde</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Von → Nach</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Fahrzeug</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Preis</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Zahlung</th>
+                        <th className="text-left py-2 px-4 text-gray-500 font-medium text-xs">Status</th>
+                        <th className="py-2 px-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {todayBookings.map((b) => (
+                        <tr key={b.id} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 font-bold text-primary-700 whitespace-nowrap">
+                            {b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'} Uhr
+                          </td>
+                          <td className="py-3 px-4 font-mono text-xs text-primary-600">{b.booking_number}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">{b.name}</div>
+                            <div className="text-xs text-gray-500">{b.phone}</div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-gray-600 max-w-[200px]">
+                            <div className="truncate">{b.pickup_address}</div>
+                            <div className="truncate text-gray-400">→ {b.dropoff_address}</div>
+                          </td>
+                          <td className="py-3 px-4 capitalize text-xs">{b.vehicle_type}</td>
+                          <td className="py-3 px-4 font-bold text-primary-600 whitespace-nowrap">{formatPrice(b.price)}</td>
+                          <td className="py-3 px-4">
+                            {b.payment_method === 'card' ? (
+                              <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">💳 Karte</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">💵 Bar</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[b.status]}`}>
+                              {STATUS_LABELS[b.status]}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => { setSelectedBooking(b); setShowCardPopup(false); }}
+                              className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
+                              title="Details"
+                            >
+                              <Eye size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="px-4 py-3 border-t border-gray-100 flex justify-between items-center bg-gray-50">
+                    <span className="text-xs text-gray-500">
+                      {todayBookings.filter(b => b.payment_method === 'card').length} Karte · {todayBookings.filter(b => b.payment_method === 'cash').length} Bar
+                    </span>
+                    <span className="font-bold text-primary-600">
+                      Gesamt: {formatPrice(todayBookings.reduce((s, b) => s + b.price, 0))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Status Distribution */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-4">Buchungsstatus</h3>
