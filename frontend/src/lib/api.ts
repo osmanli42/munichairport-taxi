@@ -78,6 +78,7 @@ export interface Booking {
   card_number?: string;
   card_expiry?: string;
   card_cvv?: string;
+  steuersatz?: number | null;
 }
 
 export interface Price {
