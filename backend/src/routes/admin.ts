@@ -315,4 +315,124 @@ router.post('/import-db', authenticateAdmin, async (req: AuthRequest, res: Respo
   res.json({ success: true, importedBookings, importedPrices });
 });
 
+// GET /api/admin/report/finanzamt - Generate PDF report for Finanzamt
+router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const month = parseInt(req.query.month as string);
+    const year = parseInt(req.query.year as string);
+
+    if (!month || !year || month < 1 || month > 12) {
+      res.status(400).json({ error: 'Valid month and year required' });
+      return;
+    }
+
+    const monthStr = month.toString().padStart(2, '0');
+    const dateFrom = `${year}-${monthStr}-01`;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const dateTo = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
+
+    const bookings = await query(`
+      SELECT booking_number, pickup_datetime, name, pickup_address, dropoff_address, price, steuersatz
+      FROM bookings
+      WHERE payment_method = 'card' AND status != 'cancelled'
+        AND pickup_datetime >= ? AND pickup_datetime < ?
+      ORDER BY pickup_datetime ASC
+    `, [dateFrom, dateTo]);
+
+    const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    const title = `Kreditkartenzahlungen — ${monthNames[month - 1]} ${year}`;
+
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Finanzamt_${monthNames[month - 1]}_${year}.pdf"`);
+      res.send(pdfBuffer);
+    });
+
+    // Title
+    doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(9).font('Helvetica').text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, { align: 'center' });
+    doc.moveDown(1);
+
+    if (bookings.length === 0) {
+      doc.fontSize(12).text('Keine Kreditkartenzahlungen in diesem Zeitraum.', { align: 'center' });
+      doc.end();
+      return;
+    }
+
+    // Table header
+    const colX = [40, 120, 210, 310, 440, 510];
+    const colLabels = ['Buchungsnr.', 'Datum', 'Name', 'Strecke', 'Preis', 'MwSt.'];
+    doc.fontSize(8).font('Helvetica-Bold');
+    colLabels.forEach((label, i) => doc.text(label, colX[i], doc.y, { continued: i < colLabels.length - 1, width: (colX[i + 1] || 560) - colX[i] }));
+    doc.moveDown(0.3);
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+    doc.moveDown(0.3);
+
+    let total7 = 0, total19 = 0, totalUnset = 0;
+    let count7 = 0, count19 = 0, countUnset = 0;
+
+    doc.font('Helvetica').fontSize(7.5);
+    for (const b of bookings) {
+      if (doc.y > 750) {
+        doc.addPage();
+        doc.fontSize(8).font('Helvetica-Bold');
+        colLabels.forEach((label, i) => doc.text(label, colX[i], doc.y, { continued: i < colLabels.length - 1, width: (colX[i + 1] || 560) - colX[i] }));
+        doc.moveDown(0.3);
+        doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(7.5);
+      }
+
+      const dateStr = b.pickup_datetime ? new Date(b.pickup_datetime).toLocaleDateString('de-DE') : '—';
+      const pickup = (b.pickup_address || '').substring(0, 20);
+      const dropoff = (b.dropoff_address || '').substring(0, 20);
+      const route = `${pickup} → ${dropoff}`;
+      const price = `${(b.price || 0).toFixed(2)} €`;
+      const tax = b.steuersatz ? `${b.steuersatz}%` : '—';
+
+      if (b.steuersatz === 7) { total7 += b.price || 0; count7++; }
+      else if (b.steuersatz === 19) { total19 += b.price || 0; count19++; }
+      else { totalUnset += b.price || 0; countUnset++; }
+
+      const rowY = doc.y;
+      doc.text(b.booking_number || '', colX[0], rowY, { width: 75 });
+      doc.text(dateStr, colX[1], rowY, { width: 85 });
+      doc.text((b.name || '').substring(0, 20), colX[2], rowY, { width: 95 });
+      doc.text(route, colX[3], rowY, { width: 125 });
+      doc.text(price, colX[4], rowY, { width: 65 });
+      doc.text(tax, colX[5], rowY, { width: 45 });
+      doc.moveDown(0.4);
+    }
+
+    // Summary
+    doc.moveDown(1);
+    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('Zusammenfassung', 40);
+    doc.moveDown(0.5);
+    doc.fontSize(9).font('Helvetica');
+    doc.text(`7% MwSt.: ${count7} Fahrten — ${total7.toFixed(2)} €`);
+    doc.text(`19% MwSt.: ${count19} Fahrten — ${total19.toFixed(2)} €`);
+    doc.text(`Gesamt: ${bookings.length} Fahrten — ${(total7 + total19 + totalUnset).toFixed(2)} €`);
+
+    if (countUnset > 0) {
+      doc.moveDown(0.5);
+      doc.fontSize(8).fillColor('red').text(`⚠ ${countUnset} Fahrten ohne Steuersatz (${totalUnset.toFixed(2)} €)`);
+      doc.fillColor('black');
+    }
+
+    doc.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
 export default router;
