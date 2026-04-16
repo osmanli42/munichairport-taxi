@@ -869,50 +869,21 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
       }
     }
 
-    // --- Payout linking (best-effort, doesn't fail the whole sync) ---
+    // --- Payout linking via balance_transaction.payout on each charge ---
     let payoutLinked = 0;
     let payoutError: string | null = null;
 
     try {
-      const payoutDateFrom = Math.floor(dateFrom.getTime() / 1000);
-      const payoutDateTo = Math.floor(new Date(yearNum, monthNum, 31).getTime() / 1000);
-
-      const payouts: any[] = [];
-      let payoutHasMore = true;
-      let payoutStartingAfter: string | undefined = undefined;
-
-      while (payoutHasMore) {
-        const payoutParams: any = { arrival_date: { gte: payoutDateFrom, lte: payoutDateTo }, limit: 100 };
-        if (payoutStartingAfter) payoutParams.starting_after = payoutStartingAfter;
-        const payoutPage = await (stripe as any).payouts.list(payoutParams);
-        payouts.push(...payoutPage.data);
-        payoutHasMore = payoutPage.has_more;
-        if (payoutPage.data.length > 0) payoutStartingAfter = payoutPage.data[payoutPage.data.length - 1].id;
-        else break;
-      }
-
-      for (const payout of payouts) {
-        const bts: any[] = [];
-        let btHasMore = true;
-        let btStartingAfter: string | undefined = undefined;
-        while (btHasMore) {
-          const btParams: any = { payout: payout.id, limit: 100, type: 'charge' };
-          if (btStartingAfter) btParams.starting_after = btStartingAfter;
-          const btPage = await (stripe as any).balanceTransactions.list(btParams);
-          bts.push(...btPage.data);
-          btHasMore = btPage.has_more;
-          if (btPage.data.length > 0) btStartingAfter = btPage.data[btPage.data.length - 1].id;
-          else break;
-        }
-        for (const bt of bts) {
-          const chargeId = typeof bt.source === 'string' ? bt.source : bt.source?.id;
-          if (!chargeId) continue;
-          const result = await run(
-            'UPDATE bookings SET stripe_payout_id = ? WHERE stripe_charge_id = ? AND stripe_payout_id IS NULL',
-            [payout.id, chargeId]
-          );
-          if (result.affectedRows > 0) payoutLinked++;
-        }
+      for (const charge of charges) {
+        const bt = charge.balance_transaction;
+        if (!bt || typeof bt !== 'object') continue;
+        const payoutId = typeof bt.payout === 'string' ? bt.payout : bt.payout?.id;
+        if (!payoutId || !charge.id) continue;
+        const result = await run(
+          'UPDATE bookings SET stripe_payout_id = ? WHERE stripe_charge_id = ? AND stripe_payout_id IS NULL',
+          [payoutId, charge.id]
+        );
+        if (result.affectedRows > 0) payoutLinked++;
       }
     } catch (pe: any) {
       console.error('Payout linking error (non-fatal):', pe);
