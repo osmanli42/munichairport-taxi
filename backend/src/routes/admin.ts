@@ -449,6 +449,11 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     let count7 = 0, count19 = 0, countUnset = 0;
     const ROW_H = 14;
 
+    // Helper function to apply same rounding as frontend's formatPrice
+    const formatPriceForPDF = (price: number): number => {
+      return Math.ceil(price * 2) / 2;
+    };
+
     doc.font('Helvetica').fontSize(7.5);
     for (const b of bookings) {
       if (doc.y > 530) {
@@ -462,12 +467,13 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
       const name = (b.name || '').substring(0, 22);
       const pickup = (b.pickup_address || '').replace(/, Deutschland$/, '').substring(0, 35);
       const dropoff = (b.dropoff_address || '').replace(/, Deutschland$/, '').substring(0, 35);
-      const priceStr = `${(b.price || 0).toFixed(2)} €`;
+      const roundedPrice = formatPriceForPDF(b.price || 0);
+      const priceStr = `${roundedPrice.toFixed(2)} €`;
       const tax = b.steuersatz ? `${b.steuersatz}%` : '—';
 
-      if (b.steuersatz === 7) { total7 += b.price || 0; count7++; }
-      else if (b.steuersatz === 19) { total19 += b.price || 0; count19++; }
-      else { totalUnset += b.price || 0; countUnset++; }
+      if (b.steuersatz === 7) { total7 += roundedPrice; count7++; }
+      else if (b.steuersatz === 19) { total19 += roundedPrice; count19++; }
+      else { totalUnset += roundedPrice; countUnset++; }
 
       // Draw alternating row background
       const rowY = doc.y;
