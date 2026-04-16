@@ -639,7 +639,7 @@ router.get('/stripe/unmatched', authenticateAdmin, async (req: AuthRequest, res:
   }
 });
 
-// POST /api/admin/stripe/auto-sync - Fetch charges directly from Stripe and match bookings
+// POST /api/admin/stripe/auto-sync - Fetch charges directly from Stripe and match bookings + payouts
 router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!stripe) {
@@ -716,7 +716,60 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
       }
     }
 
-    res.json({ total: charges.length, matched, unmatched, details });
+    // --- Payout linking ---
+    // Fetch payouts for the month (and a 30-day buffer after month end to catch late payouts)
+    const payoutDateFrom = Math.floor(dateFrom.getTime() / 1000);
+    const payoutDateTo = Math.floor(new Date(yearNum, monthNum, 31).getTime() / 1000);
+
+    const payouts: any[] = [];
+    let payoutHasMore = true;
+    let payoutStartingAfter: string | undefined = undefined;
+
+    while (payoutHasMore) {
+      const payoutParams: any = {
+        arrival_date: { gte: payoutDateFrom, lte: payoutDateTo },
+        limit: 100,
+        status: 'paid',
+      };
+      if (payoutStartingAfter) payoutParams.starting_after = payoutStartingAfter;
+
+      const payoutPage = await (stripe.payouts.list as any)(payoutParams);
+      payouts.push(...payoutPage.data);
+      payoutHasMore = payoutPage.has_more;
+      if (payoutPage.data.length > 0) payoutStartingAfter = payoutPage.data[payoutPage.data.length - 1].id;
+    }
+
+    let payoutLinked = 0;
+
+    for (const payout of payouts) {
+      // Fetch balance transactions for this payout
+      const bts: any[] = [];
+      let btHasMore = true;
+      let btStartingAfter: string | undefined = undefined;
+
+      while (btHasMore) {
+        const btParams: any = { payout: payout.id, limit: 100, type: 'charge' };
+        if (btStartingAfter) btParams.starting_after = btStartingAfter;
+        const btPage = await (stripe.balanceTransactions.list as any)(btParams);
+        bts.push(...btPage.data);
+        btHasMore = btPage.has_more;
+        if (btPage.data.length > 0) btStartingAfter = btPage.data[btPage.data.length - 1].id;
+      }
+
+      for (const bt of bts) {
+        // bt.source is the charge id
+        const chargeId = typeof bt.source === 'string' ? bt.source : bt.source?.id;
+        if (!chargeId) continue;
+
+        const result = await run(
+          'UPDATE bookings SET stripe_payout_id = ? WHERE stripe_charge_id = ? AND stripe_payout_id IS NULL',
+          [payout.id, chargeId]
+        );
+        if (result.affectedRows > 0) payoutLinked++;
+      }
+    }
+
+    res.json({ total: charges.length, matched, unmatched, payoutLinked, details });
   } catch (error: any) {
     console.error('Stripe auto-sync error:', error);
     res.status(500).json({ error: error.message || 'Failed to sync with Stripe' });
