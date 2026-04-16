@@ -131,6 +131,11 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN zwischenstopp_address TEXT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Migration: add steuersatz to bookings (7 or 19 percent, NULL = not set)
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN steuersatz INT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,
