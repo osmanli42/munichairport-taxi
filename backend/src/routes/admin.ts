@@ -381,12 +381,12 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
     // Roundtrip vs one-way
     const tripTypeStats = await query(`
       SELECT
-        is_roundtrip,
+        trip_type,
         COUNT(*) as count,
         COALESCE(SUM(price), 0) as revenue
       FROM bookings
       WHERE status != 'cancelled'
-      GROUP BY is_roundtrip
+      GROUP BY trip_type
     `);
 
     // Weekly revenue for last 8 weeks
