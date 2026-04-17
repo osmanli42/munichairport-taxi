@@ -1085,12 +1085,14 @@ export default function AdminPage() {
                 {(() => {
                   const avg = detailedStats.avgStats as { avg_price: number; avg_distance: number; avg_passengers: number; max_price: number; min_price: number };
                   const monthly = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
-                  // Mevcut ayı hariç tut — henüz tamamlanmadı
-                  const currentMonth = new Date().toISOString().slice(0, 7);
-                  const completedMonths = monthly.filter(m => m.month < currentMonth);
-                  const lastMonth = completedMonths[completedMonths.length - 1];
-                  const prevMonth = completedMonths[completedMonths.length - 2];
+                  // Bu ay ve geçen ay — takvim bazlı karşılaştırma
+                  const now = new Date();
+                  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                  const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
                   const currentMonthData = monthly.find(m => m.month === currentMonth);
+                  const lastMonth = currentMonthData; // Bu ay = "son ay"
+                  const prevMonth = monthly.find(m => m.month === prevMonthKey);
                   const growth = lastMonth && prevMonth && prevMonth.revenue > 0
                     ? (((lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100).toFixed(1)
                     : null;
