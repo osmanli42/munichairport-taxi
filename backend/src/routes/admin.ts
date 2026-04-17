@@ -292,16 +292,16 @@ router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response):
 // GET /api/admin/statistics - Detailed statistics
 router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Monthly revenue for last 12 months
+    // Monthly revenue for last 12 months (MySQL syntax)
     const monthlyRevenue = await query(`
       SELECT
-        strftime('%Y-%m', pickup_datetime) as month,
+        DATE_FORMAT(pickup_datetime, '%Y-%m') as month,
         COUNT(*) as count,
         COALESCE(SUM(price), 0) as revenue
       FROM bookings
       WHERE status != 'cancelled'
-        AND pickup_datetime >= date('now', '-12 months')
-      GROUP BY strftime('%Y-%m', pickup_datetime)
+        AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      GROUP BY DATE_FORMAT(pickup_datetime, '%Y-%m')
       ORDER BY month ASC
     `);
 
@@ -329,10 +329,10 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       GROUP BY payment_method
     `);
 
-    // Day of week analysis
+    // Day of week analysis (0=Sunday ... 6=Saturday)
     const dayOfWeekStats = await query(`
       SELECT
-        CAST(strftime('%w', pickup_datetime) AS INTEGER) as dow,
+        (DAYOFWEEK(pickup_datetime) - 1) as dow,
         COUNT(*) as count,
         COALESCE(SUM(price), 0) as revenue
       FROM bookings
@@ -344,7 +344,7 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
     // Hour of day analysis
     const hourStats = await query(`
       SELECT
-        CAST(strftime('%H', pickup_datetime) AS INTEGER) as hour,
+        HOUR(pickup_datetime) as hour,
         COUNT(*) as count
       FROM bookings
       WHERE status != 'cancelled'
@@ -364,7 +364,7 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       WHERE status != 'cancelled'
     `);
 
-    // Top routes (pickup city to dropoff area)
+    // Top routes
     const topRoutes = await query(`
       SELECT
         pickup_address,
@@ -392,13 +392,13 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
     // Weekly revenue for last 8 weeks
     const weeklyRevenue = await query(`
       SELECT
-        strftime('%Y-W%W', pickup_datetime) as week,
+        DATE_FORMAT(pickup_datetime, '%Y-W%v') as week,
         COUNT(*) as count,
         COALESCE(SUM(price), 0) as revenue
       FROM bookings
       WHERE status != 'cancelled'
-        AND pickup_datetime >= date('now', '-8 weeks')
-      GROUP BY strftime('%Y-W%W', pickup_datetime)
+        AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 8 WEEK)
+      GROUP BY DATE_FORMAT(pickup_datetime, '%Y-W%v')
       ORDER BY week ASC
     `);
 
