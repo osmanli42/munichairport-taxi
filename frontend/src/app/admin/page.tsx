@@ -1212,9 +1212,9 @@ export default function AdminPage() {
                             );
                           })}
                           {(() => {
-                            const trip = detailedStats.tripTypeStats as Array<{ is_roundtrip: number; count: number; revenue: number }>;
-                            const rt = trip.find(t => t.is_roundtrip === 1);
-                            const ow = trip.find(t => t.is_roundtrip === 0);
+                            const trip = detailedStats.tripTypeStats as Array<{ trip_type: string; count: number; revenue: number }>;
+                            const rt = trip.find(t => t.trip_type === 'roundtrip');
+                            const ow = trip.find(t => t.trip_type === 'oneway');
                             const totalT = (rt?.count ?? 0) + (ow?.count ?? 0);
                             if (!totalT) return null;
                             const rtPct = totalT > 0 ? (((rt?.count ?? 0) / totalT) * 100).toFixed(1) : '0';
