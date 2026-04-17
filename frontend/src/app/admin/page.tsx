@@ -148,7 +148,7 @@ export default function AdminPage() {
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
       }
     }
-  }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices]);
+  }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices, loadDetailedStats]);
 
   async function updateStatus(id: number, status: string) {
     try {
