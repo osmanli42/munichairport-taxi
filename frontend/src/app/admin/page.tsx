@@ -1073,6 +1073,273 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Statistik Tab */}
+        {activeTab === 'statistics' && (
+          <div className="space-y-6">
+            {!detailedStats ? (
+              <div className="text-center py-12 text-gray-400">Statistiken werden geladen...</div>
+            ) : (
+              <>
+                {/* KPI Summary Row */}
+                {(() => {
+                  const avg = detailedStats.avgStats as { avg_price: number; avg_distance: number; avg_passengers: number; max_price: number; min_price: number };
+                  const monthly = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
+                  const lastMonth = monthly[monthly.length - 1];
+                  const prevMonth = monthly[monthly.length - 2];
+                  const growth = lastMonth && prevMonth && prevMonth.revenue > 0
+                    ? (((lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100).toFixed(1)
+                    : null;
+                  return (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-white rounded-2xl p-5 shadow-sm">
+                        <div className="text-xs text-gray-500 mb-1">Ø Fahrpreis</div>
+                        <div className="text-2xl font-bold text-gray-900">{formatPrice(avg?.avg_price ?? 0)}</div>
+                        <div className="text-xs text-gray-400 mt-1">Höchst: {formatPrice(avg?.max_price ?? 0)}</div>
+                      </div>
+                      <div className="bg-white rounded-2xl p-5 shadow-sm">
+                        <div className="text-xs text-gray-500 mb-1">Ø Distanz</div>
+                        <div className="text-2xl font-bold text-gray-900">{avg?.avg_distance ? `${avg.avg_distance} km` : '—'}</div>
+                        <div className="text-xs text-gray-400 mt-1">Ø Passagiere: {avg?.avg_passengers ?? '—'}</div>
+                      </div>
+                      <div className="bg-white rounded-2xl p-5 shadow-sm">
+                        <div className="text-xs text-gray-500 mb-1">Letzter Monat</div>
+                        <div className="text-2xl font-bold text-gray-900">{lastMonth ? formatPrice(lastMonth.revenue) : '—'}</div>
+                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten</div>
+                      </div>
+                      <div className="bg-white rounded-2xl p-5 shadow-sm">
+                        <div className="text-xs text-gray-500 mb-1">Wachstum (Monat)</div>
+                        <div className={`text-2xl font-bold ${growth !== null ? (parseFloat(growth) >= 0 ? 'text-green-600' : 'text-red-500') : 'text-gray-400'}`}>
+                          {growth !== null ? `${parseFloat(growth) >= 0 ? '+' : ''}${growth}%` : '—'}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">vs. Vormonat</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Monthly Revenue Chart */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-5">Monatlicher Umsatz (letzte 12 Monate)</h3>
+                  {(() => {
+                    const data = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
+                    const maxRevenue = Math.max(...data.map(d => d.revenue), 1);
+                    return (
+                      <div className="space-y-2">
+                        {data.map(d => {
+                          const [year, month] = d.month.split('-');
+                          const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+                          const pct = (d.revenue / maxRevenue) * 100;
+                          return (
+                            <div key={d.month} className="flex items-center gap-3">
+                              <div className="w-14 text-xs text-gray-500 text-right shrink-0">{label}</div>
+                              <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                <div
+                                  className="h-full bg-primary-600 rounded-full transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                                <div className="absolute inset-0 flex items-center px-3">
+                                  <span className="text-xs font-medium text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                </div>
+                              </div>
+                              <div className="w-14 text-xs text-gray-400 shrink-0">{d.count} Fhrt.</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Vehicle + Payment breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Vehicle Breakdown */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Fahrzeugtypen</h3>
+                    {(() => {
+                      const data = detailedStats.vehicleBreakdown as Array<{ vehicle_type: string; count: number; revenue: number; avg_price: number }>;
+                      const total = data.reduce((s, d) => s + d.count, 0);
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500'];
+                      return (
+                        <div className="space-y-3">
+                          {data.map((d, i) => {
+                            const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
+                            return (
+                              <div key={d.vehicle_type}>
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span className="font-medium capitalize">{d.vehicle_type}</span>
+                                  <span className="text-gray-500">{d.count} × · Ø {formatPrice(d.avg_price)}</span>
+                                </div>
+                                <div className="bg-gray-100 rounded-full h-5 relative overflow-hidden">
+                                  <div className={`h-full ${colors[i % colors.length]} rounded-full`} style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-2">
+                                    <span className="text-xs font-medium text-white drop-shadow">{pct}%</span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-400 mt-0.5 text-right">{formatPrice(d.revenue)} Umsatz</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Payment Method */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Zahlungsmethoden</h3>
+                    {(() => {
+                      const data = detailedStats.paymentBreakdown as Array<{ payment_method: string; count: number; revenue: number }>;
+                      const total = data.reduce((s, d) => s + d.count, 0);
+                      return (
+                        <div className="space-y-4">
+                          {data.map(d => {
+                            const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
+                            const isCard = d.payment_method === 'card';
+                            return (
+                              <div key={d.payment_method}>
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span className="font-medium">{isCard ? '💳 Kreditkarte' : '💵 Barzahlung'}</span>
+                                  <span className="text-gray-500">{d.count} Fahrten</span>
+                                </div>
+                                <div className="bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full ${isCard ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full`} style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-3">
+                                    <span className="text-xs font-medium text-white drop-shadow">{pct}% · {formatPrice(d.revenue)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {(() => {
+                            const trip = detailedStats.tripTypeStats as Array<{ is_roundtrip: number; count: number; revenue: number }>;
+                            const rt = trip.find(t => t.is_roundtrip === 1);
+                            const ow = trip.find(t => t.is_roundtrip === 0);
+                            const totalT = (rt?.count ?? 0) + (ow?.count ?? 0);
+                            if (!totalT) return null;
+                            const rtPct = totalT > 0 ? (((rt?.count ?? 0) / totalT) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="mt-4 pt-4 border-t border-gray-100">
+                                <div className="text-sm font-bold text-gray-700 mb-3">Hin- & Rückfahrt</div>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 bg-indigo-50 rounded-xl p-3 text-center">
+                                    <div className="text-lg font-bold text-indigo-600">{rtPct}%</div>
+                                    <div className="text-xs text-gray-500">Rückfahrt ({rt?.count ?? 0}×)</div>
+                                  </div>
+                                  <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                                    <div className="text-lg font-bold text-gray-600">{(100 - parseFloat(rtPct)).toFixed(1)}%</div>
+                                    <div className="text-xs text-gray-500">Einfach ({ow?.count ?? 0}×)</div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Day of week + Hour heatmap */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Day of week */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Buchungen nach Wochentag</h3>
+                    {(() => {
+                      const data = detailedStats.dayOfWeekStats as Array<{ dow: number; count: number; revenue: number }>;
+                      const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                      const maxCount = Math.max(...data.map(d => d.count), 1);
+                      return (
+                        <div className="space-y-2">
+                          {days.map((day, i) => {
+                            const d = data.find(x => x.dow === i);
+                            const count = d?.count ?? 0;
+                            const pct = (count / maxCount) * 100;
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-6 text-xs text-gray-500 text-center shrink-0">{day}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
+                                  <div className="h-full bg-primary-400 rounded-full" style={{ width: `${pct}%` }} />
+                                  {count > 0 && (
+                                    <div className="absolute inset-0 flex items-center px-2">
+                                      <span className="text-xs text-white drop-shadow font-medium">{count}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="w-20 text-xs text-gray-400 shrink-0 text-right">{formatPrice(d?.revenue ?? 0)}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Hour heatmap */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Buchungen nach Uhrzeit</h3>
+                    {(() => {
+                      const data = detailedStats.hourStats as Array<{ hour: number; count: number }>;
+                      const maxCount = Math.max(...data.map(d => d.count), 1);
+                      const hours = Array.from({ length: 24 }, (_, i) => i);
+                      return (
+                        <div className="grid grid-cols-12 gap-1">
+                          {hours.map(h => {
+                            const d = data.find(x => x.hour === h);
+                            const count = d?.count ?? 0;
+                            const intensity = Math.round((count / maxCount) * 5);
+                            const bg = ['bg-gray-100', 'bg-primary-100', 'bg-primary-200', 'bg-primary-400', 'bg-primary-600', 'bg-primary-800'][intensity];
+                            return (
+                              <div key={h} title={`${h}:00 — ${count} Fahrten`} className={`${bg} rounded aspect-square flex items-center justify-center cursor-default`}>
+                                <span className="text-[9px] text-gray-600 font-medium">{h}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                    <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                      <span>Wenig</span>
+                      {['bg-gray-100','bg-primary-100','bg-primary-200','bg-primary-400','bg-primary-600','bg-primary-800'].map((c,i) => (
+                        <div key={i} className={`${c} w-4 h-4 rounded`} />
+                      ))}
+                      <span>Viel</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Routes */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">Top 10 Strecken</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">#</th>
+                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Von</th>
+                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Nach</th>
+                          <th className="text-right py-2 px-2 text-gray-500 font-medium text-xs">Fahrten</th>
+                          <th className="text-right py-2 px-2 text-gray-500 font-medium text-xs">Umsatz</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {((detailedStats.topRoutes as Array<{ pickup_address: string; dropoff_address: string; count: number; revenue: number }>) || []).map((r, i) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-2 px-2 text-gray-400 font-bold text-xs">{i + 1}</td>
+                            <td className="py-2 px-2 text-xs text-gray-700 max-w-[180px] truncate">{r.pickup_address}</td>
+                            <td className="py-2 px-2 text-xs text-gray-500 max-w-[180px] truncate">→ {r.dropoff_address}</td>
+                            <td className="py-2 px-2 text-right font-bold text-primary-600">{r.count}×</td>
+                            <td className="py-2 px-2 text-right text-gray-700">{formatPrice(r.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Booking Detail Modal */}
