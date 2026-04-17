@@ -88,6 +88,15 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadDetailedStats = useCallback(async () => {
+    try {
+      const data = await adminApi.getStatistics();
+      setDetailedStats(data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   const loadBookings = useCallback(async (page = 1) => {
     setLoading(true);
     try {
