@@ -170,6 +170,11 @@ export const adminApi = {
     return response.data;
   },
 
+  getStatistics: async () => {
+    const response = await api.get('/admin/statistics');
+    return response.data;
+  },
+
   updatePrice: async (vehicle_type: string, base_price: number, price_per_km: number, roundtrip_discount?: number, fahrrad_price?: number, fahrrad_enabled?: boolean, max_passengers?: number, max_luggage?: number, min_price?: number, min_price_km?: number) => {
     const response = await api.put(`/prices/${vehicle_type}`, { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, min_price, min_price_km });
     return response.data;
