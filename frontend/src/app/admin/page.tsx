@@ -1109,9 +1109,9 @@ export default function AdminPage() {
                         <div className="text-xs text-gray-400 mt-1">Ø Passagiere: {avg?.avg_passengers ?? '—'}</div>
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
-                        <div className="text-xs text-gray-500 mb-1">Letzter Monat</div>
+                        <div className="text-xs text-gray-500 mb-1">Dieser Monat</div>
                         <div className="text-2xl font-bold text-gray-900">{lastMonth ? formatPrice(lastMonth.revenue) : '—'}</div>
-                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten · {lastMonth?.month ?? ''}</div>
+                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten</div>
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
                         <div className="text-xs text-gray-500 mb-1">Wachstum (Monat)</div>
@@ -1119,8 +1119,7 @@ export default function AdminPage() {
                           {growth !== null ? `${parseFloat(growth) >= 0 ? '+' : ''}${growth}%` : '—'}
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
-                          vs. {prevMonth?.month ?? 'Vormonat'}
-                          {currentMonthData ? ` · Aktuell: ${formatPrice(currentMonthData.revenue)}` : ''}
+                          vs. {prevMonth ? formatPrice(prevMonth.revenue) : 'Vormonat'}
                         </div>
                       </div>
                     </div>
