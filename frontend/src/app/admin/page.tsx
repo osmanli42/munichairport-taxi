@@ -1109,14 +1109,17 @@ export default function AdminPage() {
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
                         <div className="text-xs text-gray-500 mb-1">Letzter Monat</div>
                         <div className="text-2xl font-bold text-gray-900">{lastMonth ? formatPrice(lastMonth.revenue) : '—'}</div>
-                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten</div>
+                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten · {lastMonth?.month ?? ''}</div>
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
                         <div className="text-xs text-gray-500 mb-1">Wachstum (Monat)</div>
                         <div className={`text-2xl font-bold ${growth !== null ? (parseFloat(growth) >= 0 ? 'text-green-600' : 'text-red-500') : 'text-gray-400'}`}>
                           {growth !== null ? `${parseFloat(growth) >= 0 ? '+' : ''}${growth}%` : '—'}
                         </div>
-                        <div className="text-xs text-gray-400 mt-1">vs. Vormonat</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          vs. {prevMonth?.month ?? 'Vormonat'}
+                          {currentMonthData ? ` · Aktuell: ${formatPrice(currentMonthData.revenue)}` : ''}
+                        </div>
                       </div>
                     </div>
                   );
