@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [tomorrowCards, setTomorrowCards] = useState<Booking[]>([]);
   const [tomorrowCardBooking, setTomorrowCardBooking] = useState<Booking | null>(null);
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [detailedStats, setDetailedStats] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
