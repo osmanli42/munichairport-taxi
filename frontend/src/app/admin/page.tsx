@@ -249,6 +249,7 @@ export default function AdminPage() {
             { id: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
             { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
+            { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
