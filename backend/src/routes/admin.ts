@@ -289,6 +289,136 @@ router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response):
   }
 });
 
+// GET /api/admin/statistics - Detailed statistics
+router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Monthly revenue for last 12 months
+    const monthlyRevenue = await query(`
+      SELECT
+        strftime('%Y-%m', pickup_datetime) as month,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+        AND pickup_datetime >= date('now', '-12 months')
+      GROUP BY strftime('%Y-%m', pickup_datetime)
+      ORDER BY month ASC
+    `);
+
+    // Vehicle type breakdown
+    const vehicleBreakdown = await query(`
+      SELECT
+        vehicle_type,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue,
+        ROUND(AVG(price), 2) as avg_price
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY vehicle_type
+      ORDER BY revenue DESC
+    `);
+
+    // Payment method breakdown
+    const paymentBreakdown = await query(`
+      SELECT
+        payment_method,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY payment_method
+    `);
+
+    // Day of week analysis
+    const dayOfWeekStats = await query(`
+      SELECT
+        CAST(strftime('%w', pickup_datetime) AS INTEGER) as dow,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY dow
+      ORDER BY dow ASC
+    `);
+
+    // Hour of day analysis
+    const hourStats = await query(`
+      SELECT
+        CAST(strftime('%H', pickup_datetime) AS INTEGER) as hour,
+        COUNT(*) as count
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY hour
+      ORDER BY hour ASC
+    `);
+
+    // Average price and distance stats
+    const [avgStats] = await query(`
+      SELECT
+        ROUND(AVG(price), 2) as avg_price,
+        ROUND(AVG(distance_km), 2) as avg_distance,
+        ROUND(AVG(passengers), 1) as avg_passengers,
+        MAX(price) as max_price,
+        MIN(price) as min_price
+      FROM bookings
+      WHERE status != 'cancelled'
+    `);
+
+    // Top routes (pickup city to dropoff area)
+    const topRoutes = await query(`
+      SELECT
+        pickup_address,
+        dropoff_address,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY pickup_address, dropoff_address
+      ORDER BY count DESC
+      LIMIT 10
+    `);
+
+    // Roundtrip vs one-way
+    const tripTypeStats = await query(`
+      SELECT
+        is_roundtrip,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY is_roundtrip
+    `);
+
+    // Weekly revenue for last 8 weeks
+    const weeklyRevenue = await query(`
+      SELECT
+        strftime('%Y-W%W', pickup_datetime) as week,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+        AND pickup_datetime >= date('now', '-8 weeks')
+      GROUP BY strftime('%Y-W%W', pickup_datetime)
+      ORDER BY week ASC
+    `);
+
+    res.json({
+      monthlyRevenue,
+      vehicleBreakdown,
+      paymentBreakdown,
+      dayOfWeekStats,
+      hourStats,
+      avgStats,
+      topRoutes,
+      tripTypeStats,
+      weeklyRevenue,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
 // POST /api/admin/change-password
 router.post('/change-password', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { currentPassword, newPassword } = req.body;
