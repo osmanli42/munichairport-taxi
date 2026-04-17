@@ -1085,8 +1085,12 @@ export default function AdminPage() {
                 {(() => {
                   const avg = detailedStats.avgStats as { avg_price: number; avg_distance: number; avg_passengers: number; max_price: number; min_price: number };
                   const monthly = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
-                  const lastMonth = monthly[monthly.length - 1];
-                  const prevMonth = monthly[monthly.length - 2];
+                  // Mevcut ayı hariç tut — henüz tamamlanmadı
+                  const currentMonth = new Date().toISOString().slice(0, 7);
+                  const completedMonths = monthly.filter(m => m.month < currentMonth);
+                  const lastMonth = completedMonths[completedMonths.length - 1];
+                  const prevMonth = completedMonths[completedMonths.length - 2];
+                  const currentMonthData = monthly.find(m => m.month === currentMonth);
                   const growth = lastMonth && prevMonth && prevMonth.revenue > 0
                     ? (((lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100).toFixed(1)
                     : null;
