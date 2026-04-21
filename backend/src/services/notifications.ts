@@ -392,39 +392,31 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
   });
 }
 
-async function sendTelegramNotification(booking: BookingNotificationData): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
-
+async function sendWhatsAppNotification(booking: BookingNotificationData): Promise<void> {
   const formattedDate = formatDateTime(booking.pickup_datetime);
-  const text = [
-    `🚖 *NEUE BUCHUNG* — ${booking.booking_number}`,
-    `💶 *€${formatPrice(booking.price)}* ${booking.trip_type === 'roundtrip' ? '(Hin & Rück)' : '(Einfach)'}`,
-    ``,
-    `📍 ${booking.pickup_address}`,
-    `🏁 ${booking.dropoff_address}`,
-    `📅 ${formattedDate}`,
-    `👥 ${booking.passengers} Pax · ${booking.vehicle_type}`,
-    booking.flight_number ? `✈️ ${booking.flight_number}` : '',
-    ``,
-    `👤 ${booking.name}`,
-    `📞 [${booking.phone}](tel:${booking.phone})`,
-    `💬 [WhatsApp](https://wa.me/${booking.phone.replace(/\D/g, '')})`,
-  ].filter(Boolean).join('\n');
+  const lines = [
+    `NEUE BUCHUNG ${booking.booking_number}`,
+    `EUR ${formatPrice(booking.price)} ${booking.trip_type === 'roundtrip' ? '(Hin+Rueck)' : '(Einfach)'}`,
+    `Von: ${booking.pickup_address}`,
+    `Nach: ${booking.dropoff_address}`,
+    `Abfahrt: ${formattedDate}`,
+    `${booking.passengers} Pax - ${booking.vehicle_type}`,
+    booking.flight_number ? `Flug: ${booking.flight_number}` : '',
+    `Kunde: ${booking.name}`,
+    `Tel: ${booking.phone}`,
+  ].filter(Boolean).join('%0A');
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown', disable_web_page_preview: true }),
-  });
+  await fetch(
+    `https://api.callmebot.com/whatsapp.php?phone=491774447619&text=${lines}&apikey=4111858`,
+    { method: 'GET' }
+  );
 }
 
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
     sendCustomerConfirmation(booking),
-    sendTelegramNotification(booking),
+    sendWhatsAppNotification(booking),
   ]);
 
   results.forEach((result, index) => {
