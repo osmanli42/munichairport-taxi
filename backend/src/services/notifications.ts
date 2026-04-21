@@ -392,14 +392,43 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
   });
 }
 
+async function sendTelegramNotification(booking: BookingNotificationData): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  const formattedDate = formatDateTime(booking.pickup_datetime);
+  const text = [
+    `🚖 *NEUE BUCHUNG* — ${booking.booking_number}`,
+    `💶 *€${formatPrice(booking.price)}* ${booking.trip_type === 'roundtrip' ? '(Hin & Rück)' : '(Einfach)'}`,
+    ``,
+    `📍 ${booking.pickup_address}`,
+    `🏁 ${booking.dropoff_address}`,
+    `📅 ${formattedDate}`,
+    `👥 ${booking.passengers} Pax · ${booking.vehicle_type}`,
+    booking.flight_number ? `✈️ ${booking.flight_number}` : '',
+    ``,
+    `👤 ${booking.name}`,
+    `📞 [${booking.phone}](tel:${booking.phone})`,
+    `💬 [WhatsApp](https://wa.me/${booking.phone.replace(/\D/g, '')})`,
+  ].filter(Boolean).join('\n');
+
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown', disable_web_page_preview: true }),
+  });
+}
+
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
     sendCustomerConfirmation(booking),
+    sendTelegramNotification(booking),
   ]);
 
   results.forEach((result, index) => {
-    const names = ['Admin Email', 'Customer Email'];
+    const names = ['Admin Email', 'Customer Email', 'Telegram'];
     if (result.status === 'rejected') {
       console.error(`Failed to send ${names[index]}:`, result.reason);
     } else {
