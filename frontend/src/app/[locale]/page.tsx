@@ -507,6 +507,53 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Competitor Comparison */}
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-semibold uppercase tracking-widest text-gold-500 mb-2 block">Warum wir?</span>
+            <h2 className="text-3xl font-bold text-primary-600">Günstiger als Uber — Transparenter als Taxameter</h2>
+          </div>
+          <div className="overflow-x-auto rounded-2xl shadow-md border border-gray-100">
+            <table className="w-full text-sm min-w-[540px]">
+              <thead>
+                <tr className="bg-primary-600 text-white">
+                  <th className="px-5 py-4 text-left font-semibold">Service</th>
+                  <th className="px-5 py-4 text-left font-semibold">MUC → Marienplatz</th>
+                  <th className="px-5 py-4 text-center font-semibold">Festpreis</th>
+                  <th className="px-5 py-4 text-center font-semibold">Flugüberwachung</th>
+                  <th className="px-5 py-4 text-center font-semibold">Direktkontakt</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-amber-50 border-l-4 border-gold-400">
+                  <td className="px-5 py-4 font-bold text-primary-700">Flughafen-muenchen.taxi</td>
+                  <td className="px-5 py-4 font-bold text-primary-700">ab €55</td>
+                  <td className="px-5 py-4 text-center text-green-600 text-base">✅</td>
+                  <td className="px-5 py-4 text-center text-green-600 text-base">✅ kostenlos</td>
+                  <td className="px-5 py-4 text-center text-green-600 text-base">✅ WhatsApp</td>
+                </tr>
+                <tr className="bg-white border-t border-gray-100">
+                  <td className="px-5 py-4 text-gray-700">Uber</td>
+                  <td className="px-5 py-4 text-gray-500">€75–120 <span className="text-xs">(Surge mögl.)</span></td>
+                  <td className="px-5 py-4 text-center text-red-500">❌</td>
+                  <td className="px-5 py-4 text-center text-red-500">❌</td>
+                  <td className="px-5 py-4 text-center text-red-500">❌ Nur App</td>
+                </tr>
+                <tr className="bg-gray-50 border-t border-gray-100">
+                  <td className="px-5 py-4 text-gray-700">Taxameter Taxi</td>
+                  <td className="px-5 py-4 text-gray-500">€70–90 <span className="text-xs">(Stau: mehr)</span></td>
+                  <td className="px-5 py-4 text-center text-red-500">❌</td>
+                  <td className="px-5 py-4 text-center text-red-500">❌</td>
+                  <td className="px-5 py-4 text-center text-amber-500">⚠️ Telefon</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-3">* Preise sind Richtwerte. Ihr Festpreis wird vor der Fahrt garantiert — keine versteckten Kosten.</p>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="bg-primary-600 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center text-white">
