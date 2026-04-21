@@ -420,7 +420,7 @@ export async function sendAllNotifications(booking: BookingNotificationData): Pr
   ]);
 
   results.forEach((result, index) => {
-    const names = ['Admin Email', 'Customer Email', 'Telegram'];
+    const names = ['Admin Email', 'Customer Email', 'WhatsApp (CallMeBot)'];
     if (result.status === 'rejected') {
       console.error(`Failed to send ${names[index]}:`, result.reason);
     } else {
