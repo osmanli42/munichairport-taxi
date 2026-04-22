@@ -3,7 +3,8 @@ import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent } from 'lucide-react';
-import SearchBar from '@/components/SearchBar';
+import dynamic from 'next/dynamic';
+const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
 import { CONTACT_INFO } from '@/lib/utils';
 
 export async function generateMetadata({
