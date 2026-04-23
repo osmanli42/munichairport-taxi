@@ -244,7 +244,7 @@ export const adminApi = {
 
   sendRechnung: async (bookingId: number, rechnungsnummer: string, mwst_satz: 0 | 7 | 19, sprache: 'de' | 'en', empfaenger_adresse?: string): Promise<{ success: boolean }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
-    const response = await api.post(`/admin/bookings/${bookingId}/rechnung`, { rechnungsnummer, mwst_satz, sprache }, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await api.post(`/admin/bookings/${bookingId}/rechnung`, { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse }, { headers: { Authorization: `Bearer ${token}` } });
     return response.data;
   },
 };
