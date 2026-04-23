@@ -1205,9 +1205,10 @@ function generateRechnungPdf(opts: {
   mwst: 0 | 7 | 19;
   lang: 'de' | 'en';
   s: Record<string, string>;
+  empfaenger_adresse?: string;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { booking, rechnungsnummer, mwst, lang, s } = opts;
+    const { booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse } = opts;
     const isEn = lang === 'en';
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
