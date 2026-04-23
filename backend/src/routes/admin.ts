@@ -1156,7 +1156,7 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
     for (const row of rows) s[row.setting_key] = row.setting_value;
 
     // ── PDF generation ──────────────────────────────────────────────────────
-    const pdfBuffer = await generateRechnungPdf({ booking, rechnungsnummer, mwst, lang, s });
+    const pdfBuffer = await generateRechnungPdf({ booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse });
 
     // ── Send email via Resend ───────────────────────────────────────────────
     const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
