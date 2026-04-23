@@ -1265,11 +1265,23 @@ function generateRechnungPdf(opts: {
     const custY = Math.max(doc.y + 20, 185);
     doc.fontSize(8).font('Helvetica').fillColor(GRAY)
       .text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
-      .text(booking.name || '—', marginL, custY + 12);
-    doc.fontSize(9).font('Helvetica').fillColor('#374151');
-    if (booking.email) doc.text(booking.email, marginL, doc.y + 2);
-    if (booking.phone) doc.text(booking.phone, marginL, doc.y + 1);
+    if (empfaenger_adresse && empfaenger_adresse.trim()) {
+      // Custom address entered by admin — render each line
+      const lines = empfaenger_adresse.trim().split('\n');
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
+        .text(lines[0] || '—', marginL, custY + 12);
+      doc.fontSize(9).font('Helvetica').fillColor('#374151');
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) doc.text(lines[i], marginL, doc.y + 2);
+      }
+    } else {
+      // Fallback: use booking data
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
+        .text(booking.name || '—', marginL, custY + 12);
+      doc.fontSize(9).font('Helvetica').fillColor('#374151');
+      if (booking.email) doc.text(booking.email, marginL, doc.y + 2);
+      if (booking.phone) doc.text(booking.phone, marginL, doc.y + 1);
+    }
 
     // ── SEPARATOR ─────────────────────────────────────────────────────────
     const sepY = doc.y + 18;
