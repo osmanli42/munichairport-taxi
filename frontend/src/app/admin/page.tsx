@@ -56,6 +56,7 @@ export default function AdminPage() {
   const [rechnungSprache, setRechnungSprache] = useState<'de' | 'en'>('de');
   const [rechnungEmpfaenger, setRechnungEmpfaenger] = useState('');
   const [editingEmpfaenger, setEditingEmpfaenger] = useState(false);
+  const [rechnungZahlungsart, setRechnungZahlungsart] = useState<'ueberweisung' | 'bar' | 'kreditkarte'>('ueberweisung');
   const [rechnungSending, setRechnungSending] = useState(false);
   const [rechnungSuccess, setRechnungSuccess] = useState(false);
   const [rechnungError, setRechnungError] = useState('');
