@@ -1246,6 +1246,13 @@ function generateRechnungPdf(opts: {
     dueDate.setDate(dueDate.getDate() + 14);
     const dueDateStr = fmtDate(dueDate.toISOString(), lang);
 
+    // Zahlungsart label
+    const zahlungsartLabel = isPaid
+      ? (zahlungsart === 'bar'
+          ? (isEn ? 'Paid in Cash' : 'Bar bezahlt')
+          : (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt'))
+      : (isEn ? 'Bank Transfer' : 'Überweisung');
+
     doc.fontSize(9).font('Helvetica').fillColor(GRAY);
     const metaY = 90;
     const labelW = 95;
@@ -1255,7 +1262,9 @@ function generateRechnungPdf(opts: {
       [isEn ? 'Invoice No.:' : 'Rechnungsnr.:', rechnungsnummer],
       [isEn ? 'Invoice Date:' : 'Datum:', todayStr],
       [isEn ? 'Booking No.:' : 'Buchungsnr.:', booking.booking_number || '—'],
-      [isEn ? 'Payment Due:' : 'Zahlungsziel:', dueDateStr],
+      isPaid
+        ? [isEn ? 'Payment:' : 'Zahlung:', zahlungsartLabel]
+        : [isEn ? 'Payment Due:' : 'Zahlungsziel:', dueDateStr],
     ];
     let ry = metaY;
     for (const [label, val] of rows2) {
