@@ -267,6 +267,7 @@ export default function AdminPage() {
             { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
             { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
+            { id: 'rechnung' as Tab, icon: FileText, label: 'Rechnung' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
