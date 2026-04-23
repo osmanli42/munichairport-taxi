@@ -43,6 +43,20 @@ export default function AdminPage() {
   const [cardVisible, setCardVisible] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [bankSettings, setBankSettings] = useState<Record<string, string>>({
+    bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
+    company_name: '', company_address: '', company_phone: '', company_email: '',
+    company_steuernr: '', company_ustidnr: '',
+  });
+  const [bankSaving, setBankSaving] = useState(false);
+  const [bankSuccess, setBankSuccess] = useState('');
+  const [showRechnungModal, setShowRechnungModal] = useState(false);
+  const [rechnungsnummer, setRechnungsnummer] = useState('');
+  const [rechnungMwst, setRechnungMwst] = useState<0 | 7 | 19>(7);
+  const [rechnungSprache, setRechnungSprache] = useState<'de' | 'en'>('de');
+  const [rechnungSending, setRechnungSending] = useState(false);
+  const [rechnungSuccess, setRechnungSuccess] = useState(false);
+  const [rechnungError, setRechnungError] = useState('');
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [stripeSyncing, setStripeSyncing] = useState(false);
