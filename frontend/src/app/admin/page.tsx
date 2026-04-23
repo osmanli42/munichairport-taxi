@@ -161,6 +161,9 @@ export default function AdminPage() {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
       }
+      if (activeTab === 'rechnung') {
+        adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
+      }
     }
   }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices, loadDetailedStats]);
 
