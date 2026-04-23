@@ -229,6 +229,24 @@ export const adminApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
     return `${API_BASE_URL}/admin/report/finanzamt?month=${month}&year=${year}&token=${token}`;
   },
+
+  getBankSettings: async (): Promise<Record<string, string>> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.get('/admin/bank-settings', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  updateBankSettings: async (data: Record<string, string>): Promise<Record<string, string>> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.put('/admin/bank-settings', data, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  sendRechnung: async (bookingId: number, rechnungsnummer: string, mwst_satz: 0 | 7 | 19, sprache: 'de' | 'en'): Promise<{ success: boolean }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post(`/admin/bookings/${bookingId}/rechnung`, { rechnungsnummer, mwst_satz, sprache }, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
 };
 
 export default api;
