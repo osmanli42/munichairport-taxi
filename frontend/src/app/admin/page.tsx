@@ -1589,6 +1589,7 @@ export default function AdminPage() {
                     setRechnungSprache('de');
                     setRechnungEmpfaenger(selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : ''));
                     setEditingEmpfaenger(false);
+                    setRechnungZahlungsart(selectedBooking.payment_method === 'card' ? 'kreditkarte' : 'bar');
                     setRechnungSuccess(false);
                     setRechnungError('');
                     setShowRechnungModal(true);
