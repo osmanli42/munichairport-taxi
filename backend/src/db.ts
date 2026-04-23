@@ -113,6 +113,16 @@ export async function initializeDatabase(): Promise<void> {
       ['stadtfahrt_enabled', '0'],
       ['anfahrt_price_per_km', '1.70'],
       ['zwischenstopp_enabled', '0'],
+      ['bank_name', ''],
+      ['bank_iban', ''],
+      ['bank_bic', ''],
+      ['bank_kontoinhaber', ''],
+      ['company_name', 'Taxi N&N GbR'],
+      ['company_address', 'Eisvogelweg 2, 85356 Freising'],
+      ['company_phone', '+49 151 4162 0000'],
+      ['company_email', 'info@flughafen-muenchen.taxi'],
+      ['company_steuernr', ''],
+      ['company_ustidnr', ''],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
