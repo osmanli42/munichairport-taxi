@@ -1806,6 +1806,38 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Zahlungsart</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { val: 'bar', label: '💵 Bar', de: 'Barzahlung', en: 'Cash' },
+                    { val: 'kreditkarte', label: '💳 Kreditkarte', de: 'Kreditkarte', en: 'Credit Card' },
+                    { val: 'ueberweisung', label: '🏦 Überweisung', de: 'Überweisung', en: 'Bank Transfer' },
+                  ] as const).map(({ val, label }) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setRechnungZahlungsart(val)}
+                      disabled={rechnungSending || rechnungSuccess}
+                      className={`py-2.5 px-2 rounded-xl text-xs font-medium border-2 transition-colors disabled:opacity-50 ${
+                        rechnungZahlungsart === val
+                          ? 'border-primary-600 bg-primary-50 text-primary-700'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {rechnungZahlungsart !== 'ueberweisung' && (
+                  <p className="text-xs text-green-700 mt-1.5 flex items-center gap-1">
+                    <Check size={12} />
+                    {rechnungZahlungsart === 'bar'
+                      ? (rechnungSprache === 'en' ? 'Paid in Cash — no payment due date' : 'Bar bezahlt — kein Zahlungsziel')
+                      : (rechnungSprache === 'en' ? 'Paid by Credit Card — no payment due date' : 'Kreditkarte bezahlt — kein Zahlungsziel')}
+                  </p>
+                )}
+              </div>
               {rechnungSuccess && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                   <Check size={16} />Rechnung erfolgreich gesendet!
