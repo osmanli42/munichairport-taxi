@@ -1341,8 +1341,8 @@ function generateRechnungPdf(opts: {
     }
     doc.fontSize(8.5).fillColor('#111827').font('Helvetica');
     doc.text('1×', colMenge, rowTop + 8, { width: 60, align: 'center', lineBreak: false });
-    doc.text(fmtPrice(netPrice), colEinzel, rowTop + 8, { width: 75, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').text(fmtPrice(netPrice), colGesamt, rowTop + 8, { width: 50, align: 'right', lineBreak: false });
+    doc.text(fmtPrice(grossPrice), colEinzel, rowTop + 8, { width: 75, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: 50, align: 'right', lineBreak: false });
 
     // Table bottom border
     const tableBottom = rowTop + 50;
