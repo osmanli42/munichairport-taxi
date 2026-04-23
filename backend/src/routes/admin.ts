@@ -1207,9 +1207,11 @@ function generateRechnungPdf(opts: {
   lang: 'de' | 'en';
   s: Record<string, string>;
   empfaenger_adresse?: string;
+  zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse } = opts;
+    const { booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse, zahlungsart } = opts;
+    const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
     const isEn = lang === 'en';
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
