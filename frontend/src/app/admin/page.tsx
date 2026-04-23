@@ -1719,18 +1719,49 @@ export default function AdminPage() {
               )}
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500">Kunde</p>
-                  <p className="font-semibold text-gray-900">{selectedBooking.name}</p>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Buchung</p>
+                      <p className="font-semibold text-gray-900">{selectedBooking.booking_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Betrag</p>
+                      <p className="font-bold text-primary-600">{formatPrice(selectedBooking.price)}</p>
+                    </div>
+                  </div>
                 </div>
+                {/* Empfängeradresse */}
                 <div>
-                  <p className="text-xs text-gray-500">Betrag</p>
-                  <p className="font-bold text-primary-600 text-base">{formatPrice(selectedBooking.price)}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-500">E-Mail</p>
-                  <p className="font-medium text-gray-700">{selectedBooking.email}</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Rechnungsempfänger</p>
+                    {!rechnungSuccess && (
+                      <button
+                        onClick={() => setEditingEmpfaenger(e => !e)}
+                        className="p-1 rounded hover:bg-gray-200 transition-colors"
+                        title="Adresse bearbeiten"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {editingEmpfaenger ? (
+                    <textarea
+                      value={rechnungEmpfaenger}
+                      onChange={(e) => setRechnungEmpfaenger(e.target.value)}
+                      rows={5}
+                      placeholder={'Vor- und Nachname\nFirma (optional)\nStraße und Hausnummer\nPLZ Ort\nLand'}
+                      className="w-full border border-primary-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white resize-none font-mono"
+                    />
+                  ) : (
+                    <p className="text-gray-800 whitespace-pre-line text-sm leading-relaxed">
+                      {rechnungEmpfaenger || '—'}
+                    </p>
+                  )}
                 </div>
               </div>
               <div>
