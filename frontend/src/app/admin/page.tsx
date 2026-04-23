@@ -1564,7 +1564,7 @@ export default function AdminPage() {
                 </div>
               ))}
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-4 flex-wrap">
                 <a
                   href={`tel:${selectedBooking.phone}`}
                   className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 rounded-xl text-sm font-medium transition-colors"
@@ -1579,6 +1579,20 @@ export default function AdminPage() {
                 >
                   WhatsApp
                 </a>
+                <button
+                  onClick={() => {
+                    setRechnungsnummer('');
+                    setRechnungMwst(7);
+                    setRechnungSprache('de');
+                    setRechnungSuccess(false);
+                    setRechnungError('');
+                    setShowRechnungModal(true);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <FileText size={15} />
+                  Rechnung senden
+                </button>
               </div>
             </div>
           </div>
