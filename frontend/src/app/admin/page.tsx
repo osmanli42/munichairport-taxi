@@ -1586,6 +1586,8 @@ export default function AdminPage() {
                     setRechnungsnummer('');
                     setRechnungMwst(7);
                     setRechnungSprache('de');
+                    setRechnungEmpfaenger(selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : ''));
+                    setEditingEmpfaenger(false);
                     setRechnungSuccess(false);
                     setRechnungError('');
                     setShowRechnungModal(true);
