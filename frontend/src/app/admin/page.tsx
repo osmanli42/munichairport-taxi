@@ -1855,7 +1855,7 @@ export default function AdminPage() {
                     setRechnungError('');
                     setRechnungSending(true);
                     try {
-                      await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim());
+                      await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart);
                       setRechnungSuccess(true);
                     } catch (err: unknown) {
                       setRechnungError(err instanceof Error ? err.message : 'Fehler beim Senden');
