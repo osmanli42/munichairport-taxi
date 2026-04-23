@@ -1121,11 +1121,12 @@ router.put('/bank-settings', authenticateAdmin, async (req: AuthRequest, res: Re
 // POST /api/admin/bookings/:id/rechnung
 router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse } = req.body as {
+    const { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse, zahlungsart } = req.body as {
       rechnungsnummer: string;
       mwst_satz: 0 | 7 | 19;
       sprache: 'de' | 'en';
       empfaenger_adresse?: string;
+      zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
     };
 
     if (!rechnungsnummer) {
