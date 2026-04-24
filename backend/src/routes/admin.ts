@@ -1347,17 +1347,17 @@ function generateRechnungPdf(opts: {
     doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
     doc.fillColor('#111827').fontSize(8.5).font('Helvetica-Bold');
     doc.text('1', colPos, rowTop + 8, { width: 25, lineBreak: false });
-    doc.font('Helvetica-Bold').text(descLine1, colDesc, rowTop + 8, { width: colMenge - colDesc - 10, lineBreak: false });
+    doc.font('Helvetica-Bold').text(descLine1, colDesc, rowTop + 8, { width: wDesc, lineBreak: false, ellipsis: true });
     doc.font('Helvetica').fontSize(8).fillColor(GRAY)
-      .text(descLine2, colDesc, rowTop + 20, { width: colMenge - colDesc - 10, lineBreak: false });
-    doc.text(descLine3, colDesc, rowTop + 31, { width: colMenge - colDesc - 10, lineBreak: false });
+      .text(descLine2, colDesc, rowTop + 20, { width: wDesc, lineBreak: false, ellipsis: true });
+    doc.text(descLine3, colDesc, rowTop + 31, { width: wDesc, lineBreak: false, ellipsis: true });
     if (descLine4) {
-      doc.text(descLine4, colDesc, rowTop + 42, { width: colMenge - colDesc - 10, lineBreak: false });
+      doc.text(descLine4, colDesc, rowTop + 42, { width: wDesc, lineBreak: false, ellipsis: true });
     }
     doc.fontSize(8.5).fillColor('#111827').font('Helvetica');
-    doc.text('1×', colMenge, rowTop + 8, { width: 60, align: 'center', lineBreak: false });
-    doc.text(fmtPrice(grossPrice), colEinzel, rowTop + 8, { width: 75, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: 50, align: 'right', lineBreak: false });
+    doc.text('1×', colMenge, rowTop + 8, { width: wMenge, align: 'center', lineBreak: false });
+    doc.text(fmtPrice(grossPrice), colEinzel, rowTop + 8, { width: wEinzel, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: wGesamt, align: 'right', lineBreak: false });
 
     // Table bottom border
     const tableBottom = rowTop + ROW_H_SERVICE;
