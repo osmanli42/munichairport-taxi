@@ -1278,21 +1278,29 @@ function generateRechnungPdf(opts: {
     doc.fontSize(8).font('Helvetica').fillColor(GRAY)
       .text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
     if (empfaenger_adresse && empfaenger_adresse.trim()) {
-      // Custom address entered by admin — render each line
-      const lines = empfaenger_adresse.trim().split('\n');
+      // Custom address entered by admin — render each line with explicit Y tracking
+      const lines = empfaenger_adresse.trim().replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+      let addrY = custY + 12;
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
-        .text(lines[0] || '—', marginL, custY + 12);
+        .text(lines[0] || '—', marginL, addrY, { width: pageW, lineBreak: false });
+      addrY += 16;
       doc.fontSize(9).font('Helvetica').fillColor('#374151');
       for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) doc.text(lines[i], marginL, doc.y + 2);
+        doc.text(lines[i], marginL, addrY, { width: pageW, lineBreak: false });
+        addrY += 13;
       }
+      // Advance PDFKit's internal cursor to after the address block
+      doc.text('', marginL, addrY - 4);
     } else {
       // Fallback: use booking data
+      let addrY = custY + 12;
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
-        .text(booking.name || '—', marginL, custY + 12);
+        .text(booking.name || '—', marginL, addrY, { width: pageW, lineBreak: false });
+      addrY += 16;
       doc.fontSize(9).font('Helvetica').fillColor('#374151');
-      if (booking.email) doc.text(booking.email, marginL, doc.y + 2);
-      if (booking.phone) doc.text(booking.phone, marginL, doc.y + 1);
+      if (booking.email) { doc.text(booking.email, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+      if (booking.phone) { doc.text(booking.phone, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+      doc.text('', marginL, addrY - 4);
     }
 
     // ── SEPARATOR ─────────────────────────────────────────────────────────
