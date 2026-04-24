@@ -1333,19 +1333,22 @@ function generateRechnungPdf(opts: {
     // Service description
     const pickupDate = booking.pickup_datetime ? fmtDate(booking.pickup_datetime, lang) : '';
     const descLine1 = isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München';
-    const descLine2 = `${booking.pickup_address || ''} → ${booking.dropoff_address || ''}`;
-    const descLine3 = pickupDate ? (isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}`) : '';
+    const descLine2 = `${isEn ? 'From:' : 'Von:'} ${(booking.pickup_address || '').substring(0, 60)}`;
+    const descLine3 = `${isEn ? 'To:' : 'Nach:'} ${(booking.dropoff_address || '').substring(0, 60)}`;
+    const descLine4 = pickupDate ? (isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}`) : '';
 
-    // Row background
+    // Row height: title + 3 description lines (+ optional date line)
+    const ROW_H_SERVICE = descLine4 ? 65 : 54;
     const rowTop = tableTop + 20;
-    doc.rect(marginL, rowTop, pageW, 50).fill(LIGHTGRAY);
+    doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
     doc.fillColor('#111827').fontSize(8.5).font('Helvetica-Bold');
     doc.text('1', colPos, rowTop + 8, { width: 25, lineBreak: false });
     doc.font('Helvetica-Bold').text(descLine1, colDesc, rowTop + 8, { width: colMenge - colDesc - 10, lineBreak: false });
     doc.font('Helvetica').fontSize(8).fillColor(GRAY)
       .text(descLine2, colDesc, rowTop + 20, { width: colMenge - colDesc - 10, lineBreak: false });
-    if (descLine3) {
-      doc.text(descLine3, colDesc, rowTop + 31, { width: colMenge - colDesc - 10, lineBreak: false });
+    doc.text(descLine3, colDesc, rowTop + 31, { width: colMenge - colDesc - 10, lineBreak: false });
+    if (descLine4) {
+      doc.text(descLine4, colDesc, rowTop + 42, { width: colMenge - colDesc - 10, lineBreak: false });
     }
     doc.fontSize(8.5).fillColor('#111827').font('Helvetica');
     doc.text('1×', colMenge, rowTop + 8, { width: 60, align: 'center', lineBreak: false });
@@ -1353,7 +1356,7 @@ function generateRechnungPdf(opts: {
     doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: 50, align: 'right', lineBreak: false });
 
     // Table bottom border
-    const tableBottom = rowTop + 50;
+    const tableBottom = rowTop + ROW_H_SERVICE;
     doc.moveTo(marginL, tableBottom).lineTo(marginL + pageW, tableBottom)
       .lineWidth(0.5).strokeColor('#e5e7eb').stroke();
 
