@@ -1755,8 +1755,8 @@ export default function AdminPage() {
                     <textarea
                       value={rechnungEmpfaenger}
                       onChange={(e) => setRechnungEmpfaenger(e.target.value)}
-                      rows={5}
-                      placeholder={'Vor- und Nachname\nFirma (optional)\nStraße und Hausnummer\nPLZ Ort\nLand'}
+                      rows={7}
+                      placeholder={'Vor- und Nachname\nFirma (optional)\nStraße und Hausnummer\nPLZ Ort\nLand\n\nKontakt: E-Mail / Telefon'}
                       className="w-full border border-primary-400 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white resize-none font-mono"
                     />
                   ) : (
