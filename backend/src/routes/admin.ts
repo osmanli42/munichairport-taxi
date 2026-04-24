@@ -1310,20 +1310,24 @@ function generateRechnungPdf(opts: {
 
     // ── SERVICES TABLE ─────────────────────────────────────────────────────
     const tableTop = sepY + 16;
-    const colPos = marginL;
-    const colDesc = marginL + 30;
-    const colMenge = marginL + pageW - 200;
-    const colEinzel = marginL + pageW - 120;
-    const colGesamt = marginL + pageW - 40;
+    const colPos    = marginL;                      // x=50,  w=25
+    const colDesc   = marginL + 30;                 // x=80,  w=flexible
+    const colMenge  = marginL + pageW - 195;        // x=350, w=50
+    const colEinzel = marginL + pageW - 138;        // x=407, w=70
+    const colGesamt = marginL + pageW - 62;         // x=483, w=62 → ends at right margin
+    const wDesc     = colMenge - colDesc - 8;       // ~262px
+    const wMenge    = colEinzel - colMenge - 4;     // ~53px
+    const wEinzel   = colGesamt - colEinzel - 4;    // ~72px
+    const wGesamt   = marginL + pageW - colGesamt;  // ~62px
 
     // Table header
     doc.rect(marginL, tableTop, pageW, 20).fill(BRAND);
     doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#ffffff');
     doc.text(isEn ? 'Pos.' : 'Pos.', colPos, tableTop + 6, { width: 25, align: 'left', lineBreak: false });
-    doc.text(isEn ? 'Description' : 'Beschreibung', colDesc, tableTop + 6, { width: colMenge - colDesc - 10, lineBreak: false });
-    doc.text(isEn ? 'Qty' : 'Menge', colMenge, tableTop + 6, { width: 60, align: 'center', lineBreak: false });
-    doc.text(isEn ? 'Unit Price' : 'Einzelpreis', colEinzel, tableTop + 6, { width: 75, align: 'right', lineBreak: false });
-    doc.text(isEn ? 'Total' : 'Gesamt', colGesamt, tableTop + 6, { width: 50, align: 'right', lineBreak: false });
+    doc.text(isEn ? 'Description' : 'Beschreibung', colDesc, tableTop + 6, { width: wDesc, lineBreak: false });
+    doc.text(isEn ? 'Qty' : 'Menge', colMenge, tableTop + 6, { width: wMenge, align: 'center', lineBreak: false });
+    doc.text(isEn ? 'Unit Price' : 'Einzelpreis', colEinzel, tableTop + 6, { width: wEinzel, align: 'right', lineBreak: false });
+    doc.text(isEn ? 'Total' : 'Gesamt', colGesamt, tableTop + 6, { width: wGesamt, align: 'right', lineBreak: false });
 
     // Net price calculation
     const grossPrice = Number(booking.price) || 0;
