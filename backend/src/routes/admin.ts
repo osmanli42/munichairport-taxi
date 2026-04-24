@@ -1382,25 +1382,36 @@ function generateRechnungPdf(opts: {
       totY += 24;
     }
 
-    // ── BANK TRANSFER BOX ─────────────────────────────────────────────────
+    // ── BANK TRANSFER BOX or BEZAHLT BOX ──────────────────────────────────
     const bankY = totY + 24;
-    doc.rect(marginL, bankY, pageW, 90).fill('#f9fafb').stroke();
-    doc.fontSize(9).font('Helvetica-Bold').fillColor(BRAND)
-      .text(isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG', marginL + 12, bankY + 12);
-    doc.fontSize(8.5).font('Helvetica').fillColor('#374151');
+    if (isPaid) {
+      // Green "bezahlt" confirmation box
+      const paidLabel = zahlungsart === 'bar'
+        ? (isEn ? '✓  Paid in Cash' : '✓  Bar bezahlt')
+        : (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt');
+      doc.rect(marginL, bankY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#15803d')
+        .text(paidLabel, marginL + 12, bankY + 15);
+    } else {
+      // Bank transfer details box
+      doc.rect(marginL, bankY, pageW, 90).fill('#f9fafb').stroke();
+      doc.fontSize(9).font('Helvetica-Bold').fillColor(BRAND)
+        .text(isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG', marginL + 12, bankY + 12);
+      doc.fontSize(8.5).font('Helvetica').fillColor('#374151');
 
-    const bankRows: [string, string][] = [
-      [isEn ? 'Account Holder:' : 'Kontoinhaber:', s.bank_kontoinhaber || companyName],
-      [isEn ? 'Bank:' : 'Bank:', s.bank_name || '—'],
-      ['IBAN:', s.bank_iban || '—'],
-      ['BIC/SWIFT:', s.bank_bic || '—'],
-      [isEn ? 'Reference:' : 'Verwendungszweck:', rechnungsnummer],
-    ];
-    let bY = bankY + 26;
-    for (const [label, val] of bankRows) {
-      doc.font('Helvetica').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
-      doc.font('Helvetica-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
-      bY += 12;
+      const bankRows: [string, string][] = [
+        [isEn ? 'Account Holder:' : 'Kontoinhaber:', s.bank_kontoinhaber || companyName],
+        [isEn ? 'Bank:' : 'Bank:', s.bank_name || '—'],
+        ['IBAN:', s.bank_iban || '—'],
+        ['BIC/SWIFT:', s.bank_bic || '—'],
+        [isEn ? 'Reference:' : 'Verwendungszweck:', rechnungsnummer],
+      ];
+      let bY = bankY + 26;
+      for (const [label, val] of bankRows) {
+        doc.font('Helvetica').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
+        doc.font('Helvetica-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
+        bY += 12;
+      }
     }
 
     // ── FOOTER ────────────────────────────────────────────────────────────
