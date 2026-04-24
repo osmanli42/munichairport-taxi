@@ -1437,8 +1437,10 @@ function buildRechnungEmail(opts: {
   mwst: 0 | 7 | 19;
   lang: 'de' | 'en';
   s: Record<string, string>;
+  zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
 }): string {
-  const { booking, rechnungsnummer, mwst, lang, s } = opts;
+  const { booking, rechnungsnummer, mwst, lang, s, zahlungsart } = opts;
+  const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
   const isEn = lang === 'en';
   const companyName = s.company_name || 'Taxi N&N GbR';
   const grossPrice = Number(booking.price) || 0;
