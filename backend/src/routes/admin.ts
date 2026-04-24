@@ -1476,7 +1476,15 @@ function buildRechnungEmail(opts: {
     </tr>
   `;
 
-  const bankSection = (s.bank_iban) ? `
+  const paidLabel = zahlungsart === 'bar'
+    ? (isEn ? '✓ Paid in Cash' : '✓ Bar bezahlt')
+    : (isEn ? '✓ Paid by Credit Card' : '✓ Kreditkarte bezahlt');
+
+  const bankSection = isPaid ? `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-top:20px;">
+      <p style="margin:0;font-weight:700;color:#15803d;font-size:14px;">${paidLabel}</p>
+    </div>
+  ` : (s.bank_iban ? `
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-top:20px;">
       <p style="margin:0 0 10px;font-weight:700;color:${BRAND};font-size:13px;">${isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG'}</p>
       <table style="width:100%;font-size:13px;border-collapse:collapse;">
@@ -1487,7 +1495,7 @@ function buildRechnungEmail(opts: {
         <tr><td style="color:#6b7280;padding:3px 0;">${isEn ? 'Reference:' : 'Verwendungszweck:'}</td><td style="font-weight:600;">${rechnungsnummer}</td></tr>
       </table>
     </div>
-  ` : '';
+  ` : '');
 
   const closing = isEn
     ? 'If you have any questions, please do not hesitate to contact us.'
