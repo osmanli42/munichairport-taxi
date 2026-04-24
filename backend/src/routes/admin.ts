@@ -1167,7 +1167,7 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
       ? `Your Invoice ${rechnungsnummer} – Munich Airport Taxi`
       : `Ihre Rechnung ${rechnungsnummer} – Flughafen München Taxi`;
 
-    const htmlBody = buildRechnungEmail({ booking, rechnungsnummer, mwst, lang, s });
+    const htmlBody = buildRechnungEmail({ booking, rechnungsnummer, mwst, lang, s, zahlungsart });
 
     await resend.emails.send({
       from: `Flughafen München Taxi <${fromEmail}>`,
