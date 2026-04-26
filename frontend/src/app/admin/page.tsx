@@ -416,6 +416,7 @@ export default function AdminPage() {
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
             { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
             { id: 'rechnung' as Tab, icon: FileText, label: 'Rechnung' },
+            { id: 'marketing' as Tab, icon: Mail, label: 'Marketing' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
