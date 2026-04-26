@@ -1843,6 +1843,248 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Marketing */}
+      {activeTab === 'marketing' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Users size={18} /> Müşteri Listesi
+                <span className="text-xs font-normal text-gray-500">
+                  ({marketingCustomers.length} kişi, {marketingSelected.size} seçili)
+                </span>
+              </h3>
+            </div>
+            <div className="flex gap-2 mb-3 flex-wrap">
+              <button
+                onClick={loadMarketingCustomers}
+                disabled={marketingLoading}
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
+              >
+                <RefreshCw size={14} className={marketingLoading ? 'animate-spin' : ''} />
+                DB&apos;den Yükle
+              </button>
+              <label className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer">
+                <Upload size={14} />
+                {marketingIcsLoading ? 'Yükleniyor...' : '.ics Yükle'}
+                <input
+                  type="file"
+                  accept=".ics,text/calendar"
+                  className="hidden"
+                  disabled={marketingIcsLoading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleIcsUpload(f); e.target.value = ''; }}
+                />
+              </label>
+              <button
+                onClick={toggleMarketingSelectAll}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium"
+              >
+                <Check size={14} />
+                {marketingSelected.size > 0 ? 'Seçimi Temizle' : 'Tümünü Seç'}
+              </button>
+            </div>
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="İsim veya email ara..."
+                value={marketingSearch}
+                onChange={(e) => setMarketingSearch(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="border border-gray-100 rounded-lg max-h-[500px] overflow-y-auto">
+              {marketingCustomers.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">
+                  Henüz müşteri yüklenmedi.<br />
+                  &quot;DB&apos;den Yükle&quot; veya &quot;.ics Yükle&quot; ile başlayın.
+                </div>
+              ) : filterMarketingCustomers().length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">Aramanızla eşleşen müşteri yok.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="text-left py-2 px-2 w-8"></th>
+                      <th className="text-left py-2 px-2 text-gray-500 font-medium">İsim</th>
+                      <th className="text-left py-2 px-2 text-gray-500 font-medium">Email</th>
+                      <th className="text-left py-2 px-2 text-gray-500 font-medium w-16">Kaynak</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filterMarketingCustomers().map((c) => (
+                      <tr key={c.email} className="border-t border-gray-50 hover:bg-gray-50">
+                        <td className="py-2 px-2">
+                          <input
+                            type="checkbox"
+                            checked={marketingSelected.has(c.email)}
+                            onChange={() => toggleMarketingSelect(c.email)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-gray-900">{c.name || <span className="text-gray-400 italic">—</span>}</td>
+                        <td className="py-2 px-2 text-gray-600 text-xs">{c.email}</td>
+                        <td className="py-2 px-2">
+                          <span className={cn(
+                            'text-xs px-2 py-0.5 rounded-full',
+                            c.source === 'ics' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          )}>
+                            {c.source === 'ics' ? 'Takvim' : 'DB'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <Mail size={18} /> Email Oluştur
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Konu (Subject)</label>
+              <input
+                type="text"
+                value={marketingSubject}
+                onChange={(e) => setMarketingSubject(e.target.value)}
+                placeholder="Örn: Yaz sezonu özel indirimi"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                İçerik
+                <span className="text-xs text-gray-500 ml-2">
+                  ({'{isim}'} ile kişiselleştir, ** kalın, # başlık, - madde)
+                </span>
+              </label>
+              <textarea
+                value={marketingContent}
+                onChange={(e) => setMarketingContent(e.target.value)}
+                rows={12}
+                placeholder={`Merhaba {isim},\n\n# Yaz sezonu indirimi başladı!\n\nHavalimanı transferinizde **%10 indirim** kazanın.\n\n- Tüm araç tipleri dahil\n- Erken rezervasyon avantajı\n- 7/24 müşteri hizmetleri\n\nGörüşmek üzere!\nFlughafen-muenchen.TAXI`}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Buton Metni (opsiyonel)</label>
+                <input
+                  type="text"
+                  value={marketingButtonText}
+                  onChange={(e) => setMarketingButtonText(e.target.value)}
+                  placeholder="Hemen Rezervasyon"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Buton URL (opsiyonel)</label>
+                <input
+                  type="url"
+                  value={marketingButtonUrl}
+                  onChange={(e) => setMarketingButtonUrl(e.target.value)}
+                  placeholder="https://flughafen-muenchen.taxi"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={previewMarketingEmail}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-xl text-sm font-medium flex-1 justify-center"
+              >
+                <Eye size={16} /> Önizleme
+              </button>
+              <button
+                onClick={() => setMarketingShowConfirm(true)}
+                disabled={marketingSelected.size === 0 || !marketingSubject.trim() || !marketingContent.trim() || marketingSending}
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-xl text-sm font-semibold flex-1 justify-center"
+              >
+                <Send size={16} />
+                {marketingSending ? 'Gönderiliyor...' : `${marketingSelected.size} Kişiye Gönder`}
+              </button>
+            </div>
+            {marketingResult && (
+              <div className={cn(
+                'p-4 rounded-xl text-sm',
+                marketingResult.failed === 0 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+              )}>
+                <strong>Sonuç:</strong> {marketingResult.sent} başarılı, {marketingResult.failed} başarısız.
+                {marketingResult.errors.length > 0 && (
+                  <ul className="mt-2 text-xs list-disc list-inside">
+                    {marketingResult.errors.slice(0, 5).map((e, i) => (
+                      <li key={i}>{e.email}: {e.error}</li>
+                    ))}
+                    {marketingResult.errors.length > 5 && <li>...ve {marketingResult.errors.length - 5} hata daha</li>}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Marketing Preview Modal */}
+      {marketingShowPreview && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setMarketingShowPreview(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-bold text-gray-900">Email Önizleme</h3>
+              <button onClick={() => setMarketingShowPreview(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <iframe
+              srcDoc={marketingPreviewHtml}
+              className="flex-1 w-full border-0"
+              title="Email Preview"
+              sandbox="allow-same-origin"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Marketing Confirm Send Modal */}
+      {marketingShowConfirm && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !marketingSending) setMarketingShowConfirm(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="font-bold text-gray-900 text-lg mb-2">Toplu Email Gönderimi</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              <strong>{marketingSelected.size} kişiye</strong> aynı email gönderilecek.
+              Bu işlem geri alınamaz. Emin misiniz?
+            </p>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+              <div><span className="text-gray-500">Konu:</span> <strong>{marketingSubject}</strong></div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMarketingShowConfirm(false)}
+                disabled={marketingSending}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 py-2.5 rounded-xl font-medium"
+              >
+                İptal
+              </button>
+              <button
+                onClick={sendMarketingEmails}
+                disabled={marketingSending}
+                className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2"
+              >
+                {marketingSending ? <><RefreshCw size={16} className="animate-spin" /> Gönderiliyor...</> : <><Send size={16} /> Gönder</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rechnung Modal */}
       {showRechnungModal && selectedBooking && (
         <div
