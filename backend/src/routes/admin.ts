@@ -1555,4 +1555,186 @@ function buildRechnungEmail(opts: {
 </body></html>`;
 }
 
+// ─── MARKETING ────────────────────────────────────────────────────────────────
+
+// GET /api/admin/marketing/customers - Unique customer emails from bookings
+router.get('/marketing/customers', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const customers = await query(`
+      SELECT
+        LOWER(TRIM(email)) AS email,
+        MAX(name) AS name,
+        MAX(pickup_datetime) AS lastBooking,
+        COUNT(*) AS bookingCount
+      FROM bookings
+      WHERE email IS NOT NULL AND email != '' AND email LIKE '%@%'
+        AND status != 'cancelled'
+      GROUP BY LOWER(TRIM(email))
+      ORDER BY MAX(pickup_datetime) DESC
+    `);
+    res.json(customers);
+  } catch (error: any) {
+    console.error('Marketing customers error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch customers' });
+  }
+});
+
+// POST /api/admin/marketing/parse-ics - Parse .ics calendar file for emails
+router.post('/marketing/parse-ics', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { icsContent } = req.body as { icsContent?: string };
+    if (!icsContent || typeof icsContent !== 'string') {
+      res.status(400).json({ error: 'icsContent string required' });
+      return;
+    }
+
+    // Unfold lines (RFC 5545: lines starting with space/tab continue previous line)
+    const unfolded = icsContent.replace(/\r?\n[ \t]/g, '');
+    const lines = unfolded.split(/\r?\n/);
+
+    // Parse VEVENT blocks
+    interface ParsedContact { email: string; name?: string }
+    const contactMap = new Map<string, ParsedContact>();
+
+    let inEvent = false;
+    let currentSummary = '';
+    let currentDescription = '';
+    let currentAttendees: ParsedContact[] = [];
+    let currentOrganizer: ParsedContact | null = null;
+
+    const emailRegex = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
+    const addContact = (email: string, name?: string) => {
+      const key = email.trim().toLowerCase();
+      if (!key || !key.includes('@')) return;
+      const existing = contactMap.get(key);
+      if (!existing || (!existing.name && name)) {
+        contactMap.set(key, { email: key, name: name?.trim() || existing?.name });
+      }
+    };
+
+    for (const line of lines) {
+      if (line.startsWith('BEGIN:VEVENT')) {
+        inEvent = true;
+        currentSummary = '';
+        currentDescription = '';
+        currentAttendees = [];
+        currentOrganizer = null;
+      } else if (line.startsWith('END:VEVENT')) {
+        // Filter: only events with "Fahrt" / "Taxi" / "Transfer" in summary (case-insensitive)
+        // If no filter keyword, include anyway (user may want all calendar contacts)
+        const summaryLower = currentSummary.toLowerCase();
+        const isRelevant =
+          /fahrt|taxi|transfer|abholung|rückfahrt|ruckfahrt|hinfahrt|flughafen/i.test(summaryLower) ||
+          summaryLower === ''; // include if no summary
+
+        if (isRelevant || currentAttendees.length > 0 || currentOrganizer) {
+          for (const a of currentAttendees) addContact(a.email, a.name);
+          if (currentOrganizer) addContact(currentOrganizer.email, currentOrganizer.name);
+
+          // Also extract emails from DESCRIPTION
+          const descMatches = currentDescription.match(emailRegex);
+          if (descMatches) for (const e of descMatches) addContact(e);
+        }
+        inEvent = false;
+      } else if (inEvent) {
+        if (line.startsWith('SUMMARY')) {
+          const idx = line.indexOf(':');
+          if (idx > -1) currentSummary = line.slice(idx + 1).trim();
+        } else if (line.startsWith('DESCRIPTION')) {
+          const idx = line.indexOf(':');
+          if (idx > -1) {
+            currentDescription = line
+              .slice(idx + 1)
+              .replace(/\\n/g, '\n')
+              .replace(/\\,/g, ',')
+              .replace(/\\;/g, ';');
+          }
+        } else if (line.startsWith('ATTENDEE')) {
+          const mailto = line.match(/mailto:([^\r\n;>]+)/i);
+          const cn = line.match(/CN=([^;:]+)/i);
+          if (mailto) currentAttendees.push({ email: mailto[1], name: cn ? cn[1] : undefined });
+        } else if (line.startsWith('ORGANIZER')) {
+          const mailto = line.match(/mailto:([^\r\n;>]+)/i);
+          const cn = line.match(/CN=([^;:]+)/i);
+          if (mailto) currentOrganizer = { email: mailto[1], name: cn ? cn[1] : undefined };
+        }
+      }
+    }
+
+    // Filter out the company's own email and common system addresses
+    const ownEmail = (process.env.SMTP_USER || 'info@flughafen-muenchen.taxi').toLowerCase();
+    const blocklist = new Set([ownEmail, 'noreply@', 'no-reply@']);
+    const result = Array.from(contactMap.values()).filter(
+      (c) => !c.email.startsWith('noreply') && !c.email.startsWith('no-reply') && c.email !== ownEmail
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Marketing parse-ics error:', error);
+    res.status(500).json({ error: error.message || 'Failed to parse .ics file' });
+  }
+});
+
+// POST /api/admin/marketing/preview - Generate HTML preview from content
+router.post('/marketing/preview', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { subject, content, buttonText, buttonUrl } = req.body as {
+      subject?: string;
+      content?: string;
+      buttonText?: string;
+      buttonUrl?: string;
+    };
+    if (!content) {
+      res.status(400).json({ error: 'content required' });
+      return;
+    }
+    const { generateMarketingEmailHtml } = await import('../services/notifications');
+    const html = generateMarketingEmailHtml({
+      subject: subject || 'Vorschau',
+      content,
+      buttonText,
+      buttonUrl,
+      recipientName: 'Vorschau',
+    });
+    res.json({ html });
+  } catch (error: any) {
+    console.error('Marketing preview error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate preview' });
+  }
+});
+
+// POST /api/admin/marketing/send - Bulk send marketing email via Resend Batch API
+router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { recipients, subject, content, buttonText, buttonUrl } = req.body as {
+      recipients?: Array<{ email: string; name?: string }>;
+      subject?: string;
+      content?: string;
+      buttonText?: string;
+      buttonUrl?: string;
+    };
+
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      res.status(400).json({ error: 'recipients array required (min 1)' });
+      return;
+    }
+    if (!subject || !content) {
+      res.status(400).json({ error: 'subject and content required' });
+      return;
+    }
+    if (recipients.length > 5000) {
+      res.status(400).json({ error: 'Too many recipients (max 5000 per request)' });
+      return;
+    }
+
+    const { sendMarketingEmail } = await import('../services/notifications');
+    const result = await sendMarketingEmail(recipients, { subject, content, buttonText, buttonUrl });
+    res.json(result);
+  } catch (error: any) {
+    console.error('Marketing send error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send marketing email' });
+  }
+});
+
 export default router;
