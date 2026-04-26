@@ -5,10 +5,19 @@ import { adminApi, pricesApi, settingsApi, Booking, Price } from '@/lib/api';
 import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
-  TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send
+  TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
+  Mail, Upload, Users
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing';
+
+interface MarketingCustomer {
+  email: string;
+  name: string;
+  lastBooking?: string;
+  bookingCount?: number;
+  source?: 'db' | 'ics';
+}
 
 const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-700',
