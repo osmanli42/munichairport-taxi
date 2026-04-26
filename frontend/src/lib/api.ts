@@ -247,6 +247,37 @@ export const adminApi = {
     const response = await api.post(`/admin/bookings/${bookingId}/rechnung`, { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse, zahlungsart }, { headers: { Authorization: `Bearer ${token}` } });
     return response.data;
   },
+
+  // ─── Marketing ───
+  getMarketingCustomers: async (): Promise<Array<{ email: string; name: string; lastBooking: string; bookingCount: number }>> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.get('/admin/marketing/customers', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  parseIcsFile: async (icsContent: string): Promise<Array<{ email: string; name?: string }>> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post('/admin/marketing/parse-ics', { icsContent }, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  previewMarketingEmail: async (data: { subject: string; content: string; buttonText?: string; buttonUrl?: string }): Promise<{ html: string }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post('/admin/marketing/preview', data, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  sendMarketingEmail: async (data: {
+    recipients: Array<{ email: string; name?: string }>;
+    subject: string;
+    content: string;
+    buttonText?: string;
+    buttonUrl?: string;
+  }): Promise<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post('/admin/marketing/send', data, { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 });
+    return response.data;
+  },
 };
 
 export default api;
