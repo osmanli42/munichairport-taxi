@@ -69,6 +69,21 @@ export default function AdminPage() {
   const [rechnungSending, setRechnungSending] = useState(false);
   const [rechnungSuccess, setRechnungSuccess] = useState(false);
   const [rechnungError, setRechnungError] = useState('');
+  // Marketing
+  const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>([]);
+  const [marketingSelected, setMarketingSelected] = useState<Set<string>>(new Set());
+  const [marketingSearch, setMarketingSearch] = useState('');
+  const [marketingSubject, setMarketingSubject] = useState('');
+  const [marketingContent, setMarketingContent] = useState('');
+  const [marketingButtonText, setMarketingButtonText] = useState('');
+  const [marketingButtonUrl, setMarketingButtonUrl] = useState('');
+  const [marketingPreviewHtml, setMarketingPreviewHtml] = useState('');
+  const [marketingShowPreview, setMarketingShowPreview] = useState(false);
+  const [marketingSending, setMarketingSending] = useState(false);
+  const [marketingResult, setMarketingResult] = useState<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> } | null>(null);
+  const [marketingLoading, setMarketingLoading] = useState(false);
+  const [marketingIcsLoading, setMarketingIcsLoading] = useState(false);
+  const [marketingShowConfirm, setMarketingShowConfirm] = useState(false);
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [stripeSyncing, setStripeSyncing] = useState(false);
