@@ -175,6 +175,124 @@ export default function AdminPage() {
     }
   }, []);
 
+  // ─── Marketing ───
+  const loadMarketingCustomers = useCallback(async () => {
+    setMarketingLoading(true);
+    try {
+      const data = await adminApi.getMarketingCustomers();
+      setMarketingCustomers(prev => {
+        const icsOnly = prev.filter(c => c.source === 'ics' && !data.some(d => d.email.toLowerCase() === c.email.toLowerCase()));
+        const dbCustomers = data.map(c => ({ ...c, source: 'db' as const }));
+        return [...dbCustomers, ...icsOnly];
+      });
+    } catch (err) {
+      console.error('Failed to load marketing customers', err);
+      alert('Müşteriler yüklenemedi.');
+    } finally {
+      setMarketingLoading(false);
+    }
+  }, []);
+
+  async function handleIcsUpload(file: File) {
+    setMarketingIcsLoading(true);
+    try {
+      const text = await file.text();
+      const parsed = await adminApi.parseIcsFile(text);
+      setMarketingCustomers(prev => {
+        const existing = new Map(prev.map(c => [c.email.toLowerCase(), c]));
+        for (const p of parsed) {
+          const key = p.email.toLowerCase();
+          if (!existing.has(key)) {
+            existing.set(key, { email: p.email, name: p.name || '', source: 'ics' });
+          } else {
+            const ex = existing.get(key)!;
+            if (!ex.name && p.name) existing.set(key, { ...ex, name: p.name });
+          }
+        }
+        return Array.from(existing.values());
+      });
+      alert(`${parsed.length} email takvimden yüklendi.`);
+    } catch (err) {
+      console.error('Failed to parse ics', err);
+      alert('Takvim dosyası işlenemedi. .ics formatında olduğundan emin olun.');
+    } finally {
+      setMarketingIcsLoading(false);
+    }
+  }
+
+  function toggleMarketingSelect(email: string) {
+    setMarketingSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  }
+
+  function filterMarketingCustomers(): MarketingCustomer[] {
+    const q = marketingSearch.trim().toLowerCase();
+    if (!q) return marketingCustomers;
+    return marketingCustomers.filter(c =>
+      c.email.toLowerCase().includes(q) ||
+      (c.name || '').toLowerCase().includes(q)
+    );
+  }
+
+  function toggleMarketingSelectAll() {
+    const filtered = filterMarketingCustomers();
+    if (marketingSelected.size === filtered.length && filtered.length > 0) {
+      setMarketingSelected(new Set());
+    } else {
+      setMarketingSelected(new Set(filtered.map(c => c.email)));
+    }
+  }
+
+  async function previewMarketingEmail() {
+    if (!marketingContent.trim()) {
+      alert('Lütfen önce içerik yazın.');
+      return;
+    }
+    try {
+      const { html } = await adminApi.previewMarketingEmail({
+        subject: marketingSubject || 'Vorschau',
+        content: marketingContent,
+        buttonText: marketingButtonText || undefined,
+        buttonUrl: marketingButtonUrl || undefined,
+      });
+      setMarketingPreviewHtml(html);
+      setMarketingShowPreview(true);
+    } catch (err) {
+      console.error('Preview failed', err);
+      alert('Önizleme oluşturulamadı.');
+    }
+  }
+
+  async function sendMarketingEmails() {
+    if (marketingSelected.size === 0) { alert('En az bir alıcı seçin.'); return; }
+    if (!marketingSubject.trim() || !marketingContent.trim()) { alert('Konu ve içerik gerekli.'); return; }
+    const recipients = marketingCustomers
+      .filter(c => marketingSelected.has(c.email))
+      .map(c => ({ email: c.email, name: c.name || undefined }));
+    setMarketingSending(true);
+    setMarketingResult(null);
+    setMarketingShowConfirm(false);
+    try {
+      const result = await adminApi.sendMarketingEmail({
+        recipients,
+        subject: marketingSubject,
+        content: marketingContent,
+        buttonText: marketingButtonText || undefined,
+        buttonUrl: marketingButtonUrl || undefined,
+      });
+      setMarketingResult(result);
+    } catch (err: any) {
+      console.error('Send failed', err);
+      alert('Gönderim başarısız: ' + (err?.response?.data?.error || err.message));
+    } finally {
+      setMarketingSending(false);
+    }
+  }
+
   useEffect(() => {
     if (isLoggedIn) {
       if (activeTab === 'dashboard') {
