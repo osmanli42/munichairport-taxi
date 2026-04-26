@@ -412,6 +412,236 @@ async function sendWhatsAppNotification(booking: BookingNotificationData): Promi
   );
 }
 
+// ─── MARKETING EMAIL ──────────────────────────────────────────────────────────
+
+export interface MarketingEmailOptions {
+  subject: string;
+  content: string;
+  buttonText?: string;
+  buttonUrl?: string;
+  recipientName?: string;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Convert plain text content (with simple markdown-like syntax) to HTML
+function contentToHtml(content: string): string {
+  const lines = content.replace(/\r/g, '').split('\n');
+  const blocks: string[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = () => {
+    if (listBuffer.length > 0) {
+      blocks.push(
+        `<ul style="margin:12px 0;padding-left:20px;color:#374151;font-size:15px;line-height:1.7;">${listBuffer
+          .map((li) => `<li style="margin:6px 0;">${li}</li>`)
+          .join('')}</ul>`
+      );
+      listBuffer = [];
+    }
+  };
+
+  const formatInline = (text: string): string => {
+    let out = escapeHtml(text);
+    // **bold**
+    out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // *italic*
+    out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    // [text](url)
+    out = out.replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" style="color:#1a365d;font-weight:bold;text-decoration:underline;">$1</a>'
+    );
+    return out;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushList();
+      continue;
+    }
+    // Heading: # Header
+    if (/^#{1,3}\s+/.test(line)) {
+      flushList();
+      const level = line.match(/^(#{1,3})/)![1].length;
+      const text = formatInline(line.replace(/^#{1,3}\s+/, ''));
+      const sizes = { 1: 24, 2: 20, 3: 17 } as Record<number, number>;
+      blocks.push(
+        `<h${level} style="color:#1a365d;font-size:${sizes[level]}px;font-weight:bold;margin:20px 0 10px;border-bottom:2px solid #f6c644;padding-bottom:6px;">${text}</h${level}>`
+      );
+      continue;
+    }
+    // List items: - item or * item
+    if (/^[-*]\s+/.test(line)) {
+      listBuffer.push(formatInline(line.replace(/^[-*]\s+/, '')));
+      continue;
+    }
+    flushList();
+    blocks.push(
+      `<p style="margin:12px 0;color:#374151;font-size:15px;line-height:1.7;">${formatInline(line)}</p>`
+    );
+  }
+  flushList();
+  return blocks.join('\n');
+}
+
+export function generateMarketingEmailHtml(opts: MarketingEmailOptions): string {
+  const { subject, content, buttonText, buttonUrl, recipientName } = opts;
+
+  // Personalize: replace {isim} / {name} placeholder with recipient name
+  let personalizedContent = content;
+  if (recipientName) {
+    personalizedContent = personalizedContent
+      .replace(/\{isim\}/gi, recipientName)
+      .replace(/\{name\}/gi, recipientName);
+  } else {
+    personalizedContent = personalizedContent
+      .replace(/\{isim\}/gi, '')
+      .replace(/\{name\}/gi, '');
+  }
+
+  const bodyHtml = contentToHtml(personalizedContent);
+
+  const ctaHtml =
+    buttonText && buttonUrl
+      ? `
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${escapeHtml(buttonUrl)}"
+         style="display:inline-block;background:#f6c644;color:#1a365d;padding:14px 32px;border-radius:6px;font-weight:bold;font-size:16px;text-decoration:none;border:2px solid #1a365d;">
+        ${escapeHtml(buttonText)}
+      </a>
+    </div>`
+      : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr><td style="background:#1a365d;padding:28px 32px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:bold;letter-spacing:0.5px;">Flughafen-muenchen.TAXI</h1>
+          <p style="margin:8px 0 0;color:#f6c644;font-size:14px;font-weight:600;">Münchner Flughafen Transfer</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:32px;">
+          ${bodyHtml}
+          ${ctaHtml}
+        </td></tr>
+        <!-- Contact box -->
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#1a365d;border-radius:8px;padding:18px;text-align:center;">
+            <p style="margin:0 0 6px;color:#ffffff;font-size:13px;">Fragen? Wir sind für Sie da:</p>
+            <p style="margin:4px 0;"><a href="tel:+4915141620000" style="color:#f6c644;text-decoration:none;font-weight:bold;">📞 +49 151 41620000</a></p>
+            <p style="margin:4px 0;"><a href="https://wa.me/4915141620000" style="color:#f6c644;text-decoration:none;font-weight:bold;">💬 WhatsApp</a></p>
+            <p style="margin:4px 0;"><a href="mailto:info@flughafen-muenchen.taxi" style="color:#f6c644;text-decoration:none;font-weight:bold;">✉️ info@flughafen-muenchen.taxi</a></p>
+          </div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;color:#9ca3af;font-size:11px;">
+            Flughafen-muenchen.TAXI · Eisvogelweg 2, 85356 Freising<br>
+            <a href="https://flughafen-muenchen.taxi" style="color:#9ca3af;">flughafen-muenchen.taxi</a>
+          </p>
+          <p style="margin:8px 0 0;color:#9ca3af;font-size:10px;">
+            Sie erhalten diese E-Mail, weil Sie bei uns eine Fahrt gebucht haben.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export interface MarketingRecipient {
+  email: string;
+  name?: string;
+}
+
+export interface MarketingSendResult {
+  sent: number;
+  failed: number;
+  errors: Array<{ email: string; error: string }>;
+}
+
+// Send marketing email in bulk via Resend Batch API (max 100 per batch)
+export async function sendMarketingEmail(
+  recipients: MarketingRecipient[],
+  opts: MarketingEmailOptions
+): Promise<MarketingSendResult> {
+  const resend = new Resend(RESEND_API_KEY);
+  const result: MarketingSendResult = { sent: 0, failed: 0, errors: [] };
+
+  // De-duplicate by email (case-insensitive)
+  const seen = new Set<string>();
+  const unique = recipients.filter((r) => {
+    const key = r.email.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const fromAddress = `Flughafen-muenchen.TAXI <${FROM_EMAIL}>`;
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < unique.length; i += BATCH_SIZE) {
+    const batch = unique.slice(i, i + BATCH_SIZE);
+    const payload = batch.map((r) => ({
+      from: fromAddress,
+      to: r.email,
+      subject: opts.subject,
+      html: generateMarketingEmailHtml({ ...opts, recipientName: r.name }),
+    }));
+
+    try {
+      const response = await (resend.batch as any).send(payload);
+      // Resend batch returns { data: [{ id }, ...] } on success
+      if (response?.error) {
+        result.failed += batch.length;
+        for (const r of batch) {
+          result.errors.push({ email: r.email, error: response.error.message || 'Batch error' });
+        }
+      } else {
+        result.sent += batch.length;
+      }
+    } catch (err: any) {
+      // Fallback: send one by one if batch fails (e.g. SDK version doesn't support batch)
+      console.warn('Batch send failed, falling back to per-email send:', err?.message);
+      for (const r of batch) {
+        try {
+          await resend.emails.send({
+            from: fromAddress,
+            to: r.email,
+            subject: opts.subject,
+            html: generateMarketingEmailHtml({ ...opts, recipientName: r.name }),
+          });
+          result.sent++;
+        } catch (sendErr: any) {
+          result.failed++;
+          result.errors.push({ email: r.email, error: sendErr?.message || 'Send failed' });
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
