@@ -309,8 +309,11 @@ export default function AdminPage() {
       if (activeTab === 'rechnung') {
         adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
       }
+      if (activeTab === 'marketing' && marketingCustomers.length === 0) {
+        loadMarketingCustomers();
+      }
     }
-  }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices, loadDetailedStats]);
+  }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices, loadDetailedStats, loadMarketingCustomers, marketingCustomers.length]);
 
   async function updateStatus(id: number, status: string) {
     try {
