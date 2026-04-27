@@ -81,6 +81,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       fahrrad_count,
       anfahrt_cost,
       zwischenstopp_address,
+      promo_code,
     } = req.body;
 
     // Validation
