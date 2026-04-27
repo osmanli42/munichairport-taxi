@@ -2039,12 +2039,42 @@ export default function AdminPage() {
                     HTML Kaynak Kodu
                     <span className="text-xs text-gray-500 ml-2">({'{isim}'} ile kişiselleştir)</span>
                   </label>
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Raw HTML</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fixed = fixMacRomanCorruption(marketingContent);
+                        if (fixed !== marketingContent) {
+                          setMarketingContent(fixed);
+                          alert('Kodlama düzeltildi! ✓');
+                        } else {
+                          alert('Kodlama sorunu tespit edilmedi.');
+                        }
+                      }}
+                      className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-0.5 rounded-full font-medium"
+                    >
+                      🔧 Düzelt
+                    </button>
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Raw HTML</span>
+                  </div>
                 </div>
                 <div className="relative">
                   <textarea
                     value={marketingContent}
                     onChange={(e) => setMarketingContent(e.target.value)}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData?.getData('text/plain');
+                      if (pasted) {
+                        const fixed = fixMacRomanCorruption(pasted);
+                        if (fixed !== pasted) {
+                          e.preventDefault();
+                          const ta = e.currentTarget;
+                          const start = ta.selectionStart ?? 0;
+                          const end = ta.selectionEnd ?? marketingContent.length;
+                          setMarketingContent(marketingContent.slice(0, start) + fixed + marketingContent.slice(end));
+                        }
+                      }
+                    }}
                     rows={18}
                     spellCheck={false}
                     placeholder={`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f4f4; }\n    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 8px; }\n    h1 { color: #1a365d; }\n    .btn { display: inline-block; background: #f6c644; color: #1a365d; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class="container">\n    <h1>Merhaba {isim}!</h1>\n    <p>Email içeriğinizi buraya yazın.</p>\n    <a href="https://flughafen-muenchen.taxi" class="btn">Jetzt buchen</a>\n  </div>\n</body>\n</html>`}
@@ -2052,7 +2082,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  💡 Kendi HTML şablonunuzu yazın. Buton ve CTA alanları HTML modunda göz ardı edilir.
+                  💡 Yapıştırırken encoding otomatik düzeltilir. Sorun devam ederse <strong>🔧 Düzelt</strong> butonuna basın.
                 </p>
               </div>
             )}
