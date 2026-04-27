@@ -344,7 +344,23 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       ${t.intro}
     </div>
 
+    ${booking.promo_code && booking.discount_amount && booking.base_total ? `
     <div class="price-box">€${formatPrice(booking.price)}</div>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:-12px 0 16px;font-size:13px;color:#374151;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span>${lang === 'tr' ? 'Temel fiyat' : lang === 'en' ? 'Base price' : 'Grundpreis'}:</span>
+        <span>€${formatPrice(booking.base_total)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
+        <span>🎉 ${lang === 'tr' ? 'Promosyon kodu' : lang === 'en' ? 'Promo code' : 'Rabattcode'} ${booking.promo_code}:</span>
+        <span>−€${formatPrice(booking.discount_amount)}</span>
+      </div>
+      <div style="border-top:1px solid #e5e7eb;margin:8px 0;"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:bold;">
+        <span>${lang === 'tr' ? 'Toplam' : lang === 'en' ? 'Total price' : 'Gesamtpreis'}:</span>
+        <span>€${formatPrice(booking.price)}</span>
+      </div>
+    </div>` : `<div class="price-box">€${formatPrice(booking.price)}</div>`}
     ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
     <div style="text-align:center;margin:-12px 0 16px;font-size:13px;color:#666;">
       <span style="text-decoration:line-through;color:#999;">€${formatPrice(booking.oneway_price * 2)}</span>
