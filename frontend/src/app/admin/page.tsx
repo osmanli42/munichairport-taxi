@@ -2099,9 +2099,10 @@ export default function AdminPage() {
               </button>
             </div>
             <iframe
-              src={marketingPreviewBlobUrl}
+              srcDoc={marketingPreviewHtml}
               className="flex-1 w-full border-0"
               title="Email Preview"
+              sandbox="allow-same-origin"
             />
           </div>
         </div>
