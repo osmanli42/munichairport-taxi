@@ -293,6 +293,7 @@ function BuchenContent() {
         return_datetime: returnDatetime,
         anfahrt_cost: anfahrtCost > 0 ? anfahrtCost : undefined,
         zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
+        promo_code: appliedPromo?.code || undefined,
       };
       if (payment === 'card') {
         body.card_holder = cardHolder;
