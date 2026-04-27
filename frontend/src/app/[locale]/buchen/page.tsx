@@ -601,6 +601,63 @@ function BuchenContent() {
                 </div>
               </div>
 
+              {/* Promo code — only shown when an active promotion exists */}
+              {activePromo && (
+                <div className="px-6 pb-2">
+                  <hr className="border-gray-100 mb-4" />
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    {locale === 'tr' ? 'Promosyon Kodu' : locale === 'en' ? 'Promo Code' : 'Aktionscode'}
+                  </h3>
+                  {appliedPromo ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+                        <span className="text-green-700 font-medium">
+                          🎉 {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}
+                        </span>
+                        <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }}
+                          className="text-gray-400 hover:text-gray-600 text-xs">
+                          ✕ {locale === 'tr' ? 'Kaldır' : locale === 'en' ? 'Remove' : 'Entfernen'}
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between text-sm px-1">
+                        <span className="text-gray-500">
+                          {locale === 'tr' ? 'Grundpreis' : locale === 'en' ? 'Base price' : 'Grundpreis'}:
+                        </span>
+                        <span className="text-gray-500 line-through">{formatPrice(price)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-base font-bold px-1">
+                        <span className="text-gray-800">
+                          {locale === 'tr' ? 'Toplam' : locale === 'en' ? 'Total' : 'Gesamtpreis'}:
+                        </span>
+                        <span className="text-green-600">{formatPrice(finalPrice)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoInput}
+                          onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                          placeholder={locale === 'tr' ? 'WELCOME15' : 'WELCOME15'}
+                          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-400"
+                        />
+                        <button
+                          onClick={handleApplyPromo}
+                          disabled={promoLoading || !promoInput.trim()}
+                          className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                        >
+                          {promoLoading ? '…' : (locale === 'tr' ? 'Uygula' : locale === 'en' ? 'Apply' : 'Anwenden')}
+                        </button>
+                      </div>
+                      {promoError && (
+                        <p className="text-red-600 text-xs px-1">{promoError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Action buttons */}
               <div className="px-6 pb-6 space-y-3">
                 {/* Trust mini-bar */}
