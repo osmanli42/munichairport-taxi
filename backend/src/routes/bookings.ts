@@ -118,12 +118,43 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       ? Math.max(calculatedPrice, priceRow.min_price)
       : calculatedPrice;
     const isRoundtrip = trip_type === 'roundtrip';
-    const discount = priceRow.roundtrip_discount || 0;
+
+    // Validate promo code first — if valid, skip roundtrip_discount (not combinable)
+    let promoDiscount = 0;
+    let validatedPromoCode: string | null = null;
+    if (promo_code) {
+      const today = new Date().toISOString().split('T')[0];
+      const [promo] = await query<any>(
+        `SELECT * FROM promotions WHERE UPPER(code) = ? AND active = 1
+         AND start_date <= ? AND end_date >= ?
+         AND (max_uses IS NULL OR used_count < max_uses)`,
+        [String(promo_code).toUpperCase(), today, today]
+      );
+      if (promo) {
+        validatedPromoCode = promo.code;
+      }
+    }
+
+    const discount = validatedPromoCode ? 0 : (priceRow.roundtrip_discount || 0);
     const tripPrice = isRoundtrip
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
     const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
-    const price = tripPrice + fahrradCost + parsedAnfahrtCost;
+    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost;
+
+    if (validatedPromoCode) {
+      const [promo] = await query<any>('SELECT * FROM promotions WHERE code = ?', [validatedPromoCode]);
+      if (promo) {
+        if (promo.type === 'fixed') {
+          promoDiscount = Math.min(parseFloat(promo.value), baseTotal);
+        } else {
+          promoDiscount = baseTotal * (parseFloat(promo.value) / 100);
+        }
+        promoDiscount = Math.round(promoDiscount * 100) / 100;
+      }
+    }
+
+    const price = Math.max(0, Math.round((baseTotal - promoDiscount) * 100) / 100);
 
     const booking_number = generateBookingNumber();
 
