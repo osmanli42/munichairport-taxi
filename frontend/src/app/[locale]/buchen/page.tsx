@@ -237,6 +237,31 @@ function BuchenContent() {
     return parts.join(', ');
   }
 
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    try {
+      const res = await fetch(`${API_URL}/promotions/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoInput.trim(), base_price: price, lang: locale }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedPromo({ code: data.code, discountAmount: data.discount_amount });
+        setPromoError('');
+      } else {
+        setPromoError(data.message || 'Ungültiger Code');
+        setAppliedPromo(null);
+      }
+    } catch {
+      setPromoError(locale === 'tr' ? 'Bir hata oluştu.' : locale === 'en' ? 'An error occurred.' : 'Ein Fehler ist aufgetreten.');
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
   async function handleSubmit() {
     if (!validate()) return;
     setSubmitState('loading');
