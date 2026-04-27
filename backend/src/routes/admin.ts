@@ -1692,8 +1692,11 @@ router.post('/marketing/preview', authenticateAdmin, async (req: AuthRequest, re
     }
     let html: string;
     if (isHtml) {
-      // Raw HTML mode — return as-is, replacing {isim} placeholder
-      html = content.replace(/\{isim\}/gi, 'Vorschau').replace(/\{name\}/gi, 'Vorschau');
+      // Raw HTML mode — return as-is, replacing {isim} placeholder, encode non-ASCII
+      const { encodeNonAscii } = await import('../services/notifications');
+      html = encodeNonAscii(
+        content.replace(/\{isim\}/gi, 'Vorschau').replace(/\{name\}/gi, 'Vorschau')
+      );
     } else {
       const { generateMarketingEmailHtml } = await import('../services/notifications');
       html = generateMarketingEmailHtml({
