@@ -1028,13 +1028,16 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
       );
     }
 
-    // --- Payout linking via balance_transaction.payout on each charge ---
+    // --- Payout linking ---
+    // Build a comprehensive chargeId -> payoutId map by listing balance transactions
+    // for the month + buffer (covers payouts that happen up to 7 days after month-end).
     let payoutLinked = 0;
     let payoutError: string | null = null;
 
     try {
-      // Build payout map from charges
-      const payoutMap: Record<string, string> = {}; // chargeId -> payoutId
+      const payoutMap: Record<string, string> = {};
+
+      // 1. From charges we just fetched (covers same-month payouts)
       for (const charge of charges) {
         const bt = charge.balance_transaction;
         if (!bt || typeof bt !== 'object') continue;
@@ -1042,16 +1045,44 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
         if (payoutId && charge.id) payoutMap[charge.id] = payoutId;
       }
 
+      // 2. List all balance transactions for the period to catch late-assigned payouts
+      const btDateFrom = Math.floor(dateFrom.getTime() / 1000);
+      const btDateTo = Math.floor(new Date(yearNum, monthNum, 8).getTime() / 1000); // +7 days buffer
+      let btHasMore = true;
+      let btStartingAfter: string | undefined = undefined;
+
+      while (btHasMore) {
+        const btParams: any = {
+          created: { gte: btDateFrom, lt: btDateTo },
+          type: 'charge',
+          limit: 100,
+        };
+        if (btStartingAfter) btParams.starting_after = btStartingAfter;
+        const btPage = await (stripe as any).balanceTransactions.list(btParams);
+        for (const bt of btPage.data) {
+          const chargeId = typeof bt.source === 'string' ? bt.source : bt.source?.id;
+          const payoutId = typeof bt.payout === 'string' ? bt.payout : bt.payout?.id;
+          if (chargeId && payoutId) payoutMap[chargeId] = payoutId;
+        }
+        btHasMore = btPage.has_more;
+        if (btPage.data.length > 0) btStartingAfter = btPage.data[btPage.data.length - 1].id;
+        else break;
+      }
+
       const chargeIds = Object.keys(payoutMap);
       if (chargeIds.length > 0) {
-        // Single query to update all payout IDs at once
-        const cases = chargeIds.map(() => 'WHEN stripe_charge_id = ? THEN ?').join(' ');
-        const result = await run(
-          `UPDATE bookings SET stripe_payout_id = CASE ${cases} END
-           WHERE stripe_charge_id IN (${chargeIds.map(() => '?').join(',')}) AND stripe_payout_id IS NULL`,
-          [...chargeIds.flatMap(cid => [cid, payoutMap[cid]]), ...chargeIds]
-        );
-        payoutLinked = result.affectedRows || 0;
+        // Update payout IDs in batches of 100 to avoid huge SQL
+        const BATCH = 100;
+        for (let i = 0; i < chargeIds.length; i += BATCH) {
+          const slice = chargeIds.slice(i, i + BATCH);
+          const cases = slice.map(() => 'WHEN stripe_charge_id = ? THEN ?').join(' ');
+          const result = await run(
+            `UPDATE bookings SET stripe_payout_id = CASE ${cases} END
+             WHERE stripe_charge_id IN (${slice.map(() => '?').join(',')}) AND stripe_payout_id IS NULL`,
+            [...slice.flatMap(cid => [cid, payoutMap[cid]]), ...slice]
+          );
+          payoutLinked += result.affectedRows || 0;
+        }
       }
     } catch (pe: any) {
       console.error('Payout linking error (non-fatal):', pe);
