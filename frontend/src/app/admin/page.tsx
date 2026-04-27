@@ -263,6 +263,10 @@ export default function AdminPage() {
         isHtml: marketingEditorMode === 'html',
       });
       setMarketingPreviewHtml(html);
+      // Revoke previous blob URL to avoid memory leak
+      if (marketingPreviewBlobUrl) URL.revokeObjectURL(marketingPreviewBlobUrl);
+      const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+      setMarketingPreviewBlobUrl(URL.createObjectURL(blob));
       setMarketingShowPreview(true);
     } catch (err) {
       console.error('Preview failed', err);
