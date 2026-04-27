@@ -7,6 +7,7 @@ import adminRouter from './routes/admin';
 import pricesRouter from './routes/prices';
 import mapsRouter from './routes/maps';
 import settingsRouter from './routes/settings';
+import promotionsRouter from './routes/promotions';
 
 dotenv.config();
 
