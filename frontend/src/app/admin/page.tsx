@@ -259,6 +259,7 @@ export default function AdminPage() {
         content: marketingContent,
         buttonText: marketingButtonText || undefined,
         buttonUrl: marketingButtonUrl || undefined,
+        isHtml: marketingEditorMode === 'html',
       });
       setMarketingPreviewHtml(html);
       setMarketingShowPreview(true);
