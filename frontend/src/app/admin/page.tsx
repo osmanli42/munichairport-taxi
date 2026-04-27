@@ -2104,7 +2104,7 @@ export default function AdminPage() {
               </button>
             </div>
             <iframe
-              src={`data:text/html;charset=utf-8,${encodeURIComponent(marketingPreviewHtml)}`}
+              src={marketingPreviewBlobUrl}
               className="flex-1 w-full border-0"
               title="Email Preview"
             />
