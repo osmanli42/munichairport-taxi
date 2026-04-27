@@ -2089,28 +2089,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Marketing Preview Modal */}
-      {marketingShowPreview && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setMarketingShowPreview(false); }}
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-bold text-gray-900">Email Önizleme</h3>
-              <button onClick={() => setMarketingShowPreview(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
-              </button>
-            </div>
-            <iframe
-              srcDoc={marketingPreviewHtml}
-              className="flex-1 w-full border-0"
-              title="Email Preview"
-              sandbox="allow-same-origin"
-            />
-          </div>
-        </div>
-      )}
+      {/* Marketing Preview Modal removed — preview opens in new tab */}
 
       {/* Marketing Confirm Send Modal */}
       {marketingShowConfirm && (
