@@ -434,7 +434,7 @@ function escapeHtml(s: string): string {
 
 // Convert all non-ASCII characters (emojis, special chars) to HTML numeric entities
 // This prevents encoding issues when sending HTML via JSON
-function encodeNonAscii(str: string): string {
+export function encodeNonAscii(str: string): string {
   return Array.from(str).map(c => {
     const code = c.codePointAt(0) ?? 0;
     return code > 127 ? `&#${code};` : c;
