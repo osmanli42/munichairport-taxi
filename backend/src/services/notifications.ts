@@ -576,6 +576,8 @@ export function generateMarketingEmailHtml(opts: MarketingEmailOptions): string 
   </table>
 </body>
 </html>`;
+  // Encode all non-ASCII characters as HTML entities to prevent encoding issues
+  return encodeNonAscii(rawHtml);
 }
 
 export interface MarketingRecipient {
