@@ -225,7 +225,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       pickup_datetime,
       vehicle_type,
       passengers: parseInt(passengers),
-      price: parseFloat(price.toFixed(2)),
+      price,
       payment_method: payment_method || 'cash',
       flight_number,
       pickup_sign: pickup_sign || undefined,
@@ -238,13 +238,16 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       language: language || 'de',
       trip_type: trip_type || 'oneway',
       return_datetime: return_datetime || undefined,
-      oneway_price: isRoundtrip ? oneWayPrice : undefined,
-      roundtrip_discount: isRoundtrip ? discount : undefined,
+      oneway_price: isRoundtrip && !validatedPromoCode ? oneWayPrice : undefined,
+      roundtrip_discount: isRoundtrip && !validatedPromoCode ? priceRow.roundtrip_discount : undefined,
       fahrrad_count: fahrradCount || 0,
       fahrrad_price: fahrradCount > 0 ? priceRow.fahrrad_price : undefined,
       fahrrad_total: fahrradCount > 0 ? fahrradCost : undefined,
       anfahrt_cost: parsedAnfahrtCost || undefined,
       zwischenstopp_address: zwischenstopp_address || undefined,
+      promo_code: validatedPromoCode || undefined,
+      discount_amount: promoDiscount > 0 ? promoDiscount : undefined,
+      base_total: promoDiscount > 0 ? baseTotal : undefined,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
