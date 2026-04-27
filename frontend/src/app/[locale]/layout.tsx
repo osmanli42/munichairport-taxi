@@ -135,6 +135,7 @@ export default async function LocaleLayout({
       <body className={`${inter.className} flex flex-col min-h-screen bg-gray-50 pb-[88px] md:pb-0`}>
         <NextIntlClientProvider messages={messages}>
           <Header />
+          <PromoBanner locale={locale} />
           <main className="flex-1">
             {children}
           </main>
