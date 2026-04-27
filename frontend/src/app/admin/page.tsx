@@ -6,7 +6,7 @@ import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
-  Mail, Upload, Users
+  Mail, Upload, Users, BadgePercent
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions';
