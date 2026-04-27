@@ -631,7 +631,9 @@ export async function sendMarketingEmail(
             from: fromAddress,
             to: r.email,
             subject: opts.subject,
-            html: generateMarketingEmailHtml({ ...opts, recipientName: r.name }),
+            html: opts.isHtml
+              ? opts.content.replace(/\{isim\}/gi, r.name || '').replace(/\{name\}/gi, r.name || '')
+              : generateMarketingEmailHtml({ ...opts, recipientName: r.name }),
           });
           result.sent++;
         } catch (sendErr: any) {
