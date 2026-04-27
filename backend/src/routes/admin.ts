@@ -1737,7 +1737,7 @@ router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: 
     }
 
     const { sendMarketingEmail } = await import('../services/notifications');
-    const result = await sendMarketingEmail(recipients, { subject, content, buttonText, buttonUrl });
+    const result = await sendMarketingEmail(recipients, { subject, content, buttonText, buttonUrl, isHtml });
     res.json(result);
   } catch (error: any) {
     console.error('Marketing send error:', error);
