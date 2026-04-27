@@ -245,7 +245,7 @@ export default function AdminPage() {
         const cp = char.codePointAt(0) ?? 0;
         if (cp < 128) { bytes.push(cp); }
         else if (macRomanMap.has(char)) { bytes.push(macRomanMap.get(char)!); }
-        else { for (const b of new TextEncoder().encode(char)) bytes.push(b); }
+        else { const utf8 = new TextEncoder().encode(char); Array.from(utf8).forEach(b => bytes.push(b)); }
       }
       const fixed = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
       // Only apply if: fewer MacRoman-specific chars AND no new replacement chars
