@@ -2099,10 +2099,9 @@ export default function AdminPage() {
               </button>
             </div>
             <iframe
-              srcDoc={marketingPreviewHtml}
+              src={`data:text/html;charset=utf-8,${encodeURIComponent(marketingPreviewHtml)}`}
               className="flex-1 w-full border-0"
               title="Email Preview"
-              sandbox="allow-same-origin"
             />
           </div>
         </div>
