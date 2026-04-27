@@ -1029,49 +1029,53 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
     }
 
     // --- Payout linking ---
-    // Build a comprehensive chargeId -> payoutId map by listing balance transactions
-    // for the month + buffer (covers payouts that happen up to 7 days after month-end).
+    // Stripe's balance_transaction.payout field is unreliable (often undefined even when
+    // the charge IS in a payout). The correct approach: iterate payouts → their balance
+    // transactions → map chargeId → payoutId.
     let payoutLinked = 0;
     let payoutError: string | null = null;
 
     try {
       const payoutMap: Record<string, string> = {};
 
-      // 1. From charges we just fetched (covers same-month payouts)
-      for (const charge of charges) {
-        const bt = charge.balance_transaction;
-        if (!bt || typeof bt !== 'object') continue;
-        const payoutId = typeof bt.payout === 'string' ? bt.payout : bt.payout?.id;
-        if (payoutId && charge.id) payoutMap[charge.id] = payoutId;
-      }
+      // Search payouts created from 14 days before month start to 14 days after month end
+      // to capture all payouts that could contain charges from this month.
+      const poDateFrom = Math.floor(new Date(yearNum, monthNum - 1, -13).getTime() / 1000);
+      const poDateTo = Math.floor(new Date(yearNum, monthNum, 15).getTime() / 1000);
 
-      // 2. List all balance transactions for the period to catch late-assigned payouts
-      const btDateFrom = Math.floor(dateFrom.getTime() / 1000);
-      const btDateTo = Math.floor(new Date(yearNum, monthNum, 8).getTime() / 1000); // +7 days buffer
-      let btHasMore = true;
-      let btStartingAfter: string | undefined = undefined;
+      let poHasMore = true;
+      let poStartingAfter: string | undefined = undefined;
 
-      while (btHasMore) {
-        const btParams: any = {
-          created: { gte: btDateFrom, lt: btDateTo },
-          type: 'charge',
-          limit: 100,
-        };
-        if (btStartingAfter) btParams.starting_after = btStartingAfter;
-        const btPage = await (stripe as any).balanceTransactions.list(btParams);
-        for (const bt of btPage.data) {
-          const chargeId = typeof bt.source === 'string' ? bt.source : bt.source?.id;
-          const payoutId = typeof bt.payout === 'string' ? bt.payout : bt.payout?.id;
-          if (chargeId && payoutId) payoutMap[chargeId] = payoutId;
+      while (poHasMore) {
+        const poParams: any = { created: { gte: poDateFrom, lt: poDateTo }, limit: 100 };
+        if (poStartingAfter) poParams.starting_after = poStartingAfter;
+        const poPage = await (stripe as any).payouts.list(poParams);
+
+        for (const payout of poPage.data) {
+          // For each payout, fetch its balance transactions to find which charges are in it
+          let btHasMore = true;
+          let btStartingAfter: string | undefined = undefined;
+          while (btHasMore) {
+            const btParams: any = { payout: payout.id, type: 'charge', limit: 100 };
+            if (btStartingAfter) btParams.starting_after = btStartingAfter;
+            const btPage = await (stripe as any).balanceTransactions.list(btParams);
+            for (const bt of btPage.data) {
+              const chargeId = typeof bt.source === 'string' ? bt.source : bt.source?.id;
+              if (chargeId) payoutMap[chargeId] = payout.id;
+            }
+            btHasMore = btPage.has_more;
+            if (btPage.data.length > 0) btStartingAfter = btPage.data[btPage.data.length - 1].id;
+            else break;
+          }
         }
-        btHasMore = btPage.has_more;
-        if (btPage.data.length > 0) btStartingAfter = btPage.data[btPage.data.length - 1].id;
+
+        poHasMore = poPage.has_more;
+        if (poPage.data.length > 0) poStartingAfter = poPage.data[poPage.data.length - 1].id;
         else break;
       }
 
       const chargeIds = Object.keys(payoutMap);
       if (chargeIds.length > 0) {
-        // Update payout IDs in batches of 100 to avoid huge SQL
         const BATCH = 100;
         for (let i = 0; i < chargeIds.length; i += BATCH) {
           const slice = chargeIds.slice(i, i + BATCH);
