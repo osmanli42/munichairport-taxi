@@ -157,6 +157,32 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN stripe_payout_id VARCHAR(100) DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Migration: add promo code columns to bookings
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN promo_code VARCHAR(50) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN discount_amount DOUBLE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
+    // Promotions table
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS promotions (
+        id INT NOT NULL AUTO_INCREMENT,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        type ENUM('fixed','percent') NOT NULL,
+        value DECIMAL(10,2) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        max_uses INT DEFAULT NULL,
+        used_count INT NOT NULL DEFAULT 0,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        description VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,
