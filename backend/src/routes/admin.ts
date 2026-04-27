@@ -512,34 +512,39 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
     const nextYear = month === 12 ? year + 1 : year;
     const dateTo = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-01`;
 
-    // Fetch all card bookings for the month (by stripe_payment_date)
-    const bookings = await query(`
-      SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address,
-             price, steuersatz, stripe_payment_date, stripe_charge_id, stripe_payout_id
-      FROM bookings
-      WHERE payment_method = 'card' AND status != 'cancelled'
-        AND stripe_payment_date IS NOT NULL
-        AND DATE(stripe_payment_date) >= ? AND DATE(stripe_payment_date) < ?
-      ORDER BY stripe_payout_id ASC, stripe_payment_date ASC
-    `, [dateFrom, dateTo]);
-
-    // Fetch payout metadata from Stripe if available (arrival_date, amount, fee)
-    // Map: payoutId -> { arrival_date, amount, fee }
+    // For Finanzamt: group by payout ARRIVAL date (when money reaches bank account),
+    // not by charge date. Fetch all payouts that arrived in this month, then fetch
+    // the bookings that belong to those payouts.
+    const relevantPayoutIds: string[] = [];
     const payoutMeta: Record<string, { arrivalDate: Date; grossCents: number; feeCents: number; netCents: number }> = {};
 
     if (stripe) {
-      // Collect unique payout IDs from bookings
-      const payoutIds = [...new Set((bookings as any[]).map((b: any) => b.stripe_payout_id).filter(Boolean))];
-      for (const pid of payoutIds) {
-        try {
-          const po = await (stripe.payouts.retrieve as any)(pid);
-          payoutMeta[pid] = {
+      const arrFrom = Math.floor(new Date(year, month - 1, 1).getTime() / 1000);
+      const arrTo = Math.floor(new Date(nextYear, nextMonth - 1, 1).getTime() / 1000);
+
+      let poHasMore = true;
+      let poStartingAfter: string | undefined = undefined;
+      while (poHasMore) {
+        const poParams: any = { arrival_date: { gte: arrFrom, lt: arrTo }, limit: 100 };
+        if (poStartingAfter) poParams.starting_after = poStartingAfter;
+        const poPage = await (stripe.payouts.list as any)(poParams);
+        for (const po of poPage.data) {
+          relevantPayoutIds.push(po.id);
+          payoutMeta[po.id] = {
             arrivalDate: new Date(po.arrival_date * 1000),
             grossCents: po.amount,
-            feeCents: 0, // will not be available directly here; we'll compute from balance transactions sum
+            feeCents: 0,
             netCents: po.amount,
           };
-          // Fetch balance transactions to compute gross/fees
+        }
+        poHasMore = poPage.has_more;
+        if (poPage.data.length > 0) poStartingAfter = poPage.data[poPage.data.length - 1].id;
+        else break;
+      }
+
+      // Compute gross/fee from balance transactions for each payout
+      for (const pid of relevantPayoutIds) {
+        try {
           const bts: any[] = [];
           let btHasMore = true;
           let btCursor: string | undefined = undefined;
@@ -554,21 +559,43 @@ router.get('/report/finanzamt', authenticateAdmin, async (req: AuthRequest, res:
           let grossSum = 0;
           let feeSum = 0;
           for (const bt of bts) {
-            if (bt.type === 'charge') {
-              grossSum += bt.amount;
-              feeSum += bt.fee;
-            } else if (bt.type === 'refund') {
-              grossSum += bt.amount; // negative
-              feeSum += bt.fee;
-            }
+            if (bt.type === 'charge') { grossSum += bt.amount; feeSum += bt.fee; }
+            else if (bt.type === 'refund') { grossSum += bt.amount; feeSum += bt.fee; }
           }
           payoutMeta[pid].grossCents = grossSum;
           payoutMeta[pid].feeCents = feeSum;
           payoutMeta[pid].netCents = grossSum - feeSum;
-        } catch (e) {
-          // If retrieval fails, leave meta blank — we'll fallback to booking sums
-        }
+        } catch (e) { /* leave Stripe defaults */ }
       }
+    }
+
+    // Fetch bookings: those linked to payouts that arrived this month,
+    // plus unassigned bookings charged this month (shown as "Nicht zugeordnet")
+    let bookings: any[];
+    if (relevantPayoutIds.length > 0) {
+      bookings = await query(`
+        SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address,
+               price, steuersatz, stripe_payment_date, stripe_charge_id, stripe_payout_id
+        FROM bookings
+        WHERE payment_method = 'card' AND status != 'cancelled'
+          AND stripe_payment_date IS NOT NULL
+          AND (
+            stripe_payout_id IN (${relevantPayoutIds.map(() => '?').join(',')})
+            OR (stripe_payout_id IS NULL AND DATE(stripe_payment_date) >= ? AND DATE(stripe_payment_date) < ?)
+          )
+        ORDER BY stripe_payout_id ASC, stripe_payment_date ASC
+      `, [...relevantPayoutIds, dateFrom, dateTo]);
+    } else {
+      bookings = await query(`
+        SELECT booking_number, created_at, pickup_datetime, name, pickup_address, dropoff_address,
+               price, steuersatz, stripe_payment_date, stripe_charge_id, stripe_payout_id
+        FROM bookings
+        WHERE payment_method = 'card' AND status != 'cancelled'
+          AND stripe_payment_date IS NOT NULL
+          AND stripe_payout_id IS NULL
+          AND DATE(stripe_payment_date) >= ? AND DATE(stripe_payment_date) < ?
+        ORDER BY stripe_payment_date ASC
+      `, [dateFrom, dateTo]);
     }
 
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
