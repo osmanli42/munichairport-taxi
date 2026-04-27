@@ -230,6 +230,34 @@ export default function AdminPage() {
     });
   }
 
+  // Fix MacRoman corruption: UTF-8 bytes read as MacRoman → reverse to correct UTF-8
+  // e.g. ü (C3 BC in UTF-8) pasted as MacRoman gives √º → this fixes it back to ü
+  function fixMacRomanCorruption(text: string): string {
+    if (typeof window === 'undefined') return text;
+    try {
+      const macRomanMap = new Map<string, number>();
+      const allBytes = new Uint8Array(256);
+      for (let i = 0; i < 256; i++) allBytes[i] = i;
+      const macStr = new TextDecoder('macintosh').decode(allBytes);
+      for (let i = 128; i < 256; i++) macRomanMap.set(macStr[i], i);
+      const bytes: number[] = [];
+      for (const char of Array.from(text)) {
+        const cp = char.codePointAt(0) ?? 0;
+        if (cp < 128) { bytes.push(cp); }
+        else if (macRomanMap.has(char)) { bytes.push(macRomanMap.get(char)!); }
+        else { for (const b of new TextEncoder().encode(char)) bytes.push(b); }
+      }
+      const fixed = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
+      // Only apply if: fewer MacRoman-specific chars AND no new replacement chars
+      const suspicious = /[√∂∫≈Ω∞±≤÷∑∏πƒ∆◊™®©≠µ˚¬]/g;
+      const origS = (text.match(suspicious) || []).length;
+      const fixedS = (fixed.match(suspicious) || []).length;
+      const origR = (text.match(/�/g) || []).length;
+      const fixedR = (fixed.match(/�/g) || []).length;
+      return (fixedS < origS && fixedR <= origR) ? fixed : text;
+    } catch { return text; }
+  }
+
   function filterMarketingCustomers(): MarketingCustomer[] {
     const q = marketingSearch.trim().toLowerCase();
     if (!q) return marketingCustomers;
