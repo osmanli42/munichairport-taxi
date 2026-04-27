@@ -163,6 +163,23 @@ function BuchenContent() {
   const [bookingNumber, setBookingNumber] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Promo code state
+  const [activePromo, setActivePromo] = useState<{ code: string; type: string; value: number } | null>(null);
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/promotions/active`)
+      .then(r => r.json())
+      .then(d => { if (d?.code) setActivePromo(d); })
+      .catch(() => {});
+  }, []);
+
+  const discountAmount = appliedPromo?.discountAmount ?? 0;
+  const finalPrice = Math.max(0, price - discountAmount);
+
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Telefonnummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: '💵 Barzahlung', card: '💳 Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: '→ Einfache Fahrt', roundtrip: '⇄ Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich! 🎉', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: '← Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: '← Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
     en: { title: 'Your details', summary: 'Booking summary', name: 'Name *', phone: 'Phone number *', email: 'Email *', flight: 'Flight number (optional)', luggage: 'Pieces of luggage', notes: 'Notes', payment: 'Payment method', cash: '💵 Cash', card: '💳 Credit card', cardHolder: 'Card holder', cardNumber: 'Card number', cardExpiry: 'Expiry date', cardCvv: 'CVV', oneway: '→ One way', roundtrip: '⇄ Round trip', returnDate: 'Return date', returnTime: 'Return time', submit: 'Continue to review', submitting: 'Booking...', success_title: 'Booking confirmed! 🎉', success_msg: 'Your booking has been confirmed. You will receive a confirmation email at', new_booking: 'New booking', back: '← Back to vehicle selection', err_name: 'Name required', err_phone: 'Phone required', err_email: 'Valid email required', err_card: 'Card details required', err_submit: 'Error submitting. Please try again.', review_title: 'Review your booking', review_subtitle: 'Please review your details before confirming the booking.', review_route: 'Route', review_datetime: 'Date & Time', review_vehicle: 'Vehicle', review_contact: 'Contact details', review_payment_label: 'Payment', review_confirm: 'Confirm booking', review_edit: '← Edit details', review_persons: 'Passengers', review_luggage_label: 'Luggage', review_notes_label: 'Notes', review_flight_label: 'Flight number' },
