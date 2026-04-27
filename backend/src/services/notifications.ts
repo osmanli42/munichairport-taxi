@@ -125,7 +125,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
     <span class="badge">Buchungsnummer: ${booking.booking_number}</span>
   </div>
   <div class="content">
-    <div class="price">€${formatPrice(booking.price)}</div>
+    ${buildPriceBlock(booking, 'de')}
     ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
     <div style="text-align:center;margin:-8px 0 16px;font-size:13px;color:#666;">
       <span style="text-decoration:line-through;color:#999;">€${formatPrice(booking.oneway_price * 2)}</span>
