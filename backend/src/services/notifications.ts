@@ -618,7 +618,7 @@ export async function sendMarketingEmail(
       to: r.email,
       subject: opts.subject,
       html: opts.isHtml
-        ? opts.content.replace(/\{isim\}/gi, r.name || '').replace(/\{name\}/gi, r.name || '')
+        ? encodeNonAscii(opts.content.replace(/\{isim\}/gi, r.name || '').replace(/\{name\}/gi, r.name || ''))
         : generateMarketingEmailHtml({ ...opts, recipientName: r.name }),
     }));
 
