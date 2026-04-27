@@ -358,8 +358,12 @@ export default function AdminPage() {
       if (activeTab === 'marketing' && marketingCustomers.length === 0) {
         loadMarketingCustomers();
       }
+      if (activeTab === 'promotions') {
+        fetch('/api-proxy/promotions/admin/list', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json()).then(setPromotions).catch(() => {});
+      }
     }
-  }, [isLoggedIn, activeTab, loadStats, loadBookings, loadPrices, loadDetailedStats, loadMarketingCustomers, marketingCustomers.length]);
+  }, [isLoggedIn, activeTab, token, loadStats, loadBookings, loadPrices, loadDetailedStats, loadMarketingCustomers, marketingCustomers.length]);
 
   async function updateStatus(id: number, status: string) {
     try {
