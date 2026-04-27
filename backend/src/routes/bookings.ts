@@ -168,9 +168,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
-        trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address
+        trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
+        promo_code, discount_amount
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -190,7 +191,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       notes || null,
       km || null,
       parseInt(duration_minutes) || null,
-      parseFloat(price.toFixed(2)),
+      price,
       payment_method || 'cash',
       card_holder || null,
       card_number_enc,
@@ -202,7 +203,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       fahrradCount,
       parsedAnfahrtCost || null,
       zwischenstopp_address || null,
+      validatedPromoCode || null,
+      promoDiscount > 0 ? promoDiscount : null,
     ]);
+
+    // Increment used_count for applied promo
+    if (validatedPromoCode) {
+      await run('UPDATE promotions SET used_count = used_count + 1 WHERE code = ?', [validatedPromoCode]);
+    }
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
