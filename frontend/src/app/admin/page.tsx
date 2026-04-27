@@ -262,7 +262,11 @@ export default function AdminPage() {
         isHtml: marketingEditorMode === 'html',
       });
       setMarketingPreviewHtml(html);
-      setMarketingShowPreview(true);
+      // Open preview in a new tab — avoids all iframe encoding issues
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
       console.error('Preview failed', err);
       alert('Önizleme oluşturulamadı.');
