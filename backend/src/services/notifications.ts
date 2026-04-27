@@ -531,7 +531,7 @@ export function generateMarketingEmailHtml(opts: MarketingEmailOptions): string 
     </div>`
       : '';
 
-  return `<!DOCTYPE html>
+  const rawHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
