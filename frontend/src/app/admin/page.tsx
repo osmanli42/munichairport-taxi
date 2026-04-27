@@ -78,7 +78,6 @@ export default function AdminPage() {
   const [marketingButtonText, setMarketingButtonText] = useState('');
   const [marketingButtonUrl, setMarketingButtonUrl] = useState('');
   const [marketingPreviewHtml, setMarketingPreviewHtml] = useState('');
-  const [marketingPreviewBlobUrl, setMarketingPreviewBlobUrl] = useState('');
   const [marketingShowPreview, setMarketingShowPreview] = useState(false);
   const [marketingSending, setMarketingSending] = useState(false);
   const [marketingResult, setMarketingResult] = useState<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> } | null>(null);
