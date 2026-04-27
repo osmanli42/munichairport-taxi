@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [marketingLoading, setMarketingLoading] = useState(false);
   const [marketingIcsLoading, setMarketingIcsLoading] = useState(false);
   const [marketingShowConfirm, setMarketingShowConfirm] = useState(false);
+  const [marketingEditorMode, setMarketingEditorMode] = useState<'text' | 'html'>('text');
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [stripeSyncing, setStripeSyncing] = useState(false);
