@@ -1944,9 +1944,35 @@ export default function AdminPage() {
           </div>
 
           <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <Mail size={18} /> Email Oluştur
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Mail size={18} /> Email Oluştur
+              </h3>
+              {/* Editor mode toggle */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+                <button
+                  onClick={() => setMarketingEditorMode('text')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    marketingEditorMode === 'text'
+                      ? 'bg-white text-primary-700 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Metin
+                </button>
+                <button
+                  onClick={() => setMarketingEditorMode('html')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    marketingEditorMode === 'html'
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {'</> HTML'}
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Konu (Subject)</label>
               <input
@@ -1957,43 +1983,72 @@ export default function AdminPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                İçerik
-                <span className="text-xs text-gray-500 ml-2">
-                  ({'{isim}'} ile kişiselleştir, ** kalın, # başlık, - madde)
-                </span>
-              </label>
-              <textarea
-                value={marketingContent}
-                onChange={(e) => setMarketingContent(e.target.value)}
-                rows={12}
-                placeholder={`Merhaba {isim},\n\n# Yaz sezonu indirimi başladı!\n\nHavalimanı transferinizde **%10 indirim** kazanın.\n\n- Tüm araç tipleri dahil\n- Erken rezervasyon avantajı\n- 7/24 müşteri hizmetleri\n\nGörüşmek üzere!\nFlughafen-muenchen.TAXI`}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+
+            {marketingEditorMode === 'text' ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Buton Metni (opsiyonel)</label>
-                <input
-                  type="text"
-                  value={marketingButtonText}
-                  onChange={(e) => setMarketingButtonText(e.target.value)}
-                  placeholder="Hemen Rezervasyon"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  İçerik
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({'{isim}'} ile kişiselleştir · <strong>**kalın**</strong> · # başlık · - madde)
+                  </span>
+                </label>
+                <textarea
+                  value={marketingContent}
+                  onChange={(e) => setMarketingContent(e.target.value)}
+                  rows={14}
+                  placeholder={`Merhaba {isim},\n\n# Yaz sezonu indirimi başladı!\n\nHavalimanı transferinizde **%10 indirim** kazanın.\n\n- Tüm araç tipleri dahil\n- Erken rezervasyon avantajı\n- 7/24 müşteri hizmetleri\n\nGörüşmek üzere!\nFlughafen-muenchen.TAXI`}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono resize-y"
                 />
               </div>
+            ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Buton URL (opsiyonel)</label>
-                <input
-                  type="url"
-                  value={marketingButtonUrl}
-                  onChange={(e) => setMarketingButtonUrl(e.target.value)}
-                  placeholder="https://flughafen-muenchen.taxi"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    HTML Kaynak Kodu
+                    <span className="text-xs text-gray-500 ml-2">({'{isim}'} ile kişiselleştir)</span>
+                  </label>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Raw HTML</span>
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={marketingContent}
+                    onChange={(e) => setMarketingContent(e.target.value)}
+                    rows={18}
+                    spellCheck={false}
+                    placeholder={`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f4f4; }\n    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 8px; }\n    h1 { color: #1a365d; }\n    .btn { display: inline-block; background: #f6c644; color: #1a365d; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class="container">\n    <h1>Merhaba {isim}!</h1>\n    <p>Email içeriğinizi buraya yazın.</p>\n    <a href="https://flughafen-muenchen.taxi" class="btn">Jetzt buchen</a>\n  </div>\n</body>\n</html>`}
+                    className="w-full border border-purple-200 bg-gray-950 text-green-400 rounded-lg px-3 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono resize-y leading-relaxed"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  💡 Kendi HTML şablonunuzu yazın. Buton ve CTA alanları HTML modunda göz ardı edilir.
+                </p>
               </div>
-            </div>
+            )}
+
+            {marketingEditorMode === 'text' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Buton Metni (opsiyonel)</label>
+                  <input
+                    type="text"
+                    value={marketingButtonText}
+                    onChange={(e) => setMarketingButtonText(e.target.value)}
+                    placeholder="Hemen Rezervasyon"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Buton URL (opsiyonel)</label>
+                  <input
+                    type="url"
+                    value={marketingButtonUrl}
+                    onChange={(e) => setMarketingButtonUrl(e.target.value)}
+                    placeholder="https://flughafen-muenchen.taxi"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            )}
             <div className="flex gap-2 pt-2">
               <button
                 onClick={previewMarketingEmail}
