@@ -1679,24 +1679,31 @@ router.post('/marketing/parse-ics', authenticateAdmin, async (req: AuthRequest, 
 // POST /api/admin/marketing/preview - Generate HTML preview from content
 router.post('/marketing/preview', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { subject, content, buttonText, buttonUrl } = req.body as {
+    const { subject, content, buttonText, buttonUrl, isHtml } = req.body as {
       subject?: string;
       content?: string;
       buttonText?: string;
       buttonUrl?: string;
+      isHtml?: boolean;
     };
     if (!content) {
       res.status(400).json({ error: 'content required' });
       return;
     }
-    const { generateMarketingEmailHtml } = await import('../services/notifications');
-    const html = generateMarketingEmailHtml({
-      subject: subject || 'Vorschau',
-      content,
-      buttonText,
-      buttonUrl,
-      recipientName: 'Vorschau',
-    });
+    let html: string;
+    if (isHtml) {
+      // Raw HTML mode — return as-is, replacing {isim} placeholder
+      html = content.replace(/\{isim\}/gi, 'Vorschau').replace(/\{name\}/gi, 'Vorschau');
+    } else {
+      const { generateMarketingEmailHtml } = await import('../services/notifications');
+      html = generateMarketingEmailHtml({
+        subject: subject || 'Vorschau',
+        content,
+        buttonText,
+        buttonUrl,
+        recipientName: 'Vorschau',
+      });
+    }
     res.json({ html });
   } catch (error: any) {
     console.error('Marketing preview error:', error);
