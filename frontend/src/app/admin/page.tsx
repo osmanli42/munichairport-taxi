@@ -2164,6 +2164,187 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Promotions tab */}
+      {activeTab === 'promotions' && (() => {
+        const promoBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+
+        async function loadPromos() {
+          const r = await fetch(`${promoBase}/api/promotions/admin/list`, { headers: { Authorization: `Bearer ${token}` } });
+          setPromotions(await r.json());
+        }
+
+        async function handleCreatePromo(e: React.FormEvent) {
+          e.preventDefault();
+          setPromoSaving(true); setPromoMsg('');
+          try {
+            const r = await fetch(`${promoBase}/api/promotions/admin`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ ...promoForm, value: parseFloat(promoForm.value), max_uses: promoForm.max_uses ? parseInt(promoForm.max_uses) : null }),
+            });
+            const d = await r.json();
+            if (d.success) {
+              setPromoMsg('✅ Code erstellt!');
+              setPromoForm({ code: '', type: 'fixed', value: '', start_date: '', end_date: '', max_uses: '', description: '' });
+              await loadPromos();
+            } else { setPromoMsg('❌ ' + (d.error || 'Fehler')); }
+          } catch { setPromoMsg('❌ Netzwerkfehler'); } finally { setPromoSaving(false); }
+        }
+
+        async function toggleActive(promo: Promotion) {
+          await fetch(`${promoBase}/api/promotions/admin/${promo.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ ...promo, active: promo.active ? 0 : 1 }),
+          });
+          await loadPromos();
+        }
+
+        async function deletePromo(id: number) {
+          if (!confirm('Diesen Code löschen?')) return;
+          await fetch(`${promoBase}/api/promotions/admin/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+          await loadPromos();
+        }
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Existing codes list */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <BadgePercent size={18} /> Aktionscodes
+                  <span className="text-xs font-normal text-gray-500">({promotions.length})</span>
+                </h3>
+                <button onClick={loadPromos} className="text-primary-600 hover:text-primary-700">
+                  <RefreshCw size={16} />
+                </button>
+              </div>
+              {promotions.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-8">Noch keine Aktionscodes vorhanden.</p>
+              ) : (
+                <div className="space-y-3">
+                  {promotions.map(p => (
+                    <div key={p.id} className={cn('border rounded-xl p-4 flex items-center justify-between gap-3', p.active ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50')}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-gray-900 font-mono tracking-wider">{p.code}</span>
+                          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', p.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600')}>
+                            {p.active ? 'Aktiv' : 'Inaktiv'}
+                          </span>
+                          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
+                            {p.type === 'fixed' ? `−${p.value} €` : `−${p.value}%`}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(p.start_date).toLocaleDateString('de-DE')} – {new Date(p.end_date).toLocaleDateString('de-DE')}
+                          {' · '}{p.used_count}{p.max_uses ? `/${p.max_uses}` : ''} mal verwendet
+                          {p.description ? ` · ${p.description}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => toggleActive(p)} title={p.active ? 'Deaktivieren' : 'Aktivieren'}
+                          className={cn('w-8 h-8 rounded-lg flex items-center justify-center transition-colors', p.active ? 'bg-green-100 hover:bg-red-100 text-green-700 hover:text-red-700' : 'bg-gray-100 hover:bg-green-100 text-gray-500 hover:text-green-700')}>
+                          {p.active ? <Check size={14} /> : <X size={14} />}
+                        </button>
+                        <button onClick={() => deletePromo(p.id)} title="Löschen"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-700 transition-colors">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Create new code form */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
+                <BadgePercent size={18} /> Neuen Code erstellen
+              </h3>
+              <form onSubmit={handleCreatePromo} className="space-y-4">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Code *</label>
+                    <input type="text" required value={promoForm.code}
+                      onChange={e => setPromoForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                      placeholder="WELCOME15" maxLength={50}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-400 font-mono" />
+                  </div>
+                  <button type="button"
+                    onClick={() => setPromoForm(f => ({ ...f, code: Math.random().toString(36).slice(2, 8).toUpperCase() }))}
+                    className="mt-5 px-3 py-2.5 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-medium">
+                    Zufällig
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Typ *</label>
+                    <select value={promoForm.type} onChange={e => setPromoForm(f => ({ ...f, type: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                      <option value="fixed">Fester Betrag (€)</option>
+                      <option value="percent">Prozent (%)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Wert * {promoForm.type === 'fixed' ? '(€)' : '(%)'}
+                    </label>
+                    <input type="number" required min="0.01" step="0.01" value={promoForm.value}
+                      onChange={e => setPromoForm(f => ({ ...f, value: e.target.value }))}
+                      placeholder={promoForm.type === 'fixed' ? '15.00' : '10'}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Gültig von *</label>
+                    <input type="date" required value={promoForm.start_date}
+                      onChange={e => setPromoForm(f => ({ ...f, start_date: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Gültig bis *</label>
+                    <input type="date" required value={promoForm.end_date}
+                      onChange={e => setPromoForm(f => ({ ...f, end_date: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Max. Nutzungen (leer = unbegrenzt)</label>
+                  <input type="number" min="1" value={promoForm.max_uses}
+                    onChange={e => setPromoForm(f => ({ ...f, max_uses: e.target.value }))}
+                    placeholder="50"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Beschreibung (intern)</label>
+                  <input type="text" value={promoForm.description}
+                    onChange={e => setPromoForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="z.B. E-Mail Kampagne Mai 2026"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                </div>
+
+                {promoMsg && (
+                  <p className={cn('text-sm px-3 py-2 rounded-lg', promoMsg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>
+                    {promoMsg}
+                  </p>
+                )}
+
+                <button type="submit" disabled={promoSaving}
+                  className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
+                  {promoSaving ? <><RefreshCw size={16} className="animate-spin" /> Wird erstellt...</> : <><BadgePercent size={16} /> Code erstellen</>}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Marketing Preview Modal removed — preview opens in new tab */}
 
       {/* Marketing Confirm Send Modal */}
