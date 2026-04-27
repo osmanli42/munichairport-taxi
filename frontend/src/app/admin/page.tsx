@@ -359,7 +359,8 @@ export default function AdminPage() {
         loadMarketingCustomers();
       }
       if (activeTab === 'promotions') {
-        fetch('/api-proxy/promotions/admin/list', { headers: { Authorization: `Bearer ${token}` } })
+        const promoBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
+        fetch(`${promoBase}/api/promotions/admin/list`, { headers: { Authorization: `Bearer ${token}` } })
           .then(r => r.json()).then(setPromotions).catch(() => {});
       }
     }
