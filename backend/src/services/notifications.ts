@@ -420,6 +420,7 @@ export interface MarketingEmailOptions {
   buttonText?: string;
   buttonUrl?: string;
   recipientName?: string;
+  isHtml?: boolean;  // true = content is raw HTML, false = plain text with markdown
 }
 
 function escapeHtml(s: string): string {
