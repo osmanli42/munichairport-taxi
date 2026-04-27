@@ -362,7 +362,7 @@ function BuchenContent() {
                     </div>
                     <span className="font-semibold text-gray-800">{vehicleLabel}</span>
                   </div>
-                  <span className="text-xl font-bold text-primary-600">{formatPrice(price)}</span>
+                  <span className="text-xl font-bold text-primary-600">{formatPrice(finalPrice)}</span>
                 </div>
 
                 {/* Route */}
