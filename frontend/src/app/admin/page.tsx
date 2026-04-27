@@ -9,7 +9,7 @@ import {
   Mail, Upload, Users
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions';
 
 interface MarketingCustomer {
   email: string;
