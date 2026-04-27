@@ -1714,12 +1714,13 @@ router.post('/marketing/preview', authenticateAdmin, async (req: AuthRequest, re
 // POST /api/admin/marketing/send - Bulk send marketing email via Resend Batch API
 router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { recipients, subject, content, buttonText, buttonUrl } = req.body as {
+    const { recipients, subject, content, buttonText, buttonUrl, isHtml } = req.body as {
       recipients?: Array<{ email: string; name?: string }>;
       subject?: string;
       content?: string;
       buttonText?: string;
       buttonUrl?: string;
+      isHtml?: boolean;
     };
 
     if (!Array.isArray(recipients) || recipients.length === 0) {
