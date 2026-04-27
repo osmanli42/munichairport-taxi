@@ -261,7 +261,7 @@ export const adminApi = {
     return response.data;
   },
 
-  previewMarketingEmail: async (data: { subject: string; content: string; buttonText?: string; buttonUrl?: string }): Promise<{ html: string }> => {
+  previewMarketingEmail: async (data: { subject: string; content: string; buttonText?: string; buttonUrl?: string; isHtml?: boolean }): Promise<{ html: string }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
     const response = await api.post('/admin/marketing/preview', data, { headers: { Authorization: `Bearer ${token}` } });
     return response.data;
@@ -273,6 +273,7 @@ export const adminApi = {
     content: string;
     buttonText?: string;
     buttonUrl?: string;
+    isHtml?: boolean;
   }): Promise<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
     const response = await api.post('/admin/marketing/send', data, { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 });
