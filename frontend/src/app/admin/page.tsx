@@ -70,7 +70,13 @@ export default function AdminPage() {
   const [rechnungSuccess, setRechnungSuccess] = useState(false);
   const [rechnungError, setRechnungError] = useState('');
   // Marketing
-  const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>([]);
+  const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('marketing_ics_contacts');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [marketingSelected, setMarketingSelected] = useState<Set<string>>(new Set());
   const [marketingSearch, setMarketingSearch] = useState('');
   const [marketingSourceFilter, setMarketingSourceFilter] = useState<'all' | 'db' | 'ics'>('all');
