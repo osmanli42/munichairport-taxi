@@ -2662,6 +2662,7 @@ export default function AdminPage() {
                           {new Date(p.start_date).toLocaleDateString('de-DE')} – {new Date(p.end_date).toLocaleDateString('de-DE')}
                           {' · '}{p.used_count}{p.max_uses ? `/${p.max_uses}` : ''} mal verwendet
                           {' · '}{p.kombinierbar ? '🔗 kombinierbar' : '🚫 nicht kombinierbar'}
+                          {' · '}{p.show_banner ? '📢 Banner aktiv' : '🔕 kein Banner'}
                           {p.description ? ` · ${p.description}` : ''}
                         </p>
                       </div>
