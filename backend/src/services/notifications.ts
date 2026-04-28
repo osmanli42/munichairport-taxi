@@ -764,65 +764,72 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
   const vehicleLabel = getVehicleLabel(booking.vehicle_type, lang);
 
   const html = `<!DOCTYPE html>
-<html lang="${lang}">
+<html>
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; margin: 0; padding: 20px; }
-  .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-  .header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%); padding: 36px 32px; text-align: center; }
-  .header img { width: 56px; height: 56px; margin-bottom: 12px; }
-  .header h1 { color: white; font-size: 22px; margin: 0 0 6px; font-weight: 700; }
-  .header p { color: #93c5fd; font-size: 14px; margin: 0; }
-  .cancelled-banner { background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px 24px; margin: 24px 24px 0; border-radius: 0 8px 8px 0; }
-  .cancelled-banner p { margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6; }
-  .booking-nr { background: #f9fafb; border: 2px dashed #d1d5db; border-radius: 12px; padding: 16px; text-align: center; margin: 20px 24px; }
-  .booking-nr .label { color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .booking-nr .number { color: #374151; font-size: 22px; font-weight: 800; font-family: monospace; text-decoration: line-through; opacity: 0.6; }
-  .section { padding: 0 24px 20px; }
-  .section h3 { color: #1e3a5f; font-size: 15px; font-weight: 700; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
-  .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
-  .detail-row .label { color: #6b7280; }
-  .detail-row .value { color: #111827; font-weight: 500; text-align: right; max-width: 60%; }
-  .outro { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin: 0 24px 24px; text-align: center; }
-  .outro p { color: #0369a1; font-size: 14px; line-height: 1.7; margin: 0 0 16px; }
-  .btn { display: inline-block; background: linear-gradient(135deg, #1e3a5f, #2d5a8e); color: white !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; }
-  .contact { text-align: center; padding: 0 24px 20px; }
-  .contact p { color: #6b7280; font-size: 12px; margin: 0 0 4px; }
-  .contact a { color: #1e3a5f; text-decoration: none; font-weight: 600; }
-  .footer { background: #1e3a5f; padding: 16px 24px; text-align: center; }
-  .footer p { color: #93c5fd; font-size: 11px; margin: 0; }
+  body { font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; }
+  .header { background: #1a365d; color: white; padding: 24px; text-align: center; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .badge { background: #f6c644; color: #1a365d; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; margin-top: 8px; }
+  .content { padding: 24px; }
+  .intro { background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 20px; }
+  .section { background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .section h3 { margin: 0 0 12px; color: #1a365d; font-size: 16px; border-bottom: 2px solid #f6c644; padding-bottom: 8px; }
+  .row { display: flex; justify-content: space-between; margin: 8px 0; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  .label { color: #666; font-size: 14px; }
+  .value { font-weight: bold; font-size: 14px; text-align: right; max-width: 60%; }
+  .outro-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+  .btn { display: inline-block; background: #1a365d; color: white !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 12px; }
+  .contact-box { background: #1a365d; color: white; border-radius: 8px; padding: 16px; text-align: center; margin-top: 20px; }
+  .contact-box a { color: #f6c644; text-decoration: none; font-weight: bold; }
+  .footer { text-align: center; padding: 16px; color: #999; font-size: 12px; border-top: 1px solid #eee; margin-top: 20px; }
 </style>
 </head>
 <body>
-<div class="container">
   <div class="header">
-    <h1>🚕 Flughafen-muenchen.TAXI</h1>
-    <p>${l.title}</p>
+    <h1>Flughafen-muenchen.TAXI</h1>
+    <p style="margin:8px 0 4px">${l.title}</p>
+    <span class="badge">${booking.booking_number}</span>
   </div>
+  <div class="content">
+    <div class="intro">
+      <strong>${l.greeting} ${booking.name},</strong><br><br>
+      ${l.intro}
+    </div>
 
-  <div style="padding: 24px 24px 0;">
-    <p style="color:#374151;font-size:15px;margin:0;">${l.greeting} ${booking.name},</p>
+    <div class="section">
+      <h3>${l.details}</h3>
+      <div class="row"><span class="label">${l.pickup}:</span><span class="value">${booking.pickup_address}</span></div>
+      <div class="row"><span class="label">${l.destination}:</span><span class="value">${booking.dropoff_address}</span></div>
+      <div class="row"><span class="label">${l.datetime}:</span><span class="value">${formattedDate}</span></div>
+      <div class="row"><span class="label">${l.vehicle}:</span><span class="value">${vehicleLabel}</span></div>
+    </div>
+
+    <div class="outro-box">
+      <p style="margin:0 0 4px;color:#1a365d;">${l.outro}</p>
+      <a href="https://flughafen-muenchen.taxi" class="btn">🚕 ${l.newBooking}</a>
+    </div>
+
+    <div class="contact-box">
+      <p style="margin:0 0 8px;">${l.contact}</p>
+      <p style="margin:0;"><a href="tel:+4915141620000">+49 151 4162 0000</a> &nbsp;|&nbsp; <a href="mailto:info@flughafen-muenchen.taxi">info@flughafen-muenchen.taxi</a></p>
+    </div>
   </div>
+  <div class="footer"><p>${l.footer}</p></div>
+</body>
+</html>`;
 
-  <div class="cancelled-banner">
-    <p>${l.intro}</p>
-  </div>
+  await resend.emails.send({
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
+    to: booking.email,
+    subject: l.subject,
+    html,
+  });
+}
 
-  <div class="booking-nr">
-    <div class="label">${l.bookingNr}</div>
-    <div class="number">${booking.booking_number}</div>
-  </div>
-
-  <div class="section">
-    <h3>${l.details}</h3>
-    <div class="detail-row"><span class="label">${l.pickup}:</span><span class="value">${booking.pickup_address}</span></div>
-    <div class="detail-row"><span class="label">${l.destination}:</span><span class="value">${booking.dropoff_address}</span></div>
-    <div class="detail-row"><span class="label">${l.datetime}:</span><span class="value">${formattedDate}</span></div>
-    <div class="detail-row"><span class="label">${l.vehicle}:</span><span class="value">${vehicleLabel}</span></div>
-  </div>
-
-  <div class="outro">
+// PLACEHOLDER_TO_REMOVE
+export async function sendAllNotifications_OLD(): Promise<void> {
     <p>${l.outro}</p>
     <a href="https://flughafen-muenchen.taxi" class="btn">🚕 ${l.newBooking}</a>
   </div>
