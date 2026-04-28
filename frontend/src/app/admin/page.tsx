@@ -1562,98 +1562,339 @@ export default function AdminPage() {
 
                 {/* Day of week + Hour heatmap */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Day of week */}
+                  {/* Day of week — improved */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">Buchungen nach Wochentag</h3>
                     {(() => {
                       const data = detailedStats.dayOfWeekStats as Array<{ dow: number; count: number; revenue: number }>;
-                      const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                      const daysShort = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                      const daysFull = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
                       const maxCount = Math.max(...data.map(d => d.count), 1);
+                      const totalCount = data.reduce((s, d) => s + d.count, 0);
+                      const bestDow = data.reduce((best, d) => d.count > (best?.count ?? 0) ? d : best, data[0]);
                       return (
                         <div className="space-y-2">
-                          {days.map((day, i) => {
+                          {daysShort.map((day, i) => {
                             const d = data.find(x => x.dow === i);
                             const count = d?.count ?? 0;
+                            const revenue = d?.revenue ?? 0;
                             const pct = (count / maxCount) * 100;
+                            const totalPct = totalCount > 0 ? ((count / totalCount) * 100).toFixed(0) : '0';
+                            const isBest = bestDow?.dow === i;
                             return (
                               <div key={i} className="flex items-center gap-3">
-                                <div className="w-6 text-xs text-gray-500 text-center shrink-0">{day}</div>
-                                <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
-                                  <div className="h-full bg-primary-400 rounded-full" style={{ width: `${pct}%` }} />
+                                <div className={`w-7 text-xs font-semibold shrink-0 ${isBest ? 'text-primary-600' : 'text-gray-500'}`}>{day}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${isBest ? 'bg-primary-600' : 'bg-primary-400'}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
                                   {count > 0 && (
-                                    <div className="absolute inset-0 flex items-center px-2">
-                                      <span className="text-xs text-white drop-shadow font-medium">{count}</span>
+                                    <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                      <span className="text-xs font-bold text-white drop-shadow">{count}</span>
+                                      <span className="text-[10px] text-white/70 drop-shadow">{totalPct}%</span>
                                     </div>
                                   )}
                                 </div>
-                                <div className="w-20 text-xs text-gray-400 shrink-0 text-right">{formatPrice(d?.revenue ?? 0)}</div>
+                                <div className="w-20 text-xs text-gray-500 shrink-0 text-right">{formatPrice(revenue)}</div>
                               </div>
                             );
                           })}
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+                            <span>Stärkster Tag: <strong className="text-primary-600">{daysFull[bestDow?.dow ?? 0]} ({bestDow?.count ?? 0}×)</strong></span>
+                            <span>Gesamt: {totalCount}</span>
+                          </div>
                         </div>
                       );
                     })()}
                   </div>
 
-                  {/* Hour heatmap */}
+                  {/* Hour heatmap — improved with time blocks */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">Buchungen nach Uhrzeit</h3>
                     {(() => {
                       const data = detailedStats.hourStats as Array<{ hour: number; count: number }>;
                       const maxCount = Math.max(...data.map(d => d.count), 1);
-                      const hours = Array.from({ length: 24 }, (_, i) => i);
+                      const peakHour = data.reduce((best, d) => d.count > (best?.count ?? 0) ? d : best, data[0]);
+                      const timeBlocks = [
+                        { label: 'Nacht', range: '00–06', hours: [0,1,2,3,4,5], color: 'text-indigo-500' },
+                        { label: 'Morgen', range: '06–12', hours: [6,7,8,9,10,11], color: 'text-amber-500' },
+                        { label: 'Mittag', range: '12–18', hours: [12,13,14,15,16,17], color: 'text-orange-500' },
+                        { label: 'Abend', range: '18–24', hours: [18,19,20,21,22,23], color: 'text-blue-500' },
+                      ];
                       return (
-                        <div className="grid grid-cols-12 gap-1">
-                          {hours.map(h => {
-                            const d = data.find(x => x.hour === h);
-                            const count = d?.count ?? 0;
-                            const intensity = Math.round((count / maxCount) * 5);
-                            const bg = ['bg-gray-100', 'bg-primary-100', 'bg-primary-200', 'bg-primary-400', 'bg-primary-600', 'bg-primary-800'][intensity];
+                        <div>
+                          <div className="space-y-3">
+                            {timeBlocks.map(block => (
+                              <div key={block.label}>
+                                <div className={`text-xs font-semibold mb-1.5 ${block.color}`}>
+                                  {block.label} <span className="text-gray-400 font-normal">{block.range} Uhr</span>
+                                </div>
+                                <div className="grid grid-cols-6 gap-1">
+                                  {block.hours.map(h => {
+                                    const d = data.find(x => x.hour === h);
+                                    const count = d?.count ?? 0;
+                                    const intensity = Math.round((count / maxCount) * 5);
+                                    const bg = ['bg-gray-100','bg-primary-100','bg-primary-200','bg-primary-400','bg-primary-600','bg-primary-800'][intensity];
+                                    const textColor = intensity >= 3 ? 'text-white' : 'text-gray-500';
+                                    const isPeak = peakHour?.hour === h;
+                                    return (
+                                      <div
+                                        key={h}
+                                        title={`${h}:00 Uhr — ${count} Fahrten`}
+                                        className={`${bg} rounded-lg aspect-square flex flex-col items-center justify-center cursor-default ${isPeak ? 'ring-2 ring-primary-400' : ''}`}
+                                      >
+                                        <span className={`text-[10px] font-bold ${textColor}`}>{h}</span>
+                                        {count > 0 && <span className={`text-[8px] ${textColor} opacity-80`}>{count}×</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <span>Wenig</span>
+                              {['bg-gray-100','bg-primary-100','bg-primary-200','bg-primary-400','bg-primary-600','bg-primary-800'].map((c,i) => (
+                                <div key={i} className={`${c} w-3 h-3 rounded`} />
+                              ))}
+                              <span>Viel</span>
+                            </div>
+                            <span>Peak: <strong className="text-primary-600">{peakHour?.hour ?? 0}:00 Uhr</strong></span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Weekly Revenue + Price Distribution */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Weekly Revenue */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Wöchentlicher Umsatz (letzte 8 Wochen)</h3>
+                    {(() => {
+                      const data = (detailedStats.weeklyRevenue as Array<{ week: string; count: number; revenue: number }>) || [];
+                      const maxRev = Math.max(...data.map(d => d.revenue), 1);
+                      return (
+                        <div className="space-y-2">
+                          {data.map((d, i) => {
+                            const pct = (d.revenue / maxRev) * 100;
+                            const weekNum = d.week.split('-W')[1];
                             return (
-                              <div key={h} title={`${h}:00 — ${count} Fahrten`} className={`${bg} rounded aspect-square flex items-center justify-center cursor-default`}>
-                                <span className="text-[9px] text-gray-600 font-medium">{h}</span>
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-14 text-xs text-gray-500 shrink-0">KW {weekNum}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-3">
+                                    <span className="text-xs font-medium text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                  </div>
+                                </div>
+                                <div className="w-12 text-xs text-gray-400 shrink-0 text-right">{d.count} Fhrt.</div>
+                              </div>
+                            );
+                          })}
+                          {data.length === 0 && <div className="text-gray-400 text-sm text-center py-4">Keine Daten</div>}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Price Distribution */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Preis-Verteilung</h3>
+                    {(() => {
+                      const data = (detailedStats.priceDistribution as Array<{ bucket: string; count: number; revenue: number }>) || [];
+                      const maxCount = Math.max(...data.map(d => d.count), 1);
+                      const totalCount = data.reduce((s, d) => s + d.count, 0);
+                      const colors = ['bg-sky-400','bg-blue-500','bg-primary-500','bg-primary-600','bg-primary-700','bg-primary-800'];
+                      return (
+                        <div className="space-y-2">
+                          {data.map((d, i) => {
+                            const pct = (d.count / maxCount) * 100;
+                            const share = totalCount > 0 ? ((d.count / totalCount) * 100).toFixed(0) : '0';
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-20 text-xs text-gray-500 shrink-0">{d.bucket}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full ${colors[i]} rounded-full`} style={{ width: `${pct}%` }} />
+                                  {d.count > 0 && (
+                                    <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                      <span className="text-xs font-bold text-white drop-shadow">{d.count}×</span>
+                                      <span className="text-[10px] text-white/70 drop-shadow">{share}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="w-20 text-xs text-gray-400 shrink-0 text-right">{formatPrice(d.revenue)}</div>
                               </div>
                             );
                           })}
                         </div>
                       );
                     })()}
-                    <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-                      <span>Wenig</span>
-                      {['bg-gray-100','bg-primary-100','bg-primary-200','bg-primary-400','bg-primary-600','bg-primary-800'].map((c,i) => (
-                        <div key={i} className={`${c} w-4 h-4 rounded`} />
-                      ))}
-                      <span>Viel</span>
+                  </div>
+                </div>
+
+                {/* Lead Time + Language */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Lead Time */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Vorlaufzeit-Analyse</h3>
+                    <p className="text-xs text-gray-400 mb-4">Wie weit im Voraus buchen Kunden?</p>
+                    {(() => {
+                      const data = (detailedStats.leadTimeBuckets as Array<{ bucket: string; count: number }>) || [];
+                      const totalCount = data.reduce((s, d) => s + d.count, 0);
+                      const maxCount = Math.max(...data.map(d => d.count), 1);
+                      const bucketColors = ['bg-red-400','bg-orange-400','bg-amber-400','bg-lime-500','bg-green-500','bg-emerald-600'];
+                      return (
+                        <div className="space-y-2">
+                          {data.map((d, i) => {
+                            const pct = (d.count / maxCount) * 100;
+                            const share = totalCount > 0 ? ((d.count / totalCount) * 100).toFixed(0) : '0';
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-24 text-xs text-gray-500 shrink-0">{d.bucket}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full ${bucketColors[i % bucketColors.length]} rounded-full`} style={{ width: `${pct}%` }} />
+                                  {d.count > 0 && (
+                                    <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                      <span className="text-xs font-bold text-white drop-shadow">{d.count}×</span>
+                                      <span className="text-[10px] text-white/70 drop-shadow">{share}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Language + Top Days */}
+                  <div className="space-y-4">
+                    {/* Language breakdown */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                      <h3 className="font-bold text-gray-900 mb-3">Kundensprache</h3>
+                      {(() => {
+                        const data = (detailedStats.languageStats as Array<{ language: string; count: number; revenue: number }>) || [];
+                        const total = data.reduce((s, d) => s + d.count, 0);
+                        return (
+                          <div className="flex gap-3">
+                            {data.map(d => {
+                              const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
+                              const isDE = d.language === 'de';
+                              return (
+                                <div key={d.language} className={`flex-1 rounded-xl p-3 text-center ${isDE ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                  <div className={`text-2xl font-bold ${isDE ? 'text-blue-600' : 'text-red-500'}`}>{pct}%</div>
+                                  <div className="text-xs font-semibold text-gray-600 mt-0.5">{isDE ? '🇩🇪 Deutsch' : '🇬🇧 Englisch'}</div>
+                                  <div className="text-xs text-gray-400">{d.count} · {formatPrice(d.revenue)}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Extras overview */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                      <h3 className="font-bold text-gray-900 mb-3">Extras & Gepäck</h3>
+                      {(() => {
+                        const e = detailedStats.extrasStats as { fahrrad_bookings: number; total_fahrrad: number; child_seat_bookings: number; avg_luggage: number; heavy_luggage_bookings: number; total: number } | null;
+                        if (!e) return <div className="text-gray-400 text-sm">Keine Daten</div>;
+                        const items = [
+                          { label: 'Kindersitz', value: e.child_seat_bookings, sub: 'Buchungen', color: 'text-pink-500', bg: 'bg-pink-50' },
+                          { label: 'Fahrräder', value: e.fahrrad_bookings, sub: `${e.total_fahrrad} Stück`, color: 'text-green-600', bg: 'bg-green-50' },
+                          { label: 'Ø Gepäck', value: e.avg_luggage ?? 0, sub: 'Stück/Fahrt', color: 'text-amber-600', bg: 'bg-amber-50', decimal: true },
+                          { label: 'Viel Gepäck', value: e.heavy_luggage_bookings, sub: '4+ Stück', color: 'text-orange-600', bg: 'bg-orange-50' },
+                        ];
+                        return (
+                          <div className="grid grid-cols-4 gap-2">
+                            {items.map(item => (
+                              <div key={item.label} className={`${item.bg} rounded-xl p-2.5 text-center`}>
+                                <div className={`text-xl font-bold ${item.color}`}>
+                                  {item.decimal ? Number(item.value).toFixed(1) : item.value}
+                                </div>
+                                <div className="text-[10px] font-semibold text-gray-600">{item.label}</div>
+                                <div className="text-[9px] text-gray-400">{item.sub}</div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
 
-                {/* Top Routes */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-4">Top 10 Strecken</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">#</th>
-                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Von</th>
-                          <th className="text-left py-2 px-2 text-gray-500 font-medium text-xs">Nach</th>
-                          <th className="text-right py-2 px-2 text-gray-500 font-medium text-xs">Fahrten</th>
-                          <th className="text-right py-2 px-2 text-gray-500 font-medium text-xs">Umsatz</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {((detailedStats.topRoutes as Array<{ pickup_address: string; dropoff_address: string; count: number; revenue: number }>) || []).map((r, i) => (
-                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="py-2 px-2 text-gray-400 font-bold text-xs">{i + 1}</td>
-                            <td className="py-2 px-2 text-xs text-gray-700 max-w-[180px] truncate">{r.pickup_address}</td>
-                            <td className="py-2 px-2 text-xs text-gray-500 max-w-[180px] truncate">→ {r.dropoff_address}</td>
-                            <td className="py-2 px-2 text-right font-bold text-primary-600">{r.count}×</td>
-                            <td className="py-2 px-2 text-right text-gray-700">{formatPrice(r.revenue)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {/* Top 5 Days + Cancellation Rate */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Top 5 earning days */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Top 5 Umsatz-Tage</h3>
+                    {(() => {
+                      const data = (detailedStats.topDays as Array<{ day: string; count: number; revenue: number }>) || [];
+                      const maxRev = Math.max(...data.map(d => d.revenue), 1);
+                      return (
+                        <div className="space-y-3">
+                          {data.map((d, i) => {
+                            const date = new Date(d.day);
+                            const label = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'short', year: '2-digit' });
+                            const pct = (d.revenue / maxRev) * 100;
+                            const medals = ['🥇','🥈','🥉','4.','5.'];
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-6 text-sm shrink-0 text-center">{medals[i]}</div>
+                                <div className="w-28 text-xs text-gray-500 shrink-0">{label}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full rounded-full ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-primary-400'}`} style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-3">
+                                    <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                  </div>
+                                </div>
+                                <div className="w-10 text-xs text-gray-400 shrink-0 text-right">{d.count}×</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Cancellation Rate */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-4">Stornierungsrate (letzte 6 Monate)</h3>
+                    {(() => {
+                      const data = (detailedStats.cancellationStats as Array<{ month: string; total: number; cancelled: number }>) || [];
+                      return (
+                        <div className="space-y-2">
+                          {data.map(d => {
+                            const [year, month] = d.month.split('-');
+                            const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+                            const rate = d.total > 0 ? ((d.cancelled / d.total) * 100) : 0;
+                            const confirmed = d.total - d.cancelled;
+                            return (
+                              <div key={d.month} className="flex items-center gap-3">
+                                <div className="w-12 text-xs text-gray-500 shrink-0">{label}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden flex">
+                                  <div className="h-full bg-emerald-500" style={{ width: `${100 - rate}%` }} />
+                                  <div className="h-full bg-red-400" style={{ width: `${rate}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                    <span className="text-xs font-medium text-white drop-shadow">{confirmed} best.</span>
+                                    {d.cancelled > 0 && <span className="text-xs text-white/80 drop-shadow">{d.cancelled} storn.</span>}
+                                  </div>
+                                </div>
+                                <div className={`w-12 text-xs shrink-0 text-right font-semibold ${rate > 20 ? 'text-red-500' : rate > 10 ? 'text-orange-500' : 'text-emerald-600'}`}>
+                                  {rate.toFixed(0)}%
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {data.length === 0 && <div className="text-gray-400 text-sm text-center py-4">Keine Daten</div>}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </>
