@@ -25,7 +25,7 @@ router.get('/active', async (_req: Request, res: Response): Promise<void> => {
     const today = todayStr();
     const [promo] = await query<any>(
       `SELECT code, type, value, end_date FROM promotions
-       WHERE active = 1 AND start_date <= ? AND end_date >= ?
+       WHERE active = 1 AND show_banner = 1 AND start_date <= ? AND end_date >= ?
          AND (max_uses IS NULL OR used_count < max_uses)
        ORDER BY end_date ASC LIMIT 1`,
       [today, today]
