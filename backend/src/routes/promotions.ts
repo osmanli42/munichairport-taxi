@@ -134,6 +134,7 @@ router.post('/admin', authenticateAdmin, async (req: Request, res: Response): Pr
 // PUT /api/promotions/admin/:id — update promotion
 router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
   const { code, type, value, start_date, end_date, max_uses, description, active, kombinierbar } = req.body;
+  const dateOnly = (d: string) => (d ? String(d).split('T')[0] : d);
   try {
     await run(
       `UPDATE promotions SET code=?, type=?, value=?, start_date=?, end_date=?, max_uses=?, description=?, active=?, kombinierbar=?
@@ -142,8 +143,8 @@ router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response):
         String(code).toUpperCase().trim(),
         type,
         parseFloat(value),
-        start_date,
-        end_date,
+        dateOnly(start_date),
+        dateOnly(end_date),
         max_uses ? parseInt(max_uses) : null,
         description || null,
         active ? 1 : 0,
