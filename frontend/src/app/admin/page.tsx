@@ -105,10 +105,10 @@ export default function AdminPage() {
   interface Promotion {
     id: number; code: string; type: 'fixed' | 'percent'; value: number;
     start_date: string; end_date: string; max_uses: number | null;
-    used_count: number; active: number; description: string | null; kombinierbar: number;
+    used_count: number; active: number; description: string | null; kombinierbar: number; show_banner: number;
   }
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [promoForm, setPromoForm] = useState({ code: '', type: 'fixed', value: '', start_date: '', end_date: '', max_uses: '', description: '', kombinierbar: false });
+  const [promoForm, setPromoForm] = useState({ code: '', type: 'fixed', value: '', start_date: '', end_date: '', max_uses: '', description: '', kombinierbar: false, show_banner: true });
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoMsg, setPromoMsg] = useState('');
 
