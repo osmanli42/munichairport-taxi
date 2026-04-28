@@ -620,8 +620,8 @@ function BuchenContent() {
                 </div>
               </div>
 
-              {/* Promo code — only shown when an active promotion exists */}
-              {activePromo && (
+              {/* Promo code — always shown so customers can enter email-only codes */}
+              {(
                 <div className="px-6 pb-2">
                   <hr className="border-gray-100 mb-4" />
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
