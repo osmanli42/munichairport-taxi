@@ -929,7 +929,8 @@ export default function AdminPage() {
                 <input
                   type="date"
                   value={filters.date_from}
-                  onChange={(e) => setFilters(p => ({ ...p, date_from: e.target.value }))}
+                  placeholder="Abholtag"
+                  onChange={(e) => setFilters(p => ({ ...p, date_from: e.target.value, date_to: e.target.value }))}
                   className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <div className="flex gap-2">
