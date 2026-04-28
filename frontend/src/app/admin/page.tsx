@@ -1645,8 +1645,8 @@ export default function AdminPage() {
                                         title={`${h}:00 Uhr — ${count} Fahrten`}
                                         className={`${bg} rounded-lg aspect-square flex flex-col items-center justify-center cursor-default ${isPeak ? 'ring-2 ring-primary-400' : ''}`}
                                       >
-                                        <span className={`text-[10px] font-bold ${textColor}`}>{h}</span>
-                                        {count > 0 && <span className={`text-[8px] ${textColor} opacity-80`}>{count}×</span>}
+                                        <span className={`text-sm font-bold ${textColor}`}>{h}</span>
+                                        {count > 0 && <span className={`text-[11px] ${textColor} opacity-80`}>{count}×</span>}
                                       </div>
                                     );
                                   })}
