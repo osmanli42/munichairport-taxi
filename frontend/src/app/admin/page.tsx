@@ -2238,6 +2238,7 @@ export default function AdminPage() {
                         <p className="text-xs text-gray-500 mt-1">
                           {new Date(p.start_date).toLocaleDateString('de-DE')} – {new Date(p.end_date).toLocaleDateString('de-DE')}
                           {' · '}{p.used_count}{p.max_uses ? `/${p.max_uses}` : ''} mal verwendet
+                          {' · '}{p.kombinierbar ? '🔗 kombinierbar' : '🚫 nicht kombinierbar'}
                           {p.description ? ` · ${p.description}` : ''}
                         </p>
                       </div>
