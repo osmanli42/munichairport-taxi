@@ -19,7 +19,24 @@ function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// GET /api/promotions/active — public (used by homepage banner + booking page)
+// GET /api/promotions/has-active — public, returns true if any promo is active (ignores show_banner)
+router.get('/has-active', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const today = todayStr();
+    const [promo] = await query<any>(
+      `SELECT id FROM promotions
+       WHERE active = 1 AND start_date <= ? AND end_date >= ?
+         AND (max_uses IS NULL OR used_count < max_uses)
+       LIMIT 1`,
+      [today, today]
+    );
+    res.json({ hasActive: !!promo });
+  } catch {
+    res.json({ hasActive: false });
+  }
+});
+
+// GET /api/promotions/active — public (used by homepage banner only, requires show_banner=1)
 router.get('/active', async (_req: Request, res: Response): Promise<void> => {
   try {
     const today = todayStr();
