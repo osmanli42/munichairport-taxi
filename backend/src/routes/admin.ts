@@ -86,12 +86,14 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       sql += ' AND vehicle_type = ?';
       params.push(vehicle_type);
     }
-    if (date_from) {
-      sql += ' AND (DATE(pickup_datetime) >= ? OR DATE(return_datetime) >= ?)';
+    if (date_from && date_to) {
+      sql += ' AND (DATE(pickup_datetime) BETWEEN ? AND ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) BETWEEN ? AND ?))';
+      params.push(date_from, date_to, date_from, date_to);
+    } else if (date_from) {
+      sql += ' AND (DATE(pickup_datetime) >= ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) >= ?))';
       params.push(date_from, date_from);
-    }
-    if (date_to) {
-      sql += ' AND (DATE(pickup_datetime) <= ? OR DATE(return_datetime) <= ?)';
+    } else if (date_to) {
+      sql += ' AND (DATE(pickup_datetime) <= ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) <= ?))';
       params.push(date_to, date_to);
     }
     if (search) {
