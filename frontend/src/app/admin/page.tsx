@@ -1703,18 +1703,25 @@ export default function AdminPage() {
                             const cashPct = d.revenue > 0 ? (d.cash_revenue / d.revenue) * totalPct : 0;
                             const weekNum = d.week.split('-W')[1];
                             return (
-                              <div key={i} className="flex items-center gap-3">
-                                <div className="w-14 text-xs text-gray-500 shrink-0">KW {weekNum}</div>
-                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden flex">
-                                  <div className="h-full bg-primary-600 transition-all" style={{ width: `${cardPct}%` }} />
-                                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cashPct}%` }} />
-                                  <div className="absolute inset-0 flex items-center px-3 gap-2">
-                                    <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
-                                    {(d.card_count ?? 0) > 0 && <span className="text-[10px] text-white/80 drop-shadow">💳{d.card_count}</span>}
-                                    {(d.cash_count ?? 0) > 0 && <span className="text-[10px] text-white/80 drop-shadow">💵{d.cash_count}</span>}
+                              <div key={i}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-14 text-xs text-gray-500 shrink-0">KW {weekNum}</div>
+                                  <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden flex">
+                                    <div className="h-full bg-primary-600 transition-all" style={{ width: `${cardPct}%` }} />
+                                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cashPct}%` }} />
+                                    <div className="absolute inset-0 flex items-center px-3">
+                                      <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-12 text-xs text-gray-400 shrink-0 text-right">{d.count} Fhrt.</div>
+                                </div>
+                                <div className="flex items-center gap-3 mt-0.5 mb-1">
+                                  <div className="w-14 shrink-0" />
+                                  <div className="flex-1 flex gap-3 px-1">
+                                    {(d.card_count ?? 0) > 0 && <span className="text-[10px] text-gray-400">Karte: {d.card_count}× ({formatPrice(d.card_revenue)})</span>}
+                                    {(d.cash_count ?? 0) > 0 && <span className="text-[10px] text-gray-400">Bar: {d.cash_count}× ({formatPrice(d.cash_revenue)})</span>}
                                   </div>
                                 </div>
-                                <div className="w-12 text-xs text-gray-400 shrink-0 text-right">{d.count} Fhrt.</div>
                               </div>
                             );
                           })}
