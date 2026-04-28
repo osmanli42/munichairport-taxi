@@ -87,12 +87,12 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       params.push(vehicle_type);
     }
     if (date_from) {
-      sql += ' AND DATE(pickup_datetime) >= ?';
-      params.push(date_from);
+      sql += ' AND (DATE(pickup_datetime) >= ? OR DATE(return_datetime) >= ?)';
+      params.push(date_from, date_from);
     }
     if (date_to) {
-      sql += ' AND DATE(pickup_datetime) <= ?';
-      params.push(date_to);
+      sql += ' AND (DATE(pickup_datetime) <= ? OR DATE(return_datetime) <= ?)';
+      params.push(date_to, date_to);
     }
     if (search) {
       sql += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ?)';
