@@ -119,9 +119,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       : calculatedPrice;
     const isRoundtrip = trip_type === 'roundtrip';
 
-    // Validate promo code first — if valid, skip roundtrip_discount (not combinable)
+    // Validate promo code
     let promoDiscount = 0;
     let validatedPromoCode: string | null = null;
+    let promoKombinierbar = false;
     if (promo_code) {
       const today = new Date().toISOString().split('T')[0];
       const [promo] = await query<any>(
@@ -132,10 +133,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       );
       if (promo) {
         validatedPromoCode = promo.code;
+        promoKombinierbar = !!promo.kombinierbar;
       }
     }
 
-    const discount = validatedPromoCode ? 0 : (priceRow.roundtrip_discount || 0);
+    // If promo is not combinable, skip roundtrip_discount
+    const discount = (validatedPromoCode && !promoKombinierbar) ? 0 : (priceRow.roundtrip_discount || 0);
     const tripPrice = isRoundtrip
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
