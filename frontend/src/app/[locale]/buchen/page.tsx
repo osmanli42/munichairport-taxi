@@ -323,8 +323,12 @@ function BuchenContent() {
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
       setSubmitState('success');
-      // Google Ads conversion tracking
+      // Google Ads conversion tracking with Enhanced Conversions
       if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('set', 'user_data', {
+          email: email.trim(),
+          phone_number: phone.trim(),
+        });
         (window as any).gtag('event', 'conversion', {
           send_to: 'AW-829027982/VhRbCJL0oXgQju2niwM',
           transaction_id: data.booking_number || '',
