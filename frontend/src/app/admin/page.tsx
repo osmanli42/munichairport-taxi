@@ -378,6 +378,17 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteBooking(id: number) {
+    if (!confirm('Buchung endgültig löschen?')) return;
+    try {
+      await adminApi.deleteBooking(id);
+      setBookings(prev => prev.filter(b => b.id !== id));
+      if (selectedBooking?.id === id) setSelectedBooking(null);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async function savePrice(vehicleType: string) {
     const edit = priceEdits[vehicleType];
     if (!edit) return;
