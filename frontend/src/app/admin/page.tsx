@@ -2005,6 +2005,33 @@ export default function AdminPage() {
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleIcsUpload(f); e.target.value = ''; }}
                 />
               </label>
+              <label className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer">
+                <Upload size={14} />
+                CSV Yükle
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    f.text().then(text => {
+                      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                      const emails = lines.filter(l => l.includes('@') && !l.toLowerCase().startsWith('email'));
+                      setMarketingCustomers(prev => {
+                        const existing = new Map(prev.map(c => [c.email.toLowerCase(), c]));
+                        for (const email of emails) {
+                          const key = email.toLowerCase();
+                          if (!existing.has(key)) existing.set(key, { email: key, name: '', source: 'ics' });
+                        }
+                        return Array.from(existing.values());
+                      });
+                      alert(`${emails.length} email CSV'den yüklendi.`);
+                    }).catch(() => alert('CSV dosyası okunamadı.'));
+                    e.target.value = '';
+                  }}
+                />
+              </label>
               <button
                 onClick={toggleMarketingSelectAll}
                 className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium"
