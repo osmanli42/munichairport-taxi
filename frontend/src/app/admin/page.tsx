@@ -1472,8 +1472,8 @@ export default function AdminPage() {
                               <div className="flex items-center gap-3 mt-0.5 mb-1">
                                 <div className="w-14 shrink-0" />
                                 <div className="flex-1 flex gap-3 px-1">
-                                  {(d.card_count ?? 0) > 0 && <span className="text-[10px] text-gray-400">Karte: {d.card_count}× ({formatPrice(d.card_revenue)})</span>}
-                                  {(d.cash_count ?? 0) > 0 && <span className="text-[10px] text-gray-400">Bar: {d.cash_count}× ({formatPrice(d.cash_revenue)})</span>}
+                                  {(d.card_revenue ?? 0) > 0 && <span className="text-[11px] text-primary-600 font-medium">Kreditkarte: {formatPrice(d.card_revenue)}</span>}
+                                  {(d.cash_revenue ?? 0) > 0 && <span className="text-[11px] text-emerald-600 font-medium">Bar: {formatPrice(d.cash_revenue)}</span>}
                                 </div>
                               </div>
                             </div>
