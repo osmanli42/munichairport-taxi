@@ -729,7 +729,7 @@ function BuchenContent() {
                   <h3 className="font-semibold text-primary-700 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
                   <button
                     type="button"
-                    onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); }}
+                    onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); setAppliedPromo(null); setPromoInput(''); setPromoError(''); }}
                     className="text-xs text-red-500 hover:text-red-700 font-medium"
                   >
                     ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
