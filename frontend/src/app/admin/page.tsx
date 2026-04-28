@@ -2329,6 +2329,16 @@ export default function AdminPage() {
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
                 </div>
 
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <input type="checkbox" id="kombinierbar" checked={promoForm.kombinierbar}
+                    onChange={e => setPromoForm(f => ({ ...f, kombinierbar: e.target.checked }))}
+                    className="w-4 h-4 accent-amber-500" />
+                  <label htmlFor="kombinierbar" className="text-sm text-gray-700 cursor-pointer">
+                    <span className="font-medium">Kombinierbar mit Hin & Rück Rabatt</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Wenn aktiv: Beide Rabatte werden addiert. Standard: nicht kombinierbar.</span>
+                  </label>
+                </div>
+
                 {promoMsg && (
                   <p className={cn('text-sm px-3 py-2 rounded-lg', promoMsg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>
                     {promoMsg}
