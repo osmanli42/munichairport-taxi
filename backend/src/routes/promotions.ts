@@ -76,6 +76,7 @@ router.post('/validate', async (req: Request, res: Response): Promise<void> => {
       code: promo.code,
       type: promo.type,
       value: parseFloat(promo.value),
+      kombinierbar: !!promo.kombinierbar,
       discount_amount,
       final_price,
     });
