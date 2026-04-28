@@ -96,7 +96,7 @@ router.get('/admin/list', authenticateAdmin, async (_req: Request, res: Response
 
 // POST /api/promotions/admin — create promotion
 router.post('/admin', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { code, type, value, start_date, end_date, max_uses, description } = req.body;
+  const { code, type, value, start_date, end_date, max_uses, description, kombinierbar } = req.body;
   if (!code || !type || value === undefined || !start_date || !end_date) {
     res.status(400).json({ error: 'code, type, value, start_date, end_date erforderlich' });
     return;
@@ -107,8 +107,8 @@ router.post('/admin', authenticateAdmin, async (req: Request, res: Response): Pr
   }
   try {
     await run(
-      `INSERT INTO promotions (code, type, value, start_date, end_date, max_uses, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO promotions (code, type, value, start_date, end_date, max_uses, description, kombinierbar)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         String(code).toUpperCase().trim(),
         type,
@@ -117,6 +117,7 @@ router.post('/admin', authenticateAdmin, async (req: Request, res: Response): Pr
         end_date,
         max_uses ? parseInt(max_uses) : null,
         description || null,
+        kombinierbar ? 1 : 0,
       ]
     );
     res.json({ success: true });
