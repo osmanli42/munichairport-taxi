@@ -250,17 +250,19 @@ function BuchenContent() {
       });
       const data = await res.json();
       if (data.valid) {
-        let discountAmt = data.discount_amount;
-        let base = price;
-        // If nicht kombinierbar + roundtrip: apply promo on full price (no roundtrip discount)
-        if (!data.kombinierbar && tripType === 'roundtrip') {
-          base = oneWayPrice * 2 + fahrradCount * fahrradPrice + anfahrtCost;
-          discountAmt = data.type === 'fixed'
-            ? Math.min(data.value, base)
-            : Math.round(base * (data.value / 100) * 100) / 100;
+        // If nicht kombinierbar + roundtrip with discount: reject the code
+        if (!data.kombinierbar && tripType === 'roundtrip' && roundtripDiscount > 0) {
+          const errMsg = locale === 'tr'
+            ? 'Bu kod Gidiş-Dönüş indirimiyle birleştirilemez.'
+            : locale === 'en'
+            ? 'This code cannot be combined with the round trip discount.'
+            : 'Dieser Aktionscode ist nicht mit dem Hin- & Rückfahrt-Rabatt kombinierbar.';
+          setPromoError(errMsg);
+          setAppliedPromo(null);
+        } else {
+          setAppliedPromo({ code: data.code, discountAmount: data.discount_amount, promoBase: price });
+          setPromoError('');
         }
-        setAppliedPromo({ code: data.code, discountAmount: discountAmt, promoBase: base });
-        setPromoError('');
       } else {
         setPromoError(data.message || 'Ungültiger Code');
         setAppliedPromo(null);
