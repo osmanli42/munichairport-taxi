@@ -166,7 +166,7 @@ function BuchenContent() {
   // Promo code state
   const [activePromo, setActivePromo] = useState<{ code: string; type: string; value: number } | null>(null);
   const [promoInput, setPromoInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; promoBase: number } | null>(null);
   const [promoError, setPromoError] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
 
@@ -178,7 +178,8 @@ function BuchenContent() {
   }, []);
 
   const discountAmount = appliedPromo?.discountAmount ?? 0;
-  const finalPrice = Math.max(0, price - discountAmount);
+  const promoBase = appliedPromo?.promoBase ?? price;
+  const finalPrice = Math.max(0, promoBase - discountAmount);
 
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Telefonnummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: '💵 Barzahlung', card: '💳 Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: '→ Einfache Fahrt', roundtrip: '⇄ Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich! 🎉', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: '← Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: '← Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
