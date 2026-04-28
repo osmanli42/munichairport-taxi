@@ -250,7 +250,16 @@ function BuchenContent() {
       });
       const data = await res.json();
       if (data.valid) {
-        setAppliedPromo({ code: data.code, discountAmount: data.discount_amount });
+        let discountAmt = data.discount_amount;
+        let base = price;
+        // If nicht kombinierbar + roundtrip: apply promo on full price (no roundtrip discount)
+        if (!data.kombinierbar && tripType === 'roundtrip') {
+          base = oneWayPrice * 2 + fahrradCount * fahrradPrice + anfahrtCost;
+          discountAmt = data.type === 'fixed'
+            ? Math.min(data.value, base)
+            : Math.round(base * (data.value / 100) * 100) / 100;
+        }
+        setAppliedPromo({ code: data.code, discountAmount: discountAmt, promoBase: base });
         setPromoError('');
       } else {
         setPromoError(data.message || 'Ungültiger Code');
