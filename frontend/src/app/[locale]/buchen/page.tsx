@@ -165,6 +165,7 @@ function BuchenContent() {
 
   // Promo code state
   const [activePromo, setActivePromo] = useState<{ code: string; type: string; value: number } | null>(null);
+  const [hasAnyActivePromo, setHasAnyActivePromo] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; promoBase: number } | null>(null);
   const [promoError, setPromoError] = useState('');
@@ -174,6 +175,10 @@ function BuchenContent() {
     fetch(`${API_URL}/promotions/active`)
       .then(r => r.json())
       .then(d => { if (d?.code) setActivePromo(d); })
+      .catch(() => {});
+    fetch(`${API_URL}/promotions/has-active`)
+      .then(r => r.json())
+      .then(d => { if (d?.hasActive) setHasAnyActivePromo(true); })
       .catch(() => {});
   }, []);
 
