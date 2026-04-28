@@ -2763,6 +2763,16 @@ export default function AdminPage() {
                   </label>
                 </div>
 
+                <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                  <input type="checkbox" id="show_banner" checked={promoForm.show_banner}
+                    onChange={e => setPromoForm(f => ({ ...f, show_banner: e.target.checked }))}
+                    className="w-4 h-4 accent-blue-600" />
+                  <label htmlFor="show_banner" className="text-sm text-gray-700 cursor-pointer">
+                    <span className="font-medium">Banner auf der Startseite anzeigen</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Deaktivieren für E-Mail-Kampagnen — der Code funktioniert, aber kein Banner auf der Website.</span>
+                  </label>
+                </div>
+
                 {promoMsg && (
                   <p className={cn('text-sm px-3 py-2 rounded-lg', promoMsg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>
                     {promoMsg}
