@@ -329,11 +329,11 @@ export default function AdminPage() {
 
   function filterMarketingCustomers(): MarketingCustomer[] {
     const q = marketingSearch.trim().toLowerCase();
-    if (!q) return marketingCustomers;
-    return marketingCustomers.filter(c =>
-      c.email.toLowerCase().includes(q) ||
-      (c.name || '').toLowerCase().includes(q)
-    );
+    return marketingCustomers.filter(c => {
+      if (marketingSourceFilter !== 'all' && c.source !== marketingSourceFilter) return false;
+      if (!q) return true;
+      return c.email.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q);
+    });
   }
 
   function toggleMarketingSelectAll() {
