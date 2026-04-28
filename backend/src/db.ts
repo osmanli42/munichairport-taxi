@@ -165,6 +165,11 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN discount_amount DOUBLE DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Migration: add kombinierbar to promotions
+    try {
+      await conn.execute(`ALTER TABLE promotions ADD COLUMN kombinierbar TINYINT(1) NOT NULL DEFAULT 0`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // Promotions table
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS promotions (
