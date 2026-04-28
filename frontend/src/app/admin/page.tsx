@@ -2608,7 +2608,7 @@ export default function AdminPage() {
             const d = await r.json();
             if (d.success) {
               setPromoMsg('✅ Code erstellt!');
-              setPromoForm({ code: '', type: 'fixed', value: '', start_date: '', end_date: '', max_uses: '', description: '', kombinierbar: false });
+              setPromoForm({ code: '', type: 'fixed', value: '', start_date: '', end_date: '', max_uses: '', description: '', kombinierbar: false, show_banner: true });
               await loadPromos();
             } else { setPromoMsg('❌ ' + (d.error || 'Fehler')); }
           } catch { setPromoMsg('❌ Netzwerkfehler'); } finally { setPromoSaving(false); }
