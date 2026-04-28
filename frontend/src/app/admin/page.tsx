@@ -1611,7 +1611,8 @@ export default function AdminPage() {
 
                   {/* Hour heatmap — improved with time blocks */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <h3 className="font-bold text-gray-900 mb-4">Buchungen nach Uhrzeit</h3>
+                    <h3 className="font-bold text-gray-900 mb-1">Buchungen nach Uhrzeit</h3>
+                    <p className="text-xs text-gray-400 mb-4">Wann werden Buchungen aufgegeben?</p>
                     {(() => {
                       const data = detailedStats.hourStats as Array<{ hour: number; count: number }>;
                       const maxCount = Math.max(...data.map(d => d.count), 1);
