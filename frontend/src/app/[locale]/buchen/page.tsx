@@ -625,8 +625,8 @@ function BuchenContent() {
                 </div>
               </div>
 
-              {/* Promo code — always shown so customers can enter email-only codes */}
-              {(
+              {/* Promo code — shown when any active promo exists (with or without banner) */}
+              {hasAnyActivePromo && (
                 <div className="px-6 pb-2">
                   <hr className="border-gray-100 mb-4" />
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
