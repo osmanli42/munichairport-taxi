@@ -1440,26 +1440,32 @@ export default function AdminPage() {
 
                 {/* Monthly Revenue Chart */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-5">Monatlicher Umsatz (letzte 12 Monate)</h3>
+                  <h3 className="font-bold text-gray-900 mb-2">Monatlicher Umsatz (letzte 12 Monate)</h3>
+                  <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary-600 inline-block" />Kreditkarte</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Barzahlung</span>
+                  </div>
                   {(() => {
-                    const data = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
+                    const data = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number; cash_revenue: number; card_revenue: number; cash_count: number; card_count: number }>;
                     const maxRevenue = Math.max(...data.map(d => d.revenue), 1);
                     return (
                       <div className="space-y-2">
                         {data.map(d => {
                           const [year, month] = d.month.split('-');
                           const label = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-                          const pct = (d.revenue / maxRevenue) * 100;
+                          const totalPct = (d.revenue / maxRevenue) * 100;
+                          const cardPct = d.revenue > 0 ? (d.card_revenue / d.revenue) * totalPct : 0;
+                          const cashPct = d.revenue > 0 ? (d.cash_revenue / d.revenue) * totalPct : 0;
                           return (
                             <div key={d.month} className="flex items-center gap-3">
                               <div className="w-14 text-xs text-gray-500 text-right shrink-0">{label}</div>
-                              <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
-                                <div
-                                  className="h-full bg-primary-600 rounded-full transition-all"
-                                  style={{ width: `${pct}%` }}
-                                />
-                                <div className="absolute inset-0 flex items-center px-3">
-                                  <span className="text-xs font-medium text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                              <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden flex">
+                                <div className="h-full bg-primary-600 transition-all" style={{ width: `${cardPct}%` }} />
+                                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cashPct}%` }} />
+                                <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                  <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                  {d.card_count > 0 && <span className="text-[10px] text-white/80 drop-shadow">💳{d.card_count}</span>}
+                                  {d.cash_count > 0 && <span className="text-[10px] text-white/80 drop-shadow">💵{d.cash_count}</span>}
                                 </div>
                               </div>
                               <div className="w-14 text-xs text-gray-400 shrink-0">{d.count} Fhrt.</div>
