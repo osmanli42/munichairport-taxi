@@ -2087,11 +2087,12 @@ export default function AdminPage() {
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">İsim</th>
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">Email</th>
                       <th className="text-left py-2 px-2 text-gray-500 font-medium w-16">Kaynak</th>
+                      <th className="w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {filterMarketingCustomers().map((c) => (
-                      <tr key={c.email} className="border-t border-gray-50 hover:bg-gray-50">
+                      <tr key={c.email} className="border-t border-gray-50 hover:bg-gray-50 group">
                         <td className="py-2 px-2">
                           <input
                             type="checkbox"
@@ -2109,6 +2110,17 @@ export default function AdminPage() {
                           )}>
                             {c.source === 'ics' ? 'Takvim' : 'DB'}
                           </span>
+                        </td>
+                        <td className="py-2 px-1">
+                          <button
+                            onClick={() => {
+                              setMarketingCustomers(prev => prev.filter(x => x.email !== c.email));
+                              setMarketingSelected(prev => { const n = new Set(prev); n.delete(c.email); return n; });
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
+                          >
+                            <X size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))}
