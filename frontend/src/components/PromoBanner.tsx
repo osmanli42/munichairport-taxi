@@ -23,7 +23,8 @@ interface TimeLeft {
 }
 
 function calcTimeLeft(endDate: string): TimeLeft {
-  const end = new Date(endDate + 'T23:59:59').getTime();
+  const dateOnly = endDate.split('T')[0];
+  const end = new Date(dateOnly + 'T23:59:59').getTime();
   const diff = Math.max(0, end - Date.now());
   return {
     days: Math.floor(diff / 86400000),
