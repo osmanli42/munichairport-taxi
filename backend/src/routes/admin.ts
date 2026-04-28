@@ -1817,8 +1817,8 @@ router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: 
       res.status(400).json({ error: 'subject and content required' });
       return;
     }
-    if (recipients.length > 5000) {
-      res.status(400).json({ error: 'Too many recipients (max 5000 per request)' });
+    if (recipients.length > 50000) {
+      res.status(400).json({ error: 'Too many recipients (max 50000 per request)' });
       return;
     }
 
