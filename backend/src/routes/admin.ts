@@ -292,7 +292,7 @@ router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response):
 
     const recentBookings = await query(`
       SELECT id, booking_number, name, pickup_address, dropoff_address, pickup_datetime, vehicle_type, price, status, created_at
-      FROM bookings ORDER BY created_at DESC LIMIT 5
+      FROM bookings ORDER BY created_at DESC LIMIT 15
     `);
 
     res.json({
