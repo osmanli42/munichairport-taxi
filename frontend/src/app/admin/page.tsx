@@ -424,7 +424,7 @@ export default function AdminPage() {
       if (activeTab === 'rechnung') {
         adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
       }
-      if (activeTab === 'marketing' && marketingCustomers.length === 0) {
+      if (activeTab === 'marketing') {
         loadMarketingCustomers();
       }
       if (activeTab === 'promotions') {
