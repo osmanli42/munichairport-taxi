@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>([]);
   const [marketingSelected, setMarketingSelected] = useState<Set<string>>(new Set());
   const [marketingSearch, setMarketingSearch] = useState('');
+  const [marketingSourceFilter, setMarketingSourceFilter] = useState<'all' | 'db' | 'ics'>('all');
   const [marketingSubject, setMarketingSubject] = useState('');
   const [marketingContent, setMarketingContent] = useState('');
   const [marketingButtonText, setMarketingButtonText] = useState('');
