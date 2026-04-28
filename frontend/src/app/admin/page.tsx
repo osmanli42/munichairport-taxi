@@ -858,6 +858,7 @@ export default function AdminPage() {
                   <thead>
                     <tr className="border-b border-gray-100">
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">Buchung</th>
+                      <th className="text-left py-2 px-2 text-gray-500 font-medium">Gebucht am</th>
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">Kunde</th>
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">Von → Nach</th>
                       <th className="text-left py-2 px-2 text-gray-500 font-medium">Preis</th>
@@ -868,6 +869,7 @@ export default function AdminPage() {
                     {((stats.recentBookings as Booking[]) || []).map((b: Booking) => (
                       <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50">
                         <td className="py-2 px-2 font-mono text-xs">{b.booking_number}</td>
+                        <td className="py-2 px-2 text-xs text-gray-500">{formatDateTime(b.created_at)}</td>
                         <td className="py-2 px-2">{b.name}</td>
                         <td className="py-2 px-2 text-xs text-gray-600 max-w-xs truncate">
                           {b.pickup_address.substring(0, 25)}... → {b.dropoff_address.substring(0, 25)}...
