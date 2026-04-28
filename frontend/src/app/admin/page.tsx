@@ -2041,6 +2041,26 @@ export default function AdminPage() {
                 {marketingSelected.size > 0 ? 'Seçimi Temizle' : 'Tümünü Seç'}
               </button>
             </div>
+            <div className="flex gap-1 mb-2">
+              {(['all', 'db', 'ics'] as const).map(f => {
+                const count = f === 'all' ? marketingCustomers.length : marketingCustomers.filter(c => c.source === f).length;
+                const label = f === 'all' ? 'Tümü' : f === 'db' ? 'DB' : 'Takvim';
+                return (
+                  <button
+                    key={f}
+                    onClick={() => { setMarketingSourceFilter(f); setMarketingSelected(new Set()); }}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                      marketingSourceFilter === f
+                        ? f === 'ics' ? 'bg-purple-600 text-white border-purple-600' : 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    )}
+                  >
+                    {label} ({count})
+                  </button>
+                );
+              })}
+            </div>
             <div className="relative mb-3">
               <Search size={16} className="absolute left-3 top-3 text-gray-400" />
               <input
