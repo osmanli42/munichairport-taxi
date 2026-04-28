@@ -276,7 +276,7 @@ export const adminApi = {
     isHtml?: boolean;
   }): Promise<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
-    const response = await api.post('/admin/marketing/send', data, { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 });
+    const response = await api.post('/admin/marketing/send', data, { headers: { Authorization: `Bearer ${token}` }, timeout: 600000 });
     return response.data;
   },
 };
