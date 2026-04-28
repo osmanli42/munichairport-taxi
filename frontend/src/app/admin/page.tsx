@@ -969,7 +969,7 @@ export default function AdminPage() {
                                 )}
                                 {booking.status !== 'cancelled' && (
                                   <button
-                                    onClick={() => updateStatus(booking.id, 'cancelled')}
+                                    onClick={() => { if (confirm(`Buchung ${booking.booking_number} wirklich stornieren?`)) updateStatus(booking.id, 'cancelled'); }}
                                     className="p-1 text-gray-500 hover:text-red-600 transition-colors"
                                     title="Stornieren"
                                   >
