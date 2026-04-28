@@ -364,10 +364,10 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       ORDER BY dow ASC
     `);
 
-    // Hour of day analysis
+    // Hour of day analysis (using created_at — pickup_datetime often stored without time)
     const hourStats = await query(`
       SELECT
-        HOUR(pickup_datetime) as hour,
+        HOUR(created_at) as hour,
         COUNT(*) as count
       FROM bookings
       WHERE status != 'cancelled'
