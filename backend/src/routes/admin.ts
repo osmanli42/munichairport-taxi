@@ -199,6 +199,28 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
   }
 
   const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+
+  // Send cancellation email when booking is cancelled
+  if (status === 'cancelled' && booking?.email) {
+    const { sendCancellationEmail } = await import('../services/notifications');
+    sendCancellationEmail({
+      booking_number: booking.booking_number,
+      name: booking.name,
+      email: booking.email,
+      phone: booking.phone,
+      pickup_address: booking.pickup_address,
+      dropoff_address: booking.dropoff_address,
+      pickup_datetime: booking.pickup_datetime,
+      vehicle_type: booking.vehicle_type,
+      passengers: booking.passengers,
+      price: booking.price,
+      payment_method: booking.payment_method,
+      language: booking.language || 'de',
+      child_seat: !!booking.child_seat,
+      luggage_count: booking.luggage_count || 0,
+    }).catch(err => console.error('Cancellation email error:', err));
+  }
+
   res.json(booking);
 });
 
