@@ -828,32 +828,6 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
   });
 }
 
-// PLACEHOLDER_TO_REMOVE
-export async function sendAllNotifications_OLD(): Promise<void> {
-    <p>${l.outro}</p>
-    <a href="https://flughafen-muenchen.taxi" class="btn">🚕 ${l.newBooking}</a>
-  </div>
-
-  <div class="contact">
-    <p>${l.contact}</p>
-    <p><a href="tel:+4915141620000">+49 151 4162 0000</a> &nbsp;|&nbsp; <a href="mailto:info@flughafen-muenchen.taxi">info@flughafen-muenchen.taxi</a></p>
-  </div>
-
-  <div class="footer">
-    <p>${l.footer}</p>
-  </div>
-</div>
-</body>
-</html>`;
-
-  await resend.emails.send({
-    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
-    to: booking.email,
-    subject: l.subject,
-    html,
-  });
-}
-
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
