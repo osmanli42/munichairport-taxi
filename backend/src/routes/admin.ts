@@ -315,12 +315,16 @@ router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response):
 // GET /api/admin/statistics - Detailed statistics
 router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    // Monthly revenue for last 12 months (MySQL syntax)
+    // Monthly revenue for last 12 months with payment breakdown
     const monthlyRevenue = await query(`
       SELECT
         DATE_FORMAT(pickup_datetime, '%Y-%m') as month,
         COUNT(*) as count,
-        COALESCE(SUM(price), 0) as revenue
+        COALESCE(SUM(price), 0) as revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cash_revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as card_revenue,
+        SUM(CASE WHEN payment_method = 'cash' THEN 1 ELSE 0 END) as cash_count,
+        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count
       FROM bookings
       WHERE status != 'cancelled'
         AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
