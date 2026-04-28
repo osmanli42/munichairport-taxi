@@ -642,7 +642,7 @@ function BuchenContent() {
                           type="text"
                           value={promoInput}
                           onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
-                          placeholder={locale === 'tr' ? 'WELCOME15' : 'WELCOME15'}
+                          placeholder={locale === 'tr' ? 'Kod girin...' : locale === 'en' ? 'Enter code...' : 'Code eingeben...'}
                           className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-400"
                         />
                         <button
