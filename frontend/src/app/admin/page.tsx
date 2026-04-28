@@ -926,9 +926,19 @@ export default function AdminPage() {
                               )}
                             </td>
                             <td className="py-3 px-4">
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[booking.status]}`}>
-                                {STATUS_LABELS[booking.status]}
-                              </span>
+                              {booking.status === 'cancelled' ? (
+                                <button
+                                  onClick={() => deleteBooking(booking.id)}
+                                  title="Endgültig löschen"
+                                  className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[booking.status]} hover:bg-red-200 hover:line-through cursor-pointer transition-all`}
+                                >
+                                  {STATUS_LABELS[booking.status]}
+                                </button>
+                              ) : (
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[booking.status]}`}>
+                                  {STATUS_LABELS[booking.status]}
+                                </span>
+                              )}
                             </td>
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-1">
