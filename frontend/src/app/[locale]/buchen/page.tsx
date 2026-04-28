@@ -767,7 +767,7 @@ function BuchenContent() {
             ) : (
               <button
                 type="button"
-                onClick={() => setTripType('roundtrip')}
+                onClick={() => { setTripType('roundtrip'); setAppliedPromo(null); setPromoInput(''); setPromoError(''); }}
                 className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 bg-white hover:bg-primary-50 text-primary-600 hover:text-primary-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
               >
                 <span className="text-lg">⇄</span>
