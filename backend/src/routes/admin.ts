@@ -425,6 +425,93 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       ORDER BY week ASC
     `);
 
+    // Price distribution buckets
+    const priceDistribution = await query(`
+      SELECT
+        CASE
+          WHEN price < 50 THEN '< 50 €'
+          WHEN price < 100 THEN '50–100 €'
+          WHEN price < 150 THEN '100–150 €'
+          WHEN price < 200 THEN '150–200 €'
+          WHEN price < 300 THEN '200–300 €'
+          ELSE '300 € +'
+        END as bucket,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY bucket
+      ORDER BY MIN(price) ASC
+    `);
+
+    // Lead time distribution (days between booking and pickup)
+    const leadTimeBuckets = await query(`
+      SELECT
+        CASE
+          WHEN DATEDIFF(pickup_datetime, created_at) = 0 THEN 'Gleicher Tag'
+          WHEN DATEDIFF(pickup_datetime, created_at) <= 3 THEN '1–3 Tage'
+          WHEN DATEDIFF(pickup_datetime, created_at) <= 7 THEN '4–7 Tage'
+          WHEN DATEDIFF(pickup_datetime, created_at) <= 14 THEN '1–2 Wochen'
+          WHEN DATEDIFF(pickup_datetime, created_at) <= 30 THEN '2–4 Wochen'
+          ELSE '1+ Monat'
+        END as bucket,
+        COUNT(*) as count
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY bucket
+      ORDER BY MIN(DATEDIFF(pickup_datetime, created_at)) ASC
+    `);
+
+    // Language distribution
+    const languageStats = await query(`
+      SELECT
+        COALESCE(language, 'de') as language,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY COALESCE(language, 'de')
+      ORDER BY count DESC
+    `);
+
+    // Top 5 best earning days
+    const topDays = await query(`
+      SELECT
+        DATE(pickup_datetime) as day,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY DATE(pickup_datetime)
+      ORDER BY revenue DESC
+      LIMIT 5
+    `);
+
+    // Extras statistics
+    const [extrasStats] = await query(`
+      SELECT
+        SUM(CASE WHEN fahrrad_count > 0 THEN 1 ELSE 0 END) as fahrrad_bookings,
+        COALESCE(SUM(fahrrad_count), 0) as total_fahrrad,
+        SUM(CASE WHEN child_seat = 1 THEN 1 ELSE 0 END) as child_seat_bookings,
+        ROUND(AVG(luggage_count), 1) as avg_luggage,
+        SUM(CASE WHEN luggage_count > 3 THEN 1 ELSE 0 END) as heavy_luggage_bookings,
+        COUNT(*) as total
+      FROM bookings
+      WHERE status != 'cancelled'
+    `);
+
+    // Cancellation rate by month (last 6 months)
+    const cancellationStats = await query(`
+      SELECT
+        DATE_FORMAT(created_at, '%Y-%m') as month,
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+      FROM bookings
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+      ORDER BY month ASC
+    `);
+
     res.json({
       monthlyRevenue,
       vehicleBreakdown,
@@ -435,6 +522,12 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       topRoutes,
       tripTypeStats,
       weeklyRevenue,
+      priceDistribution,
+      leadTimeBuckets,
+      languageStats,
+      topDays,
+      extrasStats,
+      cancellationStats,
     });
   } catch (error) {
     console.error(error);
