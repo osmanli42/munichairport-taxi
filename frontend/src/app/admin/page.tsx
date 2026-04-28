@@ -208,12 +208,12 @@ export default function AdminPage() {
   function parseIcsLocally(text: string): Array<{ email: string; name?: string }> {
     const unfolded = text.replace(/\r?\n[ \t]/g, '');
     const lines = unfolded.split(/\r?\n/);
-    const emailRegex = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+    const emailRegex = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/gi;
     const contactMap = new Map<string, { email: string; name?: string }>();
 
     const addContact = (email: string, name?: string) => {
       const key = email.trim().toLowerCase();
-      if (!key || !key.includes('@')) return;
+      if (!key || !key.includes('@') || key.includes('example.')) return;
       const existing = contactMap.get(key);
       if (!existing || (!existing.name && name)) {
         contactMap.set(key, { email: key, name: name?.trim() || existing?.name });
@@ -221,50 +221,40 @@ export default function AdminPage() {
     };
 
     let inEvent = false;
-    let currentSummary = '';
     let currentDescription = '';
-    let currentAttendees: Array<{ email: string; name?: string }> = [];
-    let currentOrganizer: { email: string; name?: string } | null = null;
 
     for (const line of lines) {
       if (line.startsWith('BEGIN:VEVENT')) {
         inEvent = true;
-        currentSummary = '';
         currentDescription = '';
-        currentAttendees = [];
-        currentOrganizer = null;
       } else if (line.startsWith('END:VEVENT')) {
-        const summaryLower = currentSummary.toLowerCase();
-        const isRelevant = /fahrt|taxi|transfer|abholung|rückfahrt|ruckfahrt|hinfahrt|flughafen/i.test(summaryLower) || summaryLower === '';
-        if (isRelevant || currentAttendees.length > 0 || currentOrganizer) {
-          for (const a of currentAttendees) addContact(a.email, a.name);
-          if (currentOrganizer) addContact(currentOrganizer.email, currentOrganizer.name);
-          const descMatches = currentDescription.match(emailRegex);
-          if (descMatches) for (const e of descMatches) addContact(e);
-        }
+        // Extract all emails from DESCRIPTION (no keyword filter — all events are taxi bookings)
+        const descMatches = currentDescription.match(emailRegex);
+        if (descMatches) for (const e of descMatches) addContact(e);
         inEvent = false;
       } else if (inEvent) {
-        if (line.startsWith('SUMMARY')) {
-          const idx = line.indexOf(':');
-          if (idx > -1) currentSummary = line.slice(idx + 1).trim();
+        if (line.startsWith('ATTENDEE')) {
+          const mailto = line.match(/mailto:([^\r\n;>\s]+)/i);
+          const cn = line.match(/CN=([^;:]+)/i);
+          if (mailto) addContact(mailto[1], cn ? cn[1] : undefined);
+        } else if (line.startsWith('ORGANIZER')) {
+          const mailto = line.match(/mailto:([^\r\n;>\s]+)/i);
+          const cn = line.match(/CN=([^;:]+)/i);
+          if (mailto) addContact(mailto[1], cn ? cn[1] : undefined);
         } else if (line.startsWith('DESCRIPTION')) {
           const idx = line.indexOf(':');
-          if (idx > -1) currentDescription = line.slice(idx + 1).replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';');
-        } else if (line.startsWith('ATTENDEE')) {
-          const mailto = line.match(/mailto:([^\r\n;>]+)/i);
-          const cn = line.match(/CN=([^;:]+)/i);
-          if (mailto) currentAttendees.push({ email: mailto[1], name: cn ? cn[1] : undefined });
-        } else if (line.startsWith('ORGANIZER')) {
-          const mailto = line.match(/mailto:([^\r\n;>]+)/i);
-          const cn = line.match(/CN=([^;:]+)/i);
-          if (mailto) currentOrganizer = { email: mailto[1], name: cn ? cn[1] : undefined };
+          if (idx > -1) currentDescription = line.slice(idx + 1).replace(/\\n/g, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';');
         }
       }
     }
 
-    const ownEmail = 'info@flughafen-muenchen.taxi';
+    const blocklist = new Set([
+      'info@flughafen-muenchen.taxi',
+      'info@flughafen-muenchen-taxi.de',
+      'freisingtaxi@gmail.com',
+    ]);
     return Array.from(contactMap.values()).filter(
-      c => !c.email.startsWith('noreply') && !c.email.startsWith('no-reply') && c.email !== ownEmail
+      c => !c.email.startsWith('noreply') && !c.email.startsWith('no-reply') && !blocklist.has(c.email)
     );
   }
 
