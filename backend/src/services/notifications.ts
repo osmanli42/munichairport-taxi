@@ -70,9 +70,9 @@ function buildPriceBlock(booking: BookingNotificationData, lang: string): string
 
 function getVehicleLabel(vehicle_type: string, lang: string): string {
   const labels: Record<string, Record<string, string>> = {
-    kombi: { de: 'Kombi (1-3 Personen)', en: 'Kombi (1-3 persons)', tr: 'Kombi (1-3 kişi)' },
-    van: { de: 'Van/Minibus (4-7 Personen)', en: 'Van/Minibus (4-7 persons)', tr: 'Van/Minibüs (4-7 kişi)' },
-    grossraumtaxi: { de: 'Großraumtaxi (8+ Personen)', en: 'Large Taxi (8+ persons)', tr: 'Büyük Taksi (8+ kişi)' },
+    kombi: { de: 'Kombi', en: 'Kombi', tr: 'Kombi' },
+    van: { de: 'Van / Minibus', en: 'Van / Minibus', tr: 'Van / Minibüs' },
+    grossraumtaxi: { de: 'Großraumtaxi', en: 'Large Taxi', tr: 'Büyük Taksi' },
   };
   return labels[vehicle_type]?.[lang] || vehicle_type;
 }
