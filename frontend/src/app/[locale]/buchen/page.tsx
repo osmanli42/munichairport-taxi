@@ -636,7 +636,7 @@ function BuchenContent() {
                         <span className="text-gray-500">
                           {locale === 'tr' ? 'Grundpreis' : locale === 'en' ? 'Base price' : 'Grundpreis'}:
                         </span>
-                        <span className="text-gray-500 line-through">{formatPrice(price)}</span>
+                        <span className="text-gray-500 line-through">{formatPrice(promoBase)}</span>
                       </div>
                       <div className="flex items-center justify-between text-base font-bold px-1">
                         <span className="text-gray-800">
