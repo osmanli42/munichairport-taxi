@@ -416,12 +416,16 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       GROUP BY trip_type
     `);
 
-    // Weekly revenue for last 8 weeks
+    // Weekly revenue for last 8 weeks with payment breakdown
     const weeklyRevenue = await query(`
       SELECT
         DATE_FORMAT(pickup_datetime, '%Y-W%v') as week,
         COUNT(*) as count,
-        COALESCE(SUM(price), 0) as revenue
+        COALESCE(SUM(price), 0) as revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cash_revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as card_revenue,
+        SUM(CASE WHEN payment_method = 'cash' THEN 1 ELSE 0 END) as cash_count,
+        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count
       FROM bookings
       WHERE status != 'cancelled'
         AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 8 WEEK)
