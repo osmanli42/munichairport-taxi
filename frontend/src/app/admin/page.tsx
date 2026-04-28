@@ -113,6 +113,11 @@ export default function AdminPage() {
   const [promoMsg, setPromoMsg] = useState('');
 
   useEffect(() => {
+    const icsContacts = marketingCustomers.filter(c => c.source === 'ics');
+    localStorage.setItem('marketing_ics_contacts', JSON.stringify(icsContacts));
+  }, [marketingCustomers]);
+
+  useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
     if (savedToken) {
       setToken(savedToken);
