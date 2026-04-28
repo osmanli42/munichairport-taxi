@@ -107,10 +107,9 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
     const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as count');
     const [countResult] = await query<{ count: number }>(countSql, params);
 
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    const fullParams = [...params, limitNum, offset];
+    sql += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
 
-    const rawBookings = await query(sql, fullParams);
+    const rawBookings = await query(sql, params);
     const bookings = rawBookings.map(decryptBooking);
 
     res.json({
