@@ -657,6 +657,7 @@ export async function sendMarketingEmail(
   const BATCH_SIZE = 100;
 
   for (let i = 0; i < unique.length; i += BATCH_SIZE) {
+    if (i > 0) await new Promise(r => setTimeout(r, 500));
     const batch = unique.slice(i, i + BATCH_SIZE);
     const payload = batch.map((r) => ({
       from: fromAddress,
