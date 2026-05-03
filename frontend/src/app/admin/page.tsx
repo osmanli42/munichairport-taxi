@@ -1397,16 +1397,16 @@ export default function AdminPage() {
                 {(() => {
                   const avg = detailedStats.avgStats as { avg_price: number; avg_distance: number; avg_passengers: number; max_price: number; min_price: number };
                   const monthly = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number }>;
-                  // Bu ay ve geçen ay — takvim bazlı karşılaştırma
                   const now = new Date();
                   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                  const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
                   const currentMonthData = monthly.find(m => m.month === currentMonth);
-                  const lastMonth = currentMonthData; // Bu ay = "son ay"
-                  const prevMonth = monthly.find(m => m.month === prevMonthKey);
-                  const growth = lastMonth && prevMonth && prevMonth.revenue > 0
-                    ? (((lastMonth.revenue - prevMonth.revenue) / prevMonth.revenue) * 100).toFixed(1)
+                  const lastMonth = currentMonthData;
+                  // MTD karşılaştırma: bu ayın 1→bugün vs geçen ayın 1→aynı gün
+                  const mtd = detailedStats.mtdComparison as Array<{ period: string; revenue: number; count: number }> | undefined;
+                  const mtdCurrent = mtd?.find(r => r.period === 'current');
+                  const mtdPrevious = mtd?.find(r => r.period === 'previous');
+                  const growth = mtdCurrent && mtdPrevious && Number(mtdPrevious.revenue) > 0
+                    ? (((Number(mtdCurrent.revenue) - Number(mtdPrevious.revenue)) / Number(mtdPrevious.revenue)) * 100).toFixed(1)
                     : null;
                   return (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
