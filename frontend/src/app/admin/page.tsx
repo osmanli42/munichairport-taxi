@@ -1426,7 +1426,7 @@ export default function AdminPage() {
                         <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten</div>
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
-                        <div className="text-xs text-gray-500 mb-1">Wachstum (1–{now.getDate()}. Mai)</div>
+                        <div className="text-xs text-gray-500 mb-1">Wachstum (1–{now.getDate()}. {now.toLocaleString('de-DE', { month: 'short' })})</div>
                         <div className={`text-2xl font-bold ${growth !== null ? (parseFloat(growth) >= 0 ? 'text-green-600' : 'text-red-500') : 'text-gray-400'}`}>
                           {growth !== null ? `${parseFloat(growth) >= 0 ? '+' : ''}${growth}%` : '—'}
                         </div>
