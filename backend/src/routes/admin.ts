@@ -543,6 +543,7 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
 
     res.json({
       monthlyRevenue,
+      mtdComparison,
       vehicleBreakdown,
       paymentBreakdown,
       dayOfWeekStats,
