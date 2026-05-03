@@ -332,6 +332,27 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       ORDER BY month ASC
     `);
 
+    // Month-to-date vs same period last month (day 1 → today's day)
+    const mtdComparison = await query(`
+      SELECT
+        CASE
+          WHEN DATE_FORMAT(pickup_datetime, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m') THEN 'current'
+          ELSE 'previous'
+        END as period,
+        COALESCE(SUM(price), 0) as revenue,
+        COUNT(*) as count
+      FROM bookings
+      WHERE status != 'cancelled'
+        AND (
+          (DATE_FORMAT(pickup_datetime, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+           AND DAY(pickup_datetime) <= DAY(NOW()))
+          OR
+          (DATE_FORMAT(pickup_datetime, '%Y-%m') = DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH), '%Y-%m')
+           AND DAY(pickup_datetime) <= DAY(NOW()))
+        )
+      GROUP BY period
+    `);
+
     // Vehicle type breakdown
     const vehicleBreakdown = await query(`
       SELECT
