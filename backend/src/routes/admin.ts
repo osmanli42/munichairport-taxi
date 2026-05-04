@@ -1058,7 +1058,7 @@ router.post('/stripe/sync', authenticateAdmin, async (req: AuthRequest, res: Res
         if (Math.round(roundedCents) === Math.round(amount)) {
           await run(
             'UPDATE bookings SET stripe_charge_id = ?, stripe_payment_date = ? WHERE id = ?',
-            [chargeId, chargeDate.toISOString(), (b as any).id]
+            [chargeId, chargeDate.toISOString().replace('T', ' ').replace('Z', '').split('.')[0], (b as any).id]
           );
           matched++;
           details.push({ charge_id: chargeId, booking_number: (b as any).booking_number, status: 'matched' });
