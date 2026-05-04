@@ -1168,7 +1168,7 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
         if (pt >= chargeMin && pt <= chargeMax) {
           const roundedCents = Math.round(Math.ceil(b.price * 2) / 2 * 100);
           if (roundedCents === charge.amount) {
-            chargeUpdates.push({ id: b.id, chargeId: charge.id, paymentDate: chargeDate.toISOString(), payoutId });
+            chargeUpdates.push({ id: b.id, chargeId: charge.id, paymentDate: chargeDate.toISOString().replace('T', ' ').replace('Z', '').split('.')[0], payoutId });
             b.stripe_charge_id = charge.id; // mark as matched in memory
             matched++;
             details.push({ charge_id: charge.id, booking_number: b.booking_number, amount: charge.amount / 100, status: 'matched' });
