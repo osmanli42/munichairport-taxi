@@ -1956,4 +1956,72 @@ router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: 
   }
 });
 
+// GET /api/admin/settings/reminder
+router.get('/settings/reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const rows = await query<{ key_name: string; value: string }>(
+      "SELECT key_name, value FROM settings WHERE key_name IN ('reminder_enabled', 'reminder_time')"
+    );
+    const map: Record<string, string> = {};
+    rows.forEach((r) => { map[r.key_name] = r.value; });
+    res.json({
+      enabled: map['reminder_enabled'] === 'true',
+      time: map['reminder_time'] || '18:00',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/settings/reminder
+router.post('/settings/reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { enabled, time } = req.body as { enabled?: boolean; time?: string };
+    if (enabled !== undefined) {
+      await run(
+        "INSERT INTO settings (key_name, value) VALUES ('reminder_enabled', ?) ON DUPLICATE KEY UPDATE value = ?",
+        [String(enabled), String(enabled)]
+      );
+    }
+    if (time !== undefined) {
+      if (!/^\d{2}:\d{2}$/.test(time)) {
+        res.status(400).json({ error: 'time must be HH:MM format' });
+        return;
+      }
+      await run(
+        "INSERT INTO settings (key_name, value) VALUES ('reminder_time', ?) ON DUPLICATE KEY UPDATE value = ?",
+        [time, time]
+      );
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/test-reminder — JWT korumalı, yarınki gerçek fahrtlara test gönderimi
+router.get('/test-reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { sendReminderEmail } = await import('../services/notifications');
+    const bookings = await query<any>(
+      `SELECT * FROM bookings
+       WHERE DATE(pickup_datetime) = DATE(DATE_ADD(NOW(), INTERVAL 1 DAY))
+       AND status NOT IN ('cancelled', 'storniert')
+       ORDER BY pickup_datetime ASC`
+    );
+    const results: any[] = [];
+    for (const b of bookings) {
+      try {
+        await sendReminderEmail(b);
+        results.push({ booking_number: b.booking_number, email: b.email, status: 'sent' });
+      } catch (e: any) {
+        results.push({ booking_number: b.booking_number, email: b.email, status: 'error', error: e.message });
+      }
+    }
+    res.json({ count: bookings.length, results });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
