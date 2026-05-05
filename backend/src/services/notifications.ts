@@ -829,6 +829,129 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
   });
 }
 
+export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {
+  const lang = ['de', 'en', 'tr'].includes(booking.language) ? booking.language : 'de';
+  const isAirport = !!(booking.flight_number && booking.flight_number.trim());
+
+  const pickupDate = new Date(booking.pickup_datetime);
+  const pickupTime = pickupDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const pickupDateStr = pickupDate.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const pickupDateStrEN = pickupDate.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const pickupDateStrTR = pickupDate.toLocaleDateString('tr-TR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const vehicleLabels: Record<string, Record<string, string>> = {
+    de: { kombi: 'Kombi (bis 4 Pers.)', van: 'Van (bis 7 Pers.)', grossraumtaxi: 'Großraumtaxi (bis 8 Pers.)' },
+    en: { kombi: 'Kombi (up to 4 pax)', van: 'Van (up to 7 pax)', grossraumtaxi: 'Minivan (up to 8 pax)' },
+    tr: { kombi: 'Kombi (4 kişiye kadar)', van: 'Van (7 kişiye kadar)', grossraumtaxi: 'Büyük Araç (8 kişiye kadar)' },
+  };
+  const vehicleLabel = vehicleLabels[lang]?.[booking.vehicle_type] || booking.vehicle_type;
+
+  const flightRow = (isAirport && booking.flight_number)
+    ? `<tr><td style="padding:6px 0;color:#666;width:40%;">${lang === 'de' ? 'Flugnummer' : lang === 'en' ? 'Flight Number' : 'Uçuş No'}</td><td style="padding:6px 0;color:#333;font-weight:bold;">${booking.flight_number}</td></tr>`
+    : '';
+
+  const noteDE = isAirport
+    ? `✈️ <strong>Flugstatus-Tracking:</strong><br>Wir beobachten Ihren Flugstatus in Echtzeit. Auch bei Verspätungen wird Ihr Fahrer angepasst. Bitte halten Sie Ihr Telefon erreichbar.`
+    : `🏙️ <strong>Bitte beachten:</strong><br>Ihr Fahrer wird Sie pünktlich am vereinbarten Treffpunkt abholen. Bitte halten Sie Ihr Telefon erreichbar.`;
+
+  const noteEN = isAirport
+    ? `✈️ <strong>Live Flight Tracking:</strong><br>We monitor your flight status in real time. Even if your flight is delayed, your driver will adjust accordingly. Please keep your phone reachable.`
+    : `🏙️ <strong>Please note:</strong><br>Your driver will pick you up punctually at the agreed location. Please keep your phone reachable.`;
+
+  const noteTR = isAirport
+    ? `✈️ <strong>Uçuş Takibi:</strong><br>Uçuşunuzu gerçek zamanlı takip ediyoruz. Gecikme durumunda sürücümüz buna göre ayarlama yapar. Lütfen telefonunuzu açık tutun.`
+    : `🏙️ <strong>Lütfen dikkat:</strong><br>Sürücümüz sizi belirlenen noktada tam zamanında karşılayacak. Lütfen telefonunuzu açık tutun.`;
+
+  const detailsTable = (labels: { bn: string; date: string; time: string; pickup: string; drop: string; vehicle: string; pax: string; price: string }, note: string, dateStr: string) => `
+    <div style="background:#f0f4f8;border-left:4px solid #f6c644;border-radius:6px;padding:20px;margin:20px 0;">
+      <h2 style="color:#1a365d;font-size:16px;margin:0 0 15px;">🚕 ${lang === 'de' ? 'Fahrtdetails' : lang === 'en' ? 'Trip Details' : 'Transfer Detayları'}</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#666;width:40%;">${labels.bn}</td><td style="padding:6px 0;color:#1a365d;font-weight:bold;">${booking.booking_number}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.date}</td><td style="padding:6px 0;color:#333;">${dateStr}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.time}</td><td style="padding:6px 0;color:#1a365d;font-weight:bold;">${pickupTime} Uhr</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.pickup}</td><td style="padding:6px 0;color:#333;">${booking.pickup_address}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.drop}</td><td style="padding:6px 0;color:#333;">${booking.dropoff_address}</td></tr>
+        ${flightRow}
+        <tr><td style="padding:6px 0;color:#666;">${labels.vehicle}</td><td style="padding:6px 0;color:#333;">${vehicleLabel}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.pax}</td><td style="padding:6px 0;color:#333;">${booking.passengers}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.price}</td><td style="padding:6px 0;color:#1a365d;font-weight:bold;">€${formatPrice(booking.price)}</td></tr>
+      </table>
+    </div>
+    <div style="background:#fff8e1;border:1px solid #f6c644;border-radius:6px;padding:15px;margin:20px 0;">
+      <p style="margin:0;font-size:14px;color:#555;">${note}</p>
+    </div>`;
+
+  const contact = `
+    <p style="font-size:14px;color:#555;">
+      📞 <a href="tel:+4915141620000" style="color:#1a365d;">+49 151 41620000</a><br>
+      💬 WhatsApp: <a href="https://wa.me/4915141620000" style="color:#1a365d;">+49 151 41620000</a><br>
+      ✉️ <a href="mailto:info@flughafen-muenchen.taxi" style="color:#1a365d;">info@flughafen-muenchen.taxi</a>
+    </p>`;
+
+  const footer = `
+    <div style="background:#1a365d;padding:20px;text-align:center;">
+      <p style="color:#aaa;font-size:12px;margin:0;">© ${new Date().getFullYear()} Flughafen-muenchen.TAXI · <a href="https://flughafen-muenchen.taxi" style="color:#f6c644;">flughafen-muenchen.taxi</a></p>
+    </div>`;
+
+  const headerSubtitle = lang === 'de'
+    ? 'Ihr zuverlässiger Flughafentransfer'
+    : lang === 'en' ? 'Your reliable airport transfer'
+    : 'Güvenilir havalimanı transferiniz';
+
+  let subject: string;
+  let bodyHtml: string;
+
+  if (lang === 'de') {
+    subject = `Erinnerung: Ihre Fahrt morgen – ${booking.booking_number}`;
+    bodyHtml = `
+      <p style="font-size:16px;color:#333;">Guten Tag, <strong>${booking.name}</strong>,</p>
+      <p style="font-size:15px;color:#555;line-height:1.6;">wir möchten Sie an Ihre ${isAirport ? 'Flughafen-Fahrt' : 'Fahrt'} <strong>morgen</strong> erinnern. Wir freuen uns, Sie pünktlich zu Ihrem Ziel zu bringen.</p>
+      ${detailsTable({ bn: 'Buchungsnummer', date: 'Datum', time: 'Abfahrtszeit', pickup: 'Abholadresse', drop: 'Zieladresse', vehicle: 'Fahrzeug', pax: 'Passagiere', price: 'Gesamtpreis' }, noteDE, pickupDateStr)}
+      ${contact}
+      <p style="font-size:14px;color:#555;margin-top:25px;">Wir wünschen Ihnen eine angenehme Fahrt!<br><br>Mit freundlichen Grüßen,<br><strong>Ihr Flughafen-muenchen.TAXI Team</strong></p>`;
+  } else if (lang === 'en') {
+    subject = `Reminder: Your transfer tomorrow – ${booking.booking_number}`;
+    bodyHtml = `
+      <p style="font-size:16px;color:#333;">Dear <strong>${booking.name}</strong>,</p>
+      <p style="font-size:15px;color:#555;line-height:1.6;">This is a friendly reminder about your ${isAirport ? 'airport transfer' : 'transfer'} <strong>tomorrow</strong>. We look forward to getting you there on time.</p>
+      ${detailsTable({ bn: 'Booking Number', date: 'Date', time: 'Pickup Time', pickup: 'Pickup Address', drop: 'Destination', vehicle: 'Vehicle', pax: 'Passengers', price: 'Total Price' }, noteEN, pickupDateStrEN)}
+      ${contact}
+      <p style="font-size:14px;color:#555;margin-top:25px;">We wish you a pleasant journey!<br><br>Kind regards,<br><strong>Your Flughafen-muenchen.TAXI Team</strong></p>`;
+  } else {
+    subject = `Hatırlatma: Yarınki transferiniz – ${booking.booking_number}`;
+    bodyHtml = `
+      <p style="font-size:16px;color:#333;">Sayın <strong>${booking.name}</strong>,</p>
+      <p style="font-size:15px;color:#555;line-height:1.6;"><strong>Yarınki</strong> ${isAirport ? 'havalimanı transferinizi' : 'transferinizi'} hatırlatmak istedik. Sizi zamanında ve konforlu şekilde hedefinize ulaştırmaktan mutluluk duyacağız.</p>
+      ${detailsTable({ bn: 'Rezervasyon No', date: 'Tarih', time: 'Alış Saati', pickup: 'Alış Adresi', drop: 'Varış Adresi', vehicle: 'Araç', pax: 'Yolcu Sayısı', price: 'Toplam Tutar' }, noteTR, pickupDateStrTR)}
+      ${contact}
+      <p style="font-size:14px;color:#555;margin-top:25px;">İyi yolculuklar dileriz!<br><br>Saygılarımızla,<br><strong>Flughafen-muenchen.TAXI Ekibi</strong></p>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;">
+  <div style="max-width:600px;margin:30px auto;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background:#1a365d;padding:30px;text-align:center;">
+      <h1 style="color:#f6c644;margin:0;font-size:22px;">Flughafen-muenchen.TAXI</h1>
+      <p style="color:#ffffff;margin:8px 0 0;font-size:14px;">${headerSubtitle}</p>
+    </div>
+    <div style="padding:30px;">
+      ${bodyHtml}
+    </div>
+    ${footer}
+  </div>
+</body>
+</html>`;
+
+  await resend.emails.send({
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
+    to: booking.email,
+    subject,
+    html,
+  });
+}
+
 export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
