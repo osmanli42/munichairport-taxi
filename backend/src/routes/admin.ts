@@ -1959,11 +1959,11 @@ router.post('/marketing/send', authenticateAdmin, async (req: AuthRequest, res: 
 // GET /api/admin/settings/reminder
 router.get('/settings/reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const rows = await query<{ key_name: string; value: string }>(
-      "SELECT key_name, value FROM settings WHERE key_name IN ('reminder_enabled', 'reminder_time')"
+    const rows = await query<{ setting_key: string; setting_value: string }>(
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('reminder_enabled', 'reminder_time')"
     );
     const map: Record<string, string> = {};
-    rows.forEach((r) => { map[r.key_name] = r.value; });
+    rows.forEach((r) => { map[r.setting_key] = r.setting_value; });
     res.json({
       enabled: map['reminder_enabled'] === 'true',
       time: map['reminder_time'] || '18:00',
@@ -1979,7 +1979,7 @@ router.post('/settings/reminder', authenticateAdmin, async (req: AuthRequest, re
     const { enabled, time } = req.body as { enabled?: boolean; time?: string };
     if (enabled !== undefined) {
       await run(
-        "INSERT INTO settings (key_name, value) VALUES ('reminder_enabled', ?) ON DUPLICATE KEY UPDATE value = ?",
+        "INSERT INTO settings (setting_key, setting_value) VALUES ('reminder_enabled', ?) ON DUPLICATE KEY UPDATE setting_value = ?",
         [String(enabled), String(enabled)]
       );
     }
@@ -1989,7 +1989,7 @@ router.post('/settings/reminder', authenticateAdmin, async (req: AuthRequest, re
         return;
       }
       await run(
-        "INSERT INTO settings (key_name, value) VALUES ('reminder_time', ?) ON DUPLICATE KEY UPDATE value = ?",
+        "INSERT INTO settings (setting_key, setting_value) VALUES ('reminder_time', ?) ON DUPLICATE KEY UPDATE setting_value = ?",
         [time, time]
       );
     }
