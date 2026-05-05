@@ -71,11 +71,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server first, then initialize database
+// Start server first, then initialize database and cron jobs
 app.listen(PORT, () => {
   console.log(`Munich Airport Taxi API running on port ${PORT}`);
   initializeDatabase()
-    .then(() => console.log('Database ready.'))
+    .then(() => {
+      console.log('Database ready.');
+      startReminderJob();
+    })
     .catch((err) => console.error('Database init warning:', err.message));
 });
 
