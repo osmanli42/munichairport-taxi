@@ -123,6 +123,8 @@ export async function initializeDatabase(): Promise<void> {
       ['company_email', 'info@flughafen-muenchen.taxi'],
       ['company_steuernr', ''],
       ['company_ustidnr', ''],
+      ['reminder_enabled', 'true'],
+      ['reminder_time', '18:00'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
