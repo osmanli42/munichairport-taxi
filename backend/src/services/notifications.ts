@@ -832,7 +832,11 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {
   const resend = new Resend(RESEND_API_KEY);
   const lang = ['de', 'en', 'tr'].includes(booking.language) ? booking.language : 'de';
-  const isAirport = !!(booking.flight_number && booking.flight_number.trim());
+  // Havalimanı ABHOLUNG: müşteri havalimanından alınıyor (pickup_address'te Flughafen var)
+  const pickupIsAirport = /flughafen|airport|muc|terminal/i.test(booking.pickup_address || '');
+  const hasFlightNumber = !!(booking.flight_number && booking.flight_number.trim());
+  const isAirport = hasFlightNumber; // genel airport trip (uçuş no varsa)
+  const showFlightTracking = hasFlightNumber && pickupIsAirport; // tracking notu sadece abholung'da
 
   const pickupDate = new Date(booking.pickup_datetime);
   const pickupTime = pickupDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
