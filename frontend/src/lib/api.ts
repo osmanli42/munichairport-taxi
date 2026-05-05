@@ -279,6 +279,17 @@ export const adminApi = {
     const response = await api.post('/admin/marketing/send', data, { headers: { Authorization: `Bearer ${token}` }, timeout: 600000 });
     return response.data;
   },
+
+  getReminderSettings: async (): Promise<{ enabled: boolean; time: string }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.get('/admin/settings/reminder', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  saveReminderSettings: async (data: { enabled?: boolean; time?: string }): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    await api.post('/admin/settings/reminder', data, { headers: { Authorization: `Bearer ${token}` } });
+  },
 };
 
 export default api;
