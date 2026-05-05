@@ -7,15 +7,15 @@ let lastRunDate = '';
 export function startReminderJob(): void {
   cron.schedule('* * * * *', async () => {
     try {
-      const [enabledRow] = await query<{ value: string }>(
-        "SELECT value FROM settings WHERE key_name = 'reminder_enabled'"
+      const [enabledRow] = await query<{ setting_value: string }>(
+        "SELECT setting_value FROM settings WHERE setting_key = 'reminder_enabled'"
       );
-      if (enabledRow?.value !== 'true') return;
+      if (enabledRow?.setting_value !== 'true') return;
 
-      const [timeRow] = await query<{ value: string }>(
-        "SELECT value FROM settings WHERE key_name = 'reminder_time'"
+      const [timeRow] = await query<{ setting_value: string }>(
+        "SELECT setting_value FROM settings WHERE setting_key = 'reminder_time'"
       );
-      const [targetH, targetM] = (timeRow?.value || '18:00').split(':');
+      const [targetH, targetM] = (timeRow?.setting_value || '18:00').split(':');
       const now = new Date();
       if (now.getHours() !== +targetH || now.getMinutes() !== +targetM) return;
 
