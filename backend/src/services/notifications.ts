@@ -855,17 +855,17 @@ export async function sendReminderEmail(booking: BookingNotificationData): Promi
     ? `<tr><td style="padding:6px 0;color:#666;width:40%;">${lang === 'de' ? 'Flugnummer' : lang === 'en' ? 'Flight Number' : 'Uçuş No'}</td><td style="padding:6px 0;color:#333;font-weight:bold;">${booking.flight_number}</td></tr>`
     : '';
 
-  const noteDE = isAirport
+  const noteDE = showFlightTracking
     ? `✈️ <strong>Flugstatus-Tracking:</strong><br>Wir beobachten Ihren Flugstatus in Echtzeit. Auch bei Verspätungen wird Ihr Fahrer angepasst. Bitte halten Sie Ihr Telefon erreichbar.`
-    : `🏙️ <strong>Bitte beachten:</strong><br>Ihr Fahrer wird Sie pünktlich am vereinbarten Treffpunkt abholen. Bitte halten Sie Ihr Telefon erreichbar.`;
+    : `📋 <strong>Bitte beachten:</strong><br>Ihr Fahrer wird Sie pünktlich am vereinbarten Treffpunkt abholen. Bitte halten Sie Ihr Telefon erreichbar.`;
 
-  const noteEN = isAirport
+  const noteEN = showFlightTracking
     ? `✈️ <strong>Live Flight Tracking:</strong><br>We monitor your flight status in real time. Even if your flight is delayed, your driver will adjust accordingly. Please keep your phone reachable.`
-    : `🏙️ <strong>Please note:</strong><br>Your driver will pick you up punctually at the agreed location. Please keep your phone reachable.`;
+    : `📋 <strong>Please note:</strong><br>Your driver will pick you up punctually at the agreed location. Please keep your phone reachable.`;
 
-  const noteTR = isAirport
+  const noteTR = showFlightTracking
     ? `✈️ <strong>Uçuş Takibi:</strong><br>Uçuşunuzu gerçek zamanlı takip ediyoruz. Gecikme durumunda sürücümüz buna göre ayarlama yapar. Lütfen telefonunuzu açık tutun.`
-    : `🏙️ <strong>Lütfen dikkat:</strong><br>Sürücümüz sizi belirlenen noktada tam zamanında karşılayacak. Lütfen telefonunuzu açık tutun.`;
+    : `📋 <strong>Lütfen dikkat:</strong><br>Sürücümüz sizi belirlenen noktada tam zamanında karşılayacak. Lütfen telefonunuzu açık tutun.`;
 
   const detailsTable = (labels: { bn: string; date: string; time: string; pickup: string; drop: string; vehicle: string; pax: string; price: string }, note: string, dateStr: string) => `
     <div style="background:#f0f4f8;border-left:4px solid #f6c644;border-radius:6px;padding:20px;margin:20px 0;">
