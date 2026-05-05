@@ -830,6 +830,7 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
 }
 
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {
+  const resend = new Resend(RESEND_API_KEY);
   const lang = ['de', 'en', 'tr'].includes(booking.language) ? booking.language : 'de';
   const isAirport = !!(booking.flight_number && booking.flight_number.trim());
 
