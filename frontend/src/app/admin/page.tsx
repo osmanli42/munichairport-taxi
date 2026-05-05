@@ -423,6 +423,10 @@ export default function AdminPage() {
       if (activeTab === 'prices') {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
+        adminApi.getReminderSettings().then(d => {
+          setReminderEnabled(d.enabled);
+          setReminderTime(d.time);
+        }).catch(() => {});
       }
       if (activeTab === 'rechnung') {
         adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
