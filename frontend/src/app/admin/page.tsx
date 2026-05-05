@@ -1206,6 +1206,65 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Günlük Fahrt Hatırlatması */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+              <h3 className="font-semibold text-gray-900 mb-4">🔔 Günlük Fahrt Hatırlatması</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Otomatik Hatırlatma E-postası</p>
+                    <p className="text-xs text-gray-500">Ayarlanan saatte yarınki fahrtlar müşterilere gönderilir (DE/EN/TR)</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const newVal = !reminderEnabled;
+                      setReminderSaving(true);
+                      try {
+                        await adminApi.saveReminderSettings({ enabled: newVal });
+                        setReminderEnabled(newVal);
+                      } catch {}
+                      setReminderSaving(false);
+                    }}
+                    className={cn(
+                      'relative w-14 h-7 rounded-full transition-colors',
+                      reminderEnabled ? 'bg-green-500' : 'bg-gray-300'
+                    )}
+                    disabled={reminderSaving}
+                  >
+                    <div className={cn(
+                      'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                      reminderEnabled ? 'translate-x-7' : 'translate-x-0.5'
+                    )} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gönderim Saati</label>
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => setReminderTime(e.target.value)}
+                      disabled={!reminderEnabled || reminderSaving}
+                      className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-50"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setReminderSaving(true);
+                      try {
+                        await adminApi.saveReminderSettings({ time: reminderTime });
+                      } catch {}
+                      setReminderSaving(false);
+                    }}
+                    disabled={!reminderEnabled || reminderSaving}
+                    className="mt-5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {reminderSaving ? '...' : 'Kaydet'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {prices.map((price) => (
                 <div key={price.vehicle_type} className="bg-white rounded-2xl shadow-sm p-6">
