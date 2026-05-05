@@ -52,6 +52,9 @@ export default function AdminPage() {
   const [cardVisible, setCardVisible] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [reminderTime, setReminderTime] = useState('18:00');
+  const [reminderSaving, setReminderSaving] = useState(false);
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
     bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
     company_name: '', company_address: '', company_phone: '', company_email: '',
