@@ -229,6 +229,7 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
 // GET /api/admin/visitor-stats?range=today|7d|30d
 router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
+    await ensureTables();
     const range = (req.query.range as string) || 'today';
     let intervalSql = '1 DAY';
     if (range === '7d') intervalSql = '7 DAY';
