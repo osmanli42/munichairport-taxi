@@ -49,6 +49,26 @@ async function ensureTables(): Promise<void> {
       INDEX idx_viewed_at (viewed_at)
     )
   `);
+  await run(`
+    CREATE TABLE IF NOT EXISTS visitor_events (
+      id INT NOT NULL AUTO_INCREMENT,
+      session_id VARCHAR(64) NOT NULL,
+      type VARCHAR(20) NOT NULL,
+      path VARCHAR(500) NOT NULL,
+      x_pct DECIMAL(6,3) DEFAULT NULL,
+      y_pct DECIMAL(6,3) DEFAULT NULL,
+      scroll_depth INT DEFAULT NULL,
+      target VARCHAR(255) DEFAULT NULL,
+      viewport_w INT DEFAULT NULL,
+      viewport_h INT DEFAULT NULL,
+      device VARCHAR(20) DEFAULT NULL,
+      occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      INDEX idx_path_type (path(100), type),
+      INDEX idx_occurred_at (occurred_at),
+      INDEX idx_session_id (session_id)
+    )
+  `);
   tablesReady = true;
 }
 
