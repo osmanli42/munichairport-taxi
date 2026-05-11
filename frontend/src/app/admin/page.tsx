@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live';
 
 interface MarketingCustomer {
   email: string;
