@@ -215,6 +215,140 @@ router.post('/track/heartbeat', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/track/event — clicks + scroll events (batched array)
+// Body: { session_id, path, events: [{type, x_pct, y_pct, scroll_depth, target, viewport_w, viewport_h, device}] }
+router.post('/track/event', async (req: Request, res: Response) => {
+  try {
+    await ensureTables();
+    const { session_id, path, events } = req.body || {};
+    if (!session_id || !path || !Array.isArray(events) || events.length === 0) {
+      res.status(400).json({ error: 'missing fields' });
+      return;
+    }
+    // Cap batch size to prevent abuse
+    const batch = events.slice(0, 50);
+    const values: any[] = [];
+    const placeholders: string[] = [];
+    for (const e of batch) {
+      placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      values.push(
+        trunc(session_id, 64),
+        trunc(e.type || 'click', 20),
+        trunc(path, 500),
+        e.x_pct != null ? Number(e.x_pct) : null,
+        e.y_pct != null ? Number(e.y_pct) : null,
+        e.scroll_depth != null ? Number(e.scroll_depth) : null,
+        trunc(e.target, 255),
+        e.viewport_w != null ? Number(e.viewport_w) : null,
+        e.viewport_h != null ? Number(e.viewport_h) : null,
+        trunc(e.device, 20),
+      );
+    }
+    await run(
+      `INSERT INTO visitor_events
+        (session_id, type, path, x_pct, y_pct, scroll_depth, target, viewport_w, viewport_h, device)
+       VALUES ${placeholders.join(', ')}`,
+      values
+    );
+    // Also keep the session alive
+    await run(`UPDATE visitor_sessions SET last_seen = NOW() WHERE session_id = ?`, [session_id]);
+    res.json({ ok: true, count: batch.length });
+  } catch (err: any) {
+    console.error('track/event error:', err.message);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// GET /api/admin/heatmap-pages — pages with most click data
+router.get('/admin/heatmap-pages', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTables();
+    const range = (req.query.range as string) || '7d';
+    const since = range === 'today' ? `CURDATE()` :
+                  range === '30d' ? `NOW() - INTERVAL 30 DAY` :
+                  `NOW() - INTERVAL 7 DAY`;
+    const pages = await query<any>(
+      `SELECT path, COUNT(*) AS clicks, COUNT(DISTINCT session_id) AS visitors
+       FROM visitor_events
+       WHERE type = 'click' AND occurred_at >= ${since}
+       GROUP BY path
+       ORDER BY clicks DESC
+       LIMIT 30`
+    );
+    res.json({ range, pages });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// GET /api/admin/heatmap?path=X&range=7d&device=all|mobile|desktop
+router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTables();
+    const path = (req.query.path as string) || '';
+    const range = (req.query.range as string) || '7d';
+    const device = (req.query.device as string) || 'all';
+    if (!path) {
+      res.status(400).json({ error: 'path required' });
+      return;
+    }
+    const since = range === 'today' ? `CURDATE()` :
+                  range === '30d' ? `NOW() - INTERVAL 30 DAY` :
+                  `NOW() - INTERVAL 7 DAY`;
+    const deviceFilter = device === 'all' ? '' : `AND device = ${run.length ? '?' : ''}`;
+    const params: any[] = [path];
+    let deviceSql = '';
+    if (device === 'mobile' || device === 'desktop' || device === 'tablet') {
+      deviceSql = `AND device = ?`;
+      params.push(device);
+    }
+
+    const clicks = await query<any>(
+      `SELECT x_pct, y_pct, target, viewport_w, viewport_h, device, occurred_at
+       FROM visitor_events
+       WHERE type = 'click' AND path = ? AND occurred_at >= ${since} ${deviceSql}
+       ORDER BY occurred_at DESC
+       LIMIT 5000`,
+      params
+    );
+
+    // Most clicked elements (target attribute)
+    const topTargets = await query<any>(
+      `SELECT target, COUNT(*) AS clicks
+       FROM visitor_events
+       WHERE type = 'click' AND path = ? AND target IS NOT NULL AND target != ''
+         AND occurred_at >= ${since} ${deviceSql}
+       GROUP BY target
+       ORDER BY clicks DESC
+       LIMIT 20`,
+      params
+    );
+
+    // Scroll depth distribution
+    const scrollBuckets = await query<any>(
+      `SELECT
+         CASE
+           WHEN scroll_depth >= 100 THEN 100
+           WHEN scroll_depth >= 75 THEN 75
+           WHEN scroll_depth >= 50 THEN 50
+           WHEN scroll_depth >= 25 THEN 25
+           ELSE 0
+         END AS bucket,
+         COUNT(DISTINCT session_id) AS sessions
+       FROM visitor_events
+       WHERE type = 'scroll' AND path = ? AND occurred_at >= ${since} ${deviceSql}
+       GROUP BY bucket
+       ORDER BY bucket ASC`,
+      params
+    );
+
+    res.json({ path, range, device, clicks, topTargets, scrollBuckets });
+  } catch (err: any) {
+    console.error('heatmap error:', err.message);
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
 // GET /api/admin/live-visitors — returns sessions active in last 60s
 router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
