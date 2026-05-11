@@ -198,6 +198,7 @@ router.post('/track/heartbeat', async (req: Request, res: Response) => {
 // GET /api/admin/live-visitors — returns sessions active in last 60s
 router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
+    await ensureTables();
     const includeBots = req.query.bots === '1';
     const botFilter = includeBots ? '' : 'AND s.is_bot = 0';
 
