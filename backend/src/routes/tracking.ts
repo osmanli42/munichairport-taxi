@@ -330,6 +330,7 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
 // GET /api/admin/session/:id — details for a single session (timeline)
 router.get('/admin/session/:id', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
+    await ensureTables();
     const sessionId = req.params.id;
     const [session] = await query<any>(
       `SELECT * FROM visitor_sessions WHERE session_id = ? LIMIT 1`,
