@@ -11,7 +11,7 @@ import {
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap';
 
 interface MarketingCustomer {
   email: string;
