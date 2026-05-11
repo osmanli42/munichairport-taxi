@@ -295,7 +295,6 @@ router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Re
     const since = range === 'today' ? `CURDATE()` :
                   range === '30d' ? `NOW() - INTERVAL 30 DAY` :
                   `NOW() - INTERVAL 7 DAY`;
-    const deviceFilter = device === 'all' ? '' : `AND device = ${run.length ? '?' : ''}`;
     const params: any[] = [path];
     let deviceSql = '';
     if (device === 'mobile' || device === 'desktop' || device === 'tablet') {
