@@ -168,6 +168,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
 // Body: { session_id, path }
 router.post('/track/heartbeat', async (req: Request, res: Response) => {
   try {
+    await ensureTables();
     const { session_id, path } = req.body || {};
     if (!session_id) {
       res.status(400).json({ error: 'missing session_id' });
