@@ -8,6 +8,7 @@ import pricesRouter from './routes/prices';
 import mapsRouter from './routes/maps';
 import settingsRouter from './routes/settings';
 import promotionsRouter from './routes/promotions';
+import trackingRouter from './routes/tracking';
 import { startReminderJob } from './services/reminderJob';
 
 dotenv.config();
