@@ -573,6 +573,9 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {/* Live Visitors */}
+        {activeTab === 'live' && <LiveVisitorsTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
