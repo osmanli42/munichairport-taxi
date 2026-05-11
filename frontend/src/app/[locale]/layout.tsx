@@ -9,6 +9,7 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import MobileStickyCTA from '@/components/MobileStickyCTA';
 import CookieBanner from '@/components/CookieBanner';
 import PromoBanner from '@/components/PromoBanner';
+import VisitorTracker from '@/components/VisitorTracker';
 import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
