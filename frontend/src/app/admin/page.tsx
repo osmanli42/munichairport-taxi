@@ -578,6 +578,9 @@ export default function AdminPage() {
         {/* Live Visitors */}
         {activeTab === 'live' && <LiveVisitorsTab token={token} />}
 
+        {/* Heatmap */}
+        {activeTab === 'heatmap' && <HeatmapTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
