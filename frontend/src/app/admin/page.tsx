@@ -551,6 +551,7 @@ export default function AdminPage() {
         <div className="flex gap-2 mb-6">
           {[
             { id: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
+            { id: 'live' as Tab, icon: Activity, label: 'Live' },
             { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
             { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
