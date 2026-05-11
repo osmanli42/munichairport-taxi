@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const HEARTBEAT_MS = 15_000;
@@ -46,23 +46,20 @@ function send(path: string, body: any): void {
 
 export default function VisitorTracker() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const lastPathRef = useRef<string>('');
+  const lastUrlRef = useRef<string>('');
 
   useEffect(() => {
     if (typeof window === 'undefined' || !pathname) return;
-
-    // Skip tracking on admin pages
     if (pathname.startsWith('/admin')) return;
 
     const sessionId = getOrCreate(sessionStorage, 'mt_session_id');
     const visitorId = getOrCreate(localStorage, 'mt_visitor_id');
 
-    const fullPath = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
-    if (lastPathRef.current === fullPath) return;
-    lastPathRef.current = fullPath;
+    const fullUrl = window.location.pathname + window.location.search;
+    if (lastUrlRef.current === fullUrl) return;
+    lastUrlRef.current = fullUrl;
 
-    const sp = new URLSearchParams(searchParams?.toString() || '');
+    const sp = new URLSearchParams(window.location.search);
     const gclid = sp.get('gclid') || '';
     const utm_source = sp.get('utm_source') || (sp.get('gad_source') ? 'google_ads' : '');
     const utm_medium = sp.get('utm_medium') || '';
@@ -71,7 +68,7 @@ export default function VisitorTracker() {
     send('/track/pageview', {
       session_id: sessionId,
       visitor_id: visitorId,
-      path: fullPath,
+      path: fullUrl,
       title: document.title,
       referrer: document.referrer || '',
       utm_source,
@@ -81,15 +78,13 @@ export default function VisitorTracker() {
     });
 
     const heartbeat = setInterval(() => {
-      // only heartbeat when tab is visible to avoid inflating "active" count
       if (document.visibilityState === 'visible') {
-        send('/track/heartbeat', { session_id: sessionId, path: fullPath });
+        send('/track/heartbeat', { session_id: sessionId, path: fullUrl });
       }
     }, HEARTBEAT_MS);
 
-    // Final heartbeat on unload so duration captures the last seconds
     const onUnload = () => {
-      send('/track/heartbeat', { session_id: sessionId, path: fullPath });
+      send('/track/heartbeat', { session_id: sessionId, path: fullUrl });
     };
     window.addEventListener('pagehide', onUnload);
 
@@ -97,7 +92,7 @@ export default function VisitorTracker() {
       clearInterval(heartbeat);
       window.removeEventListener('pagehide', onUnload);
     };
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   return null;
 }
