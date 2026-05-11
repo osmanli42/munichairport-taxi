@@ -5,6 +5,53 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+// Lazy table initialization — runs once on first request, no-op afterwards.
+let tablesReady = false;
+async function ensureTables(): Promise<void> {
+  if (tablesReady) return;
+  await run(`
+    CREATE TABLE IF NOT EXISTS visitor_sessions (
+      id INT NOT NULL AUTO_INCREMENT,
+      session_id VARCHAR(64) UNIQUE NOT NULL,
+      visitor_id VARCHAR(64) NOT NULL,
+      ip_hash VARCHAR(64),
+      country VARCHAR(8),
+      ua_browser VARCHAR(50),
+      ua_os VARCHAR(50),
+      ua_device VARCHAR(20),
+      is_bot TINYINT(1) NOT NULL DEFAULT 0,
+      referrer VARCHAR(500),
+      utm_source VARCHAR(100),
+      utm_medium VARCHAR(100),
+      utm_campaign VARCHAR(255),
+      gclid VARCHAR(255),
+      landing_page VARCHAR(500),
+      first_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      pageview_count INT NOT NULL DEFAULT 1,
+      PRIMARY KEY (id),
+      INDEX idx_last_seen (last_seen),
+      INDEX idx_first_seen (first_seen),
+      INDEX idx_visitor_id (visitor_id),
+      INDEX idx_is_bot (is_bot)
+    )
+  `);
+  await run(`
+    CREATE TABLE IF NOT EXISTS visitor_pageviews (
+      id INT NOT NULL AUTO_INCREMENT,
+      session_id VARCHAR(64) NOT NULL,
+      path VARCHAR(500) NOT NULL,
+      title VARCHAR(255),
+      viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      duration_sec INT DEFAULT NULL,
+      PRIMARY KEY (id),
+      INDEX idx_session_id (session_id),
+      INDEX idx_viewed_at (viewed_at)
+    )
+  `);
+  tablesReady = true;
+}
+
 // Daily-rotating salt for IP hashing — same IP gets same hash within a day,
 // but changes daily. Prevents cross-day tracking. GDPR-friendly.
 function getDailySalt(): string {
