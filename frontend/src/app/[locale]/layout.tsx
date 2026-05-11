@@ -144,6 +144,7 @@ export default async function LocaleLayout({
           <WhatsAppButton />
           <MobileStickyCTA />
           <CookieBanner />
+          <VisitorTracker />
         </NextIntlClientProvider>
       </body>
     </html>
