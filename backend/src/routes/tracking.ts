@@ -109,6 +109,7 @@ function trunc(s: string | undefined | null, max: number): string | null {
 // Body: { session_id, visitor_id, path, title?, referrer?, utm_source?, utm_medium?, utm_campaign?, gclid? }
 router.post('/track/pageview', async (req: Request, res: Response) => {
   try {
+    await ensureTables();
     const {
       session_id, visitor_id, path, title,
       referrer, utm_source, utm_medium, utm_campaign, gclid,
