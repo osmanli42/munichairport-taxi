@@ -3,7 +3,7 @@
  * Stores results in `health_checks` table and triggers email alerts on failures.
  */
 import https from 'https';
-import { TLSSocket } from 'tls';
+import tls from 'tls';
 import { Resend } from 'resend';
 import { query, run } from '../db';
 
