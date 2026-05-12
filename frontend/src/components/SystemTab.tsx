@@ -164,6 +164,8 @@ export default function SystemTab({ token }: { token: string }) {
   if (stats.cpu.load1_pct >= 150) overallWarnings.push(`CPU yükü yüksek: ${stats.cpu.load1.toFixed(2)}`);
   const offlinePm2 = stats.pm2.filter((p) => p.status !== 'online');
   if (offlinePm2.length > 0) overallWarnings.push(`${offlinePm2.length} servis çalışmıyor`);
+  const failedHealth = (health?.latest || []).filter((h) => h.status === 'fail');
+  for (const h of failedHealth) overallWarnings.push(`${h.label}: ${h.message}`);
 
   return (
     <div className="space-y-6">
