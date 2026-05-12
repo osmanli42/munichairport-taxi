@@ -1,9 +1,14 @@
 'use client';
 
 import { Phone } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export default function MobileStickyCTA() {
+  const pathname = usePathname();
+  // Hide on booking flow pages — they have their own CTAs
+  if (pathname?.includes('/buchen') || pathname?.includes('/booking')) return null;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
       {/* Trust line */}
