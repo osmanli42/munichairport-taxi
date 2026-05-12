@@ -905,7 +905,17 @@ function BuchenContent() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}><span className="flex items-center gap-1"><Phone size={14} /> {tx.phone}</span></label>
+                  <label className={labelCls}>
+                    <span className="flex items-center gap-1">
+                      <Phone size={14} /> {tx.phone}
+                      <span className="relative group ml-0.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                          {locale === 'tr' ? 'WhatsApp ile rezervasyon onayı için gereklidir.' : locale === 'en' ? 'Required for WhatsApp booking confirmation.' : 'Für die WhatsApp-Buchungsbestätigung erforderlich.'}
+                        </span>
+                      </span>
+                    </span>
+                  </label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className={cn(inputCls, errors.phone && 'border-red-400')} placeholder="+49 151 ..." />
                   {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                 </div>
