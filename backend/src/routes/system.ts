@@ -4,6 +4,7 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import { Resend } from 'resend';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 
 const router = Router();
 
