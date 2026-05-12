@@ -313,9 +313,10 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
     );
     const items = rows.map(r => {
       const parts = (r.name || '').trim().split(/\s+/);
-      const first = parts[0].replace(/[.,]$/, '') || '?';
+      const first = parts[0] || '?';
+      const lastInit = parts.length > 1 ? parts[parts.length - 1][0] + '.' : '';
       return {
-        name: first,
+        name: `${first} ${lastInit}`.trim(),
         dest: (r.dropoff_address || '').replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, ''),
         minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
       };
