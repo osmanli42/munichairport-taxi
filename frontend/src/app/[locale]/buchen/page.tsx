@@ -1101,6 +1101,15 @@ function BuchenContent() {
               <div className="bg-primary-600 px-5 py-4">
                 <h3 className="text-white font-bold">{tx.summary}</h3>
               </div>
+              {/* Payment trust badge */}
+              <div className="mx-4 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-center space-y-0.5">
+                <p className="font-bold text-amber-800 text-sm">
+                  💵 {locale === 'tr' ? 'Ödeme Şoföre' : locale === 'en' ? 'Pay the Driver' : 'Zahlung beim Fahrer'}
+                </p>
+                <p className="text-amber-700 text-xs">
+                  {locale === 'tr' ? 'Rezervasyon tamamen ücretsiz' : locale === 'en' ? 'Booking is completely free' : 'Reservierung vollständig kostenlos'}
+                </p>
+              </div>
               <div className="p-5 space-y-4 text-sm">
                 {/* Vehicle */}
                 <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
