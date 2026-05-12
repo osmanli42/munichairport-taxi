@@ -56,16 +56,17 @@ export default function SocialProofToast({ locale }: { locale: string }) {
   const [items, setItems] = useState<SocialItem[]>([]);
   const [current, setCurrent] = useState(0);
   const [visible, setVisible] = useState(false);
-  const [ownBooking, setOwnBooking] = useState<SocialItem | null>(null);
+  const [hasOwn, setHasOwn] = useState(false);
 
   useEffect(() => {
-    // Check for user's own fresh booking immediately
+    let own: SocialItem | null = null;
     try {
       const raw = localStorage.getItem('mt_last_booking');
       if (raw) {
         const lb = JSON.parse(raw);
-        if (Date.now() - lb.ts < 5 * 60 * 1000) {
-          setOwnBooking({ name: lb.name, dest: lb.dest, minsAgo: 1 });
+        if (Date.now() - lb.ts < 48 * 60 * 60 * 1000) {
+          own = { name: lb.name, dest: lb.dest, minsAgo: Math.max(1, Math.round((Date.now() - lb.ts) / 60000)) };
+          setHasOwn(true);
         }
       }
     } catch {}
@@ -81,32 +82,25 @@ export default function SocialProofToast({ locale }: { locale: string }) {
           name: r.name, dest: r.dest, minsAgo: Math.min(r.minsAgo, 120),
         }));
         const merged = [...realMapped, ...fakeWithMins].sort(() => Math.random() - 0.5);
-        setItems(merged.slice(0, 30));
+        // own booking at index 0 so it shows first
+        if (own) merged.unshift(own);
+        setItems(merged.slice(0, 40));
       })
       .catch(() => {
-        setItems(FAKE_BOOKINGS.map(b => ({
+        const fallback = FAKE_BOOKINGS.map(b => ({
           ...b,
           minsAgo: Math.floor(Math.random() * 55) + 3,
-        })).sort(() => Math.random() - 0.5));
+        })).sort(() => Math.random() - 0.5) as SocialItem[];
+        if (own) fallback.unshift(own);
+        setItems(fallback.slice(0, 40));
       });
   }, []);
 
-  // Show own booking first, immediately for 15 seconds
   useEffect(() => {
-    if (!ownBooking) return;
-    setVisible(true);
-    const hide = setTimeout(() => {
-      setVisible(false);
-      // clear so normal rotation takes over
-      setTimeout(() => setOwnBooking(null), 600);
-    }, 15000);
-    return () => clearTimeout(hide);
-  }, [ownBooking]);
-
-  // Normal rotation (only when no own booking showing)
-  useEffect(() => {
-    if (items.length === 0 || ownBooking) return;
-    const showDelay = setTimeout(() => setVisible(true), 3000);
+    if (items.length === 0) return;
+    // show immediately if user just booked, else 3s delay
+    const delay = hasOwn ? 0 : 3000;
+    const showDelay = setTimeout(() => setVisible(true), delay);
     const cycle = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
@@ -115,10 +109,10 @@ export default function SocialProofToast({ locale }: { locale: string }) {
       }, 600);
     }, 12000);
     return () => { clearTimeout(showDelay); clearInterval(cycle); };
-  }, [items, ownBooking]);
+  }, [items, hasOwn]);
 
-  if (!ownBooking && items.length === 0) return null;
-  const b = ownBooking ?? items[current];
+  if (items.length === 0) return null;
+  const b = items[current];
   const label = locale === 'tr'
     ? `${b.minsAgo} dk önce: ${b.name} rezervasyon yaptı ✓`
     : locale === 'en'
