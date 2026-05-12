@@ -94,10 +94,10 @@ function BuchenContent() {
     }
   }, [pickup, dropoff, locale, router, stadtfahrtEnabled, settingsLoaded]);
 
-  // Form state — pre-fill from localStorage if returning customer
-  const [name, setName] = useState(() => { try { return JSON.parse(localStorage.getItem('mt_customer_info') || 'null')?.name || ''; } catch { return ''; } });
-  const [phone, setPhone] = useState(() => { try { return JSON.parse(localStorage.getItem('mt_customer_info') || 'null')?.phone || ''; } catch { return ''; } });
-  const [email, setEmail] = useState(() => { try { return JSON.parse(localStorage.getItem('mt_customer_info') || 'null')?.email || ''; } catch { return ''; } });
+  // Form state
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
