@@ -13,7 +13,7 @@ import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'system';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system';
 
 interface MarketingCustomer {
   email: string;
