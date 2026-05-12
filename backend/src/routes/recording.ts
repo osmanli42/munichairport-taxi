@@ -141,11 +141,10 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
       GROUP BY r.session_id
       ${onlyBooked ? 'HAVING booking_count > 0' : ''}
       ORDER BY MAX(r.created_at) DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `;
-    params.push(limit, offset);
 
-    const rows = await query<any>(sql, params);
+    const rows = await query<any>(sql);
 
     const [total] = await query<{ n: number }>(
       `SELECT COUNT(DISTINCT session_id) AS n FROM session_recordings`
