@@ -979,7 +979,17 @@ function BuchenContent() {
                 </div>
               )}
               <div>
-                <label className={labelCls}>{tx.notes}</label>
+                <label className={labelCls}>
+                  <span className="flex items-center gap-1">
+                    {tx.notes}
+                    <span className="relative group ml-0.5">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                        {locale === 'tr' ? 'Özel isteklerinizi buraya yazın: bebek koltuğu, ekstra bagaj, karşılama tercihleri vb.' : locale === 'en' ? 'Special requests: child seat details, extra luggage, meeting preferences, etc.' : 'Besondere Wünsche: Kindersitz-Details, extra Gepäck, Treffpunkt-Präferenzen usw.'}
+                      </span>
+                    </span>
+                  </span>
+                </label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
               </div>
             </div>
