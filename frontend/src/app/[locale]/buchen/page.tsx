@@ -691,7 +691,7 @@ function BuchenContent() {
                   </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
                     <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vorher'}</span>
-                    <span>💵 {locale === 'tr' ? 'Ödeme şoföre — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver — booking is free' : 'Zahlung beim Fahrer — Reservierung kostenlos'}</span>
+                    <span>💵 {locale === 'tr' ? 'Şoföre ödeme de mümkün — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver also possible — booking is free' : 'Zahlung auch beim Fahrer möglich — Reservierung kostenlos'}</span>
                     <span>💰 {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
                   </div>
                 </div>
