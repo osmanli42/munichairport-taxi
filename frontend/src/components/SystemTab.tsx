@@ -204,6 +204,74 @@ export default function SystemTab({ token }: { token: string }) {
         )}
       </div>
 
+      {/* Site Health */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b flex items-center gap-2 flex-wrap">
+          <HeartPulse size={18} className="text-rose-500" />
+          <h3 className="font-semibold">Site Sağlığı</h3>
+          <span className="text-xs text-gray-500">her 2 dakikada otomatik kontrol</span>
+          <button
+            onClick={runHealthCheck}
+            disabled={healthRunning}
+            className="ml-auto bg-gray-100 hover:bg-gray-200 disabled:opacity-50 px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+          >
+            <Zap size={14} />
+            {healthRunning ? 'Kontrol ediliyor…' : 'Hemen kontrol et'}
+          </button>
+        </div>
+        {!health || health.latest.length === 0 ? (
+          <div className="px-6 py-8 text-center text-gray-500">
+            Henüz kontrol yapılmamış. "Hemen kontrol et" butonuna basabilirsin.
+          </div>
+        ) : (
+          <div className="divide-y">
+            {health.latest.map((h) => {
+              const isOk = h.status === 'ok';
+              const isWarn = h.status === 'warn';
+              const isFail = h.status === 'fail';
+              const trend = health.trend[h.check_name] || [];
+              return (
+                <div key={h.check_name} className="px-6 py-4">
+                  <div className="flex items-center gap-3 flex-wrap mb-2">
+                    {isOk && <CheckCircle2 size={20} className="text-green-500" />}
+                    {isWarn && <AlertTriangle size={20} className="text-yellow-500" />}
+                    {isFail && <XCircle size={20} className="text-red-500" />}
+                    <span className="font-medium text-gray-900 min-w-[180px]">{h.label}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isOk ? 'bg-green-100 text-green-700' :
+                      isWarn ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {h.status.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-500 ml-auto">
+                      {h.latency_ms != null ? `${h.latency_ms}ms` : ''}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 ml-7">{h.message}</div>
+                  {trend.length > 1 && (
+                    <div className="ml-7 mt-2 flex items-center gap-0.5" title="Son 24 saat">
+                      {trend.slice(-60).map((t, i) => (
+                        <div
+                          key={i}
+                          title={`${new Date(t.checked_at).toLocaleTimeString('de-DE')}: ${t.status} - ${t.message}`}
+                          className={`w-1.5 h-4 rounded-sm ${
+                            t.status === 'ok' ? 'bg-green-400' :
+                            t.status === 'warn' ? 'bg-yellow-400' :
+                            'bg-red-500'
+                          }`}
+                        />
+                      ))}
+                      <span className="text-[10px] text-gray-400 ml-2">son {Math.min(60, trend.length)} kontrol</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Main metrics grid */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* RAM */}
