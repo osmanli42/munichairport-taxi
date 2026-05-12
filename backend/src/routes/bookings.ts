@@ -317,7 +317,11 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
       const lastInit = parts.length > 1 ? parts[parts.length - 1][0] + '.' : '';
       return {
         name: `${first} ${lastInit}`.trim(),
-        dest: (r.dropoff_address || '').replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, ''),
+        dest: (r.dropoff_address || '')
+          .replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, '')
+          .replace(/Flughafen München.*$/i, 'Flughafen München')
+          .replace(/Munich Airport.*$/i, 'Munich Airport')
+          .split(',')[0].trim(),
         minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
       };
     });
