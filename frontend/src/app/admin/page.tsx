@@ -551,7 +551,7 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto p-4 lg:p-6">
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           {[
             { id: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
             { id: 'live' as Tab, icon: Activity, label: 'Live' },
@@ -568,13 +568,14 @@ export default function AdminPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
+              title={label}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors',
                 activeTab === id ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
               )}
             >
               <Icon size={16} />
-              {label}
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
