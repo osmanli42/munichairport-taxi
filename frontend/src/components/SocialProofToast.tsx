@@ -117,8 +117,8 @@ export default function SocialProofToast({ locale }: { locale: string }) {
     return () => { clearTimeout(showDelay); clearInterval(cycle); };
   }, [items, ownBooking]);
 
-  if (items.length === 0) return null;
-  const b = items[current];
+  if (!ownBooking && items.length === 0) return null;
+  const b = ownBooking ?? items[current];
   const label = locale === 'tr'
     ? `${b.minsAgo} dk önce: ${b.name} rezervasyon yaptı ✓`
     : locale === 'en'
