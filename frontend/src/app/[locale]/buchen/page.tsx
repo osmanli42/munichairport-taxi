@@ -920,7 +920,17 @@ function BuchenContent() {
                   {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                 </div>
                 <div>
-                  <label className={labelCls}><span className="flex items-center gap-1"><Mail size={14} /> {tx.email}</span></label>
+                  <label className={labelCls}>
+                    <span className="flex items-center gap-1">
+                      <Mail size={14} /> {tx.email}
+                      <span className="relative group ml-0.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                          {locale === 'tr' ? 'Rezervasyon onayı bu adrese gönderilecek.' : locale === 'en' ? 'Your booking confirmation will be sent here.' : 'Ihre Buchungsbestätigung wird an diese Adresse gesendet.'}
+                        </span>
+                      </span>
+                    </span>
+                  </label>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
                   {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
