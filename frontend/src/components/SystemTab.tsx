@@ -9,6 +9,18 @@ import {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
+interface HealthCheck {
+  check_name: string;
+  label: string;
+  status: 'ok' | 'warn' | 'fail';
+  latency_ms: number;
+  message: string;
+}
+interface HealthData {
+  latest: HealthCheck[];
+  trend: Record<string, Array<{ status: string; latency_ms: number; checked_at: string; message: string }>>;
+}
+
 interface SystemStats {
   timestamp: string;
   hostname: string;
