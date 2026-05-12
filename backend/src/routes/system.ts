@@ -239,6 +239,26 @@ export function startSystemAlertJob(): void {
   console.log('[system-alerts] Job started — checks every 5 minutes, alerts cooldown 1h');
 }
 
+// GET /api/admin/health — latest health status + 24h trend
+router.get('/admin/health', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await getLatestStatus();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// POST /api/admin/health/run — trigger immediate check (manual refresh)
+router.post('/admin/health/run', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const results = await runAllChecks();
+    res.json({ ok: true, results });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
 // Manual test endpoint — send a test alert
 router.post('/admin/system-stats/test-alert', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
