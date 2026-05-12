@@ -685,11 +685,14 @@ function BuchenContent() {
               {/* Action buttons */}
               <div className="px-6 pb-6 space-y-3">
                 {/* Trust mini-bar */}
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-2">
+                  <p className="text-center text-sm font-bold text-green-800">
+                    {locale === 'tr' ? '✅ 0 Risk — Güvenle Rezervasyon Yap' : locale === 'en' ? '✅ Zero Risk — Book with Confidence' : '✅ 0 Risiko — Einfach & sicher buchen'}
+                  </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                    <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std.'}</span>
+                    <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vorher'}</span>
+                    <span>💵 {locale === 'tr' ? 'Ödeme şoföre — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver — booking is free' : 'Zahlung beim Fahrer — Reservierung kostenlos'}</span>
                     <span>💰 {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
-                    <span>🛡️ {locale === 'tr' ? 'Tam sigortalı araçlar' : locale === 'en' ? 'Fully insured vehicles' : 'Vollversicherte Fahrzeuge'}</span>
                   </div>
                 </div>
                 {(submitState as string) === 'error' && (
