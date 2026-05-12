@@ -107,12 +107,10 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
     const minDuration = parseInt((req.query.min_duration_sec as string) || '0', 10);
     const onlyBooked = req.query.only_booked === '1';
 
-    // Aggregate per session: sum events & bytes, time range, then join with visitor_sessions
+    // Build WHERE — interpolate numbers (validated) to avoid LIMIT/OFFSET bind issues
     const where: string[] = ['1=1'];
-    const params: any[] = [];
     if (minDuration > 0) {
-      where.push('TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) >= ?');
-      params.push(minDuration);
+      where.push(`TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) >= ${minDuration}`);
     }
     // Filter out bot sessions
     where.push('(vs.is_bot = 0 OR vs.is_bot IS NULL)');
