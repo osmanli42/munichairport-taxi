@@ -67,6 +67,7 @@ app.use('/api/maps', mapsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api', trackingRouter);
+app.use('/api', systemRouter);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
