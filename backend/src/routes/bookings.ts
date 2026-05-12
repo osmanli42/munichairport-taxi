@@ -303,6 +303,30 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
   }
 });
 
+// GET /api/bookings/recent-social — anonymised recent bookings for social proof
+router.get('/recent-social', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await query<{ name: string; dropoff_address: string; created_at: string }>(
+      `SELECT name, dropoff_address, created_at FROM bookings
+       WHERE created_at >= NOW() - INTERVAL 48 HOUR AND status != 'cancelled'
+       ORDER BY created_at DESC LIMIT 20`
+    );
+    const items = rows.map(r => {
+      const parts = (r.name || '').trim().split(/\s+/);
+      const first = parts[0] || '?';
+      const lastInit = parts.length > 1 ? parts[parts.length - 1][0] + '.' : '';
+      return {
+        name: `${first} ${lastInit}`.trim(),
+        dest: (r.dropoff_address || '').replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, ''),
+        minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
+      };
+    });
+    res.json(items);
+  } catch {
+    res.json([]);
+  }
+});
+
 // GET /api/bookings/:booking_number - Get booking by number (public)
 router.get('/:booking_number', async (req: Request, res: Response): Promise<void> => {
   try {
