@@ -76,20 +76,27 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
 
 export default function SystemTab({ token }: { token: string }) {
   const [stats, setStats] = useState<SystemStats | null>(null);
+  const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [testEmailStatus, setTestEmailStatus] = useState<string>('');
+  const [healthRunning, setHealthRunning] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE}/admin/system-stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error('failed');
-      const d = await r.json();
-      setStats(d);
+      const [statsR, healthR] = await Promise.all([
+        fetch(`${API_BASE}/admin/system-stats`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/admin/health`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      if (!statsR.ok) throw new Error('stats failed');
+      const sd = await statsR.json();
+      setStats(sd);
+      if (healthR.ok) {
+        const hd = await healthR.json();
+        setHealth(hd);
+      }
       setLastUpdated(new Date());
       setError('');
     } catch {
@@ -106,6 +113,20 @@ export default function SystemTab({ token }: { token: string }) {
     const t = setInterval(load, 10_000); // refresh every 10s
     return () => clearInterval(t);
   }, [autoRefresh, load]);
+
+  const runHealthCheck = async () => {
+    setHealthRunning(true);
+    try {
+      await fetch(`${API_BASE}/admin/health/run`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await load();
+    } catch {
+      // ignore
+    }
+    setHealthRunning(false);
+  };
 
   const sendTestAlert = async () => {
     setTestEmailStatus('Gönderiliyor...');
