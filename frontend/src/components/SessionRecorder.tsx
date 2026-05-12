@@ -98,18 +98,12 @@ export default function SessionRecorder() {
             flush(false);
           }
         },
-        // Privacy options — mask everything by default
-        maskAllInputs: true,
+        // Privacy options — only mask passwords and card numbers
+        maskAllInputs: false,
         maskInputOptions: {
           password: true,
-          email: true,
-          tel: true,
-          text: true,
-          number: true,
-          search: true,
-          url: true,
         },
-        maskTextSelector: '.sensitive, [data-mask], input[name*=card], input[name*=email], input[name*=phone], input[name*=name]',
+        maskTextSelector: '.sensitive, [data-mask], input[name*=card]',
         blockClass: 'rr-block',
         ignoreClass: 'rr-ignore',
         // Sample mouse moves to keep size manageable
