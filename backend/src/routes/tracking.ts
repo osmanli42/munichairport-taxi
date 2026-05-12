@@ -305,10 +305,13 @@ router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Re
       params.push(device);
     }
 
+    // Match both exact path and path with query params (e.g. / matches /?gclid=...)
     const clicks = await query<any>(
       `SELECT x_pct, y_pct, target, viewport_w, viewport_h, device, occurred_at
        FROM visitor_events
-       WHERE type = 'click' AND path = ? AND occurred_at >= ${since} ${deviceSql}
+       WHERE type = 'click'
+         AND SUBSTRING_INDEX(path, '?', 1) = ?
+         AND occurred_at >= ${since} ${deviceSql}
        ORDER BY occurred_at DESC
        LIMIT 5000`,
       params
@@ -318,7 +321,9 @@ router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Re
     const topTargets = await query<any>(
       `SELECT target, COUNT(*) AS clicks
        FROM visitor_events
-       WHERE type = 'click' AND path = ? AND target IS NOT NULL AND target != ''
+       WHERE type = 'click'
+         AND SUBSTRING_INDEX(path, '?', 1) = ?
+         AND target IS NOT NULL AND target != ''
          AND occurred_at >= ${since} ${deviceSql}
        GROUP BY target
        ORDER BY clicks DESC
@@ -338,7 +343,9 @@ router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Re
          END AS bucket,
          COUNT(DISTINCT session_id) AS sessions
        FROM visitor_events
-       WHERE type = 'scroll' AND path = ? AND occurred_at >= ${since} ${deviceSql}
+       WHERE type = 'scroll'
+         AND SUBSTRING_INDEX(path, '?', 1) = ?
+         AND occurred_at >= ${since} ${deviceSql}
        GROUP BY bucket
        ORDER BY bucket ASC`,
       params
