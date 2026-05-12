@@ -483,11 +483,13 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   }
 
   async function handleSearch() {
-    if (!pickupVal) { setFormError(l.errFrom); return; }
-    if (!dropoffVal) { setFormError(l.errTo); return; }
+    const resolvedPickup = pickupVal || pickup;
+    const resolvedDropoff = dropoffVal || dropoff;
+    if (!resolvedPickup) { setFormError(l.errFrom); return; }
+    if (!resolvedDropoff) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
-    const isAirportTrip = isAirportArea(pickupVal) || isAirportArea(dropoffVal);
+    const isAirportTrip = isAirportArea(resolvedPickup) || isAirportArea(resolvedDropoff);
     if (!isAirportTrip && !stadtfahrtEnabled) {
       setFormError(l.errAirport); return;
     }
