@@ -257,8 +257,7 @@ function ResultsContent() {
     if (zwischenstoppAddress) {
       bp.set('zwischenstopp_address', zwischenstoppAddress);
     }
-    const prefix = locale === 'de' ? '' : `/${locale}`;
-    router.push(`${prefix}/buchen?${bp.toString()}`);
+    router.push(`/${locale}/buchen?${bp.toString()}`);
   }
 
   if (!apiPrices) {
