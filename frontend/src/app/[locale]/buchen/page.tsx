@@ -328,6 +328,15 @@ function BuchenContent() {
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
       setSubmitState('success');
+      try {
+        const parts = name.trim().split(/\s+/);
+        const anonName = parts[0] + (parts.length > 1 ? ' ' + parts[parts.length - 1][0] + '.' : '');
+        localStorage.setItem('mt_last_booking', JSON.stringify({
+          name: anonName,
+          dest: dropoff.replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, ''),
+          ts: Date.now(),
+        }));
+      } catch {}
       // Google Ads conversion tracking with Enhanced Conversions
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('set', 'user_data', {
