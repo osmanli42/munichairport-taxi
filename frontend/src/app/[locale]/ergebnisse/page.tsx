@@ -573,6 +573,7 @@ function ResultsContent() {
             : 'Tüm fiyatlar otoyol, bagaj ve çocuk koltuğu dahil sabit fiyatlardır. Gizli maliyet yoktur.'}
         </div>
       </div>
+      <SocialProofToast locale={locale} />
     </div>
   );
 }
