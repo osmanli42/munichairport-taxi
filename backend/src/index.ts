@@ -9,6 +9,7 @@ import mapsRouter from './routes/maps';
 import settingsRouter from './routes/settings';
 import promotionsRouter from './routes/promotions';
 import trackingRouter from './routes/tracking';
+import systemRouter, { startSystemAlertJob } from './routes/system';
 import { startReminderJob } from './services/reminderJob';
 
 dotenv.config();
