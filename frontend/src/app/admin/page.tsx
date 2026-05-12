@@ -585,6 +585,9 @@ export default function AdminPage() {
         {/* Heatmap */}
         {activeTab === 'heatmap' && <HeatmapTab token={token} />}
 
+        {/* Replay */}
+        {activeTab === 'replay' && <ReplayTab token={token} />}
+
         {/* System */}
         {activeTab === 'system' && <SystemTab token={token} />}
 
