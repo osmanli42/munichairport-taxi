@@ -107,8 +107,23 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
     const minDuration = parseInt((req.query.min_duration_sec as string) || '0', 10);
     const onlyBooked = req.query.only_booked === '1';
 
+    // `since` date filter (ISO string → MySQL datetime, validated before interpolation)
+    const sinceRaw = req.query.since as string | undefined;
+    let sinceClause = '';
+    if (sinceRaw) {
+      const d = new Date(sinceRaw);
+      if (!isNaN(d.getTime())) {
+        // Format as MySQL-safe YYYY-MM-DD HH:MM:SS — no user-controlled string content
+        const mysqlTs = d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+        sinceClause = `'${mysqlTs}'`;
+      }
+    }
+
     // Build WHERE — interpolate numbers (validated) to avoid LIMIT/OFFSET bind issues
     const where: string[] = ['1=1'];
+    if (sinceClause) {
+      where.push(`r.created_at >= ${sinceClause}`);
+    }
     if (minDuration > 0) {
       where.push(`TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) >= ${minDuration}`);
     }
