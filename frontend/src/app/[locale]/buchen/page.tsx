@@ -941,7 +941,17 @@ function BuchenContent() {
               </div>
               {isAirportPickup && (
                 <div>
-                  <label className={labelCls}><span className="flex items-center gap-1">🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *</span></label>
+                  <label className={labelCls}>
+                    <span className="flex items-center gap-1">
+                      🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *
+                      <span className="relative group ml-0.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                          {locale === 'tr' ? 'Sürücünüz havalimanında bu isimle sizi karşılayacak.' : locale === 'en' ? 'Your driver will hold a sign with this name at the airport.' : 'Ihr Fahrer erwartet Sie am Flughafen mit diesem Namen auf dem Schild.'}
+                        </span>
+                      </span>
+                    </span>
+                  </label>
                   <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} className={`${inputCls}${errors.pickupSign ? ' border-red-400' : ''}`} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
                   {errors.pickupSign ? <p className="text-red-500 text-xs mt-1">{errors.pickupSign}</p> : <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>}
                 </div>
