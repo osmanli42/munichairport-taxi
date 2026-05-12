@@ -146,6 +146,7 @@ export default async function LocaleLayout({
           <MobileStickyCTA />
           <CookieBanner />
           <VisitorTracker />
+          <SessionRecorder />
         </NextIntlClientProvider>
       </body>
     </html>
