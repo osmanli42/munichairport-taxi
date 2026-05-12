@@ -337,7 +337,6 @@ function BuchenContent() {
           dest: dropoff.replace(/,\s*Deutschland$/i, '').replace(/,\s*Germany$/i, ''),
           ts: Date.now(),
         }));
-        localStorage.setItem('mt_customer_info', JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() }));
       } catch {}
       // Google Ads conversion tracking with Enhanced Conversions
       if (typeof window !== 'undefined' && (window as any).gtag) {
