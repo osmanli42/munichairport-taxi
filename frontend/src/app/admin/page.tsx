@@ -556,6 +556,7 @@ export default function AdminPage() {
             { id: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
             { id: 'live' as Tab, icon: Activity, label: 'Live' },
             { id: 'heatmap' as Tab, icon: Flame, label: 'Heatmap' },
+            { id: 'replay' as Tab, icon: Play, label: 'Replay' },
             { id: 'system' as Tab, icon: Server, label: 'System' },
             { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
