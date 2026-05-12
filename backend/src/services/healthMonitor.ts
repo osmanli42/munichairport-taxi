@@ -123,18 +123,14 @@ async function checkDb(): Promise<HealthResult> {
 async function checkSsl(): Promise<HealthResult> {
   const start = Date.now();
   try {
-    const r = await httpsGet(`https://${SITE_HOST}/`);
-    const cert = r.cert;
-    if (!cert || !cert.valid_to) {
-      return { check_name: 'ssl', label: 'SSL Sertifikası', status: 'warn', latency_ms: r.latency, message: 'sertifika okunamadı' };
-    }
-    const expiresAt = new Date(cert.valid_to);
+    const expiresAt = await getCertExpiry(SITE_HOST);
+    const latency = Date.now() - start;
     const daysLeft = Math.floor((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     let status: HealthStatus = 'ok';
     let msg = `${daysLeft} gün kaldı (${expiresAt.toLocaleDateString('de-DE')})`;
     if (daysLeft < 0) { status = 'fail'; msg = `SÜRESI DOLDU! ${expiresAt.toLocaleDateString('de-DE')}`; }
     else if (daysLeft < 14) { status = 'warn'; msg = `${daysLeft} gün kaldı — yenilemen lazım`; }
-    return { check_name: 'ssl', label: 'SSL Sertifikası', status, latency_ms: r.latency, message: msg };
+    return { check_name: 'ssl', label: 'SSL Sertifikası', status, latency_ms: latency, message: msg };
   } catch (e: any) {
     return { check_name: 'ssl', label: 'SSL Sertifikası', status: 'fail', latency_ms: Date.now() - start, message: e.message };
   }
