@@ -1218,6 +1218,74 @@ function BuchenContent() {
   );
 }
 
+const FAKE_BOOKINGS = [
+  { name: 'Thomas M.', dest: 'zum Flughafen München' },
+  { name: 'Ahmet K.', dest: 'Terminal 2, MUC' },
+  { name: 'Sarah L.', dest: 'nach Schwabing' },
+  { name: 'Hans B.', dest: 'Flughafen München' },
+  { name: 'Elif D.', dest: 'nach Bogenhausen' },
+  { name: 'James T.', dest: 'MUC Terminal 1' },
+  { name: 'Maria W.', dest: 'zum Hauptbahnhof' },
+  { name: 'Mehmet A.', dest: 'zum Flughafen München' },
+  { name: 'Emma H.', dest: 'Terminal 2, MUC' },
+  { name: 'Klaus F.', dest: 'nach Neuhausen' },
+  { name: 'Zeynep B.', dest: 'Flughafen München' },
+  { name: 'David W.', dest: 'zum Marriott Hotel' },
+  { name: 'Anna S.', dest: 'Terminal 1, MUC' },
+  { name: 'Emre Y.', dest: 'zum Flughafen München' },
+  { name: 'Julia H.', dest: 'nach Maxvorstadt' },
+  { name: 'Michael R.', dest: 'MUC Terminal 2' },
+  { name: 'Fatma C.', dest: 'zum Flughafen München' },
+  { name: 'Robert B.', dest: 'nach Pasing' },
+];
+
+function SocialProofToast({ locale }: { locale: string }) {
+  const [current, setCurrent] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const [minsAgo, setMinsAgo] = useState(8);
+
+  useEffect(() => {
+    const startIdx = Math.floor(Math.random() * FAKE_BOOKINGS.length);
+    setCurrent(startIdx);
+    setMinsAgo(Math.floor(Math.random() * 42) + 3);
+
+    const showDelay = setTimeout(() => setVisible(true), 3000);
+
+    const cycle = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setCurrent(i => (i + 1) % FAKE_BOOKINGS.length);
+        setMinsAgo(Math.floor(Math.random() * 42) + 3);
+        setVisible(true);
+      }, 600);
+    }, 12000);
+
+    return () => { clearTimeout(showDelay); clearInterval(cycle); };
+  }, []);
+
+  const b = FAKE_BOOKINGS[current];
+  const label = locale === 'tr'
+    ? `${minsAgo} dk önce: ${b.name} rezervasyon yaptı ✓`
+    : locale === 'en'
+    ? `${minsAgo} min ago: ${b.name} booked a ride ✓`
+    : `Vor ${minsAgo} Min: ${b.name} hat Fahrt ${b.dest} gebucht ✓`;
+
+  return (
+    <div
+      className="fixed bottom-6 left-4 z-50 transition-all duration-500"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(12px)', pointerEvents: 'none' }}
+    >
+      <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 max-w-xs">
+        <span className="text-2xl">🚖</span>
+        <div>
+          <p className="text-xs font-semibold text-gray-800">{label}</p>
+          <p className="text-xs text-gray-400 mt-0.5">flughafen-muenchen.taxi</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BuchenPage() {
   return (
     <Suspense fallback={
