@@ -1298,13 +1298,35 @@ function SocialProofToast({ locale }: { locale: string }) {
         }));
         const merged = [...realMapped, ...shuffled];
         merged.sort(() => Math.random() - 0.5);
+
+        // If the user just booked, show their own name first
+        try {
+          const raw = localStorage.getItem('mt_last_booking');
+          if (raw) {
+            const lb = JSON.parse(raw);
+            if (Date.now() - lb.ts < 5 * 60 * 1000) {
+              merged.unshift({ name: lb.name, dest: lb.dest, minsAgo: 1 });
+            }
+          }
+        } catch {}
+
         setItems(merged.slice(0, 30));
       })
       .catch(() => {
-        setItems(FAKE_BOOKINGS.map(b => ({
+        const fallback: SocialItem[] = FAKE_BOOKINGS.map(b => ({
           ...b,
           minsAgo: Math.floor(Math.random() * 55) + 3,
-        })).sort(() => Math.random() - 0.5));
+        })).sort(() => Math.random() - 0.5);
+        try {
+          const raw = localStorage.getItem('mt_last_booking');
+          if (raw) {
+            const lb = JSON.parse(raw);
+            if (Date.now() - lb.ts < 5 * 60 * 1000) {
+              fallback.unshift({ name: lb.name, dest: lb.dest, minsAgo: 1 });
+            }
+          }
+        } catch {}
+        setItems(fallback.slice(0, 30));
       });
   }, []);
 
