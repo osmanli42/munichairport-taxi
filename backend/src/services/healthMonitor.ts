@@ -44,24 +44,35 @@ async function ensureTable(): Promise<void> {
 }
 
 // ---------- Individual checks ----------
-function httpsGet(url: string, timeoutMs = 10_000): Promise<{ status: number; latency: number; cert?: any }> {
+function httpsGet(url: string, timeoutMs = 10_000): Promise<{ status: number; latency: number }> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const req = https.get(url, { timeout: timeoutMs }, (res) => {
-      let cert: any = null;
-      try {
-        const sock = res.socket as TLSSocket;
-        if (sock && typeof sock.getPeerCertificate === 'function') {
-          cert = sock.getPeerCertificate();
-        }
-      } catch {}
       res.on('data', () => {});
       res.on('end', () => {
-        resolve({ status: res.statusCode || 0, latency: Date.now() - start, cert });
+        resolve({ status: res.statusCode || 0, latency: Date.now() - start });
       });
     });
     req.on('error', reject);
     req.on('timeout', () => { req.destroy(new Error('timeout')); });
+  });
+}
+
+function getCertExpiry(host: string, port = 443, timeoutMs = 10_000): Promise<Date> {
+  return new Promise((resolve, reject) => {
+    const sock = tls.connect({ host, port, servername: host, rejectUnauthorized: false }, () => {
+      const cert = sock.getPeerCertificate();
+      sock.end();
+      if (!cert || !cert.valid_to) {
+        reject(new Error('no certificate'));
+      } else {
+        resolve(new Date(cert.valid_to));
+      }
+    });
+    sock.setTimeout(timeoutMs, () => {
+      sock.destroy(new Error('timeout'));
+    });
+    sock.on('error', reject);
   });
 }
 
