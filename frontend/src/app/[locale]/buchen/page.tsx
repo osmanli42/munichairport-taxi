@@ -1087,7 +1087,7 @@ function BuchenContent() {
               </div>
             </div>
             <button onClick={() => { if (validate()) { setSubmitState('review'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50); } }}
-              className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg">
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg">
               <CheckCircle size={20} /> {tx.submit}
             </button>
           </div>
