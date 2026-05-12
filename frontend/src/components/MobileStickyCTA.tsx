@@ -20,10 +20,10 @@ export default function MobileStickyCTA() {
         </a>
         <a
           href={CONTACT_INFO.phoneHref}
-          className="flex items-center justify-center gap-1.5 bg-gold-400 hover:bg-gold-500 text-primary-600 px-4 py-3.5 rounded-xl font-bold text-sm transition-colors shrink-0"
+          className="flex items-center justify-center gap-1.5 bg-gold-400 hover:bg-gold-500 text-primary-600 px-5 py-3.5 rounded-xl font-bold text-sm transition-colors shrink-0"
         >
           <Phone size={16} />
-          Anrufen
+          <span className="hidden xs:inline">Anrufen</span>
         </a>
       </div>
     </div>
