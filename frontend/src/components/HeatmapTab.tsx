@@ -24,32 +24,43 @@ const VIEWPORT_PRESETS = {
 };
 
 // Translate raw CSS target strings to human-readable Turkish labels
+// Raw format examples: 'button.shrink-0.flex "Suchen"', 'input.flex-1.bg-transparent ""'
 function labelTarget(raw: string): string {
   if (!raw) return '—';
   const r = raw.toLowerCase();
-  if (r.includes('suchen') || r.includes('arama') || r.includes('search')) return '🔍 Arama butonu';
-  if (r.includes('alle akzeptieren') || r.includes('kabul')) return '✅ Cookie kabul et';
-  if (r.includes('nur notwendige') || r.includes('reddediyorum')) return '❌ Cookie reddet';
-  if (r.includes('dieses fahrzeug buchen') || r.includes('buchen')) return '🚗 Araç rezervasyon butonu';
-  if (r.includes('rückfahrt') || r.includes('dönüş')) return '↩️ Dönüş ekle butonu';
-  if (r.includes('hinfahrt') || r.includes('gidiş')) return '📅 Gidiş tarihi/saati';
-  if (r.includes('flex-1.bg-transparent') || (r.includes('input') && r.includes('flex'))) return '📍 Adres giriş alanı';
-  if (r.includes('input.w-full') || (r.includes('input') && r.includes('border'))) return '📝 Form input alanı';
-  if (r.includes('"+"') || r.includes('"+"') || (r.includes('w-8') && r.includes('+'))) return '➕ Yolcu arttır';
-  if (r.includes('"−"') || r.includes('"−"') || (r.includes('w-8') && r.includes('−'))) return '➖ Yolcu azalt';
+  // Extract quoted label text first (most reliable signal)
+  const quotedLabel = raw.match(/"([^"]{1,60})"/)?.[1]?.trim() || '';
+  const ql = quotedLabel.toLowerCase();
+
+  // Match by quoted label content (most specific)
+  if (ql === 'suchen' || ql.includes('suchen')) return '🔍 Arama butonu';
+  if (ql.includes('alle akzeptieren')) return '✅ Cookie kabul et';
+  if (ql.includes('nur notwendige')) return '❌ Cookie sadece zorunlu';
+  if (ql.includes('dieses fahrzeug buchen')) return '🚗 Araç rezervasyon butonu';
+  if (ql.includes('rückfahrt hinzufügen')) return '↩️ Dönüş ekle';
+  if (ql.includes('adressen tauschen')) return '🔄 Adresleri değiştir';
+  if (ql.includes('jetzt preis berechnen')) return '💶 Fiyat hesapla';
+  if (ql.includes('flughafen') && ql.includes('terminal')) return '✈️ Terminal seç';
+  if (ql.match(/^(hinfahrt|rückfahrt)/) || ql.includes('10:00') || ql.match(/\d{2}\.\d{2}\.\d{4}/)) return '📅 Tarih / saat seçici';
+  if (ql === '+' || ql === '➕') return '➕ Yolcu artır';
+  if (ql === '-' || ql === '–' || ql === '−' || ql === '➖') return '➖ Yolcu azalt';
+  if (ql === '▼' || ql === '▲') return '🔽 Açılır menü oku';
+  if (ql === '›' || ql === '‹' || ql === '<' || ql === '>') return '◀▶ Tarih kaydır';
+  if (ql.match(/^\d{1,2}$/) && r.includes('w-10')) return '📆 Takvim gün butonu';
+  if (ql.match(/^\d{1,2}:\d{2}$/)) return '🕐 Saat seçeneği ' + quotedLabel;
+  if (ql.includes('whatsapp')) return '💬 WhatsApp butonu';
+  if (ql.includes('anrufen') || ql.includes('telefon')) return '📞 Telefon butonu';
+
+  // Match by CSS class / element type
+  if (r.includes('flex-1.bg-transparent') || (r.startsWith('input') && r.includes('flex'))) return '📍 Adres giriş alanı';
+  if (r.startsWith('input') && r.includes('border')) return '📝 Form input';
   if (r.includes('terminal') || r.includes('flughafen')) return '✈️ Terminal seçimi';
-  if (r.includes('›') || r.includes('‹') || r.includes('next') || r.includes('prev')) return '◀▶ Tarih kaydır';
-  if (r.includes('nav') || r.includes('startseite') || r.includes('fahrzeug')) return '🔗 Navigasyon linki';
-  if (r.includes('input') && r.includes('date')) return '📅 Tarih seçici';
-  if (r.includes('▼') || r.includes('▲')) return '🔽 Açılır menü';
-  if (r.includes('button')) {
-    const label = raw.match(/"([^"]{1,40})"/)?.[1];
-    return label ? `🔘 ${label}` : '🔘 Buton';
+  if (r.startsWith('li ') || r.startsWith('li.')) return quotedLabel ? `📋 ${quotedLabel}` : '📋 Liste öğesi';
+  if (r.startsWith('a.') || r.startsWith('a ')) return quotedLabel ? `🔗 ${quotedLabel}` : '🔗 Link';
+  if (r.startsWith('button') || r.startsWith('div') || r.startsWith('span')) {
+    return quotedLabel ? `🔘 ${quotedLabel}` : '🔘 Buton';
   }
-  if (r.includes('a ') || r.includes('<a')) return '🔗 Link';
-  if (r.includes('li ')) return '📋 Liste öğesi';
-  const label = raw.match(/"([^"]{1,40})"/)?.[1];
-  return label ? `▸ ${label}` : raw.slice(0, 50);
+  return quotedLabel || raw.slice(0, 50);
 }
 
 function renderHeatmap(
