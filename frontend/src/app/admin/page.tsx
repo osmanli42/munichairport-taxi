@@ -583,6 +583,9 @@ export default function AdminPage() {
         {/* Heatmap */}
         {activeTab === 'heatmap' && <HeatmapTab token={token} />}
 
+        {/* System */}
+        {activeTab === 'system' && <SystemTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
