@@ -938,8 +938,19 @@ function BuchenContent() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}><span className="flex items-center gap-1"><Plane size={14} /> {tx.flight}</span></label>
-                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} className={inputCls} placeholder="LH 1234" />
+                  <label className={labelCls}>
+                    <span className="flex items-center gap-1">
+                      <Plane size={14} /> {isAirportPickup ? (tx as any).flightRequired : tx.flight}
+                      <span className="relative group ml-0.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                          {locale === 'tr' ? 'Uçuş gecikmelerini takip edebilmemiz için uçuş numaranızı girin.' : locale === 'en' ? 'We monitor your flight for delays so your driver is always on time.' : 'Damit wir Ihren Flug auf Verspätungen überwachen und den Fahrer rechtzeitig informieren können.'}
+                        </span>
+                      </span>
+                    </span>
+                  </label>
+                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} className={cn(inputCls, (errors as any).flightNumber && 'border-red-400')} placeholder="LH 1234" />
+                  {(errors as any).flightNumber && <p className="text-red-500 text-xs mt-1">{(errors as any).flightNumber}</p>}
                 </div>
                 <div>
                   <label className={labelCls}><span className="flex items-center gap-1"><Luggage size={14} /> {tx.luggage}</span></label>
