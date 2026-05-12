@@ -1214,6 +1214,7 @@ function BuchenContent() {
           </div>
         </div>
       </div>
+      <SocialProofToast locale={locale} />
     </div>
   );
 }
