@@ -56,8 +56,20 @@ export default function SocialProofToast({ locale }: { locale: string }) {
   const [items, setItems] = useState<SocialItem[]>([]);
   const [current, setCurrent] = useState(0);
   const [visible, setVisible] = useState(false);
+  const [ownBooking, setOwnBooking] = useState<SocialItem | null>(null);
 
   useEffect(() => {
+    // Check for user's own fresh booking immediately
+    try {
+      const raw = localStorage.getItem('mt_last_booking');
+      if (raw) {
+        const lb = JSON.parse(raw);
+        if (Date.now() - lb.ts < 5 * 60 * 1000) {
+          setOwnBooking({ name: lb.name, dest: lb.dest, minsAgo: 1 });
+        }
+      }
+    } catch {}
+
     fetch(`${API_BASE}/bookings/recent-social`)
       .then(r => r.json())
       .then((real: SocialItem[]) => {
@@ -65,47 +77,35 @@ export default function SocialProofToast({ locale }: { locale: string }) {
           ...b,
           minsAgo: Math.floor(Math.random() * 55) + 3,
         }));
-        const shuffled = [...fakeWithMins].sort(() => Math.random() - 0.5);
         const realMapped = (Array.isArray(real) ? real : []).map(r => ({
-          name: r.name,
-          dest: r.dest,
-          minsAgo: Math.min(r.minsAgo, 120),
+          name: r.name, dest: r.dest, minsAgo: Math.min(r.minsAgo, 120),
         }));
-        const merged = [...realMapped, ...shuffled];
-        merged.sort(() => Math.random() - 0.5);
-
-        try {
-          const raw = localStorage.getItem('mt_last_booking');
-          if (raw) {
-            const lb = JSON.parse(raw);
-            if (Date.now() - lb.ts < 5 * 60 * 1000) {
-              merged.unshift({ name: lb.name, dest: lb.dest, minsAgo: 1 });
-            }
-          }
-        } catch {}
-
+        const merged = [...realMapped, ...fakeWithMins].sort(() => Math.random() - 0.5);
         setItems(merged.slice(0, 30));
       })
       .catch(() => {
-        const fallback: SocialItem[] = FAKE_BOOKINGS.map(b => ({
+        setItems(FAKE_BOOKINGS.map(b => ({
           ...b,
           minsAgo: Math.floor(Math.random() * 55) + 3,
-        })).sort(() => Math.random() - 0.5);
-        try {
-          const raw = localStorage.getItem('mt_last_booking');
-          if (raw) {
-            const lb = JSON.parse(raw);
-            if (Date.now() - lb.ts < 5 * 60 * 1000) {
-              fallback.unshift({ name: lb.name, dest: lb.dest, minsAgo: 1 });
-            }
-          }
-        } catch {}
-        setItems(fallback.slice(0, 30));
+        })).sort(() => Math.random() - 0.5));
       });
   }, []);
 
+  // Show own booking first, immediately for 15 seconds
   useEffect(() => {
-    if (items.length === 0) return;
+    if (!ownBooking) return;
+    setVisible(true);
+    const hide = setTimeout(() => {
+      setVisible(false);
+      // clear so normal rotation takes over
+      setTimeout(() => setOwnBooking(null), 600);
+    }, 15000);
+    return () => clearTimeout(hide);
+  }, [ownBooking]);
+
+  // Normal rotation (only when no own booking showing)
+  useEffect(() => {
+    if (items.length === 0 || ownBooking) return;
     const showDelay = setTimeout(() => setVisible(true), 3000);
     const cycle = setInterval(() => {
       setVisible(false);
@@ -115,7 +115,7 @@ export default function SocialProofToast({ locale }: { locale: string }) {
       }, 600);
     }, 12000);
     return () => { clearTimeout(showDelay); clearInterval(cycle); };
-  }, [items]);
+  }, [items, ownBooking]);
 
   if (items.length === 0) return null;
   const b = items[current];
