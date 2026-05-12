@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
+  HeartPulse, Zap,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
