@@ -10,6 +10,7 @@ import MobileStickyCTA from '@/components/MobileStickyCTA';
 import CookieBanner from '@/components/CookieBanner';
 import PromoBanner from '@/components/PromoBanner';
 import VisitorTracker from '@/components/VisitorTracker';
+import SessionRecorder from '@/components/SessionRecorder';
 import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
