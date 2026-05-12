@@ -268,10 +268,13 @@ router.get('/admin/heatmap-pages', authenticateAdmin, async (req: AuthRequest, r
                   range === '30d' ? `NOW() - INTERVAL 30 DAY` :
                   `NOW() - INTERVAL 7 DAY`;
     const pages = await query<any>(
-      `SELECT path, COUNT(*) AS clicks, COUNT(DISTINCT session_id) AS visitors
+      `SELECT
+         SUBSTRING_INDEX(path, '?', 1) AS path,
+         COUNT(*) AS clicks,
+         COUNT(DISTINCT session_id) AS visitors
        FROM visitor_events
        WHERE type = 'click' AND occurred_at >= ${since}
-       GROUP BY path
+       GROUP BY SUBSTRING_INDEX(path, '?', 1)
        ORDER BY clicks DESC
        LIMIT 30`
     );
