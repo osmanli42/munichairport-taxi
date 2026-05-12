@@ -82,6 +82,7 @@ app.listen(PORT, () => {
     .then(() => {
       console.log('Database ready.');
       startReminderJob();
+      startSystemAlertJob();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });
