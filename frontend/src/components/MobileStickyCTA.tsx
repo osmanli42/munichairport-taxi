@@ -6,8 +6,7 @@ import { CONTACT_INFO } from '@/lib/utils';
 
 export default function MobileStickyCTA() {
   const pathname = usePathname();
-  // Hide on booking flow pages — they have their own CTAs
-  if (pathname?.includes('/buchen') || pathname?.includes('/booking')) return null;
+  const isBookingFlow = pathname?.includes('/ergebnisse') || pathname?.includes('/buchen') || pathname?.includes('/booking');
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
@@ -16,19 +15,21 @@ export default function MobileStickyCTA() {
         🚫 Kostenloser Storno bis 3 Std. &nbsp;·&nbsp; 💰 Festpreis garantiert
       </div>
       {/* CTA buttons */}
-      <div className="bg-white border-t border-gray-200 shadow-2xl px-4 py-3 flex gap-3">
-        <a
-          href="#booking"
-          className="flex-1 bg-primary-600 hover:bg-primary-700 text-white text-center py-3.5 rounded-xl font-bold text-sm transition-colors"
-        >
-          Jetzt Preis berechnen
-        </a>
+      <div className="bg-white border-t border-gray-200 shadow-2xl px-4 py-3 flex gap-3 justify-center">
+        {!isBookingFlow && (
+          <a
+            href="#booking"
+            className="flex-1 bg-primary-600 hover:bg-primary-700 text-white text-center py-3.5 rounded-xl font-bold text-sm transition-colors"
+          >
+            Jetzt Preis berechnen
+          </a>
+        )}
         <a
           href={CONTACT_INFO.phoneHref}
-          className="flex items-center justify-center gap-1.5 bg-gold-400 hover:bg-gold-500 text-primary-600 px-5 py-3.5 rounded-xl font-bold text-sm transition-colors shrink-0"
+          className={`flex items-center justify-center gap-2 bg-gold-400 hover:bg-gold-500 text-primary-600 py-3.5 rounded-xl font-bold text-sm transition-colors ${isBookingFlow ? 'flex-1 max-w-xs' : 'px-5 shrink-0'}`}
         >
-          <Phone size={16} />
-          <span className="hidden xs:inline">Anrufen</span>
+          <Phone size={18} />
+          Anrufen
         </a>
       </div>
     </div>
