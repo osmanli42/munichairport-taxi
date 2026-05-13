@@ -557,11 +557,23 @@ function ReplayPlayer({
           <span className="text-sm">{error}</span>
         </div>
       )}
-      <div
-        ref={containerRef}
-        className="flex justify-center overflow-hidden rounded-xl bg-gray-900"
-        style={{ minHeight: loading || error ? '0' : '520px' }}
-      />
+      <div className="relative">
+        <div
+          ref={containerRef}
+          className="flex justify-center overflow-hidden rounded-xl bg-gray-900"
+          style={{ minHeight: loading || error ? '0' : '520px' }}
+        />
+        {/* Yenile button — floats over the player controls bar (bottom-right) */}
+        {!loading && !error && (
+          <button
+            onClick={() => { setLoading(true); setReloadKey(k => k + 1); }}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/90 hover:bg-white text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium shadow transition-colors z-10"
+            title="Kaydı yeniden yükle"
+          >
+            <RefreshCw size={12} /> Yenile
+          </button>
+        )}
+      </div>
     </div>
   );
 }
