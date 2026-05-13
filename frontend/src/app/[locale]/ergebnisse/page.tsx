@@ -537,6 +537,12 @@ function ResultsContent() {
                           <CheckCircle size={10} /> {f}
                         </span>
                       ))}
+                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
+                        <CheckCircle size={10} /> {locale === 'de' ? 'Kostenloser Storno bis 3 Std.' : locale === 'en' ? 'Free cancellation up to 3 hrs' : '3 saate kadar ücretsiz iptal'}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
+                        <CheckCircle size={10} /> {locale === 'de' ? 'Kindersitz kostenlos' : locale === 'en' ? 'Child seat free' : 'Ücretsiz çocuk koltuğu'}
+                      </span>
                       {isRoundtrip && discount > 0 && (
                         <span className="flex items-center gap-1 text-xs bg-gold-50 text-gold-700 border border-gold-200 px-2.5 py-1 rounded-full font-semibold">
                           <Tag size={10} /> {discount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt' : locale === 'en' ? 'Round trip discount' : 'Gidiş-dönüş indirimi'}
