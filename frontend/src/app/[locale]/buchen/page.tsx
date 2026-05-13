@@ -1142,7 +1142,7 @@ function BuchenContent() {
                         {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
                       </p>
                       <p className="text-blue-600 mt-0.5">
-                        {locale === 'tr' ? 'Ödeme yalnızca yolculuktan 1 gün önce alınır' : locale === 'en' ? 'Payment is only charged 1 day before the trip' : 'Keine Abbuchung bis 1 Tag vor der Fahrt'}
+                        {locale === 'tr' ? 'Ödeme yolculuktan 1 gün önce — iptal halinde tam iade' : locale === 'en' ? 'Payment 1 day before the trip — full refund if cancelled' : 'Keine Abbuchung bis 1 Tag vor der Fahrt — vollständige Rückerstattung bei Storno'}
                       </p>
                     </div>
                   </div>
