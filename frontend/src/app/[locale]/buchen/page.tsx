@@ -1159,8 +1159,7 @@ function BuchenContent() {
             {/* Trust mini-bar */}
             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal — tam iade' : locale === 'en' ? 'Free cancellation up to 3 hrs — full refund' : 'Kostenloser Storno bis 3 Std. vor Abfahrt — vollständige Rückerstattung'}</span>
-                <span>💳 {locale === 'tr' ? 'Ödeme yolculuktan 1 gün önce' : locale === 'en' ? 'Payment 1 day before the trip' : 'Abbuchung erst 1 Tag vor der Fahrt'}</span>
+                <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vor Abfahrt'}</span>
                 <span>📧 {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
               </div>
             </div>
