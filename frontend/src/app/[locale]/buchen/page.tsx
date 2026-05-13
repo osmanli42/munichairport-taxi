@@ -1135,14 +1135,23 @@ function BuchenContent() {
                   </div>
                   {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
                   {/* SSL trust box */}
-                  <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700">
-                    <span className="text-base leading-none mt-0.5">🔒</span>
-                    <div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">🔒</span>
                       <p className="font-semibold">
                         {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
                       </p>
-                      <p className="text-blue-600 mt-0.5">
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">💳</span>
+                      <p className="text-blue-600">
                         {locale === 'tr' ? 'Ödeme yolculuktan 1 gün önce — iptal halinde tam iade' : locale === 'en' ? 'Payment 1 day before the trip — full refund if cancelled' : 'Keine Abbuchung bis 1 Tag vor der Fahrt — vollständige Rückerstattung bei Storno'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">💯</span>
+                      <p className="font-semibold text-blue-800">
+                        {locale === 'tr' ? '%100 Risk Yok — Güvenle Rezervasyon Yap' : locale === 'en' ? '100% No Risk — Book with Confidence' : '100% Kein Risiko — Einfach & sicher buchen'}
                       </p>
                     </div>
                   </div>
