@@ -183,7 +183,7 @@ async function sendAlert(subject: string, body: string): Promise<void> {
             <div style="background:#fef2f2;padding:16px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;color:#7f1d1d;">${body}</div>
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
               <p style="margin:0 0 6px;">Bu uyarı saat <strong>${new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}</strong> tarihinde gönderildi.</p>
-              <p style="margin:0;">VPS: <strong>flughafen-muenchen.taxi</strong> · Aynı uyarı 1 saat boyunca tekrar gönderilmez.</p>
+              <p style="margin:0;">VPS: <strong>flughafen-muenchen.taxi</strong> · Aynı uyarı ${alertSettings.cooldown_hours} saat boyunca tekrar gönderilmez.</p>
             </div>
           </div>
         </div>
