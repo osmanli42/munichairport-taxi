@@ -1160,6 +1160,7 @@ function BuchenContent() {
             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
                 <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vor Abfahrt'}</span>
+                <span>💰 {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
                 <span>📧 {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
               </div>
             </div>
