@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "Startseite",
-    "vehicles": "Fahrzeuge & Preise",
+    "vehicles": "Unsere Fahrzeuge",
     "about": "Über uns",
     "contact": "Kontakt",
     "book": "Jetzt buchen",
@@ -58,7 +58,7 @@
     "min": "Min."
   },
   "vehicles": {
-    "title": "Fahrzeuge & Preise",
+    "title": "Unsere Fahrzeuge",
     "subtitle": "Wählen Sie das passende Fahrzeug für Ihre Gruppe",
     "kombi": {
       "name": "Kombi",
@@ -241,7 +241,7 @@
   "seo": {
     "home_title": "Munich Airport Taxi - Flughafentransfer München | Festpreise",
     "home_description": "Professioneller Taxiservice zum und vom Flughafen München. Festpreise, pünktlich, 24/7 verfügbar. Kombi, Van und Großraumtaxi. Jetzt online buchen!",
-    "vehicles_title": "Fahrzeuge & Preise - Munich Airport Taxi",
+    "vehicles_title": "Unsere Fahrzeuge - Munich Airport Taxi",
     "vehicles_description": "Kombi, Van und Großraumtaxi für jeden Bedarf. Transparente Festpreise für Ihren Transfer zum Flughafen München – keine versteckten Kosten.",
     "about_title": "Über uns - Flughafen-München.TAXI",
     "about_description": "Ihr zuverlässiger Partner für Flughafentransfers in München. 20 Jahre Erfahrung, professioneller Fahrservice, 24/7 verfügbar, pünktlich und komfortabel.",

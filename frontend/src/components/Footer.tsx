@@ -42,7 +42,7 @@ export default function Footer() {
             <h3 className="font-semibold text-gold-400 mb-4">{t('links')}</h3>
             <ul className="space-y-2 text-sm text-primary-200">
               <li><Link href="/" className="hover:text-white transition-colors">Home</Link></li>
-              <li><Link href="/vehicles" className="hover:text-white transition-colors">Fahrzeuge & Preise</Link></li>
+              <li><Link href="/vehicles" className="hover:text-white transition-colors">Unsere Fahrzeuge</Link></li>
               <li><Link href="/business" className="hover:text-white transition-colors">Business Service</Link></li>
               <li><Link href="/about" className="hover:text-white transition-colors">Über uns</Link></li>
               <li><Link href="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
