@@ -155,7 +155,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
       WHERE ${where.join(' AND ')}
       GROUP BY r.session_id
       ${onlyBooked ? 'HAVING booking_count > 0' : ''}
-      ORDER BY MAX(r.last_event_ts) DESC, MAX(r.created_at) DESC
+      ORDER BY MIN(r.created_at) DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
 
