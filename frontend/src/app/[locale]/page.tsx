@@ -406,30 +406,63 @@ export default function HomePage() {
       {/* Trust Promises Section */}
       <section className="py-16 bg-primary-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {(() => {
+            const tp: Record<string, { badge: string; heading: string; sub: string; items: { icon: string; title: string; sub: string }[] }> = {
+              de: { badge: '20 Jahre Erfahrung – Ihr Vertrauen ist unser Auftrag', heading: 'Unsere Versprechen an Sie', sub: 'Keine Überraschungen. Keine versteckten Kosten. Nur verlässlicher Service.', items: [
+                { icon: '🏆', title: '20 Jahre Erfahrung', sub: 'Seit 20 Jahren Ihr zuverlässiger Flughafentransfer' },
+                { icon: '🚫', title: 'Kostenloser Storno', sub: 'Bis 3 Stunden vor der Fahrt – keine Gebühren' },
+                { icon: '💰', title: 'Festpreisgarantie', sub: 'Kein Taxameter – Preis steht bei Buchung fest' },
+                { icon: '✈️', title: '60 Min. Gratis-Wartezeit', sub: 'Bei Flugverspätungen warten wir kostenlos' },
+                { icon: '📧', title: 'Sofortige Bestätigung', sub: 'E-Mail-Bestätigung direkt nach der Buchung' },
+                { icon: '👶', title: 'Kindersitze kostenlos', sub: 'Babyschale, Kindersitz & Sitzerhöhung gratis' },
+                { icon: '🛡️', title: 'Vollversicherte Fahrzeuge', sub: 'Haftpflicht & Vollkasko für alle Fahrzeuge' },
+                { icon: '🔒', title: 'Sichere Zahlung', sub: 'Bar oder verschlüsselte Kreditkarte' },
+                { icon: '📱', title: '24/7 erreichbar', sub: 'Telefon & WhatsApp – Tag und Nacht' },
+                { icon: '🌐', title: 'Mehrsprachiger Service', sub: 'Deutsch, Englisch & Türkisch' },
+                { icon: '🧾', title: 'Keine versteckten Kosten', sub: 'Was Sie sehen, zahlen Sie – nicht mehr' },
+                { icon: '👥', title: '100.000+ Kunden', sub: 'Über 100.000 zufriedene Fahrgäste vertrauen uns' },
+              ]},
+              en: { badge: '20 years of experience – Your trust is our mission', heading: 'Our promises to you', sub: 'No surprises. No hidden costs. Just reliable service.', items: [
+                { icon: '🏆', title: '20 years of experience', sub: 'Your reliable airport transfer for 20 years' },
+                { icon: '🚫', title: 'Free cancellation', sub: 'Up to 3 hours before the ride – no fees' },
+                { icon: '💰', title: 'Fixed price guarantee', sub: 'No meter – price is set at booking' },
+                { icon: '✈️', title: '60 min. free wait', sub: 'We wait free of charge for flight delays' },
+                { icon: '📧', title: 'Instant confirmation', sub: 'Email confirmation right after booking' },
+                { icon: '👶', title: 'Free child seats', sub: 'Baby seat, child seat & booster free' },
+                { icon: '🛡️', title: 'Fully insured vehicles', sub: 'Liability & comprehensive insurance' },
+                { icon: '🔒', title: 'Secure payment', sub: 'Cash or encrypted credit card' },
+                { icon: '📱', title: '24/7 reachable', sub: 'Phone & WhatsApp – day and night' },
+                { icon: '🌐', title: 'Multilingual service', sub: 'German, English & Turkish' },
+                { icon: '🧾', title: 'No hidden costs', sub: 'What you see is what you pay – nothing more' },
+                { icon: '👥', title: '100,000+ customers', sub: 'Over 100,000 satisfied passengers trust us' },
+              ]},
+              tr: { badge: '20 yıl deneyim – Güveniniz bizim görevimiz', heading: 'Size olan vaatlerimiz', sub: 'Sürpriz yok. Gizli maliyet yok. Sadece güvenilir hizmet.', items: [
+                { icon: '🏆', title: '20 yıl deneyim', sub: '20 yıldır güvenilir havalimanı transferiniz' },
+                { icon: '🚫', title: 'Ücretsiz iptal', sub: 'Sürüşten 3 saat öncesine kadar – ücret yok' },
+                { icon: '💰', title: 'Sabit fiyat garantisi', sub: 'Taksimetre yok – fiyat rezervasyonda belirlenir' },
+                { icon: '✈️', title: '60 dk ücretsiz bekleme', sub: 'Uçuş gecikmelerinde ücretsiz bekliyoruz' },
+                { icon: '📧', title: 'Anında onay', sub: 'Rezervasyondan hemen sonra e-posta onayı' },
+                { icon: '👶', title: 'Ücretsiz çocuk koltuğu', sub: 'Bebek koltuğu, çocuk koltuğu & yükseltici ücretsiz' },
+                { icon: '🛡️', title: 'Tam sigortalı araçlar', sub: 'Tüm araçlar için sorumluluk & kapsamlı sigorta' },
+                { icon: '🔒', title: 'Güvenli ödeme', sub: 'Nakit veya şifreli kredi kartı' },
+                { icon: '📱', title: '7/24 ulaşılabilir', sub: 'Telefon & WhatsApp – gece gündüz' },
+                { icon: '🌐', title: 'Çok dilli hizmet', sub: 'Almanca, İngilizce & Türkçe' },
+                { icon: '🧾', title: 'Gizli maliyet yok', sub: 'Gördüğünüzü ödersiniz – daha fazla değil' },
+                { icon: '👥', title: '100.000+ müşteri', sub: '100.000\'den fazla memnun yolcu bize güveniyor' },
+              ]},
+            };
+            const tp2 = tp[locale] || tp.de;
+            return (<>
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 text-sm mb-4">
               <span>🏆</span>
-              <span>20 Jahre Erfahrung – Ihr Vertrauen ist unser Auftrag</span>
+              <span>{tp2.badge}</span>
             </div>
-            <h2 className="text-3xl font-bold text-white">Unsere Versprechen an Sie</h2>
-            <p className="text-primary-200 mt-2 text-lg">Keine Überraschungen. Keine versteckten Kosten. Nur verlässlicher Service.</p>
+            <h2 className="text-3xl font-bold text-white">{tp2.heading}</h2>
+            <p className="text-primary-200 mt-2 text-lg">{tp2.sub}</p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {[
-              { icon: '🏆', title: '20 Jahre Erfahrung', sub: 'Seit 20 Jahren Ihr zuverlässiger Flughafentransfer' },
-              { icon: '🚫', title: 'Kostenloser Storno', sub: 'Bis 3 Stunden vor der Fahrt – keine Gebühren' },
-              { icon: '💰', title: 'Festpreisgarantie', sub: 'Kein Taxameter – Preis steht bei Buchung fest' },
-              { icon: '✈️', title: '60 Min. Gratis-Wartezeit', sub: 'Bei Flugverspätungen warten wir kostenlos' },
-              { icon: '📧', title: 'Sofortige Bestätigung', sub: 'E-Mail-Bestätigung direkt nach der Buchung' },
-              { icon: '👶', title: 'Kindersitze kostenlos', sub: 'Babyschale, Kindersitz & Sitzerhöhung gratis' },
-              { icon: '🛡️', title: 'Vollversicherte Fahrzeuge', sub: 'Haftpflicht & Vollkasko für alle Fahrzeuge' },
-              { icon: '🔒', title: 'Sichere Zahlung', sub: 'Bar oder verschlüsselte Kreditkarte' },
-              { icon: '📱', title: '24/7 erreichbar', sub: 'Telefon & WhatsApp – Tag und Nacht' },
-              { icon: '🌐', title: 'Mehrsprachiger Service', sub: 'Deutsch, Englisch & Türkisch' },
-              { icon: '🧾', title: 'Keine versteckten Kosten', sub: 'Was Sie sehen, zahlen Sie – nicht mehr' },
-              { icon: '👥', title: '100.000+ Kunden', sub: 'Über 100.000 zufriedene Fahrgäste vertrauen uns' },
-            ].map(({ icon, title, sub }) => (
+            {tp2.items.map(({ icon, title, sub }) => (
               <div key={title} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-5 flex items-start gap-4">
                 <span className="text-3xl shrink-0">{icon}</span>
                 <div>
