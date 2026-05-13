@@ -1134,6 +1134,18 @@ function BuchenContent() {
                     />
                   </div>
                   {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
+                  {/* SSL trust box */}
+                  <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700">
+                    <span className="text-base leading-none mt-0.5">🔒</span>
+                    <div>
+                      <p className="font-semibold">
+                        {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
+                      </p>
+                      <p className="text-blue-600 mt-0.5">
+                        {locale === 'tr' ? 'Ödeme yalnızca yolculuktan 1 gün önce alınır' : locale === 'en' ? 'Payment is only charged 1 day before the trip' : 'Keine Abbuchung bis 1 Tag vor der Fahrt'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
