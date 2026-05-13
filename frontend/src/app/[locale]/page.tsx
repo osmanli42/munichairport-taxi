@@ -328,7 +328,8 @@ export default function HomePage() {
                   ))}
                 </ul>
               </div>
-            ))}
+            ));
+          })()}
           </div>
 
           <div className="text-center mt-8">
