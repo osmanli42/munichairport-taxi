@@ -270,28 +270,46 @@ export default function HomePage() {
             <p className="text-gray-600 mt-2">{tVehicles('subtitle')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
+          {(() => {
+            const vf: Record<string, { kombi: string[]; van: string[]; gross: string[] }> = {
+              de: {
+                kombi: ['Klimaanlage', 'Lederausstattung', 'Großer Kofferraum', 'Komfortables Fahrerlebnis'],
+                van:   ['Klimaanlage', '7 Sitzplätze', 'Einfacher Ein- & Ausstieg', 'Viel Gepäckraum'],
+                gross: ['Klimaanlage', '8 Sitzplätze', 'Bequeme Einzelsitze', 'Maximaler Gepäckraum'],
+              },
+              en: {
+                kombi: ['Air conditioning', 'Leather seats', 'Large trunk', 'Comfortable ride'],
+                van:   ['Air conditioning', '7 seats', 'Easy boarding & exit', 'Extra luggage space'],
+                gross: ['Air conditioning', '8 seats', 'Individual comfortable seats', 'Maximum luggage space'],
+              },
+              tr: {
+                kombi: ['Klima', 'Deri koltuklar', 'Geniş bagaj', 'Konforlu sürüş'],
+                van:   ['Klima', '7 koltuk', 'Kolay biniş & iniş', 'Geniş bagaj alanı'],
+                gross: ['Klima', '8 koltuk', 'Bireysel konforlu koltuklar', 'Maksimum bagaj alanı'],
+              },
+            };
+            const f = vf[locale] || vf.de;
+            return [
               {
                 image: '/images/kombi.PNG',
                 name: tVehicles('kombi.name'),
                 model: 'Mercedes E-Klasse',
                 persons: tVehicles('kombi.persons'),
-                features: ['Klimaanlage', 'Lederausstattung', 'Großer Kofferraum', 'Komfortabler Kombi'],
+                features: f.kombi,
               },
               {
                 image: '/images/van.PNG',
                 name: tVehicles('van.name'),
                 model: 'Mercedes Viano',
                 persons: tVehicles('van.persons'),
-                features: ['Klimaanlage', '7 Sitzplätze', 'Schiebetür', 'Viel Gepäckraum'],
+                features: f.van,
               },
               {
                 image: '/images/van.PNG',
                 name: tVehicles('grossraumtaxi.name'),
                 model: 'Mercedes Vito',
                 persons: tVehicles('grossraumtaxi.persons'),
-                features: ['Klimaanlage', '8 Sitzplätze', 'Bequeme Einzelsitze', 'Maximaler Gepäckraum'],
+                features: f.gross,
               },
             ].map((v) => (
               <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
