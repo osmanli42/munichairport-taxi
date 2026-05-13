@@ -311,26 +311,30 @@ export default function HomePage() {
                 persons: tVehicles('grossraumtaxi.persons'),
                 features: f.gross,
               },
-            ].map((v) => (
-              <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
-                <div className="w-full h-36 overflow-hidden rounded-lg mb-3">
-                  <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
-                </div>
-                <h3 className="font-bold text-xl text-primary-600">{v.name}</h3>
-                <p className="text-xs text-gray-400 font-medium mb-1">{v.model}</p>
-                <p className="text-gray-500 text-sm mb-4">{v.persons}</p>
-                <ul className="text-left space-y-1.5 mt-auto">
-                  {v.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="text-green-500 font-bold">✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+            ];
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {vehicles.map((v) => (
+                  <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
+                    <div className="w-full h-36 overflow-hidden rounded-lg mb-3">
+                      <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
+                    </div>
+                    <h3 className="font-bold text-xl text-primary-600">{v.name}</h3>
+                    <p className="text-xs text-gray-400 font-medium mb-1">{v.model}</p>
+                    <p className="text-gray-500 text-sm mb-4">{v.persons}</p>
+                    <ul className="text-left space-y-1.5 mt-auto">
+                      {v.features.map((feat) => (
+                        <li key={feat} className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="text-green-500 font-bold">✓</span>
+                          {feat}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            ));
+            );
           })()}
-          </div>
 
           <div className="text-center mt-8">
             <Link href="/vehicles" className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block">
