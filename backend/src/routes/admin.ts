@@ -569,6 +569,7 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       leadTimeBuckets,
       languageStats,
       topDays,
+      topDaysByTrip,
       extrasStats,
       cancellationStats,
     });
