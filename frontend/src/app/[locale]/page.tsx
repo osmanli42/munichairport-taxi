@@ -170,7 +170,7 @@ export default function HomePage() {
           {/* Header */}
           <div className="text-center mb-16">
             <p className="text-xs font-bold tracking-[.18em] uppercase mb-3" style={{ color: '#c9a84c' }}>
-              So einfach geht&apos;s
+              {sd.label}
             </p>
             <h2 className="text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
               {sd.title}
