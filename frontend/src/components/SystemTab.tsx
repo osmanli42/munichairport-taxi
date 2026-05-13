@@ -390,14 +390,51 @@ export default function SystemTab({ token }: { token: string }) {
 
       {/* Email alert section */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Mail size={18} /> <h3 className="font-semibold">E-posta Uyarıları</h3>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Mail size={18} /> <h3 className="font-semibold">E-posta Uyarıları</h3>
+          </div>
+          {/* Master on/off toggle */}
+          {alertSettings && (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-sm text-gray-600">{alertSettings.enabled ? '✅ Aktif' : '🔕 Kapalı'}</span>
+              <button
+                onClick={() => saveAlertSettings({ enabled: !alertSettings.enabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${alertSettings.enabled ? 'bg-green-500' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${alertSettings.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </label>
+          )}
         </div>
         <p className="text-sm text-gray-600 mb-4">
           Sistem her 5 dakikada bir otomatik kontrol edilir. Aşağıdaki eşikler aşılırsa
           <strong> info@flughafen-muenchen.taxi</strong> adresine e-posta gönderilir.
-          Aynı uyarı 1 saat içinde tekrar gönderilmez.
         </p>
+
+        {/* Cooldown selector */}
+        {alertSettings && (
+          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+            <Clock size={16} className="text-blue-500 shrink-0" />
+            <span className="text-sm text-gray-700">Aynı uyarı en erken</span>
+            <select
+              value={alertSettings.cooldown_hours}
+              onChange={e => saveAlertSettings({ cooldown_hours: Number(e.target.value) })}
+              disabled={alertSaving}
+              className="border border-gray-300 rounded-lg px-2 py-1 text-sm font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
+            >
+              <option value={1}>1 saat</option>
+              <option value={2}>2 saat</option>
+              <option value={4}>4 saat</option>
+              <option value={6}>6 saat</option>
+              <option value={12}>12 saat</option>
+              <option value={24}>24 saat</option>
+            </select>
+            <span className="text-sm text-gray-700">sonra tekrar gönderilir</span>
+            {alertSaving && <span className="text-xs text-gray-400">kaydediliyor…</span>}
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 gap-2 text-sm mb-4">
           <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 RAM kullanımı &gt; %85</div>
           <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Swap &gt; 500 MB</div>
