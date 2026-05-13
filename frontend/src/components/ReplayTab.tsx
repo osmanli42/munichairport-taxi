@@ -320,6 +320,15 @@ export default function ReplayTab({ token }: { token: string }) {
                     <><span>·</span><span className="text-purple-600">{r.utm_campaign}</span></>
                   )}
                   <div className="ml-auto flex gap-2">
+                    {isPlaying && (
+                      <button
+                        onClick={() => { setPlayingIndex(null); setTimeout(() => setPlayingIndex(idx), 50); }}
+                        className="px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                        title="Kaydı yeniden yükle"
+                      >
+                        <RefreshCw size={12} /> Yenile
+                      </button>
+                    )}
                     <button
                       onClick={() => setPlayingIndex(isPlaying ? null : idx)}
                       className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors ${isPlaying ? 'bg-gray-200 text-gray-700' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
