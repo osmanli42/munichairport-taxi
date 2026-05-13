@@ -160,7 +160,7 @@ export default function SystemTab({ token }: { token: string }) {
       });
       const d = await r.json();
       if (d.ok) setTestEmailStatus(`✅ Test e-postası gönderildi: ${d.sent_to}`);
-      else setTestEmailStatus(`⏱️ Cooldown aktif (1 saat içinde bir kez gönderildi)`);
+      else setTestEmailStatus(`⏱️ Cooldown aktif — bir sonraki e-posta ${alertSettings?.cooldown_hours ?? 1} saat sonra gönderilebilir`);
     } catch {
       setTestEmailStatus('❌ Gönderilemedi');
     }
