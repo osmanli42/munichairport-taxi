@@ -314,7 +314,7 @@ export default function HomePage() {
 
           <div className="text-center mt-8">
             <Link href="/vehicles" className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block">
-              Alle Fahrzeuge ansehen
+              {sd.cta}
             </Link>
           </div>
         </div>
