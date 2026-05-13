@@ -111,17 +111,49 @@ const THRESHOLDS = {
   pm2_offline: true,
 };
 
-// Per-alert cooldown so we don't spam — at most one email per alert kind per hour
+// Per-alert cooldown — configurable, default 4 hours
 const lastAlerts: Record<string, number> = {};
-const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
+// Alert settings — persist in memory (survives until restart), default 4h
+const alertSettings = {
+  cooldown_hours: 4,   // hours between same alert type
+  enabled: true,       // master switch
+};
+
+function getCooldownMs(): number {
+  return alertSettings.cooldown_hours * 60 * 60 * 1000;
+}
 
 function shouldFire(key: string): boolean {
+  if (!alertSettings.enabled) return false;
   const now = Date.now();
   const prev = lastAlerts[key] || 0;
-  if (now - prev < COOLDOWN_MS) return false;
+  if (now - prev < getCooldownMs()) return false;
   lastAlerts[key] = now;
   return true;
 }
+
+// ---------- Alert settings endpoints ----------
+router.get('/admin/system-stats/alert-settings', authenticateAdmin, (_req: AuthRequest, res: Response) => {
+  // Calculate next possible alert times
+  const nextAlerts: Record<string, string | null> = {};
+  for (const [key, ts] of Object.entries(lastAlerts)) {
+    const nextMs = ts + getCooldownMs();
+    nextAlerts[key] = nextMs > Date.now() ? new Date(nextMs).toISOString() : null;
+  }
+  res.json({ ...alertSettings, next_alerts: nextAlerts });
+});
+
+router.post('/admin/system-stats/alert-settings', authenticateAdmin, (req: AuthRequest, res: Response) => {
+  const { cooldown_hours, enabled } = req.body || {};
+  if (typeof cooldown_hours === 'number' && cooldown_hours >= 1 && cooldown_hours <= 168) {
+    alertSettings.cooldown_hours = cooldown_hours;
+  }
+  if (typeof enabled === 'boolean') {
+    alertSettings.enabled = enabled;
+  }
+  res.json({ ok: true, ...alertSettings });
+});
 
 function fmtMB(bytes: number): string {
   return `${Math.round(bytes / 1024 / 1024)} MB`;
