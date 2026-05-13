@@ -158,9 +158,17 @@ export default function ReplayTab({ token }: { token: string }) {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center gap-3 mb-2">
-          <Play size={28} />
-          <h2 className="text-2xl font-bold">Session Replay</h2>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <Play size={28} />
+            <h2 className="text-2xl font-bold">Session Replay</h2>
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shrink-0"
+          >
+            <RefreshCw size={14} /> Yenile
+          </button>
         </div>
         <p className="opacity-90 text-sm">
           Müşterilerin sitede neler yaptığını film gibi izle — neden rezervasyon yapmadıklarını gör.
