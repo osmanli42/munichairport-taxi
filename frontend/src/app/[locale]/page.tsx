@@ -486,55 +486,33 @@ export default function HomePage() {
                 <Star key={i} size={24} className="fill-gold-400 text-gold-400" />
               ))}
             </div>
-            <h2 className="text-3xl font-bold text-primary-600">Was unsere Kunden sagen</h2>
-            <p className="text-gray-600 mt-2">Über 100.000 zufriedene Fahrgäste – lesen Sie selbst</p>
+            {locale === 'en' ? <h2 className="text-3xl font-bold text-primary-600">What our customers say</h2> : locale === 'tr' ? <h2 className="text-3xl font-bold text-primary-600">Müşterilerimiz ne diyor</h2> : <h2 className="text-3xl font-bold text-primary-600">Was unsere Kunden sagen</h2>}
+            <p className="text-gray-600 mt-2">{locale === 'en' ? 'Over 100,000 satisfied passengers – read for yourself' : locale === 'tr' ? '100.000\'den fazla memnun yolcu – kendiniz okuyun' : 'Über 100.000 zufriedene Fahrgäste – lesen Sie selbst'}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'Thomas K.',
-                city: 'München',
-                stars: 5,
-                text: 'Pünktlich, freundlich und der Preis war genau wie vereinbart. Kein Taxameter, kein Stress. Werde definitiv wieder buchen!',
-                date: 'März 2025',
-              },
-              {
-                name: 'Sarah M.',
-                city: 'Augsburg',
-                stars: 5,
-                text: 'Unser Flug hatte 2 Stunden Verspätung – der Fahrer hat gewartet, ohne extra Kosten. Absolut zuverlässig!',
-                date: 'Februar 2025',
-              },
-              {
-                name: 'Mehmet Y.',
-                city: 'München',
-                stars: 5,
-                text: 'Kindersitz war kostenlos dabei, das Auto war sauber und der Fahrer sehr höflich. Perfekter Service für die Familie.',
-                date: 'Januar 2025',
-              },
-              {
-                name: 'Andrea L.',
-                city: 'Rosenheim',
-                stars: 5,
-                text: 'Habe den Service mehrfach für Geschäftsreisen genutzt. Immer pünktlich, immer professionell. Sehr empfehlenswert.',
-                date: 'März 2025',
-              },
-              {
-                name: 'David H.',
-                city: 'Salzburg',
-                stars: 5,
-                text: 'Transfer von München nach Salzburg war entspannt und günstig. Festpreis ohne böse Überraschungen. Top!',
-                date: 'Februar 2025',
-              },
-              {
-                name: 'Julia R.',
-                city: 'Innsbruck',
-                stars: 5,
-                text: 'Online gebucht, sofort Bestätigung erhalten. Der Fahrer war schon da als wir ankamen. Einfach und stressfrei.',
-                date: 'Januar 2025',
-              },
-            ].map(({ name, city, stars, text, date }) => (
+            {(locale === 'en' ? [
+              { name: 'Thomas K.', city: 'Munich', stars: 5, text: 'On time, friendly and the price was exactly as agreed. No meter, no stress. Will definitely book again!', date: 'March 2025' },
+              { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Our flight was delayed by 2 hours – the driver waited without extra charge. Absolutely reliable!', date: 'February 2025' },
+              { name: 'Mehmet Y.', city: 'Munich', stars: 5, text: 'Child seat was included for free, the car was clean and the driver very polite. Perfect family service.', date: 'January 2025' },
+              { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Used the service multiple times for business trips. Always on time, always professional. Highly recommended.', date: 'March 2025' },
+              { name: 'David H.', city: 'Salzburg', stars: 5, text: 'Transfer from Munich to Salzburg was relaxed and affordable. Fixed price with no nasty surprises. Top!', date: 'February 2025' },
+              { name: 'Julia R.', city: 'Innsbruck', stars: 5, text: 'Booked online, got instant confirmation. The driver was already there when we arrived. Simple and stress-free.', date: 'January 2025' },
+            ] : locale === 'tr' ? [
+              { name: 'Thomas K.', city: 'Münih', stars: 5, text: 'Zamanında, güler yüzlü ve fiyat tam anlaşıldığı gibi. Taksimetre yok, stres yok. Kesinlikle tekrar rezervasyon yapacağım!', date: 'Mart 2025' },
+              { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Uçuşumuz 2 saat gecikmişti – sürücü ek ücret almadan bekledi. Kesinlikle güvenilir!', date: 'Şubat 2025' },
+              { name: 'Mehmet Y.', city: 'Münih', stars: 5, text: 'Çocuk koltuğu ücretsiz dahildi, araç temizdi ve sürücü çok kibardi. Aile için mükemmel hizmet.', date: 'Ocak 2025' },
+              { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Hizmeti iş seyahatleri için birçok kez kullandım. Her zaman zamanında, her zaman profesyonel. Kesinlikle tavsiye ederim.', date: 'Mart 2025' },
+              { name: 'David H.', city: 'Salzburg', stars: 5, text: 'Münih\'ten Salzburg\'a transfer rahat ve uygundu. Sürpriz olmadan sabit fiyat. Harika!', date: 'Şubat 2025' },
+              { name: 'Julia R.', city: 'Innsbruck', stars: 5, text: 'Online rezervasyon yaptım, anında onay aldım. Geldiğimizde sürücü zaten oradaydı. Basit ve stressiz.', date: 'Ocak 2025' },
+            ] : [
+              { name: 'Thomas K.', city: 'München', stars: 5, text: 'Pünktlich, freundlich und der Preis war genau wie vereinbart. Kein Taxameter, kein Stress. Werde definitiv wieder buchen!', date: 'März 2025' },
+              { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Unser Flug hatte 2 Stunden Verspätung – der Fahrer hat gewartet, ohne extra Kosten. Absolut zuverlässig!', date: 'Februar 2025' },
+              { name: 'Mehmet Y.', city: 'München', stars: 5, text: 'Kindersitz war kostenlos dabei, das Auto war sauber und der Fahrer sehr höflich. Perfekter Service für die Familie.', date: 'Januar 2025' },
+              { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Habe den Service mehrfach für Geschäftsreisen genutzt. Immer pünktlich, immer professionell. Sehr empfehlenswert.', date: 'März 2025' },
+              { name: 'David H.', city: 'Salzburg', stars: 5, text: 'Transfer von München nach Salzburg war entspannt und günstig. Festpreis ohne böse Überraschungen. Top!', date: 'Februar 2025' },
+              { name: 'Julia R.', city: 'Innsbruck', stars: 5, text: 'Online gebucht, sofort Bestätigung erhalten. Der Fahrer war schon da als wir ankamen. Einfach und stressfrei.', date: 'Januar 2025' },
+            ]).map(({ name, city, stars, text, date }) => (
               <div key={name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow">
                 <div className="flex items-center gap-1 mb-3">
                   {Array.from({ length: stars }).map((_, i) => (
