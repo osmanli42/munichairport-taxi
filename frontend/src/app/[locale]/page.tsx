@@ -149,8 +149,8 @@ export default function HomePage() {
                 step: 1,
                 icon: '📍',
                 title: 'Adresse & Zeit eingeben',
-                text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter einer Minute.',
-                extra: ['✓ Google Maps Integration', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'],
+                text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter 1 Sekunde.',
+                extra: ['✓ Zwischenstopp möglich', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'],
                 reverse: false,
               },
               {
