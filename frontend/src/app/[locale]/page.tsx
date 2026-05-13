@@ -289,7 +289,7 @@ export default function HomePage() {
               },
             };
             const f = vf[locale] || vf.de;
-            return [
+            const vehicles = [
               {
                 image: '/images/kombi.PNG',
                 name: tVehicles('kombi.name'),
