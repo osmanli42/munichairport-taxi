@@ -34,7 +34,7 @@ const VEHICLES = [
     maxPassengers: 7,
     maxLuggage: 7,
     badge: 'BELIEBT',
-    features: ['Klimaanlage', 'Kindersitz kostenlos'],
+    features: ['Klimaanlage'],
     color: 'border-primary-400',
   },
   {
