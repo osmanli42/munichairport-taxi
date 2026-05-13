@@ -173,38 +173,17 @@ export default function HomePage() {
               So einfach geht&apos;s
             </p>
             <h2 className="text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
-              In 3 Schritten zum Transfer
+              {sd.title}
             </h2>
           </div>
 
           {/* Steps — alternating left/right rows */}
           <div className="flex flex-col gap-6">
-            {[
-              {
-                step: 1,
-                icon: '📍',
-                title: 'Adresse & Zeit eingeben',
-                text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter 1 Sekunde.',
-                extra: ['✓ Zwischenstopp möglich', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'],
-                reverse: false,
-              },
-              {
-                step: 2,
-                icon: '🚗',
-                title: 'Fahrzeug & Preis wählen',
-                text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Kein Taxameter, kein Stauaufpreis – Ihr Preis bleibt fest.',
-                extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'],
-                reverse: true,
-              },
-              {
-                step: 3,
-                icon: '✈️',
-                title: 'Entspannt ankommen',
-                text: 'Ihr Fahrer wartet pünktlich am Ausgang – mit Namensschild. Bei Flugverspätung warten wir 60 Minuten kostenlos.',
-                extra: ['✓ Meet & Greet Service', '✓ 60 Min. Wartezeit gratis', '✓ Gepäckhilfe inklusive'],
-                reverse: false,
-              },
-            ].map(({ step, icon, title, text, extra, reverse }) => (
+            {(['📍', '🚗', '✈️'] as const).map((icon, idx) => {
+              const { title, text, extra } = sd.steps[idx];
+              const step = idx + 1;
+              const reverse = idx === 1;
+              return (
               <div
                 key={step}
                 className={`flex flex-col md:flex-row items-center gap-8 ${reverse ? 'md:flex-row-reverse' : ''}`}
