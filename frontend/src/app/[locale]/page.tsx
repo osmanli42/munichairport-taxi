@@ -22,6 +22,41 @@ export async function generateMetadata({
 export default function HomePage() {
   const t = useTranslations('hero');
   const tVehicles = useTranslations('vehicles');
+  const locale = useLocale();
+
+  const stepsData: Record<string, { label: string; title: string; steps: { title: string; text: string; extra: string[] }[]; cta: string }> = {
+    de: {
+      label: 'So einfach geht\'s',
+      title: 'In 3 Schritten zum Transfer',
+      steps: [
+        { title: 'Adresse & Zeit eingeben', text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter 1 Sekunde.', extra: ['✓ Zwischenstopp möglich', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'] },
+        { title: 'Fahrzeug & Preis wählen', text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Kein Taxameter, kein Stauaufpreis – Ihr Preis bleibt fest.', extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'] },
+        { title: 'Entspannt ankommen', text: 'Ihr Fahrer wartet pünktlich am Ausgang – mit Namensschild. Bei Flugverspätung warten wir 60 Minuten kostenlos.', extra: ['✓ Meet & Greet Service', '✓ 60 Min. Wartezeit gratis', '✓ Gepäckhilfe inklusive'] },
+      ],
+      cta: 'Alle Fahrzeuge ansehen',
+    },
+    en: {
+      label: 'How it works',
+      title: 'Transfer in 3 simple steps',
+      steps: [
+        { title: 'Enter address & time', text: 'Enter your pickup address, destination, date and time. Our system calculates your fixed price instantly – in under 1 second.', extra: ['✓ Intermediate stop possible', '✓ All terminals available', '✓ Return trip bookable'] },
+        { title: 'Choose vehicle & price', text: 'Choose between Sedan, Van or Large Taxi. No meter, no traffic surcharge – your price stays fixed.', extra: ['✓ Sedan up to 4 Pax', '✓ Van up to 7 Pax', '✓ Large Taxi up to 8 Pax'] },
+        { title: 'Arrive relaxed', text: 'Your driver waits punctually at the exit – with a name sign. We wait 60 minutes for free in case of flight delays.', extra: ['✓ Meet & Greet Service', '✓ 60 min. waiting time free', '✓ Luggage assistance included'] },
+      ],
+      cta: 'View all vehicles',
+    },
+    tr: {
+      label: 'Bu kadar basit',
+      title: '3 adımda transferiniz',
+      steps: [
+        { title: 'Adres & saat girin', text: 'Alış adresinizi, varış noktasını, tarih ve saati girin. Sistemimiz sabit fiyatınızı anında hesaplar – 1 saniyenin altında.', extra: ['✓ Ara durak mümkün', '✓ Tüm terminaller mevcut', '✓ Dönüş yolculuğu rezerve edilebilir'] },
+        { title: 'Araç & fiyat seçin', text: 'Kombi, Van veya Büyük Taksi arasından seçin. Taksitre yok, trafik sürşarjı yok – fiyatınız sabit kalır.', extra: ['✓ Kombi 4 kişiye kadar', '✓ Van 7 kişiye kadar', '✓ Büyük Taksi 8 kişiye kadar'] },
+        { title: 'Rahatça varın', text: 'Sürücünüz isim tabelasıyla çıkışta sizi bekleyecek. Uçuş gecikmelerinde 60 dakika ücretsiz bekliyoruz.', extra: ['✓ Karşılama Hizmeti', '✓ 60 dk. bekleme ücretsiz', '✓ Bagaj yardımı dahil'] },
+      ],
+      cta: 'Tüm araçları görüntüle',
+    },
+  };
+  const sd = stepsData[locale] || stepsData.de;
 
   return (
     <>
