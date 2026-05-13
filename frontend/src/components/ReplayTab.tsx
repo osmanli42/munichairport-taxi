@@ -484,7 +484,7 @@ function ReplayPlayer({
         playerRef.current = null;
       }
     };
-  }, [sessionId, token]);
+  }, [sessionId, token, reloadKey]);
 
   return (
     <div className="space-y-3">
