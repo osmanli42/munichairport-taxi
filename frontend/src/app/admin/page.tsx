@@ -1949,7 +1949,8 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Top 5 earning days */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <h3 className="font-bold text-gray-900 mb-4">Top 5 Umsatz-Tage</h3>
+                    <h3 className="font-bold text-gray-900 mb-1">Top 5 Umsatz-Tage</h3>
+                    <p className="text-xs text-gray-400 mb-4">📅 Sipariş tarihi (ne zaman alındı)</p>
                     {(() => {
                       const data = (detailedStats.topDays as Array<{ day: string; count: number; revenue: number }>) || [];
                       const maxRev = Math.max(...data.map(d => d.revenue), 1);
