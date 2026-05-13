@@ -88,9 +88,11 @@ export default function SystemTab({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [statsR, healthR] = await Promise.all([
-        fetch(`${API_BASE}/admin/system-stats`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/admin/health`, { headers: { Authorization: `Bearer ${token}` } }),
+      const headers = { Authorization: `Bearer ${token}` };
+      const [statsR, healthR, alertR] = await Promise.all([
+        fetch(`${API_BASE}/admin/system-stats`, { headers }),
+        fetch(`${API_BASE}/admin/health`, { headers }),
+        fetch(`${API_BASE}/admin/system-stats/alert-settings`, { headers }),
       ]);
       if (!statsR.ok) throw new Error('stats failed');
       const sd = await statsR.json();
@@ -98,6 +100,10 @@ export default function SystemTab({ token }: { token: string }) {
       if (healthR.ok) {
         const hd = await healthR.json();
         setHealth(hd);
+      }
+      if (alertR.ok) {
+        const ad = await alertR.json();
+        setAlertSettings({ cooldown_hours: ad.cooldown_hours, enabled: ad.enabled });
       }
       setLastUpdated(new Date());
       setError('');
@@ -107,6 +113,21 @@ export default function SystemTab({ token }: { token: string }) {
       setLoading(false);
     }
   }, [token]);
+
+  const saveAlertSettings = async (patch: Partial<{ cooldown_hours: number; enabled: boolean }>) => {
+    if (!alertSettings) return;
+    const updated = { ...alertSettings, ...patch };
+    setAlertSettings(updated);
+    setAlertSaving(true);
+    try {
+      await fetch(`${API_BASE}/admin/system-stats/alert-settings`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
+    setAlertSaving(false);
+  };
 
   useEffect(() => { load(); }, [load]);
 
