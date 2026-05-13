@@ -503,7 +503,7 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       ORDER BY count DESC
     `);
 
-    // Top 5 best earning days
+    // Top 5 best earning days — by order date (created_at)
     const topDays = await query(`
       SELECT
         DATE(created_at) as day,
@@ -512,6 +512,19 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       FROM bookings
       WHERE status != 'cancelled'
       GROUP BY DATE(created_at)
+      ORDER BY revenue DESC
+      LIMIT 5
+    `);
+
+    // Top 5 best earning days — by trip date (pickup_datetime)
+    const topDaysByTrip = await query(`
+      SELECT
+        DATE(pickup_datetime) as day,
+        COUNT(*) as count,
+        COALESCE(SUM(price), 0) as revenue
+      FROM bookings
+      WHERE status != 'cancelled'
+      GROUP BY DATE(pickup_datetime)
       ORDER BY revenue DESC
       LIMIT 5
     `);
