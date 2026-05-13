@@ -103,7 +103,7 @@ export default function HomePage() {
           </div>
 
           {/* Search Bar */}
-          <div id="booking" className="animate-slide-up w-full" style={{ scrollMarginTop: '230px' }}>
+          <div id="booking" className="animate-slide-up w-full" style={{ scrollMarginTop: '250px' }}>
             <SearchBar />
           </div>
         </div>
