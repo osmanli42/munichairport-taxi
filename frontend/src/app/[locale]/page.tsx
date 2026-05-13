@@ -561,14 +561,22 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="bg-primary-600 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Bereit für Ihre Fahrt?</h2>
-          <p className="text-primary-200 mb-8 text-lg">Buchen Sie jetzt Ihren Flughafentransfer und fahren Sie stressfrei zum Flughafen München.</p>
+          <h2 className="text-3xl font-bold mb-4">
+            {locale === 'en' ? 'Ready for Your Ride?' : locale === 'tr' ? 'Yolculuğa Hazır mısınız?' : 'Bereit für Ihre Fahrt?'}
+          </h2>
+          <p className="text-primary-200 mb-8 text-lg">
+            {locale === 'en'
+              ? 'Book your airport transfer now and travel stress-free to Munich Airport.'
+              : locale === 'tr'
+              ? 'Şimdi havalimanı transferinizi rezerve edin ve München Havalimanı\'na stressiz yolculuk yapın.'
+              : 'Buchen Sie jetzt Ihren Flughafentransfer und fahren Sie stressfrei zum Flughafen München.'}
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="#booking"
               className="bg-gold-400 hover:bg-gold-500 text-primary-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors"
             >
-              Jetzt online buchen
+              {locale === 'en' ? 'Book online now' : locale === 'tr' ? 'Hemen online rezervasyon' : 'Jetzt online buchen'}
             </a>
             <a
               href={CONTACT_INFO.phoneHref}
