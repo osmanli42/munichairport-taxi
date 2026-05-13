@@ -421,6 +421,7 @@ function ReplayPlayer({
   const [pageviews, setPageviews] = useState<{ path: string; title: string; viewed_at: string }[]>([]);
   const [rageClicks, setRageClicks] = useState(0);
   const [eventCount, setEventCount] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
