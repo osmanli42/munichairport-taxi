@@ -21,7 +21,7 @@ const VEHICLES = [
     maxPassengers: 3,
     maxLuggage: 3,
     badge: null,
-    features: ['Klimaanlage', 'Festpreis'],
+    features: ['Klimaanlage'],
     color: 'border-gray-200',
   },
   {
