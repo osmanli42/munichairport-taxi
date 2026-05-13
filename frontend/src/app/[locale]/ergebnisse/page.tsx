@@ -538,6 +538,9 @@ function ResultsContent() {
                         </span>
                       ))}
                       <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
+                        <CheckCircle size={10} /> {locale === 'de' ? 'Festpreis' : locale === 'en' ? 'Fixed price' : 'Sabit fiyat'}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
                         <CheckCircle size={10} /> {locale === 'de' ? 'Kostenloser Storno bis 3 Std.' : locale === 'en' ? 'Free cancellation up to 3 hrs' : '3 saate kadar ücretsiz iptal'}
                       </span>
                       <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
