@@ -1818,6 +1818,39 @@ export default function AdminPage() {
                     })()}
                   </div>
 
+                  {/* Top 5 by trip date */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Top 5 Fahrt-Tage</h3>
+                    <p className="text-xs text-gray-400 mb-4">🚗 Yolculuk tarihi (ne zaman yapıldı)</p>
+                    {(() => {
+                      const data = (detailedStats.topDaysByTrip as Array<{ day: string; count: number; revenue: number }>) || [];
+                      const maxRev = Math.max(...data.map(d => d.revenue), 1);
+                      return (
+                        <div className="space-y-3">
+                          {data.map((d, i) => {
+                            const date = new Date(d.day);
+                            const label = date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: 'short', year: '2-digit' });
+                            const pct = (d.revenue / maxRev) * 100;
+                            const medals = ['🥇','🥈','🥉','4.','5.'];
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <div className="w-6 text-sm shrink-0 text-center">{medals[i]}</div>
+                                <div className="w-28 text-xs text-gray-500 shrink-0">{label}</div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full rounded-full ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-green-400'}`} style={{ width: `${pct}%` }} />
+                                  <div className="absolute inset-0 flex items-center px-3">
+                                    <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
+                                  </div>
+                                </div>
+                                <div className="w-10 text-xs text-gray-400 shrink-0 text-right">{d.count}×</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   {/* Price Distribution */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-4">Preis-Verteilung</h3>
