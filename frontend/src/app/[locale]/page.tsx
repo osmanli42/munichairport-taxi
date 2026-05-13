@@ -347,49 +347,45 @@ export default function HomePage() {
       {/* Why choose us */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {(() => {
+            const why: Record<string, { heading: string; items: { title: string; text: string }[] }> = {
+              de: { heading: 'Warum Flughafen-muenchen.TAXI?', items: [
+                { title: 'Festpreisgarantie', text: 'Sie wissen Ihren Preis vor der Buchung. Keine bösen Überraschungen.' },
+                { title: 'Immer pünktlich', text: 'Wir überwachen Ihren Flug und passen die Abholzeit bei Verspätungen an.' },
+                { title: 'Kindersitz kostenlos', text: 'Auf Wunsch stellen wir Ihnen einen Kindersitz kostenlos zur Verfügung.' },
+                { title: 'Flexible Zahlung', text: 'Zahlen Sie bequem bar oder per Karte – ganz wie Sie möchten.' },
+                { title: 'Mehrsprachiger Service', text: 'Wir sprechen Deutsch, Englisch und Türkisch – für maximalen Komfort.' },
+                { title: 'Keine Kreditkartengebühr', text: 'Zahlen Sie mit Karte – ohne Aufschlag. Bei uns fallen keine zusätzlichen Gebühren an.' },
+              ]},
+              en: { heading: 'Why Flughafen-muenchen.TAXI?', items: [
+                { title: 'Fixed price guarantee', text: 'You know your price before booking. No unpleasant surprises.' },
+                { title: 'Always on time', text: 'We monitor your flight and adjust pickup time for delays.' },
+                { title: 'Free child seat', text: 'We provide a child seat free of charge upon request.' },
+                { title: 'Flexible payment', text: 'Pay comfortably by cash or card – whatever you prefer.' },
+                { title: 'Multilingual service', text: 'We speak German, English and Turkish – for maximum comfort.' },
+                { title: 'No credit card fee', text: 'Pay by card without surcharge. No additional fees.' },
+              ]},
+              tr: { heading: 'Neden Flughafen-muenchen.TAXI?', items: [
+                { title: 'Sabit fiyat garantisi', text: 'Rezervasyon öncesi fiyatınızı bilirsiniz. Sürpriz ücret yok.' },
+                { title: 'Her zaman zamanında', text: 'Uçuşunuzu takip eder, gecikmede alış saatini ayarlarız.' },
+                { title: 'Ücretsiz çocuk koltuğu', text: 'Talep üzerine ücretsiz çocuk koltuğu sağlıyoruz.' },
+                { title: 'Esnek ödeme', text: 'Nakit veya kartla rahatça ödeme yapın – istediğiniz gibi.' },
+                { title: 'Çok dilli hizmet', text: 'Almanca, İngilizce ve Türkçe konuşuyoruz – maksimum konfor için.' },
+                { title: 'Kredi kartı ücreti yok', text: 'Kartla ek ücret olmadan ödeme yapın.' },
+              ]},
+            };
+            const w = why[locale] || why.de;
+            const icons = [Shield, Clock, Baby, CreditCard, Star, BadgePercent];
+            const colors = ['bg-blue-50 text-blue-600','bg-green-50 text-green-600','bg-yellow-50 text-yellow-600','bg-purple-50 text-purple-600','bg-red-50 text-red-600','bg-teal-50 text-teal-600'];
+            return (<>
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-primary-600">Warum Flughafen-muenchen.<span className="text-gold-400">TAXI</span>?</h2>
+            <h2 className="text-3xl font-bold text-primary-600">{w.heading.replace('TAXI', '')}<span className="text-gold-400">TAXI</span>?</h2>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: Shield,
-                title: 'Festpreisgarantie',
-                text: 'Sie wissen Ihren Preis vor der Buchung. Keine bösen Überraschungen.',
-                color: 'bg-blue-50 text-blue-600',
-              },
-              {
-                icon: Clock,
-                title: 'Immer pünktlich',
-                text: 'Wir überwachen Ihren Flug und passen die Abholzeit bei Verspätungen an.',
-                color: 'bg-green-50 text-green-600',
-              },
-              {
-                icon: Baby,
-                title: 'Kindersitz kostenlos',
-                text: 'Auf Wunsch stellen wir Ihnen einen Kindersitz kostenlos zur Verfügung.',
-                color: 'bg-yellow-50 text-yellow-600',
-              },
-              {
-                icon: CreditCard,
-                title: 'Flexible Zahlung',
-                text: 'Zahlen Sie bequem bar oder per Karte – ganz wie Sie möchten.',
-                color: 'bg-purple-50 text-purple-600',
-              },
-              {
-                icon: Star,
-                title: 'Mehrsprachiger Service',
-                text: 'Wir sprechen Deutsch, Englisch und Türkisch – für maximalen Komfort.',
-                color: 'bg-red-50 text-red-600',
-              },
-              {
-                icon: BadgePercent,
-                title: 'Keine Kreditkartengebühr',
-                text: 'Zahlen Sie mit Karte – ohne Aufschlag. Bei uns fallen keine zusätzlichen Gebühren an.',
-                color: 'bg-teal-50 text-teal-600',
-              },
-            ].map(({ icon: Icon, title, text, color }) => (
+            {w.items.map(({ title, text }, i) => {
+              const Icon = icons[i];
+              const color = colors[i];
+              return (
               <div key={title} className="flex items-start gap-4 p-5 rounded-2xl hover:bg-gray-50 transition-colors">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
                   <Icon size={22} />
