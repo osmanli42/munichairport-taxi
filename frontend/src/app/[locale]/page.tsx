@@ -395,8 +395,11 @@ export default function HomePage() {
                   <p className="text-sm text-gray-600">{text}</p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
+          </>);
+          })()}
         </div>
       </section>
 
