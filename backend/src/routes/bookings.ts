@@ -209,6 +209,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       zwischenstopp_address || null,
       validatedPromoCode || null,
       promoDiscount > 0 ? promoDiscount : null,
+      visitor_id || null,
     ]);
 
     // Increment used_count for applied promo
