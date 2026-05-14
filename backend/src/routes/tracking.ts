@@ -430,10 +430,17 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
          ) AS recent_pages) AS page_history,
          (SELECT COUNT(*) FROM visitor_events
            WHERE session_id = s.session_id AND type = 'click'
-             AND target LIKE '%buchen%' OR target LIKE '%Buchen%' OR target LIKE '%booking%') AS booking_clicks,
+             AND (target LIKE '%buchen%' OR target LIKE '%Buchen%' OR target LIKE '%booking%')) AS booking_clicks,
          (SELECT COUNT(*) FROM visitor_events
            WHERE session_id = s.session_id AND type = 'click'
-             AND (target LIKE '%preis%' OR target LIKE '%Preis%' OR target LIKE '%price%')) AS price_clicks
+             AND (target LIKE '%preis%' OR target LIKE '%Preis%' OR target LIKE '%price%')) AS price_clicks,
+         (SELECT COUNT(DISTINCT target) FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'form_focus') AS form_fields_touched,
+         (SELECT GROUP_CONCAT(DISTINCT target ORDER BY target SEPARATOR ', ') FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'form_focus') AS form_fields_list,
+         (SELECT COUNT(*) FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'click'
+             AND (target LIKE '%Jetzt buchen%' OR target LIKE '%Weiter%' OR target LIKE '%submit%' OR target LIKE '%Anfrage%')) AS form_submit_clicks
        FROM visitor_sessions s
        WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND ${botFilter}
        ORDER BY s.last_seen DESC
