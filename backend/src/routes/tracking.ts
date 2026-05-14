@@ -161,6 +161,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
     const {
       session_id, visitor_id, path, title,
       referrer, utm_source, utm_medium, utm_campaign, gclid,
+      screen_w, screen_h, lang,
     } = req.body || {};
 
     if (!session_id || !visitor_id || !path) {
