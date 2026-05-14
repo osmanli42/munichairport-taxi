@@ -144,12 +144,75 @@ async function cmdWatch(cfg) {
   const ap = await autopilot.run(ROOT, cfg, audit, { brokenLinks }, events);
   log('ok', `Autopilot: ${JSON.stringify(ap)}`);
 
-  // Weekly digest on configured day
+  // Regression alert
+  if (events.length > 0) {
+    await alert.send(ROOT, cfg, {
+      title: `⚠️ SEO Regression Detected`,
+      body: alert.formatEvents(events),
+    });
+  }
+
+  // Weekly digest on configured day (default: Sunday = 0)
   const today = new Date().getDay();
   if (today === (cfg.alerts?.weeklyDigestDay ?? 0)) {
-    await alert.send(ROOT, cfg, {
-      title: `📊 Weekly SEO Digest`,
-      body: `Score: ${score.siteScore}/100\nRanks summary:\n${rankSummary ? Object.entries(rankSummary.keywords).slice(0, 6).map(([k, v]) => `• ${k}: ${v.position ? '#' + v.position : (v.error || '>100')}`).join('\n') : 'no rank data'}\n\nTrend:\n${trendTxt}`,
+    const scoreDelta = prev ? score.siteScore - (prev.siteScore || 0) : 0;
+    const deltaStr = scoreDelta > 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+    const rankRows = rankSummary
+      ? Object.entries(rankSummary.keywords).map(([kw, v]) => {
+          const pos = v.position ? `#${v.position}` : '>100';
+          const prev_pos = prev?.ranks?.[kw]?.position;
+          const change = prev_pos && v.position ? prev_pos - v.position : 0;
+          const arrow = change > 0 ? `↑${change}` : change < 0 ? `↓${Math.abs(change)}` : '→';
+          return `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${kw}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;font-weight:bold">${pos}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;color:${change>0?'#16a34a':change<0?'#dc2626':'#6b7280'}">${arrow}</td></tr>`;
+        }).join('')
+      : '<tr><td colspan="3" style="padding:12px;color:#9ca3af">SerpAPI key gerekli</td></tr>';
+
+    const pageRows = score.pages.slice(0, 6).map(p => {
+      const url = p.url.replace('https://flughafen-muenchen.taxi', '') || '/';
+      const c = p.score >= 80 ? '#16a34a' : p.score >= 60 ? '#d97706' : '#dc2626';
+      return `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee;font-size:13px">${url}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;font-weight:bold;color:${c}">${p.score}/100</td></tr>`;
+    }).join('');
+
+    const scoreColor = score.siteScore >= 80 ? '#16a34a' : score.siteScore >= 60 ? '#d97706' : '#dc2626';
+
+    const html = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:24px">
+  <div style="background:#1e3a5f;color:white;padding:20px 24px;border-radius:12px 12px 0 0">
+    <h2 style="margin:0;font-size:20px">📊 Haftalık SEO Raporu</h2>
+    <p style="margin:4px 0 0;opacity:0.8;font-size:13px">flughafen-muenchen.taxi — ${new Date().toLocaleDateString('tr-TR')}</p>
+  </div>
+  <div style="background:white;padding:24px;border-radius:0 0 12px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+    <div style="text-align:center;padding:20px 0;border-bottom:1px solid #eee;margin-bottom:20px">
+      <div style="font-size:48px;font-weight:bold;color:${scoreColor}">${score.siteScore}</div>
+      <div style="color:#6b7280;font-size:14px">Site Skoru / 100</div>
+      <div style="font-size:14px;color:${scoreDelta>=0?'#16a34a':'#dc2626'};margin-top:4px">Geçen haftaya göre: ${deltaStr}</div>
+    </div>
+    <h3 style="color:#1e3a5f;margin:0 0 12px">🔍 Keyword Sıralamalar</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead><tr style="background:#f3f4f6">
+        <th style="padding:8px 12px;text-align:left;font-size:13px;color:#6b7280">Keyword</th>
+        <th style="padding:8px 12px;text-align:left;font-size:13px;color:#6b7280">Pozisyon</th>
+        <th style="padding:8px 12px;text-align:left;font-size:13px;color:#6b7280">Değişim</th>
+      </tr></thead>
+      <tbody>${rankRows}</tbody>
+    </table>
+    <h3 style="color:#1e3a5f;margin:0 0 12px">📄 Sayfa Skorları</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead><tr style="background:#f3f4f6">
+        <th style="padding:8px 12px;text-align:left;font-size:13px;color:#6b7280">Sayfa</th>
+        <th style="padding:8px 12px;text-align:left;font-size:13px;color:#6b7280">Skor</th>
+      </tr></thead>
+      <tbody>${pageRows}</tbody>
+    </table>
+    <div style="background:#f3f4f6;padding:12px 16px;border-radius:8px;font-family:monospace;font-size:12px;white-space:pre-wrap">${trendTxt}</div>
+    <p style="color:#9ca3af;font-size:12px;margin-top:16px;text-align:center">Flughafen-muenchen.taxi SEO Tracker • Her Pazar otomatik gönderilir</p>
+  </div>
+</div>`;
+
+    await alert.sendHtml(ROOT, cfg, {
+      title: `📊 Haftalık SEO Raporu — ${score.siteScore}/100`,
+      body: `Site skoru: ${score.siteScore}/100 (${deltaStr} geçen haftaya göre)`,
+      html,
     });
   }
 }
