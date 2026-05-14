@@ -232,7 +232,13 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     {s.lang && (
                       <span className="text-xs text-gray-500">🗣 {s.lang}</span>
                     )}
-                    {isReturning && (
+                    {s.past_bookings_count > 0 && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
+                        title={s.last_booking_date ? `Son sipariş: ${new Date(s.last_booking_date).toLocaleDateString('de-DE')}` : ''}>
+                        ⭐ {s.past_bookings_count}x müşteri
+                      </span>
+                    )}
+                    {isReturning && s.past_bookings_count === 0 && (
                       <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
                         🔄 {(s.prev_visits || 0) + 1}. ziyaret
                       </span>
