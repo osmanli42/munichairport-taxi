@@ -83,4 +83,17 @@ function formatEvents(events) {
   }).join('\n');
 }
 
-module.exports = { send, telegramSend, macNotify, logToFile, formatEvents };
+async function sendHtml(root, cfg, { title, body, html }) {
+  const a = cfg.alerts || {};
+  if (a.logFile !== false) logToFile(root, `${title} :: ${body}`);
+  if (a.email && a.email.enabled) {
+    try {
+      await emailSend(a.email.resendApiKey, a.email.to, a.email.from || 'seo@flughafen-muenchen.taxi', title, html);
+      log('ok', `Weekly digest email sent to ${a.email.to}`);
+    } catch (e) {
+      log('err', `Weekly digest email failed: ${e.message}`);
+    }
+  }
+}
+
+module.exports = { send, sendHtml, telegramSend, macNotify, logToFile, formatEvents };
