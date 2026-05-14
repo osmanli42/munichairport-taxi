@@ -27,6 +27,8 @@ interface LiveSession {
   current_path: string;
   current_title: string | null;
   is_bot: number;
+  country: string | null;
+  city: string | null;
 }
 
 interface Stats {
