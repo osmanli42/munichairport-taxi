@@ -565,6 +565,7 @@ export default function AdminPage() {
             { id: 'rechnung' as Tab, icon: FileText, label: 'Rechnung' },
             { id: 'marketing' as Tab, icon: Mail, label: 'Marketing' },
             { id: 'promotions' as Tab, icon: BadgePercent, label: 'Aktionen' },
+            { id: 'seo' as Tab, icon: TrendingUp, label: 'SEO' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
