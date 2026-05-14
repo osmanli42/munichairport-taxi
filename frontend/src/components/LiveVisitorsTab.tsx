@@ -202,18 +202,34 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           <div className="divide-y">
             {live.map((s) => {
               const src = sourceLabel(s);
+              const pages = s.page_history ? s.page_history.split('|||') : [];
+              const isReturning = (s.prev_visits || 0) > 0;
+              const routeMatch = s.page_history?.match(/ergebnisse.*?(?:from|von)=([^&|]+).*?(?:to|nach)=([^&|]+)/i)
+                || s.landing_page?.match(/from=([^&]+).*?to=([^&]+)/i);
               return (
                 <div key={s.session_id} className="px-6 py-4 hover:bg-gray-50">
-                  <div className="flex items-center gap-3 flex-wrap mb-2">
+                  {/* Row 1: Source + device + geo + visit badge */}
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${src.color}`}>
                       {src.label}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-gray-600">
                       {deviceIcon(s.ua_device)} {s.ua_browser} · {s.ua_os}
                     </span>
+                    {s.screen_w && (
+                      <span className="text-xs text-gray-500">🖥 {s.screen_w}×{s.screen_h}</span>
+                    )}
                     {(s.country || s.city) && (
                       <span className="flex items-center gap-1 text-xs text-gray-600">
                         {s.country ? countryFlag(s.country) : '🌍'} {s.city || s.country}
+                      </span>
+                    )}
+                    {s.lang && (
+                      <span className="text-xs text-gray-500">🗣 {s.lang}</span>
+                    )}
+                    {isReturning && (
+                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                        🔄 {(s.prev_visits || 0) + 1}. ziyaret
                       </span>
                     )}
                     {s.is_bot === 1 && (
@@ -223,21 +239,61 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       <Clock size={12} /> {fmtDuration(s.session_seconds)} · {s.pageview_count} sayfa
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-2">
+
+                  {/* Row 2: Current page + idle */}
+                  <div className="flex items-baseline gap-2 mb-1">
                     <span className="font-medium text-gray-900">📍 {s.current_path}</span>
                     {s.idle_seconds > 30 && (
-                      <span className="text-xs text-gray-400">({s.idle_seconds}s pasif)</span>
+                      <span className="text-xs text-orange-400">({s.idle_seconds}s pasif)</span>
                     )}
                   </div>
-                  {s.current_title && (
-                    <div className="text-xs text-gray-500 mt-1 truncate">{s.current_title}</div>
-                  )}
-                  {(s.utm_campaign || s.gclid) && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      {s.utm_campaign && <>Campaign: {s.utm_campaign} </>}
-                      {s.gclid && <>· gclid: {s.gclid.slice(0, 20)}...</>}
+
+                  {/* Row 3: Page history breadcrumb */}
+                  {pages.length > 1 && (
+                    <div className="flex items-center gap-1 flex-wrap mb-1">
+                      {pages.slice().reverse().map((p, i) => (
+                        <span key={i} className="flex items-center gap-1">
+                          {i > 0 && <span className="text-gray-300 text-xs">›</span>}
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${i === pages.length - 1 ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-500'}`}>
+                            {p.split('?')[0] || '/'}
+                          </span>
+                        </span>
+                      ))}
                     </div>
                   )}
+
+                  {/* Row 4: Scroll depth + behavior signals */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {s.max_scroll != null && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${s.max_scroll}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-500">%{s.max_scroll} scroll</span>
+                      </div>
+                    )}
+                    {s.price_clicks > 0 && (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+                        💰 Fiyata {s.price_clicks}x baktı
+                      </span>
+                    )}
+                    {s.booking_clicks > 0 && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        🛒 Buchene {s.booking_clicks}x tıkladı
+                      </span>
+                    )}
+                    {routeMatch && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                        🗺 {decodeURIComponent(routeMatch[1])} → {decodeURIComponent(routeMatch[2])}
+                      </span>
+                    )}
+                    {(s.utm_campaign || s.gclid) && (
+                      <span className="text-xs text-gray-400">
+                        {s.utm_campaign && <>Campaign: {s.utm_campaign}</>}
+                        {s.gclid && <> · gclid: {s.gclid.slice(0, 16)}…</>}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
