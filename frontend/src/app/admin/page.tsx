@@ -12,8 +12,9 @@ import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
+import SeoTab from '@/components/SeoTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo';
 
 interface MarketingCustomer {
   email: string;
