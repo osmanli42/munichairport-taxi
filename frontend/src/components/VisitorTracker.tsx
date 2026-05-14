@@ -214,6 +214,7 @@ export default function VisitorTracker() {
       clearInterval(heartbeat);
       clearInterval(flushTimer);
       document.removeEventListener('click', onClick, { capture: true } as any);
+      document.removeEventListener('focusin', onFocus, { capture: true } as any);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('pagehide', onUnload);
       // Flush remaining events on cleanup
