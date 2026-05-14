@@ -40,6 +40,8 @@ interface LiveSession {
   form_fields_touched: number;
   form_fields_list: string | null;
   form_submit_clicks: number;
+  past_bookings_count: number;
+  last_booking_date: string | null;
 }
 
 interface Stats {
