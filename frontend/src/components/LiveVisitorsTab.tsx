@@ -63,6 +63,11 @@ function sourceLabel(s: LiveSession): { label: string; color: string } {
   return { label: '➡️ Direct', color: 'bg-green-100 text-green-800' };
 }
 
+function countryFlag(code: string): string {
+  if (!code || code.length !== 2) return '🌍';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+}
+
 function deviceIcon(d: string) {
   if (d === 'mobile') return <Smartphone size={14} />;
   if (d === 'tablet') return <Tablet size={14} />;
