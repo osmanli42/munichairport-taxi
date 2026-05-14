@@ -182,7 +182,26 @@ export default function VisitorTracker() {
 
     const flushTimer = setInterval(flush, EVENT_FLUSH_MS);
 
+    // Form field focus tracking — field name only, never value
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target as HTMLElement;
+      const tag = el.tagName.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') return;
+      const fieldName = (el as HTMLInputElement).name
+        || (el as HTMLInputElement).id
+        || (el as HTMLInputElement).placeholder?.slice(0, 40)
+        || tag;
+      // Skip sensitive fields
+      if (/passw|credit|card|cvv|iban|pin/i.test(fieldName)) return;
+      eventQueueRef.current.push({
+        type: 'form_focus',
+        target: fieldName,
+        device: deviceType(),
+      });
+    };
+
     document.addEventListener('click', onClick, { capture: true, passive: true });
+    document.addEventListener('focusin', onFocus, { capture: true, passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
 
     const onUnload = () => {
