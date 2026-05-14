@@ -37,6 +37,9 @@ interface LiveSession {
   page_history: string | null;
   booking_clicks: number;
   price_clicks: number;
+  form_fields_touched: number;
+  form_fields_list: string | null;
+  form_submit_clicks: number;
 }
 
 interface Stats {
