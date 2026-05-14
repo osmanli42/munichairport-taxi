@@ -76,6 +76,9 @@ async function ensureTables(): Promise<void> {
   `);
   // Add columns if they don't exist yet (safe for existing installs)
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN city VARCHAR(100) AFTER country`); } catch {}
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN screen_w SMALLINT DEFAULT NULL AFTER ua_device`); } catch {}
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN screen_h SMALLINT DEFAULT NULL AFTER screen_w`); } catch {}
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN lang VARCHAR(20) DEFAULT NULL AFTER screen_h`); } catch {}
   tablesReady = true;
 }
 
