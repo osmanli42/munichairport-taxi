@@ -175,13 +175,17 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
     );
 
     if (existing.length === 0) {
+      // Skip geo for private/local IPs
+      const isPrivateIp = !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fd)/.test(ip);
+      const geo = isPrivateIp ? { country: '', city: '' } : await geoFromIp(ip!);
       await run(
         `INSERT INTO visitor_sessions
-          (session_id, visitor_id, ip_hash, ua_browser, ua_os, ua_device, is_bot,
+          (session_id, visitor_id, ip_hash, country, city, ua_browser, ua_os, ua_device, is_bot,
            referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
+          geo.country, geo.city,
           browser, os, device, isBot,
           trunc(referrer, 500), trunc(utm_source, 100), trunc(utm_medium, 100),
           trunc(utm_campaign, 255), trunc(gclid, 255), trunc(path, 500),
