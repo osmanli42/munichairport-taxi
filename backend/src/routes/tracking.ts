@@ -409,6 +409,7 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
     const sessions = await query<any>(
       `SELECT
          s.session_id, s.visitor_id, s.ua_browser, s.ua_os, s.ua_device,
+         s.screen_w, s.screen_h, s.lang,
          s.referrer, s.utm_source, s.utm_medium, s.utm_campaign, s.gclid,
          s.landing_page, s.first_seen, s.last_seen, s.pageview_count, s.is_bot,
          s.country, s.city,
@@ -417,7 +418,22 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
          (SELECT path FROM visitor_pageviews
            WHERE session_id = s.session_id ORDER BY id DESC LIMIT 1) AS current_path,
          (SELECT title FROM visitor_pageviews
-           WHERE session_id = s.session_id ORDER BY id DESC LIMIT 1) AS current_title
+           WHERE session_id = s.session_id ORDER BY id DESC LIMIT 1) AS current_title,
+         (SELECT COUNT(*) FROM visitor_sessions s2
+           WHERE s2.visitor_id = s.visitor_id
+             AND s2.first_seen < s.first_seen) AS prev_visits,
+         (SELECT MAX(scroll_depth) FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'scroll') AS max_scroll,
+         (SELECT GROUP_CONCAT(path ORDER BY id DESC SEPARATOR '|||') FROM (
+           SELECT path, id FROM visitor_pageviews
+           WHERE session_id = s.session_id ORDER BY id DESC LIMIT 5
+         ) AS recent_pages) AS page_history,
+         (SELECT COUNT(*) FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'click'
+             AND target LIKE '%buchen%' OR target LIKE '%Buchen%' OR target LIKE '%booking%') AS booking_clicks,
+         (SELECT COUNT(*) FROM visitor_events
+           WHERE session_id = s.session_id AND type = 'click'
+             AND (target LIKE '%preis%' OR target LIKE '%Preis%' OR target LIKE '%price%')) AS price_clicks
        FROM visitor_sessions s
        WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND ${botFilter}
        ORDER BY s.last_seen DESC
