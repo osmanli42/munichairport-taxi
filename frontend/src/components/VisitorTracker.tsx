@@ -113,6 +113,9 @@ export default function VisitorTracker() {
       utm_medium,
       utm_campaign,
       gclid,
+      screen_w: window.screen.width,
+      screen_h: window.screen.height,
+      lang: navigator.language || '',
     });
 
     // Heartbeat
