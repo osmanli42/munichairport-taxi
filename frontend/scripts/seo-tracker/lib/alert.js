@@ -30,6 +30,20 @@ function logToFile(root, msg) {
   fs.appendFileSync(path.join(dir, 'alerts.log'), `[${nowISO()}] ${msg}\n`);
 }
 
+async function emailSend(resendApiKey, to, from, subject, html) {
+  if (!resendApiKey || !to) return { skipped: true };
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${resendApiKey}` },
+    body: JSON.stringify({ from, to, subject, html }),
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Resend ${res.status}: ${errBody}`);
+  }
+  return res.json();
+}
+
 async function send(root, cfg, { title, body }) {
   const a = cfg.alerts || {};
   const text = `*${title}*\n${body}`;
@@ -41,6 +55,15 @@ async function send(root, cfg, { title, body }) {
       log('ok', 'Telegram alert sent');
     } catch (e) {
       log('err', `Telegram send failed: ${e.message}`);
+    }
+  }
+  if (a.email && a.email.enabled) {
+    try {
+      const html = `<h2>${title}</h2><pre style="font-family:monospace;background:#f4f4f4;padding:12px;border-radius:6px">${body.replace(/</g,'&lt;')}</pre>`;
+      await emailSend(a.email.resendApiKey, a.email.to, a.email.from || 'seo@flughafen-muenchen.taxi', title, html);
+      log('ok', `Email alert sent to ${a.email.to}`);
+    } catch (e) {
+      log('err', `Email send failed: ${e.message}`);
     }
   }
 }
