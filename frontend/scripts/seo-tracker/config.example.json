@@ -1,0 +1,67 @@
+{
+  "domain": "https://flughafen-muenchen.taxi",
+  "locales": ["de", "en"],
+  "urls": [
+    "/",
+    "/de",
+    "/en",
+    "/de/events",
+    "/en/events",
+    "/de/preise",
+    "/en/prices"
+  ],
+  "primaryKeywords": [
+    "flughafen münchen taxi",
+    "taxi münchen flughafen",
+    "munich airport taxi",
+    "flughafen taxi münchen festpreis"
+  ],
+  "keywords": [
+    "flughafen münchen taxi",
+    "taxi münchen flughafen",
+    "münchen airport taxi",
+    "taxi muc flughafen",
+    "flughafen taxi münchen festpreis",
+    "munich airport taxi",
+    "taxi to munich airport",
+    "flughafen taxi muc"
+  ],
+  "competitors": [
+    "taxi-muenchen.de",
+    "blacklane.com",
+    "mytaxi.com",
+    "muenchen-taxi.de",
+    "isarfunk.de"
+  ],
+  "googleDomain": "google.de",
+  "geo": "de",
+  "language": "de",
+  "thresholds": {
+    "scoreDrop": 5,
+    "rankDrop": 3,
+    "vitalsDropMs": 300
+  },
+  "alerts": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "chatId": "YOUR_TELEGRAM_CHAT_ID"
+    },
+    "macNotify": false,
+    "logFile": true,
+    "weeklyDigestDay": 0
+  },
+  "autopilot": {
+    "enabled": true,
+    "autoCommit": false,
+    "branchPrefix": "seo-autopilot",
+    "projectRoot": "../../",
+    "protectedPaths": [
+      "src/lib/eventsData.ts",
+      "src/components/SearchBar.tsx"
+    ]
+  },
+  "serpApiKey": "",
+  "pageSpeedApiKey": "",
+  "deepseekApiKey": ""
+}
