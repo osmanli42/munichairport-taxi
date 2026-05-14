@@ -185,15 +185,23 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
       // Skip geo for private/local IPs
       const isPrivateIp = !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fd)/.test(ip);
       const geo = isPrivateIp ? { country: '', city: '' } : await geoFromIp(ip!);
+      // Accept-Language header fallback if client didn't send
+      const acceptLang = (req.headers['accept-language'] as string || '').split(',')[0].trim().slice(0, 20);
+      const clientLang = lang ? trunc(lang, 20) : (acceptLang || null);
       await run(
         `INSERT INTO visitor_sessions
-          (session_id, visitor_id, ip_hash, country, city, ua_browser, ua_os, ua_device, is_bot,
+          (session_id, visitor_id, ip_hash, country, city, ua_browser, ua_os, ua_device,
+           screen_w, screen_h, lang, is_bot,
            referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
           geo.country, geo.city,
-          browser, os, device, isBot,
+          browser, os, device,
+          screen_w ? Number(screen_w) : null,
+          screen_h ? Number(screen_h) : null,
+          clientLang,
+          isBot,
           trunc(referrer, 500), trunc(utm_source, 100), trunc(utm_medium, 100),
           trunc(utm_campaign, 255), trunc(gclid, 255), trunc(path, 500),
         ]
