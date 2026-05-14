@@ -594,6 +594,9 @@ export default function AdminPage() {
         {/* System */}
         {activeTab === 'system' && <SystemTab token={token} />}
 
+        {/* SEO */}
+        {activeTab === 'seo' && <SeoTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
