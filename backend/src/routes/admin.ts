@@ -2042,7 +2042,7 @@ router.get('/test-reminder', authenticateAdmin, async (req: AuthRequest, res: Re
 import * as fsSync from 'fs';
 import * as pathMod from 'path';
 
-const SEO_DATA_DIR = pathMod.join(__dirname, '../../scripts/seo-tracker/data');
+const SEO_DATA_DIR = pathMod.join(__dirname, '../../../frontend/scripts/seo-tracker/data');
 
 router.get('/seo/data', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
