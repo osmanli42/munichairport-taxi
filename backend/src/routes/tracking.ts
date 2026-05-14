@@ -440,7 +440,11 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
            WHERE session_id = s.session_id AND type = 'form_focus') AS form_fields_list,
          (SELECT COUNT(*) FROM visitor_events
            WHERE session_id = s.session_id AND type = 'click'
-             AND (target LIKE '%Jetzt buchen%' OR target LIKE '%Weiter%' OR target LIKE '%submit%' OR target LIKE '%Anfrage%')) AS form_submit_clicks
+             AND (target LIKE '%Jetzt buchen%' OR target LIKE '%Weiter%' OR target LIKE '%submit%' OR target LIKE '%Anfrage%')) AS form_submit_clicks,
+         (SELECT COUNT(*) FROM bookings b
+           WHERE b.visitor_id = s.visitor_id) AS past_bookings_count,
+         (SELECT MAX(b.created_at) FROM bookings b
+           WHERE b.visitor_id = s.visitor_id) AS last_booking_date
        FROM visitor_sessions s
        WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND ${botFilter}
        ORDER BY s.last_seen DESC
