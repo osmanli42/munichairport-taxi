@@ -65,7 +65,10 @@ function sourceLabel(s: LiveSession): { label: string; color: string } {
 
 function countryFlag(code: string): string {
   if (!code || code.length !== 2) return '🌍';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+  const upper = code.toUpperCase();
+  const cp1 = 0x1F1E6 - 65 + upper.charCodeAt(0);
+  const cp2 = 0x1F1E6 - 65 + upper.charCodeAt(1);
+  return String.fromCodePoint(cp1, cp2);
 }
 
 function deviceIcon(d: string) {
