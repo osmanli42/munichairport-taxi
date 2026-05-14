@@ -109,6 +109,18 @@ export default async function LocaleLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              'name': 'Flughafen München TAXI',
+              'alternateName': 'Munich Airport Taxi',
+              'url': baseUrl,
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
               '@type': 'TaxiService',
               'name': 'Munich Airport Taxi',
               'url': baseUrl,
