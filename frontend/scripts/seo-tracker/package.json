@@ -1,0 +1,24 @@
+{
+  "name": "seo-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Professional SEO tracker for flughafen-muenchen.taxi: rank monitoring, on-page audit, competitor deep-search, autopilot fixes, Telegram alerts.",
+  "type": "commonjs",
+  "main": "index.js",
+  "bin": {
+    "seo-tracker": "./index.js"
+  },
+  "scripts": {
+    "audit": "node index.js audit",
+    "rank": "node index.js rank",
+    "watch": "node index.js watch",
+    "deepsearch": "node index.js deepsearch",
+    "report": "node index.js report"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
