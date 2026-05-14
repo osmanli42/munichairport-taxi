@@ -17,6 +17,7 @@ async function ensureTables(): Promise<void> {
       visitor_id VARCHAR(64) NOT NULL,
       ip_hash VARCHAR(64),
       country VARCHAR(8),
+      city VARCHAR(100),
       ua_browser VARCHAR(50),
       ua_os VARCHAR(50),
       ua_device VARCHAR(20),
