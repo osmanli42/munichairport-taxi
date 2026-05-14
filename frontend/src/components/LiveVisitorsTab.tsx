@@ -14,6 +14,9 @@ interface LiveSession {
   ua_browser: string;
   ua_os: string;
   ua_device: string;
+  screen_w: number | null;
+  screen_h: number | null;
+  lang: string | null;
   referrer: string | null;
   utm_source: string | null;
   utm_campaign: string | null;
@@ -29,6 +32,11 @@ interface LiveSession {
   is_bot: number;
   country: string | null;
   city: string | null;
+  prev_visits: number;
+  max_scroll: number | null;
+  page_history: string | null;
+  booking_clicks: number;
+  price_clicks: number;
 }
 
 interface Stats {
