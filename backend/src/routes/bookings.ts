@@ -31,6 +31,11 @@ export { decrypt };
 
 const router = Router();
 
+// Add visitor_id column to bookings if not exists
+(async () => {
+  try { await run(`ALTER TABLE bookings ADD COLUMN visitor_id VARCHAR(64) DEFAULT NULL`); } catch {}
+})();
+
 function generateBookingNumber(): string {
   const date = new Date();
   const year = date.getFullYear().toString().slice(-2);
