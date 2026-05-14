@@ -200,6 +200,11 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     <span className="flex items-center gap-1 text-xs text-gray-600">
                       {deviceIcon(s.ua_device)} {s.ua_browser} · {s.ua_os}
                     </span>
+                    {(s.country || s.city) && (
+                      <span className="flex items-center gap-1 text-xs text-gray-600">
+                        {s.country ? countryFlag(s.country) : '🌍'} {s.city || s.country}
+                      </span>
+                    )}
                     {s.is_bot === 1 && (
                       <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">BOT</span>
                     )}
