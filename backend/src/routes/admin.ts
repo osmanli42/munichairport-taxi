@@ -2038,4 +2038,61 @@ router.get('/test-reminder', authenticateAdmin, async (req: AuthRequest, res: Re
   }
 });
 
+// ─── SEO Dashboard ──────────────────────────────────────────────────────────
+import * as fsSync from 'fs';
+import * as pathMod from 'path';
+
+const SEO_DATA_DIR = pathMod.join(__dirname, '../../scripts/seo-tracker/data');
+
+router.get('/seo/data', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const read = (file: string, fallback: any) => {
+      const p = pathMod.join(SEO_DATA_DIR, file);
+      if (!fsSync.existsSync(p)) return fallback;
+      const raw = fsSync.readFileSync(p, 'utf8');
+      try { return JSON.parse(raw); } catch { return raw; }
+    };
+
+    const history = read('history.json', { entries: [] });
+    const entries = (history.entries || []).slice(-30);
+    const latest = entries[entries.length - 1] || null;
+
+    // Read autopilot proposals (latest file)
+    const dataFiles = fsSync.existsSync(SEO_DATA_DIR) ? fsSync.readdirSync(SEO_DATA_DIR) : [];
+    const autopilotFiles = dataFiles.filter((f: string) => f.startsWith('autopilot-')).sort().reverse();
+    const autopilotRaw = autopilotFiles[0] ? fsSync.readFileSync(pathMod.join(SEO_DATA_DIR, autopilotFiles[0]), 'utf8') : '';
+
+    const rankOneSummaryFiles = dataFiles.filter((f: string) => f.startsWith('rank-one-summary-')).sort().reverse();
+    const rankOneSummary = rankOneSummaryFiles[0] ? fsSync.readFileSync(pathMod.join(SEO_DATA_DIR, rankOneSummaryFiles[0]), 'utf8') : '';
+
+    const alertsLog = fsSync.existsSync(pathMod.join(SEO_DATA_DIR, 'alerts.log'))
+      ? fsSync.readFileSync(pathMod.join(SEO_DATA_DIR, 'alerts.log'), 'utf8').trim().split('\n').slice(-20).reverse()
+      : [];
+
+    // Trend series
+    const scoreSeries = entries.map((e: any) => ({ ts: e.ts, score: e.siteScore || 0 }));
+    const rankSeries: Record<string, Array<{ ts: string; position: number | null }>> = {};
+    for (const e of entries) {
+      for (const [kw, v] of Object.entries(e.ranks || {})) {
+        if (!rankSeries[kw]) rankSeries[kw] = [];
+        rankSeries[kw].push({ ts: e.ts, position: (v as any).position || null });
+      }
+    }
+
+    res.json({
+      latest,
+      scoreSeries,
+      rankSeries,
+      pageScores: latest?.pages || [],
+      ranks: latest?.ranks || {},
+      autopilot: autopilotRaw,
+      rankOneSummary,
+      alertsLog,
+      dataDir: SEO_DATA_DIR,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
