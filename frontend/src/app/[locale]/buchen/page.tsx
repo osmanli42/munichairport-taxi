@@ -289,6 +289,7 @@ function BuchenContent() {
       const returnDatetime = tripType === 'roundtrip' && returnDate ? `${returnDate}T${returnTime}:00` : undefined;
 
       const body: Record<string, unknown> = {
+        visitor_id: typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') || undefined : undefined,
         pickup_address: pickup,
         dropoff_address: dropoff,
         pickup_datetime: pickupDatetime,
