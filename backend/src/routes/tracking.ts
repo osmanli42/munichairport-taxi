@@ -71,7 +71,27 @@ async function ensureTables(): Promise<void> {
       INDEX idx_session_id (session_id)
     )
   `);
+  // Add columns if they don't exist yet (safe for existing installs)
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN city VARCHAR(100) AFTER country`); } catch {}
   tablesReady = true;
+}
+
+// Geo lookup using ip-api.com (free, no key, 45 req/min)
+async function geoFromIp(ip: string): Promise<{ country: string; city: string }> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve({ country: '', city: '' }), 2000);
+    https.get(`https://ip-api.com/json/${ip}?fields=countryCode,city`, (res) => {
+      let data = '';
+      res.on('data', (c: string) => data += c);
+      res.on('end', () => {
+        clearTimeout(timeout);
+        try {
+          const j = JSON.parse(data);
+          resolve({ country: j.countryCode || '', city: j.city || '' });
+        } catch { resolve({ country: '', city: '' }); }
+      });
+    }).on('error', () => { clearTimeout(timeout); resolve({ country: '', city: '' }); });
+  });
 }
 
 // Daily-rotating salt for IP hashing — same IP gets same hash within a day,
