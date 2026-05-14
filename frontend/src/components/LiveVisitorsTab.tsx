@@ -285,6 +285,12 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                         🛒 Buchene {s.booking_clicks}x tıkladı
                       </span>
                     )}
+                    {s.form_fields_touched > 0 && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.form_submit_clicks > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}
+                        title={s.form_fields_list || ''}>
+                        📝 Form: {s.form_fields_touched} alan{s.form_submit_clicks > 0 ? ' ✓ gönderdi' : ' doldurdu'}
+                      </span>
+                    )}
                     {routeMatch && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                         🗺 {decodeURIComponent(routeMatch[1])} → {decodeURIComponent(routeMatch[2])}
