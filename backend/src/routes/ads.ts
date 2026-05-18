@@ -397,7 +397,9 @@ router.get('/overview', authenticateAdmin, async (req: AuthRequest, res: Respons
 
     res.json({
       generatedAt: now.toISOString(),
+      preset: preset || null,
       days,
+      isHourly,
       hasData: cur.visitors > 0 || prev.visitors > 0,
       score,
       scoreBreakdown,
