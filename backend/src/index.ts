@@ -11,6 +11,7 @@ import promotionsRouter from './routes/promotions';
 import trackingRouter from './routes/tracking';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
+import adsRouter from './routes/ads';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 
