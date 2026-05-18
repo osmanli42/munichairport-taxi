@@ -599,6 +599,9 @@ export default function AdminPage() {
         {/* SEO */}
         {activeTab === 'seo' && <SeoTab token={token} />}
 
+        {/* Google Ads */}
+        {activeTab === 'ads' && <AdsTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
