@@ -183,23 +183,40 @@ router.get('/overview', authenticateAdmin, async (req: AuthRequest, res: Respons
     // Total (all-channel) bookings in current period, for ad-share context.
     const totalBookingsCurrent = bookings.filter((b) => inCurrent(b.created_at)).length;
 
-    // --- Daily series ------------------------------------------------------
+    // --- Daily / hourly series ---------------------------------------------
     const series: Record<string, { visitors: Set<string>; bookings: number; revenue: number }> = {};
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start.getTime() + i * 86400000);
-      series[dayKey(d)] = { visitors: new Set(), bookings: 0, revenue: 0 };
-    }
-    for (const s of adSessions) {
-      if (!inCurrent(s.first_seen)) continue;
-      const k = dayKey(new Date(s.first_seen));
-      if (series[k] && s.visitor_id) series[k].visitors.add(s.visitor_id);
-    }
-    for (const b of bookings) {
-      if (!b.visitor_id || !adVisitorSet.has(b.visitor_id) || !inCurrent(b.created_at)) continue;
-      const k = dayKey(new Date(b.created_at));
-      if (series[k]) {
-        series[k].bookings += 1;
-        series[k].revenue += Number(b.price) || 0;
+    const hourKey = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:00`;
+
+    if (isHourly) {
+      // Hourly buckets 00:00–23:00 (or up to current hour for today)
+      const maxHour = preset === 'today' ? now.getHours() : 23;
+      for (let h = 0; h <= maxHour; h++) {
+        series[`${String(h).padStart(2, '0')}:00`] = { visitors: new Set(), bookings: 0, revenue: 0 };
+      }
+      for (const s of adSessions) {
+        if (!inCurrent(s.first_seen)) continue;
+        const k = hourKey(new Date(s.first_seen));
+        if (series[k] && s.visitor_id) series[k].visitors.add(s.visitor_id);
+      }
+      for (const b of bookings) {
+        if (!b.visitor_id || !adVisitorSet.has(b.visitor_id) || !inCurrent(b.created_at)) continue;
+        const k = hourKey(new Date(b.created_at));
+        if (series[k]) { series[k].bookings += 1; series[k].revenue += Number(b.price) || 0; }
+      }
+    } else {
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start.getTime() + i * 86400000);
+        series[dayKey(d)] = { visitors: new Set(), bookings: 0, revenue: 0 };
+      }
+      for (const s of adSessions) {
+        if (!inCurrent(s.first_seen)) continue;
+        const k = dayKey(new Date(s.first_seen));
+        if (series[k] && s.visitor_id) series[k].visitors.add(s.visitor_id);
+      }
+      for (const b of bookings) {
+        if (!b.visitor_id || !adVisitorSet.has(b.visitor_id) || !inCurrent(b.created_at)) continue;
+        const k = dayKey(new Date(b.created_at));
+        if (series[k]) { series[k].bookings += 1; series[k].revenue += Number(b.price) || 0; }
       }
     }
     const daily = Object.keys(series)
