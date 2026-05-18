@@ -256,8 +256,10 @@ export default function AdsTab({ token }: { token: string }) {
 
           {/* Trend chart */}
           <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-            <div className="text-sm font-semibold text-gray-700 mb-3">Günlük trend ({data.days} gün)</div>
-            <TrendChart daily={data.daily} />
+            <div className="text-sm font-semibold text-gray-700 mb-3">
+              {data.isHourly ? `Saatlik trend (${PRESET_LABELS[data.preset as Preset] || data.preset})` : `Günlük trend (${data.days} gün)`}
+            </div>
+            <TrendChart daily={data.daily} isHourly={data.isHourly} />
           </div>
 
           {/* Alerts */}
