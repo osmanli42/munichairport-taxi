@@ -94,6 +94,11 @@ export default function SystemTab({ token }: { token: string }) {
         fetch(`${API_BASE}/admin/health`, { headers }),
         fetch(`${API_BASE}/admin/system-stats/alert-settings`, { headers }),
       ]);
+      if (statsR.status === 401 || healthR.status === 401) {
+        localStorage.removeItem('admin_token');
+        window.location.reload();
+        return;
+      }
       if (!statsR.ok) throw new Error('stats failed');
       const sd = await statsR.json();
       setStats(sd);
