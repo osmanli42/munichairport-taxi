@@ -18,7 +18,9 @@ interface ScorePart { key: string; weight: number; points: number }
 
 interface AdsData {
   generatedAt: string;
+  preset: string | null;
   days: number;
+  isHourly: boolean;
   hasData: boolean;
   score: number | null;
   scoreBreakdown: ScorePart[];
