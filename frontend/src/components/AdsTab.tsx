@@ -252,6 +252,11 @@ export default function AdsTab({ token }: { token: string }) {
         ? `${API_BASE}/admin/ads/overview?preset=${p}`
         : `${API_BASE}/admin/ads/overview?days=${p}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) {
+        localStorage.removeItem('admin_token');
+        window.location.reload();
+        return;
+      }
       if (!res.ok) throw new Error(`Sunucu hatası (${res.status})`);
       setData(await res.json());
     } catch (e: any) {
