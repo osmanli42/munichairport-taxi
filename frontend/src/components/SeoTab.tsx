@@ -91,6 +91,11 @@ export default function SeoTab({ token }: { token: string }) {
       const res = await fetch(`${API_BASE}/admin/seo/data`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem('admin_token');
+        window.location.reload();
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
     } catch (e: any) {
