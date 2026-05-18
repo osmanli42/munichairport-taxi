@@ -116,7 +116,7 @@ export default function BookingDraftRecovery() {
 
   return (
     <div className="fixed left-4 right-4 bottom-24 z-40 md:left-6 md:right-auto md:bottom-6 md:w-[340px]">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 animate-[fadeInUp_0.3s_ease-out]">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 animate-slide-up">
         <div className="flex items-start gap-3">
           <div className="shrink-0 w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <RotateCcw size={18} className="text-primary-600" />
