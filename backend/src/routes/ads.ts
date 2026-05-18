@@ -768,4 +768,124 @@ router.post('/spend', authenticateAdmin, async (req: AuthRequest, res: Response)
   }
 });
 
+// Parse & import Google Ads CSV report.
+// Accepts { csv: string } — the raw text of a Google Ads report download.
+// Supported column names (case-insensitive): Day/Date → date, Cost/Kosten → amount.
+router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await ensureSpendTable();
+    const csv = String(req.body?.csv || '');
+    if (!csv.trim()) {
+      res.status(400).json({ error: 'CSV verisi boş' });
+      return;
+    }
+
+    const lines = csv.split(/\r?\n/);
+
+    // Find the header row — first line that contains a date-like or cost-like column.
+    let headerIdx = -1;
+    let dateCol = -1;
+    let costCol = -1;
+    const DATE_NAMES = ['day', 'date', 'tag', 'datum'];
+    const COST_NAMES = ['cost', 'kosten', 'spend', 'ausgaben', 'cost (eur)', 'kosten (eur)'];
+
+    for (let i = 0; i < lines.length; i++) {
+      const cols = splitCsvLine(lines[i]).map(c => c.toLowerCase().trim().replace(/["""]/g, ''));
+      const dIdx = cols.findIndex(c => DATE_NAMES.includes(c));
+      const cIdx = cols.findIndex(c => COST_NAMES.some(n => c.includes(n)));
+      if (dIdx >= 0 && cIdx >= 0) {
+        headerIdx = i;
+        dateCol = dIdx;
+        costCol = cIdx;
+        break;
+      }
+    }
+
+    if (headerIdx < 0) {
+      res.status(400).json({
+        error: 'Tarih ve maliyet sütunu bulunamadı. Rapor türünü "Gün" ve sütun olarak "Maliyet" seçin.',
+      });
+      return;
+    }
+
+    const imported: { date: string; amount: number }[] = [];
+    const skipped: string[] = [];
+
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = splitCsvLine(line).map(c => c.replace(/["""]/g, '').trim());
+      if (cols.length <= Math.max(dateCol, costCol)) continue;
+
+      const rawDate = cols[dateCol];
+      const rawCost = cols[costCol].replace(/[^\d.,]/g, '').replace(',', '.');
+      const amount = parseFloat(rawCost);
+
+      // Parse date — Google Ads formats: YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY
+      const date = parseGoogleDate(rawDate);
+      if (!date || !Number.isFinite(amount)) {
+        skipped.push(rawDate || line.slice(0, 40));
+        continue;
+      }
+
+      // Skip summary / total rows
+      if (rawDate.toLowerCase().includes('total') || rawDate.toLowerCase().includes('gesamt')) continue;
+
+      imported.push({ date, amount: Math.round(amount * 100) / 100 });
+    }
+
+    if (imported.length === 0) {
+      res.status(400).json({ error: 'Hiç geçerli satır bulunamadı.', skipped });
+      return;
+    }
+
+    for (const { date, amount } of imported) {
+      await run(
+        `INSERT INTO ads_spend (spend_date, amount) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
+        [date, amount]
+      );
+    }
+
+    const total = imported.reduce((s, r) => s + r.amount, 0);
+    res.json({ ok: true, days: imported.length, total: Math.round(total * 100) / 100, skipped });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if ((ch === '"' || ch === '“' || ch === '”') && !inQuote) {
+      inQuote = true;
+    } else if ((ch === '"' || ch === '”') && inQuote) {
+      inQuote = false;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseGoogleDate(raw: string): string | null {
+  const s = raw.trim();
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // DD.MM.YYYY
+  const dmy = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  // MM/DD/YYYY
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
+  return null;
+}
+
 export default router;
