@@ -1685,7 +1685,7 @@ function buildRechnungEmail(opts: {
   const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
   const isEn = lang === 'en';
   const companyName = s.company_name || 'Taxi N&N GbR';
-  const grossPrice = Number(booking.price) || 0;
+  const grossPrice = roundGrossPrice(Number(booking.price) || 0);
   const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
   const mwstAmount = grossPrice - netPrice;
   const BRAND = '#0c2d48';
