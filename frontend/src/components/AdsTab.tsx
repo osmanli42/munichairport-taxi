@@ -243,6 +243,10 @@ export default function AdsTab({ token }: { token: string }) {
   const [spendSaving, setSpendSaving] = useState(false);
   const [spendMsg, setSpendMsg] = useState('');
 
+  // CSV import state
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvMsg, setCsvMsg] = useState('');
+
   const load = useCallback(async (p: Preset) => {
     setLoading(true);
     setError('');
