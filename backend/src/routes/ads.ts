@@ -863,17 +863,24 @@ router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Respo
   }
 });
 
-function splitCsvLine(line: string): string[] {
+function detectDelimiter(lines: string[]): string {
+  for (const line of lines.slice(0, 10)) {
+    if (line.includes(';')) return ';';
+  }
+  return ',';
+}
+
+function splitCsvLine(line: string, delim = ','): string[] {
   const result: string[] = [];
   let cur = '';
   let inQuote = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
-    if ((ch === '"' || ch === '“' || ch === '”') && !inQuote) {
+    if ((ch === '”' || ch === '“' || ch === '”') && !inQuote) {
       inQuote = true;
-    } else if ((ch === '"' || ch === '”') && inQuote) {
+    } else if ((ch === '”' || ch === '”') && inQuote) {
       inQuote = false;
-    } else if (ch === ',' && !inQuote) {
+    } else if (ch === delim && !inQuote) {
       result.push(cur);
       cur = '';
     } else {
