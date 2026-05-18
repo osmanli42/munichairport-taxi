@@ -67,10 +67,44 @@ function emptyMetrics(): PeriodMetrics {
 
 router.get('/overview', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 7), 90);
+    const preset = String(req.query.preset || '');
     const now = new Date();
-    const start = new Date(now.getTime() - days * 86400000);
-    const prevStart = new Date(now.getTime() - 2 * days * 86400000);
+
+    // Compute calendar midnight in local server time via offset trick.
+    function todayMidnight(): Date {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    let start: Date;
+    let curEnd: Date;
+    let prevStart: Date;
+    let prevEnd: Date;
+    let days: number;
+    let isHourly = false;
+
+    if (preset === 'today') {
+      start = todayMidnight();
+      curEnd = now;
+      prevStart = new Date(start.getTime() - 86400000); // yesterday 00:00
+      prevEnd = start;                                   // today 00:00
+      days = 1;
+      isHourly = true;
+    } else if (preset === 'yesterday') {
+      curEnd = todayMidnight();
+      start = new Date(curEnd.getTime() - 86400000);    // yesterday 00:00
+      prevEnd = start;
+      prevStart = new Date(start.getTime() - 86400000); // day before 00:00
+      days = 1;
+      isHourly = true;
+    } else {
+      days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 7), 90);
+      curEnd = now;
+      start = new Date(now.getTime() - days * 86400000);
+      prevStart = new Date(now.getTime() - 2 * days * 86400000);
+      prevEnd = start;
+    }
 
     // Pull raw ad sessions and bookings for the full [prevStart, now] window.
     // Data volume for this site is small enough to aggregate in JS.
