@@ -823,7 +823,11 @@ router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Respo
       if (cols.length <= Math.max(dateCol, costCol)) continue;
 
       const rawDate = cols[dateCol];
-      const rawCost = cols[costCol].replace(/[^\d.,]/g, '').replace(',', '.');
+      // German format: 1.234,56 → strip thousands dot, replace decimal comma
+      const rawCostStr = cols[costCol].replace(/[^\d.,]/g, '');
+      const rawCost = rawCostStr.includes(',')
+        ? rawCostStr.replace(/\./g, '').replace(',', '.')
+        : rawCostStr;
       const amount = parseFloat(rawCost);
 
       // Parse date — Google Ads formats: YYYY-MM-DD, DD.MM.YYYY, MM/DD/YYYY
