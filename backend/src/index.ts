@@ -65,6 +65,7 @@ app.get('/api/smtp-test', async (req, res) => {
 // Routes
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/ads', adsRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/settings', settingsRouter);
