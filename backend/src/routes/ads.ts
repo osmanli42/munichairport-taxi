@@ -807,8 +807,12 @@ router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Respo
     }
 
     if (headerIdx < 0) {
+      // Return the first few parsed lines for debugging
+      const sample = lines.slice(0, 8).map(l => splitCsvLine(l, delim).map(c => c.trim().replace(/["""«»]/g, '')));
       res.status(400).json({
-        error: 'Tarih ve maliyet sütunu bulunamadı. Rapor türünü "Gün" ve sütun olarak "Maliyet" seçin.',
+        error: 'Tarih ve maliyet sütunu bulunamadı.',
+        debug_delim: delim,
+        debug_columns: sample,
       });
       return;
     }
