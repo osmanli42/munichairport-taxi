@@ -11,6 +11,7 @@ import CookieBanner from '@/components/CookieBanner';
 import PromoBanner from '@/components/PromoBanner';
 import VisitorTracker from '@/components/VisitorTracker';
 import SessionRecorder from '@/components/SessionRecorder';
+import BookingDraftRecovery from '@/components/BookingDraftRecovery';
 import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
