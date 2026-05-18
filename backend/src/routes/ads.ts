@@ -149,11 +149,11 @@ router.get('/overview', authenticateAdmin, async (req: AuthRequest, res: Respons
 
     const inCurrent = (d: Date | string) => {
       const t = new Date(d).getTime();
-      return t >= start.getTime() && t <= now.getTime();
+      return t >= start.getTime() && t <= curEnd.getTime();
     };
     const inPrev = (d: Date | string) => {
       const t = new Date(d).getTime();
-      return t >= prevStart.getTime() && t < start.getTime();
+      return t >= prevStart.getTime() && t < prevEnd.getTime();
     };
 
     // --- Period metrics ----------------------------------------------------
