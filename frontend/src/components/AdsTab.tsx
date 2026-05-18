@@ -87,13 +87,15 @@ function KpiCard({
   );
 }
 
-function TrendChart({ daily }: { daily: DailyPoint[] }) {
+function TrendChart({ daily, isHourly }: { daily: DailyPoint[]; isHourly?: boolean }) {
   if (!daily.length) return <div className="text-sm text-gray-400">Veri yok</div>;
   const w = 760, h = 180, padL = 8, padB = 22;
   const maxV = Math.max(...daily.map((d) => d.visitors), 1);
   const maxB = Math.max(...daily.map((d) => d.bookings), 1);
   const barW = (w - padL * 2) / daily.length;
   const innerH = h - padB;
+  const labelEvery = Math.ceil(daily.length / (isHourly ? 6 : 10));
+  const xLabel = (d: DailyPoint) => isHourly ? d.date : d.date.slice(5);
 
   const linePts = daily.map((d, i) => {
     const x = padL + i * barW + barW / 2;
@@ -123,10 +125,10 @@ function TrendChart({ daily }: { daily: DailyPoint[] }) {
           return <circle key={d.date} cx={x} cy={y} r="2.5" fill="#16a34a" />;
         })}
         {daily.map((d, i) => (
-          i % Math.ceil(daily.length / 10) === 0 ? (
+          i % labelEvery === 0 ? (
             <text key={d.date} x={padL + i * barW + barW / 2} y={h - 6}
               textAnchor="middle" fontSize="9" fill="#9ca3af">
-              {d.date.slice(5)}
+              {xLabel(d)}
             </text>
           ) : null
         ))}
