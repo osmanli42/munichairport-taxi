@@ -147,19 +147,27 @@ const SEV_STYLE: Record<string, string> = {
   low: 'bg-blue-50 border-blue-200 text-blue-800',
 };
 
+type Preset = 'today' | 'yesterday' | '7' | '30' | '90';
+
+const PRESET_LABELS: Record<Preset, string> = {
+  today: 'Bugün', yesterday: 'Dün', '7': '7 gün', '30': '30 gün', '90': '90 gün',
+};
+
 export default function AdsTab({ token }: { token: string }) {
   const [data, setData] = useState<AdsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [days, setDays] = useState(30);
+  const [preset, setPreset] = useState<Preset>('30');
 
-  const load = useCallback(async (d: number) => {
+  const load = useCallback(async (p: Preset) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/admin/ads/overview?days=${d}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const isDay = p === 'today' || p === 'yesterday';
+      const url = isDay
+        ? `${API_BASE}/admin/ads/overview?preset=${p}`
+        : `${API_BASE}/admin/ads/overview?days=${p}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error(`Sunucu hatası (${res.status})`);
       setData(await res.json());
     } catch (e: any) {
@@ -169,7 +177,7 @@ export default function AdsTab({ token }: { token: string }) {
     }
   }, [token]);
 
-  useEffect(() => { load(days); }, [load, days]);
+  useEffect(() => { load(preset); }, [load, preset]);
 
   return (
     <div className="space-y-6">
@@ -183,14 +191,14 @@ export default function AdsTab({ token }: { token: string }) {
             gclid / UTM ile etiketlenmiş reklam trafiği — birinci taraf veriden hesaplanır
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {[7, 30, 90].map((d) => (
-            <button key={d} onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${days === d ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 shadow-sm'}`}>
-              {d} gün
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['today', 'yesterday', '7', '30', '90'] as Preset[]).map((p) => (
+            <button key={p} onClick={() => setPreset(p)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${preset === p ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 shadow-sm'}`}>
+              {PRESET_LABELS[p]}
             </button>
           ))}
-          <button onClick={() => load(days)} disabled={loading}
+          <button onClick={() => load(preset)} disabled={loading}
             className="p-2 rounded-lg bg-white shadow-sm text-gray-600 hover:bg-gray-50">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
