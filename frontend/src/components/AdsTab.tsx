@@ -368,31 +368,58 @@ export default function AdsTab({ token }: { token: string }) {
           </button>
         </div>
         {spendOpen && (
-          <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-end gap-3">
-            <label className="text-xs text-gray-500">
-              Başlangıç
-              <input type="date" value={spendFrom} onChange={(e) => setSpendFrom(e.target.value)}
-                className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm" />
-            </label>
-            <label className="text-xs text-gray-500">
-              Bitiş
-              <input type="date" value={spendTo} onChange={(e) => setSpendTo(e.target.value)}
-                className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm" />
-            </label>
-            <label className="text-xs text-gray-500">
-              Toplam harcama (€)
-              <input type="number" min="0" step="0.01" value={spendTotal}
-                onChange={(e) => setSpendTotal(e.target.value)} placeholder="örn. 450"
-                className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm w-32" />
-            </label>
-            <button onClick={saveSpend} disabled={spendSaving || !spendTotal}
-              className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium disabled:opacity-50">
-              {spendSaving ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
-            {spendMsg && <span className={`text-xs ${spendMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{spendMsg}</span>}
-            <p className="text-[11px] text-gray-400 w-full">
-              Girilen toplam, seçilen tarih aralığındaki günlere eşit dağıtılır. Var olan günler güncellenir.
-            </p>
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-4">
+            {/* CSV import */}
+            <div>
+              <div className="text-xs font-medium text-gray-600 mb-1.5 flex items-center gap-1.5">
+                <Upload size={13} /> Google Ads CSV raporu yükle
+              </div>
+              <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors w-fit
+                ${csvUploading ? 'border-gray-200 text-gray-400' : 'border-primary-200 text-primary-700 hover:border-primary-400 hover:bg-primary-50'}`}>
+                <input type="file" accept=".csv,.tsv,text/csv,text/plain" className="hidden"
+                  disabled={csvUploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.target.value = ''; }} />
+                <Upload size={14} />
+                <span className="text-sm">{csvUploading ? 'Yükleniyor…' : 'CSV seç'}</span>
+              </label>
+              {csvMsg && (
+                <p className={`text-xs mt-1.5 ${csvMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{csvMsg}</p>
+              )}
+              <p className="text-[11px] text-gray-400 mt-1">
+                Google Ads → Raporlar → İndir → CSV. Rapor türü: <strong>Gün</strong>, sütunlar: <strong>Gün + Maliyet</strong>.
+              </p>
+            </div>
+
+            {/* Manual entry */}
+            <div>
+              <div className="text-xs font-medium text-gray-600 mb-1.5">Manuel giriş</div>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="text-xs text-gray-500">
+                  Başlangıç
+                  <input type="date" value={spendFrom} onChange={(e) => setSpendFrom(e.target.value)}
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm" />
+                </label>
+                <label className="text-xs text-gray-500">
+                  Bitiş
+                  <input type="date" value={spendTo} onChange={(e) => setSpendTo(e.target.value)}
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm" />
+                </label>
+                <label className="text-xs text-gray-500">
+                  Toplam harcama (€)
+                  <input type="number" min="0" step="0.01" value={spendTotal}
+                    onChange={(e) => setSpendTotal(e.target.value)} placeholder="örn. 450"
+                    className="block mt-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm w-32" />
+                </label>
+                <button onClick={saveSpend} disabled={spendSaving || !spendTotal}
+                  className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium disabled:opacity-50">
+                  {spendSaving ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+                {spendMsg && <span className={`text-xs ${spendMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{spendMsg}</span>}
+                <p className="text-[11px] text-gray-400 w-full">
+                  Girilen toplam, seçilen tarih aralığındaki günlere eşit dağıtılır. Var olan günler güncellenir.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
