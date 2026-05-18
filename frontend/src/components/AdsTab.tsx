@@ -300,6 +300,27 @@ export default function AdsTab({ token }: { token: string }) {
     }
   }
 
+  async function importCsv(file: File) {
+    setCsvUploading(true);
+    setCsvMsg('');
+    try {
+      const text = await file.text();
+      const res = await fetch(`${API_BASE}/admin/ads/spend/csv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ csv: text }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Yükleme başarısız');
+      setCsvMsg(`✓ ${j.days} gün içe aktarıldı · toplam ${j.total}€${j.skipped?.length ? ` (${j.skipped.length} satır atlandı)` : ''}`);
+      await load(preset);
+    } catch (e: any) {
+      setCsvMsg(`✕ ${e.message}`);
+    } finally {
+      setCsvUploading(false);
+    }
+  }
+
   const cost = data?.cost;
 
   return (
