@@ -895,8 +895,14 @@ function splitCsvLine(line: string, delim = ','): string[] {
   return result;
 }
 
+const DE_MONTHS: Record<string, string> = {
+  jan: '01', feb: '02', mär: '03', mar: '03', apr: '04', mai: '05',
+  jun: '06', jul: '07', aug: '08', sep: '09', okt: '10', oct: '10',
+  nov: '11', dez: '12', dec: '12',
+};
+
 function parseGoogleDate(raw: string): string | null {
-  const s = raw.trim();
+  const s = raw.trim().replace(/^["']|["']$/g, '');
   // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   // DD.MM.YYYY
@@ -905,6 +911,12 @@ function parseGoogleDate(raw: string): string | null {
   // MM/DD/YYYY
   const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mdy) return `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`;
+  // German: "So., 19. Apr. 2026" or "19. Apr. 2026"
+  const de = s.match(/(\d{1,2})\.\s*([A-Za-zä]+)\.?\s+(\d{4})/);
+  if (de) {
+    const month = DE_MONTHS[de[2].toLowerCase().slice(0, 3)];
+    if (month) return `${de[3]}-${month}-${de[1].padStart(2, '0')}`;
+  }
   return null;
 }
 
