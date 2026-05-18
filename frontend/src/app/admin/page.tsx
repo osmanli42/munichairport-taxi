@@ -129,6 +129,13 @@ export default function AdminPage() {
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
     if (savedToken) {
+      try {
+        const payload = JSON.parse(atob(savedToken.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('admin_token');
+          return;
+        }
+      } catch { /* malformed token → stay logged out */ }
       setToken(savedToken);
       setIsLoggedIn(true);
     }
