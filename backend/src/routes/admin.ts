@@ -1557,7 +1557,7 @@ function generateRechnungPdf(opts: {
     doc.text(isEn ? 'Total' : 'Gesamt', colGesamt, tableTop + 6, { width: wGesamt, align: 'right', lineBreak: false });
 
     // Net price calculation
-    const grossPrice = Number(booking.price) || 0;
+    const grossPrice = roundGrossPrice(Number(booking.price) || 0);
     const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
     const mwstAmount = grossPrice - netPrice;
 
