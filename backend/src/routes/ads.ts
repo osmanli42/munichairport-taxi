@@ -819,7 +819,7 @@ router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Respo
     for (let i = headerIdx + 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      const cols = splitCsvLine(line).map(c => c.replace(/["""]/g, '').trim());
+      const cols = splitCsvLine(line, delim).map(c => c.replace(/["""«»]/g, '').trim());
       if (cols.length <= Math.max(dateCol, costCol)) continue;
 
       const rawDate = cols[dateCol];
