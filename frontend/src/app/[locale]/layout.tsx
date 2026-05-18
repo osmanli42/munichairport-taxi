@@ -160,6 +160,7 @@ export default async function LocaleLayout({
           <CookieBanner />
           <VisitorTracker />
           <SessionRecorder />
+          <BookingDraftRecovery />
         </NextIntlClientProvider>
       </body>
     </html>
