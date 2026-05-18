@@ -1415,6 +1415,11 @@ function fmtPrice(amount: number): string {
   return amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
+// Round gross price up to the nearest 0.50 — must match frontend formatPrice()
+function roundGrossPrice(price: number): number {
+  return Math.ceil(price * 2) / 2;
+}
+
 function fmtDate(dateStr: string, lang: string): string {
   try {
     const d = new Date(dateStr);
