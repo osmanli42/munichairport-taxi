@@ -780,17 +780,22 @@ router.post('/spend/csv', authenticateAdmin, async (req: AuthRequest, res: Respo
       return;
     }
 
-    const lines = csv.split(/\r?\n/);
+    // Strip BOM if present
+    const csvClean = csv.replace(/^﻿/, '');
+    const lines = csvClean.split(/\r?\n/);
+
+    // Auto-detect delimiter: semicolon (German locale) or comma
+    const delim = detectDelimiter(lines);
 
     // Find the header row — first line that contains a date-like or cost-like column.
     let headerIdx = -1;
     let dateCol = -1;
     let costCol = -1;
     const DATE_NAMES = ['day', 'date', 'tag', 'datum'];
-    const COST_NAMES = ['cost', 'kosten', 'spend', 'ausgaben', 'cost (eur)', 'kosten (eur)'];
+    const COST_NAMES = ['cost', 'kosten', 'spend', 'ausgaben'];
 
     for (let i = 0; i < lines.length; i++) {
-      const cols = splitCsvLine(lines[i]).map(c => c.toLowerCase().trim().replace(/["""]/g, ''));
+      const cols = splitCsvLine(lines[i], delim).map(c => c.toLowerCase().trim().replace(/["""«»]/g, ''));
       const dIdx = cols.findIndex(c => DATE_NAMES.includes(c));
       const cIdx = cols.findIndex(c => COST_NAMES.some(n => c.includes(n)));
       if (dIdx >= 0 && cIdx >= 0) {
