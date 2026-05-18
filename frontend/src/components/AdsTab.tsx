@@ -100,8 +100,8 @@ function TrendChart({ daily }: { daily: DailyPoint[] }) {
   }).join(' ');
 
   return (
-    <div className="overflow-x-auto">
-      <svg width={w} height={h} className="min-w-full">
+    <div>
+      <svg viewBox={`0 0 ${w} ${h}`} width="100%" className="block" style={{ height: 'auto' }}>
         {daily.map((d, i) => {
           const bh = (d.visitors / maxV) * (innerH - 10);
           const x = padL + i * barW;
