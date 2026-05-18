@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb,
   Users, CalendarCheck, Percent, Euro, Target, MousePointerClick,
-  Wallet, TrendingUp as RoasIcon, Coins, Clock, MapPin, CalendarDays,
+  Wallet, TrendingUp as RoasIcon, Coins, Clock, MapPin, CalendarDays, Upload,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
