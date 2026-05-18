@@ -6,15 +6,16 @@ import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
-  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play
+  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 import SeoTab from '@/components/SeoTab';
+import AdsTab from '@/components/AdsTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads';
 
 interface MarketingCustomer {
   email: string;
