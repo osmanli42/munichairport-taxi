@@ -63,18 +63,19 @@ export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: n
   DE: { vignette: 0,    tunnelOneWay: 0 },
 };
 
-// Avusturya posta koduna göre bölge tespiti:
-// 8xxx = Steiermark (Pyhrn tüneli: Bosruck + Gleinalm, ~11€/yön)
-// 9xxx = Kärnten + Osttirol (Tauern tüneli: Tauerntunnel + Katschberg, ~14.5€/yön)
+// Avusturya posta koduna göre bölge tespiti (2025 gerçek tarifeleri):
+// 8xxx = Steiermark → Tauerntunnel A10 (€13,50/yön, 2025)
+// 9xxx = Kärnten + Osttirol → Tauerntunnel A10 (€13,50/yön, 2025)
 // diğerleri = Tirol/Vorarlberg/Wien/NÖ/OÖ/Salzburg/Bgld → sadece vignette
 function getAustrianToll(addr: string): number {
-  const vignette = 9.9;
+  const vignette = 9.9; // 10-Tage Vignette 2025
   const plz = addr.match(/\b(\d{4})\b/)?.[1];
-  if (plz) {
-    if (plz[0] === '8') return vignette + 11 * 2;    // Steiermark → Pyhrn (~32€)
-    if (plz[0] === '9') return vignette + 14.5 * 2;  // Kärnten → Tauern (~39€)
+  if (plz && (plz[0] === '8' || plz[0] === '9')) {
+    // Steiermark & Kärnten: her iki bölge de Tauerntunnel (A10) üzerinden ulaşılır
+    // Taksi boş dönüş yaptığı için tünel 2× → 9,90 + 13,50×2 = 36,90€
+    return vignette + 13.5 * 2;
   }
-  return vignette; // Tirol, Wien, Salzburg, NÖ, OÖ, Bgld, Vbg → sadece vignette (~10€)
+  return vignette; // Tirol(6xxx), Wien(1xxx), NÖ(2-3xxx), OÖ(4xxx), Salzburg(5xxx), Bgld(7xxx), Vbg(6xxx)
 }
 
 export function extractCountryFromAddress(addr: string | undefined): string {
