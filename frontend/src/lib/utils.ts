@@ -49,17 +49,31 @@ export const VEHICLE_PRICES = {
 
 // vignette: 1× per trip. tunnelOneWay: taksi boş dönüş nedeniyle her zaman 2× uygulanır.
 // Müşteri Rückfahrt seçerse oneWayWithToll × 2 üzerinden hesap yapıldığı için tünel ×2 zaten dahil.
+// Gerçek 2025 Maut tarifeleri. tunnelOneWay: taksi boş dönüş için daima ×2 uygulanır.
+// AT: bölge bazlı, yukarıdaki getAustrianToll() ile hesaplanır.
 export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: number }> = {
-  // AT: bölge bazlı, aşağıdaki getAustrianToll() ile hesaplanır
-  CH: { vignette: 42,   tunnelOneWay: 0 },     // Jahresvignette (sefer başı yansıtılır)
-  IT: { vignette: 0,    tunnelOneWay: 25 },    // Autostrada ortalama
-  FR: { vignette: 0,    tunnelOneWay: 15 },    // Autoroute ortalama (~30€ RT)
-  CZ: { vignette: 10,   tunnelOneWay: 0 },     // 10-Tage Dálniční známka
-  PL: { vignette: 0,    tunnelOneWay: 8 },     // A1/A2/A4 otoyol ücretleri (~16€ RT)
-  DK: { vignette: 0,    tunnelOneWay: 14 },    // Storebælt Köprüsü (~28€ RT)
-  BE: { vignette: 0,    tunnelOneWay: 0 },
-  NL: { vignette: 0,    tunnelOneWay: 0 },
-  LU: { vignette: 0,    tunnelOneWay: 0 },
+  CH: { vignette: 41,   tunnelOneWay: 0 },
+  // CHF 40 e-Vignette 2025 ≈ €41. İsviçre'de özel tünel ücreti yok (kapsüllü).
+
+  IT: { vignette: 9.9,  tunnelOneWay: 16 },
+  // AT vignette(9,90) + Brenner A13 Sondermaut(11€/yön)×2 + İtalya A22 ort.(5€/yön)×2
+  // Toplam: 9,90 + 22 + 10 = ~41,90€ (Südtirol/Bozen odaklı)
+
+  FR: { vignette: 0,    tunnelOneWay: 15 },
+  // Fransa'da vignette yok. Autoroute ort. ~30€ RT (Strasbourg~10, Lyon~40, Paris~55)
+
+  CZ: { vignette: 12.5, tunnelOneWay: 0 },
+  // 10-Tage e-Vignette 2025: CZK 310 ≈ €12,50. Tünel yok.
+
+  PL: { vignette: 0,    tunnelOneWay: 6 },
+  // A1/A2/A4 otoyol ücretleri ort. ~12€ RT
+
+  DK: { vignette: 0,    tunnelOneWay: 17.5 },
+  // Storebælt Köprüsü 2025: DKK 265 ≈ €35 RT (Zealand/Kopenhag'a giden rotalar)
+
+  BE: { vignette: 0,    tunnelOneWay: 0 },  // Araç için otoyol ücreti yok
+  NL: { vignette: 0,    tunnelOneWay: 0 },  // Araç için otoyol ücreti yok
+  LU: { vignette: 0,    tunnelOneWay: 0 },  // Araç için otoyol ücreti yok
   DE: { vignette: 0,    tunnelOneWay: 0 },
 };
 
