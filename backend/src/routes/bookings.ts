@@ -150,7 +150,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
     const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
-    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost;
+    const parsedTollAmount = toll_amount ? parseFloat(toll_amount) : 0;
+    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount;
 
     if (validatedPromoCode) {
       const [promo] = await query<any>('SELECT * FROM promotions WHERE code = ?', [validatedPromoCode]);
