@@ -159,6 +159,7 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
     res.json({
       distance_km,
       duration_minutes,
+      destination_country,
       ...(anfahrt_distance_km !== undefined && { anfahrt_distance_km }),
       ...(zwischenstopp_total_km !== undefined && { zwischenstopp_total_km, zwischenstopp_total_duration }),
     });
