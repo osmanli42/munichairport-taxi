@@ -50,17 +50,31 @@ export const VEHICLE_PRICES = {
 // vignette: 1× per trip. tunnelOneWay: taksi boş dönüş nedeniyle her zaman 2× uygulanır.
 // Müşteri Rückfahrt seçerse oneWayWithToll × 2 üzerinden hesap yapıldığı için tünel ×2 zaten dahil.
 export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: number }> = {
-  AT: { vignette: 9.9, tunnelOneWay: 12.5 },
-  CH: { vignette: 42, tunnelOneWay: 0 },
-  IT: { vignette: 0, tunnelOneWay: 25 },
-  DE: { vignette: 0, tunnelOneWay: 0 },
+  AT: { vignette: 9.9,  tunnelOneWay: 12.5 }, // 10-Tage Vignette + Tauern/Pyhrn Sondermaut
+  CH: { vignette: 42,   tunnelOneWay: 0 },     // Jahresvignette (sefer başı yansıtılır)
+  IT: { vignette: 0,    tunnelOneWay: 25 },    // Autostrada ortalama
+  FR: { vignette: 0,    tunnelOneWay: 15 },    // Autoroute ortalama (~30€ RT)
+  CZ: { vignette: 10,   tunnelOneWay: 0 },     // 10-Tage Dálniční známka
+  PL: { vignette: 0,    tunnelOneWay: 8 },     // A1/A2/A4 otoyol ücretleri (~16€ RT)
+  DK: { vignette: 0,    tunnelOneWay: 14 },    // Storebælt Köprüsü (~28€ RT)
+  BE: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
+  NL: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
+  LU: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
+  DE: { vignette: 0,    tunnelOneWay: 0 },
 };
 
-export function extractCountryFromAddress(addr: string | undefined): 'DE' | 'AT' | 'CH' | 'IT' {
+export function extractCountryFromAddress(addr: string | undefined): string {
   if (!addr) return 'DE';
   if (/(österreich|austria)\s*$/i.test(addr)) return 'AT';
   if (/(schweiz|switzerland|suisse|svizzera)\s*$/i.test(addr)) return 'CH';
   if (/(italien|italy|italia)\s*$/i.test(addr)) return 'IT';
+  if (/(frankreich|france)\s*$/i.test(addr)) return 'FR';
+  if (/(tschechien|tschechische republik|czech republic|česká republika)\s*$/i.test(addr)) return 'CZ';
+  if (/(polen|poland|polska)\s*$/i.test(addr)) return 'PL';
+  if (/(dänemark|denmark|danmark)\s*$/i.test(addr)) return 'DK';
+  if (/(belgien|belgium|belgique|belgië)\s*$/i.test(addr)) return 'BE';
+  if (/(niederlande|netherlands|nederland)\s*$/i.test(addr)) return 'NL';
+  if (/(luxemburg|luxembourg)\s*$/i.test(addr)) return 'LU';
   return 'DE';
 }
 
