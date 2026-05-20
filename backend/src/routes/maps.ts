@@ -38,7 +38,6 @@ router.get('/autocomplete', async (req: Request, res: Response): Promise<void> =
     const url = new URL('https://maps.googleapis.com/maps/api/place/autocomplete/json');
     url.searchParams.set('input', input);
     url.searchParams.set('key', GOOGLE_API_KEY);
-    url.searchParams.set('components', 'country:de|country:at|country:ch|country:it|country:fr|country:lu|country:be|country:nl|country:dk|country:pl|country:cz');
     url.searchParams.set('language', (req.query.language as string) || 'de');
     url.searchParams.set('types', 'geocode|establishment');
 
