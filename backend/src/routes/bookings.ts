@@ -58,6 +58,14 @@ interface PriceRow {
 // POST /api/bookings - Create new booking
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('[BOOKING-DEBUG]', JSON.stringify({
+      toll_amount: req.body.toll_amount,
+      anfahrt_cost: req.body.anfahrt_cost,
+      distance_km: req.body.distance_km,
+      vehicle_type: req.body.vehicle_type,
+      dropoff_address: req.body.dropoff_address,
+      fahrrad_count: req.body.fahrrad_count,
+    }));
     const {
       pickup_address,
       dropoff_address,
