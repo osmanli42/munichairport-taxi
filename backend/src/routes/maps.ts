@@ -70,6 +70,7 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
     const response = await fetch(url.toString());
     const data = await response.json() as {
       status: string;
+      destination_addresses?: string[];
       rows: { elements: { status: string; distance: { value: number }; duration: { value: number } }[] }[];
     };
 
@@ -86,6 +87,7 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
 
     const distance_km = element.distance.value / 1000;
     const duration_minutes = Math.ceil(element.duration.value / 60);
+    const destination_country = extractCountryCode(data.destination_addresses?.[0] || destination);
 
     // Check if Anfahrt distance is needed (non-airport trip)
     let anfahrt_distance_km: number | undefined;
