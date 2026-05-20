@@ -254,6 +254,9 @@ function ResultsContent() {
       bp.set('anfahrt_km', String(anfahrtKm));
       bp.set('anfahrt_cost', anfahrtCost.toFixed(2));
     }
+    if (onewayToll > 0) {
+      bp.set('toll_amount', onewayToll.toFixed(2));
+    }
     if (zwischenstoppAddress) {
       bp.set('zwischenstopp_address', zwischenstoppAddress);
     }
