@@ -455,9 +455,11 @@ function ResultsContent() {
               ? Math.max(calculatedPrice, priceData.min_price)
               : calculatedPrice;
             const discount = priceData.roundtrip_discount || 0;
-            const fullRoundtripPrice = oneWayPrice * 2;
+            const onewayToll = calculateToll(extractCountryFromAddress(dropoff));
+            const oneWayWithToll = oneWayPrice + onewayToll;
+            const fullRoundtripPrice = oneWayWithToll * 2;
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
-            const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayPrice;
+            const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayWithToll;
             const finalPrice = tripPrice + anfahrtCost;
             const tooMany = passengers > (priceData.max_passengers ?? vehicle.maxPassengers);
 
