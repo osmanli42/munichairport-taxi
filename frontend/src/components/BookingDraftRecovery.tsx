@@ -130,7 +130,7 @@ export default function BookingDraftRecovery() {
             </div>
             {draft.price !== null && (
               <div className="mt-1 text-sm font-bold text-primary-600">
-                {draft.price.toFixed(2).replace('.', ',')} €
+                {(Math.ceil(draft.price * 2) / 2).toFixed(2).replace('.', ',')} €
               </div>
             )}
             <a
