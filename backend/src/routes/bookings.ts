@@ -85,6 +85,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return_datetime,
       fahrrad_count,
       anfahrt_cost,
+      toll_amount,
       zwischenstopp_address,
       promo_code,
       visitor_id,
