@@ -36,6 +36,7 @@ function BuchenContent() {
   const duration = Number(params.get('duration') || 0);
   const vehicle = params.get('vehicle') || 'kombi';
   const basePrice = Number(params.get('price') || 0);
+  const tollAmount = Number(params.get('toll_amount') || 0);
 
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
