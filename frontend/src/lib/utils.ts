@@ -47,6 +47,28 @@ export const VEHICLE_PRICES = {
   grossraumtaxi: { base_price: 15.0, price_per_km: 2.4, roundtrip_discount: 5 },
 };
 
+// vignette: 1× per trip. tunnelOneWay: taksi boş dönüş nedeniyle her zaman 2× uygulanır.
+// Müşteri Rückfahrt seçerse oneWayWithToll × 2 üzerinden hesap yapıldığı için tünel ×2 zaten dahil.
+export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: number }> = {
+  AT: { vignette: 9.9, tunnelOneWay: 12.5 },
+  CH: { vignette: 42, tunnelOneWay: 0 },
+  IT: { vignette: 0, tunnelOneWay: 25 },
+  DE: { vignette: 0, tunnelOneWay: 0 },
+};
+
+export function extractCountryFromAddress(addr: string | undefined): 'DE' | 'AT' | 'CH' | 'IT' {
+  if (!addr) return 'DE';
+  if (/(österreich|austria)\s*$/i.test(addr)) return 'AT';
+  if (/(schweiz|switzerland|suisse|svizzera)\s*$/i.test(addr)) return 'CH';
+  if (/(italien|italy|italia)\s*$/i.test(addr)) return 'IT';
+  return 'DE';
+}
+
+export function calculateToll(country: string | undefined): number {
+  const rule = TOLL_BY_COUNTRY[country ?? 'DE'] ?? TOLL_BY_COUNTRY.DE;
+  return rule.vignette + rule.tunnelOneWay * 2;
+}
+
 export const CONTACT_INFO = {
   phone: '+49 151 41620000',
   phoneHref: 'tel:+4915141620000',
