@@ -313,6 +313,7 @@ function BuchenContent() {
         trip_type: tripType,
         return_datetime: returnDatetime,
         anfahrt_cost: anfahrtCost > 0 ? anfahrtCost : undefined,
+        toll_amount: tollAmount > 0 ? tollAmount : undefined,
         zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
         promo_code: appliedPromo?.code || undefined,
       };
