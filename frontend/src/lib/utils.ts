@@ -50,18 +50,32 @@ export const VEHICLE_PRICES = {
 // vignette: 1× per trip. tunnelOneWay: taksi boş dönüş nedeniyle her zaman 2× uygulanır.
 // Müşteri Rückfahrt seçerse oneWayWithToll × 2 üzerinden hesap yapıldığı için tünel ×2 zaten dahil.
 export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: number }> = {
-  AT: { vignette: 9.9,  tunnelOneWay: 12.5 }, // 10-Tage Vignette + Tauern/Pyhrn Sondermaut
+  // AT: bölge bazlı, aşağıdaki getAustrianToll() ile hesaplanır
   CH: { vignette: 42,   tunnelOneWay: 0 },     // Jahresvignette (sefer başı yansıtılır)
   IT: { vignette: 0,    tunnelOneWay: 25 },    // Autostrada ortalama
   FR: { vignette: 0,    tunnelOneWay: 15 },    // Autoroute ortalama (~30€ RT)
   CZ: { vignette: 10,   tunnelOneWay: 0 },     // 10-Tage Dálniční známka
   PL: { vignette: 0,    tunnelOneWay: 8 },     // A1/A2/A4 otoyol ücretleri (~16€ RT)
   DK: { vignette: 0,    tunnelOneWay: 14 },    // Storebælt Köprüsü (~28€ RT)
-  BE: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
-  NL: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
-  LU: { vignette: 0,    tunnelOneWay: 0 },     // Araç için otoyol ücreti yok
+  BE: { vignette: 0,    tunnelOneWay: 0 },
+  NL: { vignette: 0,    tunnelOneWay: 0 },
+  LU: { vignette: 0,    tunnelOneWay: 0 },
   DE: { vignette: 0,    tunnelOneWay: 0 },
 };
+
+// Avusturya posta koduna göre bölge tespiti:
+// 8xxx = Steiermark (Pyhrn tüneli: Bosruck + Gleinalm, ~11€/yön)
+// 9xxx = Kärnten + Osttirol (Tauern tüneli: Tauerntunnel + Katschberg, ~14.5€/yön)
+// diğerleri = Tirol/Vorarlberg/Wien/NÖ/OÖ/Salzburg/Bgld → sadece vignette
+function getAustrianToll(addr: string): number {
+  const vignette = 9.9;
+  const plz = addr.match(/\b(\d{4})\b/)?.[1];
+  if (plz) {
+    if (plz[0] === '8') return vignette + 11 * 2;    // Steiermark → Pyhrn (~32€)
+    if (plz[0] === '9') return vignette + 14.5 * 2;  // Kärnten → Tauern (~39€)
+  }
+  return vignette; // Tirol, Wien, Salzburg, NÖ, OÖ, Bgld, Vbg → sadece vignette (~10€)
+}
 
 export function extractCountryFromAddress(addr: string | undefined): string {
   if (!addr) return 'DE';
@@ -78,7 +92,8 @@ export function extractCountryFromAddress(addr: string | undefined): string {
   return 'DE';
 }
 
-export function calculateToll(country: string | undefined): number {
+export function calculateToll(country: string | undefined, addr?: string): number {
+  if (country === 'AT') return getAustrianToll(addr ?? '');
   const rule = TOLL_BY_COUNTRY[country ?? 'DE'] ?? TOLL_BY_COUNTRY.DE;
   return rule.vignette + rule.tunnelOneWay * 2;
 }
