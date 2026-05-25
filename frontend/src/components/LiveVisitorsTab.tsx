@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Users, Eye, Smartphone, Monitor, Tablet, RefreshCw,
   TrendingUp, MousePointerClick, ArrowRight, Globe, Clock,
+  Bell, BellOff, Activity, Zap, ShoppingCart, Euro,
+  BarChart3, CheckCircle2, XCircle, AlertCircle,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
@@ -54,13 +56,32 @@ interface Stats {
   funnel: { visited: number; saw_prices: number; started_booking: number; bookings: number };
 }
 
+interface TodayKpi {
+  count: number;
+  revenue: number;
+}
+
+interface ActivityEvent {
+  id: string;
+  time: Date;
+  type: 'new_visitor' | 'booking_completed' | 'visitor_left' | 'price_viewed' | 'booking_started';
+  message: string;
+  detail?: string;
+  icon: string;
+  color: string;
+}
+
 function fmtDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);
   const s = sec % 60;
-  if (m < 60) return `${m}m ${s}s`;
+  if (m < 60) return `${m}dk ${s}s`;
   const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
+  return `${h}s ${m % 60}dk`;
+}
+
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function sourceLabel(s: LiveSession): { label: string; color: string } {
@@ -69,7 +90,8 @@ function sourceLabel(s: LiveSession): { label: string; color: string } {
   if (s.utm_source) return { label: `🔗 ${s.utm_source}`, color: 'bg-purple-100 text-purple-800' };
   if (s.referrer) {
     if (/google\./i.test(s.referrer)) return { label: '🔍 Google', color: 'bg-blue-100 text-blue-800' };
-    if (/bing\./i.test(s.referrer)) return { label: '🔍 Bing', color: 'bg-blue-100 text-blue-800' };
+    if (/bing\./i.test(s.referrer)) return { label: '🔍 Bing', color: 'bg-sky-100 text-sky-800' };
+    if (/chatgpt|openai/i.test(s.referrer)) return { label: '🤖 ChatGPT', color: 'bg-green-100 text-green-800' };
     if (/facebook|instagram/i.test(s.referrer)) return { label: '📱 Social', color: 'bg-pink-100 text-pink-800' };
     return { label: '🔗 Referral', color: 'bg-gray-100 text-gray-800' };
   }
@@ -90,15 +112,137 @@ function deviceIcon(d: string) {
   return <Monitor size={14} />;
 }
 
+function getFunnelStage(s: LiveSession): { label: string; color: string; step: number } {
+  if (s.form_submit_clicks > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
+  if (s.form_fields_touched > 0) return { label: '📝 Form Dolduruyor', color: 'bg-orange-500 text-white', step: 3 };
+  if (s.booking_clicks > 0 || (s.current_path && s.current_path.includes('/buchen'))) return { label: '🛒 Buchen\'de', color: 'bg-orange-400 text-white', step: 3 };
+  if (s.price_clicks > 0 || (s.current_path && s.current_path.includes('/ergebnisse'))) return { label: '💰 Fiyata Bakıyor', color: 'bg-yellow-500 text-white', step: 2 };
+  return { label: '👀 Geziniyor', color: 'bg-blue-400 text-white', step: 1 };
+}
+
+function getStatus(s: LiveSession): { label: string; dot: string; text: string } {
+  if (s.idle_seconds <= 10) return { label: 'Aktif', dot: 'bg-green-500 animate-pulse', text: 'text-green-700' };
+  if (s.idle_seconds <= 60) return { label: `Boşta ${s.idle_seconds}s`, dot: 'bg-yellow-400', text: 'text-yellow-700' };
+  return { label: `Pasif ${fmtDuration(s.idle_seconds)}`, dot: 'bg-red-400', text: 'text-red-600' };
+}
+
+// SVG Sparkline
+function Sparkline({ data, width = 120, height = 36, color = '#10b981' }: {
+  data: number[]; width?: number; height?: number; color?: string;
+}) {
+  if (!data || data.length < 2) return <div className="text-xs text-gray-400">Veri yok</div>;
+  const max = Math.max(...data, 1);
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (v / max) * height;
+    return `${x},${y}`;
+  }).join(' ');
+  const area = `0,${height} ${points} ${width},${height}`;
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <defs>
+        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill="url(#sg)" />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {/* last point dot */}
+      {data.length > 0 && (() => {
+        const lastX = width;
+        const lastY = height - (data[data.length - 1] / max) * height;
+        return <circle cx={lastX} cy={lastY} r="3" fill={color} />;
+      })()}
+    </svg>
+  );
+}
+
+// Mini bar chart for devices
+function DeviceBar({ devices }: { devices: Array<{ device: string; sessions: number }> }) {
+  const total = devices.reduce((a, b) => a + Number(b.sessions), 0);
+  if (total === 0) return <div className="text-xs text-gray-400">Veri yok</div>;
+  const colors: Record<string, string> = {
+    mobile: 'bg-blue-500',
+    desktop: 'bg-emerald-500',
+    tablet: 'bg-purple-500',
+  };
+  const icons: Record<string, JSX.Element> = {
+    mobile: <Smartphone size={12} />,
+    desktop: <Monitor size={12} />,
+    tablet: <Tablet size={12} />,
+  };
+  return (
+    <div className="space-y-2">
+      {devices.map(d => {
+        const pct = Math.round((Number(d.sessions) / total) * 100);
+        const key = d.device?.toLowerCase() || 'desktop';
+        return (
+          <div key={d.device}>
+            <div className="flex items-center justify-between text-xs mb-0.5">
+              <span className="flex items-center gap-1 text-gray-600 capitalize">
+                {icons[key] || <Monitor size={12} />} {d.device || 'Desktop'}
+              </span>
+              <span className="font-medium text-gray-700">{d.sessions} ({pct}%)</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full ${colors[key] || 'bg-gray-400'} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Funnel progress bar
+function FunnelProgress({ step }: { step: number }) {
+  const steps = ['Ziyaret', 'Fiyat', 'Buchen', 'Rezervasyon'];
+  return (
+    <div className="flex items-center gap-0.5 mt-1">
+      {steps.map((_, i) => (
+        <div key={i} className={`h-1 flex-1 rounded-full ${i < step ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+      ))}
+    </div>
+  );
+}
+
 export default function LiveVisitorsTab({ token }: { token: string }) {
   const [live, setLive] = useState<LiveSession[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [todayKpi, setTodayKpi] = useState<TodayKpi | null>(null);
   const [range, setRange] = useState<'today' | '7d' | '30d'>('today');
   const [showBots, setShowBots] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [error, setError] = useState('');
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
+  const prevSessionsRef = useRef<Map<string, LiveSession>>(new Map());
+  const feedIdRef = useRef(0);
+
+  const addEvent = useCallback((ev: Omit<ActivityEvent, 'id' | 'time'>) => {
+    const newEv: ActivityEvent = { ...ev, id: String(feedIdRef.current++), time: new Date() };
+    setActivityFeed(prev => [newEv, ...prev].slice(0, 50));
+  }, []);
+
+  const sendNotification = useCallback((title: string, body: string) => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/favicon.ico' });
+    }
+  }, []);
+
+  const enableNotifications = useCallback(async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    const perm = await Notification.requestPermission();
+    setNotifEnabled(perm === 'granted');
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifEnabled(Notification.permission === 'granted');
+    }
+  }, []);
 
   const loadLive = useCallback(async () => {
     try {
@@ -107,13 +251,45 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       });
       if (!r.ok) throw new Error('failed');
       const d = await r.json();
-      setLive(d.sessions || []);
+      const sessions: LiveSession[] = d.sessions || [];
+      setLive(sessions);
       setLastUpdated(new Date());
       setError('');
-    } catch (e: any) {
+
+      // Diff against previous for activity feed
+      const prev = prevSessionsRef.current;
+      const currMap = new Map(sessions.map(s => [s.session_id, s]));
+
+      sessions.forEach(s => {
+        const old = prev.get(s.session_id);
+        if (!old) {
+          const loc = s.city ? `${countryFlag(s.country || '')} ${s.city}` : '';
+          const src = sourceLabel(s);
+          addEvent({ type: 'new_visitor', icon: '🟢', color: 'text-green-600', message: `Yeni ziyaretçi geldi`, detail: `${loc} · ${src.label}` });
+        } else {
+          if (s.form_submit_clicks > old.form_submit_clicks) {
+            addEvent({ type: 'booking_completed', icon: '✅', color: 'text-emerald-700', message: `Rezervasyon tamamlandı!`, detail: s.city || '' });
+            sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
+          } else if (s.booking_clicks > old.booking_clicks && old.booking_clicks === 0) {
+            addEvent({ type: 'booking_started', icon: '🛒', color: 'text-orange-600', message: `Buchen sayfasına geçti`, detail: s.city || '' });
+          } else if (s.price_clicks > old.price_clicks && old.price_clicks === 0) {
+            addEvent({ type: 'price_viewed', icon: '💰', color: 'text-yellow-600', message: `Fiyatları görüntüledi`, detail: s.city || '' });
+          }
+        }
+      });
+
+      prev.forEach((oldSess, id) => {
+        if (!currMap.has(id)) {
+          const loc = oldSess.city || oldSess.country || '';
+          addEvent({ type: 'visitor_left', icon: '🔴', color: 'text-gray-500', message: `Ziyaretçi ayrıldı`, detail: `${loc} · ${fmtDuration(oldSess.session_seconds)}` });
+        }
+      });
+
+      prevSessionsRef.current = currMap;
+    } catch {
       setError('Veri alınamadı');
     }
-  }, [token, showBots]);
+  }, [token, showBots, addEvent, sendNotification]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -121,301 +297,404 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error('failed');
-      const d = await r.json();
-      setStats(d);
-    } catch {
-      // ignore
-    }
+      setStats(await r.json());
+    } catch {}
   }, [token, range]);
 
-  useEffect(() => { loadLive(); loadStats(); setLoading(false); }, [loadLive, loadStats]);
+  const loadTodayKpi = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/admin/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error('failed');
+      const d = await r.json();
+      setTodayKpi({ count: d.todayStats?.count || 0, revenue: d.todayStats?.revenue || 0 });
+    } catch {}
+  }, [token]);
+
+  useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); }, [loadLive, loadStats, loadTodayKpi]);
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const t = setInterval(() => { loadLive(); }, 5000);
-    return () => clearInterval(t);
-  }, [autoRefresh, loadLive]);
+    const t1 = setInterval(loadLive, 5000);
+    const t2 = setInterval(loadTodayKpi, 30000);
+    return () => { clearInterval(t1); clearInterval(t2); };
+  }, [autoRefresh, loadLive, loadTodayKpi]);
 
   const totals = stats?.totals || { total_sessions: 0, unique_visitors: 0, total_pageviews: 0, bounces: 0 };
   const bounceRate = totals.total_sessions > 0 ? Math.round((Number(totals.bounces) / Number(totals.total_sessions)) * 100) : 0;
   const funnel = stats?.funnel || { visited: 0, saw_prices: 0, started_booking: 0, bookings: 0 };
   const conv = funnel.visited > 0 ? ((funnel.bookings / funnel.visited) * 100).toFixed(2) : '0.00';
+  const hourlyValues = (stats?.hourly || []).map(h => Number(h.sessions));
 
   return (
-    <div className="space-y-6">
-      {/* Header / live count */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-6 shadow-lg">
+    <div className="space-y-4">
+
+      {/* ─── KPI Strip ─── */}
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-5 shadow-lg">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="relative">
-                <div className="w-3 h-3 bg-white rounded-full animate-ping absolute"></div>
-                <div className="w-3 h-3 bg-white rounded-full relative"></div>
+          {/* Live count */}
+          <div className="flex items-center gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="relative">
+                  <div className="w-3 h-3 bg-white rounded-full animate-ping absolute opacity-75"></div>
+                  <div className="w-3 h-3 bg-white rounded-full relative"></div>
+                </div>
+                <span className="text-xs font-semibold tracking-widest opacity-90">CANLI</span>
               </div>
-              <span className="text-sm font-medium opacity-90">CANLI</span>
+              <div className="text-5xl font-black leading-none">{live.filter(s => s.is_bot === 0).length}</div>
+              <div className="text-xs opacity-75 mt-1">aktif ziyaretçi (60sn)</div>
             </div>
-            <div className="text-4xl font-bold">{live.length}</div>
-            <div className="text-sm opacity-90">aktif ziyaretçi (son 60 saniye)</div>
+            {/* Divider */}
+            <div className="w-px h-16 bg-white/30" />
+            {/* Today's bookings */}
+            <div>
+              <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><ShoppingCart size={11} /> Bugün Rezervasyon</div>
+              <div className="text-3xl font-bold">{todayKpi?.count ?? '—'}</div>
+              <div className="text-xs opacity-60">adet</div>
+            </div>
+            <div>
+              <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><Euro size={11} /> Bugün Gelir</div>
+              <div className="text-3xl font-bold">{todayKpi ? `${Number(todayKpi.revenue).toFixed(0)}€` : '—'}</div>
+              <div className="text-xs opacity-60">toplam</div>
+            </div>
+            {todayKpi && todayKpi.count > 0 && (
+              <div>
+                <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><TrendingUp size={11} /> Ort. Sipariş</div>
+                <div className="text-3xl font-bold">{(Number(todayKpi.revenue) / todayKpi.count).toFixed(0)}€</div>
+                <div className="text-xs opacity-60">sipariş başı</div>
+              </div>
+            )}
           </div>
+
+          {/* Controls */}
           <div className="flex flex-col gap-2 items-end text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="rounded"
-              />
+              <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="rounded" />
               Otomatik yenile (5sn)
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showBots}
-                onChange={(e) => setShowBots(e.target.checked)}
-                className="rounded"
-              />
+              <input type="checkbox" checked={showBots} onChange={e => setShowBots(e.target.checked)} className="rounded" />
               Botları göster
             </label>
-            <button
-              onClick={loadLive}
-              className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition"
-            >
-              <RefreshCw size={14} /> Yenile
-            </button>
-            {lastUpdated && (
-              <span className="text-xs opacity-75">
-                Son güncelleme: {lastUpdated.toLocaleTimeString('de-DE')}
-              </span>
-            )}
+            <div className="flex gap-2">
+              <button onClick={loadLive} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition text-xs">
+                <RefreshCw size={12} /> Yenile
+              </button>
+              <button onClick={notifEnabled ? undefined : enableNotifications}
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg transition text-xs ${notifEnabled ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}>
+                {notifEnabled ? <Bell size={12} /> : <BellOff size={12} />}
+                {notifEnabled ? 'Bildirim Açık' : 'Bildirimleri Aç'}
+              </button>
+            </div>
+            {lastUpdated && <span className="text-xs opacity-60">Son güncelleme: {lastUpdated.toLocaleTimeString('de-DE')}</span>}
           </div>
         </div>
-        {error && <div className="mt-3 text-yellow-100 text-sm">{error}</div>}
+        {error && <div className="mt-2 text-yellow-100 text-sm">{error}</div>}
       </div>
 
-      {/* Live visitor list */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b flex items-center gap-2">
-          <Users size={18} />
-          <h3 className="font-semibold">Şu an sitede ne yapıyorlar?</h3>
-        </div>
-        {live.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500">
-            <Eye size={32} className="mx-auto mb-2 opacity-40" />
-            Şu an aktif ziyaretçi yok
+      {/* ─── Main Panel: Visitor List + Activity Feed ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+        {/* Visitor cards (3/5) */}
+        <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-gray-500" />
+              <h3 className="font-semibold text-sm">Şu an sitede ne yapıyorlar?</h3>
+            </div>
+            <div className="flex gap-1 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Aktif</span>
+              <span className="mx-1">·</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> Boşta</span>
+              <span className="mx-1">·</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Pasif</span>
+            </div>
           </div>
-        ) : (
-          <div className="divide-y">
-            {live.map((s) => {
-              const src = sourceLabel(s);
-              const pages = s.page_history ? s.page_history.split('|||') : [];
-              const isReturning = (s.prev_visits || 0) > 0;
-              const routeMatch = s.page_history?.match(/ergebnisse.*?(?:from|von)=([^&|]+).*?(?:to|nach)=([^&|]+)/i)
-                || s.landing_page?.match(/from=([^&]+).*?to=([^&]+)/i);
-              return (
-                <div key={s.session_id} className="px-6 py-4 hover:bg-gray-50">
-                  {/* Row 1: Source + device + geo + visit badge */}
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${src.color}`}>
-                      {src.label}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-gray-600">
-                      {deviceIcon(s.ua_device)} {s.ua_browser} · {s.ua_os}
-                    </span>
-                    {s.screen_w && (
-                      <span className="text-xs text-gray-500">🖥 {s.screen_w}×{s.screen_h}</span>
-                    )}
-                    {(s.country || s.city) && (
-                      <span className="flex items-center gap-1 text-xs text-gray-600">
-                        {s.country ? countryFlag(s.country) : '🌍'} {s.city || s.country}
-                      </span>
-                    )}
-                    {s.lang && (
-                      <span className="text-xs text-gray-500">🗣 {s.lang}</span>
-                    )}
-                    {s.past_bookings_count > 0 && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
-                        title={s.last_booking_date ? `Son sipariş: ${new Date(s.last_booking_date).toLocaleDateString('de-DE')}` : ''}>
-                        ⭐ {s.past_bookings_count}x müşteri
-                      </span>
-                    )}
-                    {isReturning && s.past_bookings_count === 0 && (
-                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
-                        🔄 {(s.prev_visits || 0) + 1}. ziyaret
-                      </span>
-                    )}
-                    {s.is_bot === 1 && (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">BOT</span>
-                    )}
-                    <span className="flex items-center gap-1 text-xs text-gray-500 ml-auto">
-                      <Clock size={12} /> {fmtDuration(s.session_seconds)} · {s.pageview_count} sayfa
-                    </span>
-                  </div>
 
-                  {/* Row 2: Current page + idle */}
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-medium text-gray-900">📍 {s.current_path}</span>
-                    {s.idle_seconds > 30 && (
-                      <span className="text-xs text-orange-400">({s.idle_seconds}s pasif)</span>
-                    )}
-                  </div>
+          {live.length === 0 ? (
+            <div className="px-6 py-12 text-center text-gray-400">
+              <Eye size={32} className="mx-auto mb-2 opacity-30" />
+              <div className="text-sm">Şu an aktif ziyaretçi yok</div>
+            </div>
+          ) : (
+            <div className="divide-y max-h-[680px] overflow-y-auto">
+              {live.map(s => {
+                const src = sourceLabel(s);
+                const pages = s.page_history ? s.page_history.split('|||') : [];
+                const isReturning = (s.prev_visits || 0) > 0;
+                const funnel = getFunnelStage(s);
+                const status = getStatus(s);
+                const routeMatch = s.page_history?.match(/ergebnisse.*?(?:pickup|from|von)=([^&|]+).*?(?:dropoff|to|nach)=([^&|]+)/i)
+                  || s.landing_page?.match(/from=([^&]+).*?to=([^&]+)/i);
 
-                  {/* Row 3: Page history breadcrumb */}
-                  {pages.length > 1 && (
-                    <div className="flex items-center gap-1 flex-wrap mb-1">
-                      {pages.slice().reverse().map((p, i) => (
-                        <span key={i} className="flex items-center gap-1">
-                          {i > 0 && <span className="text-gray-300 text-xs">›</span>}
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${i === pages.length - 1 ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-500'}`}>
-                            {p.split('?')[0] || '/'}
-                          </span>
+                return (
+                  <div key={s.session_id} className="px-5 py-4 hover:bg-gray-50 transition-colors">
+                    {/* Row 1: Status light + Source + Device + Geo + badges */}
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      {/* Traffic light */}
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-2.5 h-2.5 rounded-full ${status.dot}`} title={status.label} />
+                        <span className={`text-xs font-medium ${status.text}`}>{status.label}</span>
+                      </div>
+                      <div className="w-px h-3 bg-gray-200" />
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${src.color}`}>{src.label}</span>
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        {deviceIcon(s.ua_device)} {s.ua_browser} · {s.ua_os}
+                      </span>
+                      {(s.country || s.city) && (
+                        <span className="text-xs text-gray-600">
+                          {s.country ? countryFlag(s.country) : '🌍'} {s.city || s.country}
                         </span>
-                      ))}
+                      )}
+                      {s.past_bookings_count > 0 && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
+                          title={s.last_booking_date ? `Son sipariş: ${new Date(s.last_booking_date).toLocaleDateString('de-DE')}` : ''}>
+                          ⭐ {s.past_bookings_count}x müşteri
+                        </span>
+                      )}
+                      {isReturning && s.past_bookings_count === 0 && (
+                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                          🔄 {(s.prev_visits || 0) + 1}. ziyaret
+                        </span>
+                      )}
+                      {s.is_bot === 1 && (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">BOT</span>
+                      )}
+                      <span className="flex items-center gap-1 text-xs text-gray-400 ml-auto">
+                        <Clock size={11} /> {fmtDuration(s.session_seconds)} · {s.pageview_count} sayfa
+                      </span>
                     </div>
-                  )}
 
-                  {/* Row 4: Scroll depth + behavior signals */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {s.max_scroll != null && (
-                      <div className="flex items-center gap-1">
-                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${s.max_scroll}%` }} />
-                        </div>
-                        <span className="text-xs text-gray-500">%{s.max_scroll} scroll</span>
+                    {/* Row 2: Funnel badge + progress */}
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${funnel.color}`}>{funnel.label}</span>
+                      </div>
+                      <FunnelProgress step={funnel.step} />
+                    </div>
+
+                    {/* Row 3: Current page */}
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="font-medium text-gray-800 text-sm truncate">📍 {s.current_path}</span>
+                    </div>
+
+                    {/* Row 4: Page history breadcrumb */}
+                    {pages.length > 1 && (
+                      <div className="flex items-center gap-1 flex-wrap mb-1.5">
+                        {pages.slice().reverse().map((p, i) => (
+                          <span key={i} className="flex items-center gap-1">
+                            {i > 0 && <span className="text-gray-300 text-xs">›</span>}
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${i === pages.length - 1 ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-400'}`}>
+                              {p.split('?')[0] || '/'}
+                            </span>
+                          </span>
+                        ))}
                       </div>
                     )}
-                    {s.price_clicks > 0 && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-                        💰 Fiyata {s.price_clicks}x baktı
-                      </span>
-                    )}
-                    {s.booking_clicks > 0 && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                        🛒 Buchene {s.booking_clicks}x tıkladı
-                      </span>
-                    )}
-                    {s.form_fields_touched > 0 && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${s.form_submit_clicks > 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}
-                        title={s.form_fields_list || ''}>
-                        📝 Form: {s.form_fields_touched} alan{s.form_submit_clicks > 0 ? ' ✓ gönderdi' : ' doldurdu'}
-                      </span>
-                    )}
-                    {routeMatch && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        🗺 {decodeURIComponent(routeMatch[1])} → {decodeURIComponent(routeMatch[2])}
-                      </span>
-                    )}
-                    {(s.utm_campaign || s.gclid) && (
-                      <span className="text-xs text-gray-400">
-                        {s.utm_campaign && <>Campaign: {s.utm_campaign}</>}
-                        {s.gclid && <> · gclid: {s.gclid.slice(0, 16)}…</>}
-                      </span>
-                    )}
+
+                    {/* Row 5: Scroll + behaviors */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {s.max_scroll != null && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${s.max_scroll}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-400">%{s.max_scroll}</span>
+                        </div>
+                      )}
+                      {s.price_clicks > 0 && (
+                        <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">
+                          💰 Fiyata {s.price_clicks}x baktı
+                        </span>
+                      )}
+                      {s.booking_clicks > 0 && (
+                        <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+                          🛒 Buchene {s.booking_clicks}x tıkladı
+                        </span>
+                      )}
+                      {s.form_fields_touched > 0 && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${s.form_submit_clicks > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}
+                          title={s.form_fields_list || ''}>
+                          📝 {s.form_fields_touched} alan{s.form_submit_clicks > 0 ? ' ✓' : ''}
+                        </span>
+                      )}
+                      {routeMatch && (
+                        <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                          🗺 {decodeURIComponent(routeMatch[1])} → {decodeURIComponent(routeMatch[2])}
+                        </span>
+                      )}
+                      {s.screen_w && (
+                        <span className="text-xs text-gray-300">🖥 {s.screen_w}×{s.screen_h}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Activity Feed (2/5) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b flex items-center gap-2">
+            <Activity size={16} className="text-gray-500" />
+            <h3 className="font-semibold text-sm">Canlı Olay Akışı</h3>
+            {activityFeed.length > 0 && (
+              <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{activityFeed.length}</span>
+            )}
           </div>
-        )}
+          <div className="flex-1 overflow-y-auto max-h-[640px]">
+            {activityFeed.length === 0 ? (
+              <div className="px-5 py-10 text-center text-gray-400">
+                <Zap size={28} className="mx-auto mb-2 opacity-30" />
+                <div className="text-xs">Ziyaretçi aktivitesi burada görünecek</div>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {activityFeed.map(ev => (
+                  <div key={ev.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none mt-0.5">{ev.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs font-semibold ${ev.color}`}>{ev.message}</div>
+                        {ev.detail && <div className="text-xs text-gray-400 truncate">{ev.detail}</div>}
+                        <div className="text-xs text-gray-300 mt-0.5">{fmtTime(ev.time)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {activityFeed.length > 0 && (
+            <div className="px-5 py-3 border-t">
+              <button onClick={() => setActivityFeed([])} className="text-xs text-gray-400 hover:text-gray-600 transition">
+                Akışı temizle
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Stats range selector */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      {/* ─── Statistics ─── */}
+      <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h3 className="font-semibold flex items-center gap-2"><TrendingUp size={18} /> İstatistikler</h3>
+          <h3 className="font-semibold flex items-center gap-2 text-sm"><TrendingUp size={16} /> İstatistikler</h3>
           <div className="flex gap-2">
-            {(['today', '7d', '30d'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-3 py-1 text-sm rounded-lg transition ${
-                  range === r ? 'bg-primary-600 text-white' : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-              >
+            {(['today', '7d', '30d'] as const).map(r => (
+              <button key={r} onClick={() => { setRange(r); }}
+                className={`px-3 py-1 text-xs rounded-lg transition font-medium ${range === r ? 'bg-emerald-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
                 {r === 'today' ? 'Bugün' : r === '7d' ? '7 Gün' : '30 Gün'}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Top metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-blue-50 rounded-xl p-4">
-            <div className="text-xs text-blue-700 font-medium">Oturum</div>
-            <div className="text-2xl font-bold text-blue-900">{totals.total_sessions || 0}</div>
-          </div>
-          <div className="bg-purple-50 rounded-xl p-4">
-            <div className="text-xs text-purple-700 font-medium">Tekil Ziyaretçi</div>
-            <div className="text-2xl font-bold text-purple-900">{totals.unique_visitors || 0}</div>
-          </div>
-          <div className="bg-green-50 rounded-xl p-4">
-            <div className="text-xs text-green-700 font-medium">Sayfa Görüntüleme</div>
-            <div className="text-2xl font-bold text-green-900">{totals.total_pageviews || 0}</div>
-          </div>
-          <div className="bg-orange-50 rounded-xl p-4">
-            <div className="text-xs text-orange-700 font-medium">Bounce Rate</div>
-            <div className="text-2xl font-bold text-orange-900">{bounceRate}%</div>
-          </div>
+        {/* KPI cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Oturum', value: totals.total_sessions || 0, cls: 'bg-blue-50 text-blue-900', label_cls: 'text-blue-600' },
+            { label: 'Tekil Ziyaretçi', value: totals.unique_visitors || 0, cls: 'bg-purple-50 text-purple-900', label_cls: 'text-purple-600' },
+            { label: 'Sayfa Görüntüleme', value: totals.total_pageviews || 0, cls: 'bg-green-50 text-green-900', label_cls: 'text-green-600' },
+            { label: 'Bounce Rate', value: `${bounceRate}%`, cls: 'bg-orange-50 text-orange-900', label_cls: 'text-orange-600' },
+          ].map(c => (
+            <div key={c.label} className={`${c.cls} rounded-xl p-4`}>
+              <div className={`text-xs font-medium ${c.label_cls} mb-1`}>{c.label}</div>
+              <div className="text-2xl font-bold">{c.value}</div>
+            </div>
+          ))}
         </div>
 
+        {/* Hourly sparkline */}
+        {hourlyValues.length > 1 && (
+          <div className="border rounded-xl p-4 mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold text-gray-600 flex items-center gap-1.5"><BarChart3 size={13} /> Saatlik Ziyaretçi Trendi</div>
+              <div className="text-xs text-gray-400">
+                Tepe: {Math.max(...hourlyValues)} · Toplam: {hourlyValues.reduce((a, b) => a + b, 0)}
+              </div>
+            </div>
+            <Sparkline data={hourlyValues} width={600} height={56} color="#10b981" />
+            <div className="flex justify-between text-xs text-gray-300 mt-1">
+              <span>{stats?.hourly[0]?.hour?.slice(11, 16) || ''}</span>
+              <span>{stats?.hourly[Math.floor(stats.hourly.length / 2)]?.hour?.slice(11, 16) || ''}</span>
+              <span>{stats?.hourly[stats.hourly.length - 1]?.hour?.slice(11, 16) || ''}</span>
+            </div>
+          </div>
+        )}
+
         {/* Funnel */}
-        <div className="border rounded-xl p-4 mb-6">
-          <div className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <MousePointerClick size={16} /> Conversion Funnel
+        <div className="border rounded-xl p-4 mb-5">
+          <div className="text-xs font-semibold mb-3 flex items-center gap-1.5 text-gray-700">
+            <MousePointerClick size={13} /> Conversion Funnel
           </div>
           <div className="flex items-center gap-2 text-sm flex-wrap">
             <FunnelStep label="Ziyaret" value={funnel.visited} color="bg-blue-500" />
-            <ArrowRight size={16} className="text-gray-400" />
+            <ArrowRight size={14} className="text-gray-300" />
             <FunnelStep label="Fiyat Gördü" value={funnel.saw_prices} color="bg-yellow-500" />
-            <ArrowRight size={16} className="text-gray-400" />
+            <ArrowRight size={14} className="text-gray-300" />
             <FunnelStep label="Buchen Sayfası" value={funnel.started_booking} color="bg-orange-500" />
-            <ArrowRight size={16} className="text-gray-400" />
-            <FunnelStep label="Rezervasyon" value={funnel.bookings} color="bg-green-500" />
+            <ArrowRight size={14} className="text-gray-300" />
+            <FunnelStep label="Rezervasyon" value={funnel.bookings} color="bg-emerald-500" />
           </div>
-          <div className="text-xs text-gray-500 mt-3">
-            Toplam dönüşüm oranı: <span className="font-semibold text-gray-700">{conv}%</span>
+          <div className="flex items-center gap-4 mt-3">
+            <div className="text-xs text-gray-500">
+              Toplam dönüşüm: <span className="font-semibold text-gray-700">{conv}%</span>
+            </div>
+            {funnel.visited > 0 && funnel.saw_prices > 0 && (
+              <div className="text-xs text-gray-500">
+                Fiyat → Buchen: <span className="font-semibold text-gray-700">
+                  {funnel.started_booking > 0 ? ((funnel.started_booking / funnel.saw_prices) * 100).toFixed(0) : 0}%
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Top pages + sources */}
-        <div className="grid md:grid-cols-2 gap-6">
+        {/* Top pages + Sources + Devices */}
+        <div className="grid md:grid-cols-3 gap-6">
           <div>
-            <h4 className="text-sm font-semibold mb-2">En çok ziyaret edilen sayfalar</h4>
-            <div className="space-y-1">
-              {(stats?.topPages || []).slice(0, 10).map((p) => (
-                <div key={p.path} className="flex items-center gap-2 text-sm">
-                  <span className="flex-1 truncate text-gray-700">{p.path}</span>
-                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.views}</span>
+            <h4 className="text-xs font-semibold mb-3 text-gray-600 uppercase tracking-wide">En Çok Ziyaret Edilen</h4>
+            <div className="space-y-1.5">
+              {(stats?.topPages || []).slice(0, 10).map(p => (
+                <div key={p.path} className="flex items-center gap-2">
+                  <span className="flex-1 truncate text-xs text-gray-600">{p.path}</span>
+                  <span className="text-xs bg-gray-100 text-gray-700 font-medium px-2 py-0.5 rounded">{p.views}</span>
                 </div>
               ))}
-              {(!stats?.topPages || stats.topPages.length === 0) && (
-                <div className="text-sm text-gray-400">Veri yok</div>
-              )}
+              {(!stats?.topPages || stats.topPages.length === 0) && <div className="text-xs text-gray-400">Veri yok</div>}
             </div>
           </div>
+
           <div>
-            <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-              <Globe size={14} /> Trafik kaynakları
+            <h4 className="text-xs font-semibold mb-3 text-gray-600 uppercase tracking-wide flex items-center gap-1">
+              <Globe size={11} /> Trafik Kaynakları
             </h4>
-            <div className="space-y-1">
-              {(stats?.sources || []).map((s) => {
+            <div className="space-y-2">
+              {(stats?.sources || []).map(s => {
                 const total = (stats?.sources || []).reduce((a, b) => a + Number(b.sessions), 0);
                 const pct = total > 0 ? Math.round((Number(s.sessions) / total) * 100) : 0;
                 return (
-                  <div key={s.source} className="text-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-gray-700">{s.source}</span>
-                      <span className="text-xs text-gray-500">{s.sessions} ({pct}%)</span>
+                  <div key={s.source}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs text-gray-600">{s.source}</span>
+                      <span className="text-xs text-gray-500 font-medium">{s.sessions} ({pct}%)</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary-500" style={{ width: `${pct}%` }} />
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
               })}
-              {(!stats?.sources || stats.sources.length === 0) && (
-                <div className="text-sm text-gray-400">Veri yok</div>
-              )}
+              {(!stats?.sources || stats.sources.length === 0) && <div className="text-xs text-gray-400">Veri yok</div>}
             </div>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold mb-3 text-gray-600 uppercase tracking-wide">Cihaz Dağılımı</h4>
+            <DeviceBar devices={stats?.devices || []} />
           </div>
         </div>
       </div>
@@ -426,10 +705,10 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
 function FunnelStep({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="flex flex-col items-center">
-      <div className={`${color} text-white font-bold rounded-lg px-4 py-2 min-w-[60px] text-center`}>
+      <div className={`${color} text-white font-bold rounded-lg px-3 py-2 min-w-[52px] text-center text-sm`}>
         {value || 0}
       </div>
-      <div className="text-xs text-gray-600 mt-1">{label}</div>
+      <div className="text-xs text-gray-500 mt-1 text-center">{label}</div>
     </div>
   );
 }
