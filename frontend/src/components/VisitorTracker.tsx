@@ -129,8 +129,10 @@ export default function VisitorTracker() {
       load_time_ms,
     });
 
-    // Heartbeat
+    // Heartbeat — 2 saat sonra otomatik durur
+    const sessionStart = Date.now();
     const heartbeat = setInterval(() => {
+      if (Date.now() - sessionStart > MAX_SESSION_MS) return;
       if (document.visibilityState === 'visible') {
         send('/track/heartbeat', { session_id: sessionId, path: fullUrl });
       }
