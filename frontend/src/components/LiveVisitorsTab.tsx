@@ -325,7 +325,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       const prev = prevBookingCountRef.current;
       if (prev !== null && count > prev) {
         // Check if we crossed a milestone
-        const crossed = MILESTONES.filter(m => m > prev && m <= count);
+        const crossed = MILESTONES.current.filter(m => m > prev && m <= count);
         if (crossed.length > 0) {
           const m = crossed[crossed.length - 1];
           const msg = m === 1
