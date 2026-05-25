@@ -90,7 +90,7 @@ async function geoFromIp(ip: string): Promise<{ country: string; city: string; l
   return new Promise((resolve) => {
     const fallback = { country: '', city: '', lat: null, lng: null };
     const timeout = setTimeout(() => resolve(fallback), 2000);
-    https.get(`https://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon`, (res) => {
+    http.get(`http://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon`, (res) => {
       let data = '';
       res.on('data', (c: string) => data += c);
       res.on('end', () => {
