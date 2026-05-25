@@ -223,8 +223,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const feedIdRef = useRef(0);
   const prevBookingCountRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const MILESTONES = [1, 2, 5, 10, 15, 20, 25, 30, 50];
+  const MILESTONES = useRef([1, 2, 5, 10, 15, 20, 25, 30, 50]);
 
   const addEvent = useCallback((ev: Omit<ActivityEvent, 'id' | 'time'>) => {
     const newEv: ActivityEvent = { ...ev, id: String(feedIdRef.current++), time: new Date() };
