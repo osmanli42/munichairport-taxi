@@ -645,8 +645,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
             </div>
           </div>
           <div className="p-3">
-            <Suspense fallback={<div className="h-80 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-sm">Harita yükleniyor…</div>}>
-              <LiveMap
+            <LiveMap
                 visitors={live
                   .filter(s => s.lat && s.lng && s.is_bot === 0)
                   .map(s => {
