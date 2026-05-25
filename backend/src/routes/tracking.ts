@@ -193,7 +193,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
     if (existing.length === 0) {
       // Skip geo for private/local IPs
       const isPrivateIp = !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fd)/.test(ip);
-      const geo = isPrivateIp ? { country: '', city: '' } : await geoFromIp(ip!);
+      const geo = isPrivateIp ? { country: '', city: '', lat: null, lng: null } : await geoFromIp(ip!);
       // Accept-Language header fallback if client didn't send
       const acceptLang = (req.headers['accept-language'] as string || '').split(',')[0].trim().slice(0, 20);
       const clientLang = lang ? trunc(lang, 20) : (acceptLang || null);
