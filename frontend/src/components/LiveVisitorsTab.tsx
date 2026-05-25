@@ -323,8 +323,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       });
       if (!r.ok) throw new Error('failed');
       const d = await r.json();
-      const count: number = d.todayStats?.count || 0;
-      const revenue: number = d.todayStats?.revenue || 0;
+      const count: number = d.today?.count || 0;
+      const revenue: number = d.today?.revenue || 0;
       setTodayKpi({ count, revenue });
 
       const prev = prevBookingCountRef.current;
