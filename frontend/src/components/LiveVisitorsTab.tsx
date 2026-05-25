@@ -306,6 +306,12 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     } catch {}
   }, [token, range]);
 
+  const showMilestone = useCallback((msg: string) => {
+    setMilestone(msg);
+    if (milestoneTimerRef.current) clearTimeout(milestoneTimerRef.current);
+    milestoneTimerRef.current = setTimeout(() => setMilestone(null), 6000);
+  }, []);
+
   const loadTodayKpi = useCallback(async () => {
     try {
       const r = await fetch(`${API_BASE}/admin/stats`, {
@@ -313,9 +319,27 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       });
       if (!r.ok) throw new Error('failed');
       const d = await r.json();
-      setTodayKpi({ count: d.todayStats?.count || 0, revenue: d.todayStats?.revenue || 0 });
+      const count: number = d.todayStats?.count || 0;
+      const revenue: number = d.todayStats?.revenue || 0;
+      setTodayKpi({ count, revenue });
+
+      const prev = prevBookingCountRef.current;
+      if (prev !== null && count > prev) {
+        // Check if we crossed a milestone
+        const crossed = MILESTONES.filter(m => m > prev && m <= count);
+        if (crossed.length > 0) {
+          const m = crossed[crossed.length - 1];
+          const msg = m === 1
+            ? '🎉 Bugünün ilk rezervasyonu geldi!'
+            : `🏆 Bugün ${m}. rezervasyon tamamlandı!`;
+          showMilestone(msg);
+          sendNotification(msg, `Toplam bugünkü gelir: ${revenue.toFixed(0)}€`);
+          addEvent({ type: 'booking_completed', icon: '🏆', color: 'text-yellow-600', message: msg, detail: `Toplam gelir: ${revenue.toFixed(0)}€` });
+        }
+      }
+      prevBookingCountRef.current = count;
     } catch {}
-  }, [token]);
+  }, [token, showMilestone, sendNotification, addEvent, MILESTONES]);
 
   useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); }, [loadLive, loadStats, loadTodayKpi]);
 
