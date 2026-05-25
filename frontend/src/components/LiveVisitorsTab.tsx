@@ -45,6 +45,9 @@ interface LiveSession {
   form_submit_clicks: number;
   past_bookings_count: number;
   last_booking_date: string | null;
+  avg_load_ms: number | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 interface Stats {
