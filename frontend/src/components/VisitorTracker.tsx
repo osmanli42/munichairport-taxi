@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const HEARTBEAT_MS = 15_000;
+const MAX_SESSION_MS = 2 * 60 * 60 * 1000; // 2 saat sonra heartbeat dur
 const EVENT_FLUSH_MS = 5_000;
 
 function uuid(): string {
