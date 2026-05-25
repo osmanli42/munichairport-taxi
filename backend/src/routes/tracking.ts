@@ -222,9 +222,10 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
       );
     }
 
+    const loadMs = load_time_ms != null && Number.isFinite(Number(load_time_ms)) ? Number(load_time_ms) : null;
     await run(
-      `INSERT INTO visitor_pageviews (session_id, path, title) VALUES (?, ?, ?)`,
-      [trunc(session_id, 64), trunc(path, 500), trunc(title, 255)]
+      `INSERT INTO visitor_pageviews (session_id, path, title, load_time_ms) VALUES (?, ?, ?, ?)`,
+      [trunc(session_id, 64), trunc(path, 500), trunc(title, 255), loadMs]
     );
 
     res.json({ ok: true });
