@@ -83,20 +83,26 @@ async function ensureTables(): Promise<void> {
 }
 
 // Geo lookup using ip-api.com (free, no key, 45 req/min)
-async function geoFromIp(ip: string): Promise<{ country: string; city: string }> {
+async function geoFromIp(ip: string): Promise<{ country: string; city: string; lat: number | null; lng: number | null }> {
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve({ country: '', city: '' }), 2000);
-    https.get(`https://ip-api.com/json/${ip}?fields=countryCode,city`, (res) => {
+    const fallback = { country: '', city: '', lat: null, lng: null };
+    const timeout = setTimeout(() => resolve(fallback), 2000);
+    https.get(`https://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon`, (res) => {
       let data = '';
       res.on('data', (c: string) => data += c);
       res.on('end', () => {
         clearTimeout(timeout);
         try {
           const j = JSON.parse(data);
-          resolve({ country: j.countryCode || '', city: j.city || '' });
-        } catch { resolve({ country: '', city: '' }); }
+          resolve({
+            country: j.countryCode || '',
+            city: j.city || '',
+            lat: j.lat != null ? Number(j.lat) : null,
+            lng: j.lon != null ? Number(j.lon) : null,
+          });
+        } catch { resolve(fallback); }
       });
-    }).on('error', () => { clearTimeout(timeout); resolve({ country: '', city: '' }); });
+    }).on('error', () => { clearTimeout(timeout); resolve(fallback); });
   });
 }
 
