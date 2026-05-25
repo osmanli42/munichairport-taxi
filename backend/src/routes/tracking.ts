@@ -458,7 +458,8 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
          (SELECT ROUND(AVG(load_time_ms)) FROM visitor_pageviews
            WHERE session_id = s.session_id AND load_time_ms IS NOT NULL) AS avg_load_ms
        FROM visitor_sessions s
-       WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND ${botFilter}
+       WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND
+         AND s.first_seen >= NOW() - INTERVAL 4 HOUR ${botFilter}
        ORDER BY s.last_seen DESC
        LIMIT 100`
     );
