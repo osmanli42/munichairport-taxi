@@ -103,6 +103,15 @@ export default function VisitorTracker() {
     const utm_medium = sp.get('utm_medium') || '';
     const utm_campaign = sp.get('utm_campaign') || sp.get('gad_campaignid') || '';
 
+    // Page load time via Navigation Timing API
+    let load_time_ms: number | null = null;
+    try {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      if (nav && nav.loadEventEnd > 0) {
+        load_time_ms = Math.round(nav.loadEventEnd - nav.startTime);
+      }
+    } catch {}
+
     send('/track/pageview', {
       session_id: sessionId,
       visitor_id: visitorId,
@@ -116,6 +125,7 @@ export default function VisitorTracker() {
       screen_w: window.screen.width,
       screen_h: window.screen.height,
       lang: navigator.language || '',
+      load_time_ms,
     });
 
     // Heartbeat
