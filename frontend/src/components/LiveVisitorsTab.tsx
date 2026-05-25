@@ -671,7 +671,6 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     };
                   })}
               />
-            </Suspense>
           </div>
         </div>
       )}
