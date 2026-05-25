@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
-const LiveMap = lazy(() => import('./LiveMap'));
+import { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
+const LiveMap = dynamic(() => import('./LiveMap'), { ssr: false });
 import {
   Users, Eye, Smartphone, Monitor, Tablet, RefreshCw,
   TrendingUp, MousePointerClick, ArrowRight, Globe, Clock,
