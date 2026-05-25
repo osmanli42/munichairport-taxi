@@ -454,7 +454,9 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
          (SELECT COUNT(*) FROM bookings b
            WHERE b.visitor_id = s.visitor_id) AS past_bookings_count,
          (SELECT MAX(b.created_at) FROM bookings b
-           WHERE b.visitor_id = s.visitor_id) AS last_booking_date
+           WHERE b.visitor_id = s.visitor_id) AS last_booking_date,
+         (SELECT ROUND(AVG(load_time_ms)) FROM visitor_pageviews
+           WHERE session_id = s.session_id AND load_time_ms IS NOT NULL) AS avg_load_ms
        FROM visitor_sessions s
        WHERE s.last_seen >= NOW() - INTERVAL 60 SECOND ${botFilter}
        ORDER BY s.last_seen DESC
