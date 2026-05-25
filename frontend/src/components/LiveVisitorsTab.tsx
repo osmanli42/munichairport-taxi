@@ -218,8 +218,13 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const [error, setError] = useState('');
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
+  const [milestone, setMilestone] = useState<string | null>(null);
   const prevSessionsRef = useRef<Map<string, LiveSession>>(new Map());
   const feedIdRef = useRef(0);
+  const prevBookingCountRef = useRef<number | null>(null);
+  const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const MILESTONES = [1, 2, 5, 10, 15, 20, 25, 30, 50];
 
   const addEvent = useCallback((ev: Omit<ActivityEvent, 'id' | 'time'>) => {
     const newEv: ActivityEvent = { ...ev, id: String(feedIdRef.current++), time: new Date() };
