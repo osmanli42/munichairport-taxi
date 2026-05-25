@@ -199,13 +199,13 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
       const clientLang = lang ? trunc(lang, 20) : (acceptLang || null);
       await run(
         `INSERT INTO visitor_sessions
-          (session_id, visitor_id, ip_hash, country, city, ua_browser, ua_os, ua_device,
+          (session_id, visitor_id, ip_hash, country, city, lat, lng, ua_browser, ua_os, ua_device,
            screen_w, screen_h, lang, is_bot,
            referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
-          geo.country, geo.city,
+          geo.country, geo.city, geo.lat ?? null, geo.lng ?? null,
           browser, os, device,
           screen_w ? Number(screen_w) : null,
           screen_h ? Number(screen_h) : null,
