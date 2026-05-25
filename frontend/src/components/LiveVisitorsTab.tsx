@@ -569,6 +569,15 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       {s.screen_w && (
                         <span className="text-xs text-gray-300">🖥 {s.screen_w}×{s.screen_h}</span>
                       )}
+                      {s.avg_load_ms != null && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                          s.avg_load_ms < 1500 ? 'bg-green-50 text-green-700 border-green-200'
+                          : s.avg_load_ms < 3000 ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                          : 'bg-red-50 text-red-600 border-red-200'
+                        }`}>
+                          ⚡ {s.avg_load_ms < 1000 ? `${s.avg_load_ms}ms` : `${(s.avg_load_ms / 1000).toFixed(1)}s`} yükleme
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
