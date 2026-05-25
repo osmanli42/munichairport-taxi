@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
+const LiveMap = lazy(() => import('./LiveMap'));
 import {
   Users, Eye, Smartphone, Monitor, Tablet, RefreshCw,
   TrendingUp, MousePointerClick, ArrowRight, Globe, Clock,
