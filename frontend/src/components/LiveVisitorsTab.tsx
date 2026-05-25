@@ -338,7 +338,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       }
       prevBookingCountRef.current = count;
     } catch {}
-  }, [token, showMilestone, sendNotification, addEvent, MILESTONES]);
+  }, [token, showMilestone, sendNotification, addEvent]);
 
   useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); }, [loadLive, loadStats, loadTodayKpi]);
 
