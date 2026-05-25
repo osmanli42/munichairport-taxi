@@ -422,7 +422,7 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
          s.screen_w, s.screen_h, s.lang,
          s.referrer, s.utm_source, s.utm_medium, s.utm_campaign, s.gclid,
          s.landing_page, s.first_seen, s.last_seen, s.pageview_count, s.is_bot,
-         s.country, s.city,
+         s.country, s.city, s.lat, s.lng,
          TIMESTAMPDIFF(SECOND, s.first_seen, NOW()) AS session_seconds,
          TIMESTAMPDIFF(SECOND, s.last_seen, NOW()) AS idle_seconds,
          (SELECT path FROM visitor_pageviews
