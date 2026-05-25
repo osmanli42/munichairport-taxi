@@ -619,6 +619,54 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
         </div>
       </div>
 
+      {/* ─── Live Map ─── */}
+      {live.filter(s => s.lat && s.lng && s.is_bot === 0).length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b flex items-center gap-2">
+            <span className="text-base">🗺</span>
+            <h3 className="font-semibold text-sm">Canlı Ziyaretçi Haritası</h3>
+            <span className="ml-2 text-xs text-gray-400">
+              {live.filter(s => s.lat && s.lng && s.is_bot === 0).length} konum tespit edildi
+            </span>
+            <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Aktif</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block"></span> Boşta</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span> Pasif</span>
+            </div>
+          </div>
+          <div className="p-3">
+            <Suspense fallback={<div className="h-80 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 text-sm">Harita yükleniyor…</div>}>
+              <LiveMap
+                visitors={live
+                  .filter(s => s.lat && s.lng && s.is_bot === 0)
+                  .map(s => {
+                    const funnel = getFunnelStage(s);
+                    const src = sourceLabel(s);
+                    return {
+                      session_id: s.session_id,
+                      lat: s.lat!,
+                      lng: s.lng!,
+                      city: s.city,
+                      country: s.country,
+                      ua_device: s.ua_device,
+                      current_path: s.current_path,
+                      session_seconds: s.session_seconds,
+                      idle_seconds: s.idle_seconds,
+                      funnel_label: funnel.label,
+                      funnel_color: funnel.color.includes('blue') ? '#60a5fa'
+                        : funnel.color.includes('yellow') ? '#f59e0b'
+                        : funnel.color.includes('orange') ? '#f97316'
+                        : funnel.color.includes('green') ? '#10b981'
+                        : '#94a3b8',
+                      source_label: src.label,
+                    };
+                  })}
+              />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
       {/* ─── Statistics ─── */}
       <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
