@@ -421,6 +421,15 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           </div>
         </div>
         {error && <div className="mt-2 text-yellow-100 text-sm">{error}</div>}
+
+        {/* Milestone banner */}
+        {milestone && (
+          <div className="mt-3 flex items-center gap-3 bg-yellow-400 text-yellow-900 rounded-xl px-4 py-3 font-semibold text-sm animate-bounce">
+            <span className="text-xl">🏆</span>
+            {milestone}
+            <button onClick={() => setMilestone(null)} className="ml-auto text-yellow-700 hover:text-yellow-900 text-xs font-normal">✕</button>
+          </div>
+        )}
       </div>
 
       {/* ─── Main Panel: Visitor List + Activity Feed ─── */}
