@@ -11,9 +11,11 @@
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
     "@types/google.maps": "^3.55.9",
+    "@types/leaflet": "^1.9.21",
     "axios": "^1.6.8",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.378.0",
     "next": "14.2.3",
     "next-intl": "^3.12.2",
