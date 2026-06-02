@@ -113,6 +113,7 @@ export async function initializeDatabase(): Promise<void> {
       ['stadtfahrt_enabled', '0'],
       ['anfahrt_price_per_km', '1.70'],
       ['zwischenstopp_enabled', '0'],
+      ['plz_surcharge_enabled', '0'],
       ['bank_name', ''],
       ['bank_iban', ''],
       ['bank_bic', ''],
