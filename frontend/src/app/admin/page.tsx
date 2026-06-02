@@ -61,6 +61,11 @@ export default function AdminPage() {
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
   const [reminderSaving, setReminderSaving] = useState(false);
+  const [plzSurcharges, setPlzSurcharges] = useState<PlzSurcharge[]>([]);
+  const [newPlz, setNewPlz] = useState('');
+  const [newPlzStadt, setNewPlzStadt] = useState('');
+  const [newPlzSurcharge, setNewPlzSurcharge] = useState('10');
+  const [plzSaving, setPlzSaving] = useState(false);
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
     bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
     company_name: '', company_address: '', company_phone: '', company_email: '',
