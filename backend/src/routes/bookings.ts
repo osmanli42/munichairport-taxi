@@ -153,13 +153,18 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const parsedTollAmount = toll_amount ? parseFloat(toll_amount) : 0;
 
     let plzSurcharge = 0;
-    const plzMatch = pickup_address?.match(/\b(\d{5})\b/);
-    if (plzMatch) {
-      const [surchargeRow] = await query<{ surcharge: number }>(
-        'SELECT surcharge FROM plz_surcharges WHERE plz = ?',
-        [plzMatch[1]]
-      );
-      if (surchargeRow) plzSurcharge = surchargeRow.surcharge;
+    const [plzSetting] = await query<{ setting_value: string }>(
+      "SELECT setting_value FROM settings WHERE setting_key = 'plz_surcharge_enabled'"
+    );
+    if (plzSetting?.setting_value === '1') {
+      const plzMatch = pickup_address?.match(/\b(\d{5})\b/);
+      if (plzMatch) {
+        const [surchargeRow] = await query<{ surcharge: number }>(
+          'SELECT surcharge FROM plz_surcharges WHERE plz = ?',
+          [plzMatch[1]]
+        );
+        if (surchargeRow) plzSurcharge = surchargeRow.surcharge;
+      }
     }
 
     const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount + plzSurcharge;
