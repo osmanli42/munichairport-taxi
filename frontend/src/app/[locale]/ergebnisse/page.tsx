@@ -84,6 +84,9 @@ function ResultsContent() {
   const [anfahrtPricePerKm, setAnfahrtPricePerKm] = useState(1.70);
   const anfahrtCost = anfahrtKm > 0 ? anfahrtKm * anfahrtPricePerKm : 0;
 
+  // PLZ surcharge
+  const [plzSurcharge, setPlzSurcharge] = useState(0);
+
   // Maut — component seviyesinde, tüm araçlar için ortak (varış ülkesine bağlı)
   const onewayToll = calculateToll(extractCountryFromAddress(dropoff), dropoff);
 
