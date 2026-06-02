@@ -441,6 +441,7 @@ export default function AdminPage() {
       if (activeTab === 'prices') {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
+        plzSurchargesApi.getAll().then(setPlzSurcharges).catch(() => {});
         adminApi.getReminderSettings().then(d => {
           setReminderEnabled(d.enabled);
           setReminderTime(d.time);
