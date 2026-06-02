@@ -151,19 +151,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       : oneWayPrice;
     const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
     const parsedTollAmount = toll_amount ? parseFloat(toll_amount) : 0;
-
-    // PLZ surcharge: extract PLZ from pickup address and check for surcharge
-    let plzSurcharge = 0;
-    const plzMatch = pickup_address?.match(/\b(\d{5})\b/);
-    if (plzMatch) {
-      const [surchargeRow] = await query<{ surcharge: number }>(
-        'SELECT surcharge FROM plz_surcharges WHERE plz = ?',
-        [plzMatch[1]]
-      );
-      if (surchargeRow) plzSurcharge = surchargeRow.surcharge;
-    }
-
-    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount + plzSurcharge;
+    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount;
 
     if (validatedPromoCode) {
       const [promo] = await query<any>('SELECT * FROM promotions WHERE code = ?', [validatedPromoCode]);
