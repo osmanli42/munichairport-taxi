@@ -38,7 +38,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
 
-      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled') && !['0', '1'].includes(String(value))) {
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled') && !['0', '1'].includes(String(value))) {
         res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }
