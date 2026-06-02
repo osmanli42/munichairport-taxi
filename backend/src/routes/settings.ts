@@ -33,7 +33,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
