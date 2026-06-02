@@ -1309,6 +1309,105 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* PLZ-Zuschläge */}
+            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+              <h3 className="font-bold text-gray-900 text-lg mb-4">🗺️ PLZ-Zuschläge</h3>
+              <p className="text-xs text-gray-500 mb-4">Bestimmte PLZ-Gebiete erhalten einen Aufschlag auf den Fahrpreis. Der Zuschlag wird unsichtbar zum Gesamtpreis addiert.</p>
+              {plzSurcharges.length > 0 && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium text-gray-600">PLZ</th>
+                        <th className="text-left px-4 py-2 font-medium text-gray-600">Stadt</th>
+                        <th className="text-right px-4 py-2 font-medium text-gray-600">Zuschlag (€)</th>
+                        <th className="w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plzSurcharges.map(s => (
+                        <tr key={s.id} className="border-t border-gray-100">
+                          <td className="px-4 py-2 font-mono">{s.plz}</td>
+                          <td className="px-4 py-2">{s.stadt}</td>
+                          <td className="px-4 py-2 text-right font-semibold">{s.surcharge.toFixed(2)} €</td>
+                          <td className="px-2 py-2">
+                            <button
+                              onClick={async () => {
+                                setPlzSaving(true);
+                                try {
+                                  const rows = await plzSurchargesApi.remove(s.id);
+                                  setPlzSurcharges(rows);
+                                } catch {}
+                                setPlzSaving(false);
+                              }}
+                              disabled={plzSaving}
+                              className="text-red-400 hover:text-red-600 transition-colors"
+                              title="Löschen"
+                            >
+                              <X size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex gap-2 items-end flex-wrap">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">PLZ</label>
+                  <input
+                    type="text"
+                    value={newPlz}
+                    onChange={e => setNewPlz(e.target.value)}
+                    placeholder="85435"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    maxLength={5}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Stadt</label>
+                  <input
+                    type="text"
+                    value={newPlzStadt}
+                    onChange={e => setNewPlzStadt(e.target.value)}
+                    placeholder="Erding"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Zuschlag (€)</label>
+                  <input
+                    type="number"
+                    value={newPlzSurcharge}
+                    onChange={e => setNewPlzSurcharge(e.target.value)}
+                    placeholder="10"
+                    step="0.50"
+                    min="0"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!newPlz.trim() || !newPlzSurcharge) return;
+                    setPlzSaving(true);
+                    try {
+                      const rows = await plzSurchargesApi.create(newPlz.trim(), newPlzStadt.trim(), parseFloat(newPlzSurcharge));
+                      setPlzSurcharges(rows);
+                      setNewPlz('');
+                      setNewPlzStadt('');
+                      setNewPlzSurcharge('10');
+                    } catch {}
+                    setPlzSaving(false);
+                  }}
+                  disabled={plzSaving || !newPlz.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {plzSaving ? '...' : '+ Hinzufügen'}
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {prices.map((price) => (
                 <div key={price.vehicle_type} className="bg-white rounded-2xl shadow-sm p-6">
