@@ -477,7 +477,7 @@ function ResultsContent() {
             const fullRoundtripPrice = oneWayWithToll * 2;
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
             const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayWithToll;
-            const finalPrice = tripPrice + anfahrtCost;
+            const finalPrice = tripPrice + anfahrtCost + plzSurcharge;
             const tooMany = passengers > (priceData.max_passengers ?? vehicle.maxPassengers);
 
             return (
