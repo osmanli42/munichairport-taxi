@@ -511,7 +511,7 @@ function ResultsContent() {
                         {isRoundtrip ? (
                           <>
                             <div className="text-xs text-gray-400 mb-0.5">{t.roundtrip_price}</div>
-                            <div className="text-sm text-gray-400 line-through">{formatPrice(fullRoundtripPrice + anfahrtCost)}</div>
+                            <div className="text-sm text-gray-400 line-through">{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</div>
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                             <div className="flex items-center gap-1 justify-end mt-0.5">
                               <Tag size={11} className="text-green-600" />
