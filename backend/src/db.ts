@@ -196,6 +196,18 @@ export async function initializeDatabase(): Promise<void> {
     `);
 
     await conn.execute(`
+      CREATE TABLE IF NOT EXISTS plz_surcharges (
+        id INT NOT NULL AUTO_INCREMENT,
+        plz VARCHAR(10) NOT NULL,
+        stadt VARCHAR(100) NOT NULL DEFAULT '',
+        surcharge DOUBLE NOT NULL DEFAULT 10,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY (plz)
+      )
+    `);
+
+    await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,
         username VARCHAR(100) UNIQUE NOT NULL,
