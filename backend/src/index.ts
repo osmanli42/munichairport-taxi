@@ -12,6 +12,7 @@ import trackingRouter from './routes/tracking';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import adsRouter from './routes/ads';
+import plzSurchargesRouter from './routes/plz-surcharges';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
