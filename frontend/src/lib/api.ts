@@ -12,7 +12,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('admin_token');
-    if (token && (config.url?.startsWith('/admin') || config.method === 'put' || config.method === 'delete')) {
+    if (token && (config.url?.startsWith('/admin') || config.url?.startsWith('/plz-surcharges') || config.method === 'put' || config.method === 'delete')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
