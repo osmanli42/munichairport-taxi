@@ -104,6 +104,15 @@ function ResultsContent() {
       if (s.anfahrt_price_per_km) setAnfahrtPricePerKm(parseFloat(s.anfahrt_price_per_km));
       if (s.zwischenstopp_enabled === '1') setZwischenstoppEnabled(true);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
+
+    // PLZ surcharge lookup
+    const plzMatch = pickup?.match(/\b(\d{5})\b/);
+    if (plzMatch) {
+      fetch(`${API_URL}/plz-surcharges`).then(r => r.json()).then((rows: { plz: string; surcharge: number }[]) => {
+        const match = rows.find(r => r.plz === plzMatch[1]);
+        if (match) setPlzSurcharge(match.surcharge);
+      }).catch(() => {});
+    }
   }, []);
   useEffect(() => {
     if (!settingsLoaded) return;
