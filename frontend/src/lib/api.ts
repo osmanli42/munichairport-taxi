@@ -130,6 +130,32 @@ export const settingsApi = {
   },
 };
 
+export interface PlzSurcharge {
+  id: number;
+  plz: string;
+  stadt: string;
+  surcharge: number;
+}
+
+export const plzSurchargesApi = {
+  getAll: async (): Promise<PlzSurcharge[]> => {
+    const response = await api.get('/plz-surcharges');
+    return response.data;
+  },
+  create: async (plz: string, stadt: string, surcharge: number): Promise<PlzSurcharge[]> => {
+    const response = await api.post('/plz-surcharges', { plz, stadt, surcharge });
+    return response.data;
+  },
+  update: async (id: number, surcharge: number, stadt: string): Promise<PlzSurcharge[]> => {
+    const response = await api.put(`/plz-surcharges/${id}`, { surcharge, stadt });
+    return response.data;
+  },
+  remove: async (id: number): Promise<PlzSurcharge[]> => {
+    const response = await api.delete(`/plz-surcharges/${id}`);
+    return response.data;
+  },
+};
+
 // Admin API
 export const adminApi = {
   login: async (username: string, password: string) => {
