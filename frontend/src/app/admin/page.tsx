@@ -1311,8 +1311,33 @@ export default function AdminPage() {
 
             {/* PLZ-Zuschläge */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
-              <h3 className="font-bold text-gray-900 text-lg mb-4">🗺️ PLZ-Zuschläge</h3>
-              <p className="text-xs text-gray-500 mb-4">Bestimmte PLZ-Gebiete erhalten einen Aufschlag auf den Fahrpreis. Der Zuschlag wird unsichtbar zum Gesamtpreis addiert.</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">🗺️ PLZ-Zuschläge</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Bestimmte PLZ-Gebiete erhalten einen Aufschlag auf den Fahrpreis. Der Zuschlag wird unsichtbar zum Gesamtpreis addiert.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = settings.plz_surcharge_enabled === '1' ? '0' : '1';
+                    setSettingsSaving(true);
+                    try {
+                      const updated = await adminApi.updateSettings({ plz_surcharge_enabled: newVal });
+                      setSettings(updated);
+                    } catch {}
+                    setSettingsSaving(false);
+                  }}
+                  className={cn(
+                    'relative w-14 h-7 rounded-full transition-colors shrink-0 ml-4',
+                    settings.plz_surcharge_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                  )}
+                  disabled={settingsSaving}
+                >
+                  <div className={cn(
+                    'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                    settings.plz_surcharge_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                  )} />
+                </button>
+              </div>
               {plzSurcharges.length > 0 && (
                 <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
                   <table className="w-full text-sm">
