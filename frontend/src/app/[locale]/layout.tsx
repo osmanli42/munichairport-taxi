@@ -139,20 +139,9 @@ export default async function LocaleLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} flex flex-col min-h-screen bg-gray-50 pb-[88px] md:pb-0`}>
+      <body className={`${inter.className} flex flex-col min-h-screen bg-gray-50`}>
         <NextIntlClientProvider messages={messages}>
-          <Header />
-          <PromoBanner locale={locale} />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <WhatsAppButton />
-          <MobileStickyCTA />
-          <CookieBanner />
-          <VisitorTracker />
-          <SessionRecorder />
-          <BookingDraftRecovery />
+          <SiteChrome locale={locale}>{children}</SiteChrome>
         </NextIntlClientProvider>
       </body>
     </html>
