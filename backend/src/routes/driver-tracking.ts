@@ -152,4 +152,28 @@ router.post('/:booking_number/location', async (req: Request, res: Response): Pr
   }
 });
 
+// POST /api/tracking/:booking_number/customer-location — customer shares GPS
+router.post('/:booking_number/customer-location', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bn = req.params.booking_number;
+    const { lat, lng, t } = req.body || {};
+    if (!verifyToken(bn, 'cust', t)) {
+      res.status(403).json({ error: 'Invalid token' });
+      return;
+    }
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      res.status(400).json({ error: 'lat and lng required' });
+      return;
+    }
+    await run(
+      `UPDATE bookings SET customer_lat = ?, customer_lng = ?, customer_location_updated_at = NOW() WHERE booking_number = ?`,
+      [lat, lng, bn]
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Customer location error:', error);
+    res.status(500).json({ error: 'Failed to update customer location' });
+  }
+});
+
 export default router;
