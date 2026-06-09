@@ -136,7 +136,12 @@ router.post('/:booking_number/location', async (req: Request, res: Response): Pr
       [lat, lng, newStatus, booking.id]
     );
 
-    res.json({ ok: true, driver_status: newStatus });
+    res.json({
+      ok: true,
+      driver_status: newStatus,
+      pickup: pickup ?? null,
+      pickup_address: booking.pickup_address ?? null,
+    });
   } catch (error) {
     console.error('Tracking location error:', error);
     res.status(500).json({ error: 'Failed to update location' });
