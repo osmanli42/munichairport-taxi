@@ -158,55 +158,63 @@ export default function TrackPage() {
   useEffect(() => {
     const Lib = L.current;
     if (!Lib || !mapRef.current) return;
-    const loc = data?.driver_location;
-    if (!loc) return;
-    const carIcon = Lib.divIcon({
-      html: '<div style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚕</div>',
-      className: '',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-    });
-    if (!driverMarker.current) {
-      driverMarker.current = Lib.marker([loc.lat, loc.lng], { icon: carIcon }).addTo(mapRef.current);
-    } else {
-      driverMarker.current.setLatLng([loc.lat, loc.lng]);
-    }
-    if (data?.pickup) {
-      const d = haversineMeters(loc.lat, loc.lng, data.pickup.lat, data.pickup.lng);
-      const zoom = zoomForDistance(d);
-      if (d < 300) {
-        // Very close — tight zoom centered between driver and pickup
-        mapRef.current.setView(
-          [(loc.lat + data.pickup.lat) / 2, (loc.lng + data.pickup.lng) / 2],
-          zoom, { animate: true }
-        );
-      } else {
-        const bounds = Lib.latLngBounds([[loc.lat, loc.lng], [data.pickup.lat, data.pickup.lng]]);
-        mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: zoom, animate: true });
-      }
-    } else {
-      mapRef.current.setView([loc.lat, loc.lng], 14);
-    }
-  }, [data?.driver_location, data?.pickup]);
+    const driverLoc = data?.driver_location;
+    const custLoc = data?.customer_location;
+    const pickup = data?.pickup;
 
-  // Customer location marker (blue person pin)
-  useEffect(() => {
-    const Lib = L.current;
-    if (!Lib || !mapRef.current) return;
-    const loc = data?.customer_location;
-    if (!loc) return;
-    const custIcon = Lib.divIcon({
-      html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🔵</div>',
-      className: '', iconSize: [26, 26], iconAnchor: [13, 13],
-    });
-    if (!customerMarker.current) {
-      customerMarker.current = Lib.marker([loc.lat, loc.lng], { icon: custIcon, zIndexOffset: 500 })
-        .bindPopup('Sie sind hier')
-        .addTo(mapRef.current);
-    } else {
-      customerMarker.current.setLatLng([loc.lat, loc.lng]);
+    // Update driver marker
+    if (driverLoc) {
+      const carIcon = Lib.divIcon({
+        html: '<div style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))">🚕</div>',
+        className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+      });
+      if (!driverMarker.current) {
+        driverMarker.current = Lib.marker([driverLoc.lat, driverLoc.lng], { icon: carIcon }).addTo(mapRef.current);
+      } else {
+        driverMarker.current.setLatLng([driverLoc.lat, driverLoc.lng]);
+      }
     }
-  }, [data?.customer_location]);
+
+    // Update customer marker
+    if (custLoc) {
+      const custIcon = Lib.divIcon({
+        html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🔵</div>',
+        className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+      });
+      if (!customerMarker.current) {
+        customerMarker.current = Lib.marker([custLoc.lat, custLoc.lng], { icon: custIcon, zIndexOffset: 500 })
+          .bindPopup('Sie sind hier')
+          .addTo(mapRef.current);
+      } else {
+        customerMarker.current.setLatLng([custLoc.lat, custLoc.lng]);
+      }
+    }
+
+    // Fit bounds to show ALL available points: driver, customer, pickup
+    const points: [number, number][] = [];
+    if (driverLoc) points.push([driverLoc.lat, driverLoc.lng]);
+    if (custLoc)   points.push([custLoc.lat, custLoc.lng]);
+    if (pickup)    points.push([pickup.lat, pickup.lng]);
+
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      mapRef.current.setView(points[0], 15, { animate: true });
+      return;
+    }
+
+    // Use driver↔pickup distance for zoom level (if both available)
+    const refDist = driverLoc && pickup
+      ? haversineMeters(driverLoc.lat, driverLoc.lng, pickup.lat, pickup.lng)
+      : driverLoc && custLoc
+      ? haversineMeters(driverLoc.lat, driverLoc.lng, custLoc.lat, custLoc.lng)
+      : 1000;
+
+    const zoom = zoomForDistance(refDist);
+    const bounds = Lib.latLngBounds(points);
+    mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: zoom, animate: true });
+
+  }, [data?.driver_location, data?.customer_location, data?.pickup]);
 
   if (!loaded) {
     return (
