@@ -66,6 +66,11 @@ export default function AdminPage() {
   const [newPlzStadt, setNewPlzStadt] = useState('');
   const [newPlzSurcharge, setNewPlzSurcharge] = useState('10');
   const [plzSaving, setPlzSaving] = useState(false);
+  const [drivers, setDrivers] = useState<Array<{ id: number; name: string; phone: string; vehicle_plate: string; vehicle_model: string; active: number }>>([]);
+  const [trackingLinks, setTrackingLinks] = useState<{ customer_link: string; driver_link: string } | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [copied, setCopied] = useState('');
+  const [newDriverName, setNewDriverName] = useState('');
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
     bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
     company_name: '', company_address: '', company_phone: '', company_email: '',
