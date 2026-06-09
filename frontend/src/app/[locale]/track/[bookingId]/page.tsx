@@ -187,6 +187,25 @@ export default function TrackPage() {
     }
   }, [data?.driver_location, data?.pickup]);
 
+  // Customer location marker (blue person pin)
+  useEffect(() => {
+    const Lib = L.current;
+    if (!Lib || !mapRef.current) return;
+    const loc = data?.customer_location;
+    if (!loc) return;
+    const custIcon = Lib.divIcon({
+      html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🔵</div>',
+      className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+    });
+    if (!customerMarker.current) {
+      customerMarker.current = Lib.marker([loc.lat, loc.lng], { icon: custIcon, zIndexOffset: 500 })
+        .bindPopup('Sie sind hier')
+        .addTo(mapRef.current);
+    } else {
+      customerMarker.current.setLatLng([loc.lat, loc.lng]);
+    }
+  }, [data?.customer_location]);
+
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
