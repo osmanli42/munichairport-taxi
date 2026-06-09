@@ -33,6 +33,28 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function taxiIconHtml(bearing: number | null): string {
+  const arrow = bearing !== null
+    ? `<div style="position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:1px;transform:rotate(${bearing}deg);transform-origin:26px 26px;pointer-events:none"><svg width="12" height="14" viewBox="0 0 12 14"><polygon points="6,0 12,13 6,9 0,13" fill="#facc15" stroke="#b45309" stroke-width="1"/></svg></div>`
+    : '';
+  return `<div style="position:relative;width:52px;height:52px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))">${arrow}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1">🚕</div></div>`;
+}
+
+function customerIconHtml(bearing: number | null): string {
+  const arrow = bearing !== null
+    ? `<div style="position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:1px;transform:rotate(${bearing}deg);transform-origin:26px 26px;pointer-events:none"><svg width="12" height="14" viewBox="0 0 12 14"><polygon points="6,0 12,13 6,9 0,13" fill="#60a5fa" stroke="#1d4ed8" stroke-width="1"/></svg></div>`
+    : '';
+  return `<div style="position:relative;width:52px;height:52px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">${arrow}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1">🔵</div></div>`;
+}
+
 function zoomForDistance(meters: number): number {
   if (meters > 5000) return 12;
   if (meters > 2000) return 13;
