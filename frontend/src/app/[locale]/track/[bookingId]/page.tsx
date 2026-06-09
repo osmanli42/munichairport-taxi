@@ -150,8 +150,18 @@ export default function TrackPage() {
       driverMarker.current.setLatLng([loc.lat, loc.lng]);
     }
     if (data?.pickup) {
-      const bounds = Lib.latLngBounds([[loc.lat, loc.lng], [data.pickup.lat, data.pickup.lng]]);
-      mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+      const d = haversineMeters(loc.lat, loc.lng, data.pickup.lat, data.pickup.lng);
+      const zoom = zoomForDistance(d);
+      if (d < 300) {
+        // Very close — tight zoom centered between driver and pickup
+        mapRef.current.setView(
+          [(loc.lat + data.pickup.lat) / 2, (loc.lng + data.pickup.lng) / 2],
+          zoom, { animate: true }
+        );
+      } else {
+        const bounds = Lib.latLngBounds([[loc.lat, loc.lng], [data.pickup.lat, data.pickup.lng]]);
+        mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: zoom, animate: true });
+      }
     } else {
       mapRef.current.setView([loc.lat, loc.lng], 14);
     }
