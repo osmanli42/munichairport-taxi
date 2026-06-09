@@ -132,6 +132,10 @@ export default function AdminPage() {
   const [promoMsg, setPromoMsg] = useState('');
 
   useEffect(() => {
+    if (selectedBooking) { loadDrivers(); setTrackingLinks(null); }
+  }, [selectedBooking?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     const icsContacts = marketingCustomers.filter(c => c.source === 'ics');
     localStorage.setItem('marketing_ics_contacts', JSON.stringify(icsContacts));
   }, [marketingCustomers]);
