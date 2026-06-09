@@ -126,7 +126,7 @@ export default async function LocaleLayout({
               'name': 'Munich Airport Taxi',
               'url': baseUrl,
               'telephone': '+4915141620000',
-              'email': 'info@munichairport.taxi',
+              'email': 'info@flughafen-muenchen.taxi',
               'address': {
                 '@type': 'PostalAddress',
                 'streetAddress': 'Eisvogelweg 2',
