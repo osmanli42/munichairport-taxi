@@ -10,7 +10,7 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  const baseUrl = 'https://www.munichairport.taxi';
+  const baseUrl = 'https://www.flughafen-muenchen.taxi';
   const path = '/contact';
   return {
     title: t('contact_title'),
