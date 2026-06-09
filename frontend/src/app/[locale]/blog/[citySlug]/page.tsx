@@ -150,7 +150,7 @@ export default function CityBlogPage({ params }: Props) {
       },
       {
         '@type': 'Question',
-        name: 'Kann ich auch vom Flughafen München nach ${city.nameDE} fahren?',
+        name: `Kann ich auch vom Flughafen München nach ${city.nameDE} fahren?`,
         acceptedAnswer: {
           '@type': 'Answer',
           text: `Ja, wir fahren natürlich auch vom Flughafen München zurück nach ${city.nameDE}. Bei Ankunfts-Transfers überwachen wir Ihren Flug und warten bis zu 60 Minuten kostenlos.`,
