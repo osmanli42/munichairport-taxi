@@ -116,6 +116,29 @@ export const bookingsApi = {
   },
 };
 
+export interface TrackingData {
+  booking_number: string;
+  driver_status: 'assigned' | 'enroute' | 'arrived' | 'completed' | null;
+  pickup_address: string;
+  dropoff_address: string;
+  pickup_datetime: string;
+  pickup: { lat: number; lng: number } | null;
+  driver: { name: string; phone: string; vehicle_plate: string; vehicle_model: string } | null;
+  driver_location: { lat: number; lng: number; updated_at: string } | null;
+  eta_minutes: number | null;
+}
+
+export const trackingApi = {
+  get: async (booking_number: string, token: string): Promise<TrackingData> => {
+    const response = await api.get(`/tracking/${booking_number}`, { params: { t: token } });
+    return response.data;
+  },
+  postLocation: async (booking_number: string, lat: number, lng: number, token: string) => {
+    const response = await api.post(`/tracking/${booking_number}/location`, { lat, lng, t: token });
+    return response.data as { ok: boolean; driver_status: string };
+  },
+};
+
 export const pricesApi = {
   getAll: async (): Promise<Price[]> => {
     const response = await api.get('/prices');
