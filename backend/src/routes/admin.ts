@@ -11,8 +11,8 @@ const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenc
 
 function buildTrackingLinks(bookingNumber: string) {
   return {
-    customer_link: `${PUBLIC_SITE_URL}/de/track/${bookingNumber}?t=${signToken(bookingNumber, 'cust')}`,
-    driver_link: `${PUBLIC_SITE_URL}/de/fahrer/${bookingNumber}?t=${signToken(bookingNumber, 'drv')}`,
+    customer_link: `${PUBLIC_SITE_URL}/track/${bookingNumber}?t=${signToken(bookingNumber, 'cust')}`,
+    driver_link: `${PUBLIC_SITE_URL}/fahrer/${bookingNumber}?t=${signToken(bookingNumber, 'drv')}`,
   };
 }
 
