@@ -220,6 +220,9 @@ export default function FahrerPage() {
                   <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse inline-block" />
                   <span className="text-lg font-semibold">{tr('sharing')}</span>
                 </div>
+                {customerName && (
+                  <div className="text-2xl font-bold text-white mt-1">👤 {customerName}</div>
+                )}
                 {pickupAddress && (
                   <div className="bg-gray-800 rounded-xl px-4 py-2 text-sm text-gray-300 max-w-xs text-center mt-1">
                     <span className="text-gray-500 text-xs block mb-0.5">{tr('pickup')}</span>
