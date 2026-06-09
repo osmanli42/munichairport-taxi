@@ -139,12 +139,15 @@ router.post('/:booking_number/location', async (req: Request, res: Response): Pr
       [lat, lng, newStatus, booking.id]
     );
 
+    const hasCustLoc = booking.customer_lat != null && booking.customer_lng != null;
+
     res.json({
       ok: true,
       driver_status: newStatus,
       pickup: pickup ?? null,
       pickup_address: booking.pickup_address ?? null,
       customer_name: booking.name ?? null,
+      customer_location: hasCustLoc ? { lat: booking.customer_lat, lng: booking.customer_lng } : null,
     });
   } catch (error) {
     console.error('Tracking location error:', error);
