@@ -171,8 +171,41 @@ export default function OktoberfestPage() {
     ],
   };
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 2, name: ui.title },
+    ],
+  };
+
+  const eventSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: ui.title,
+    startDate: '2026-09-19',
+    endDate: '2026-10-04',
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    location: {
+      '@type': 'Place',
+      name: 'Theresienwiese',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'Theresienwiese',
+        addressLocality: 'München',
+        postalCode: '80336',
+        addressCountry: 'DE',
+      },
+    },
+    description: ui.subtitle,
+  };
+
   return (
     <main className="min-h-screen bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(eventSchema) }} />
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 text-white">
         <div className="absolute inset-0 opacity-10">
