@@ -130,9 +130,10 @@ export default function FahrerPage() {
           const r = await trackingApi.postLocation(bookingId, lat, lng, token);
           if (r.driver_status === 'arrived') setArrived(true);
 
-          // Store pickup coords and customer name (independent of each other)
+          // Store info (independent of each other)
           if (r.customer_name && !customerName) setCustomerName(r.customer_name);
           if (r.pickup_address && !pickupAddress) setPickupAddress(r.pickup_address);
+          if (r.dropoff_address && !dropoffAddress) setDropoffAddress(r.dropoff_address);
           if (r.pickup && !pickup) setPickup(r.pickup);
 
           // Update distance to pickup
