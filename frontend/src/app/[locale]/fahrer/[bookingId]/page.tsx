@@ -229,26 +229,23 @@ export default function FahrerPage() {
         {sharing && (
           <div className="flex flex-col items-center gap-3 mt-4">
             {arrived ? (
-              <>
-                <div className="text-6xl">🏁</div>
-                <div className="text-2xl font-bold text-green-400">{tr('arrived')}</div>
-              </>
+              <div className="flex items-center gap-2 text-green-400">
+                <span className="text-lg font-semibold">🏁 {tr('arrived')}</span>
+              </div>
             ) : (
-              <>
-                <div className="flex items-center gap-2 text-green-400">
-                  <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse inline-block" />
-                  <span className="text-lg font-semibold">{tr('sharing')}</span>
-                </div>
-                {customerName && (
-                  <div className="text-2xl font-bold text-white mt-1">👤 {customerName}</div>
-                )}
-                {pickupAddress && (
-                  <div className="bg-gray-800 rounded-xl px-4 py-2 text-sm text-gray-300 max-w-xs text-center mt-1">
-                    <span className="text-gray-500 text-xs block mb-0.5">{tr('pickup')}</span>
-                    {pickupAddress}
-                  </div>
-                )}
-              </>
+              <div className="flex items-center gap-2 text-green-400">
+                <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse inline-block" />
+                <span className="text-lg font-semibold">{tr('sharing')}</span>
+              </div>
+            )}
+            {customerName && (
+              <div className="text-2xl font-bold text-white">👤 {customerName}</div>
+            )}
+            {pickupAddress && (
+              <div className="bg-gray-800 rounded-xl px-4 py-2 text-sm text-gray-300 max-w-xs text-center">
+                <span className="text-gray-500 text-xs block mb-0.5">{tr('pickup')}</span>
+                {pickupAddress}
+              </div>
             )}
           </div>
         )}
