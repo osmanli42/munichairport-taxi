@@ -101,7 +101,7 @@ export default function FahrerPage() {
       const map = Lib.map(mapEl.current, { zoomControl: false })
         .setView([pickup.lat, pickup.lng], 14);
       Lib.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap', maxZoom: 19,
+        attribution: '© OpenStreetMap', maxZoom: 20,
       }).addTo(map);
       Lib.control.zoom({ position: 'bottomright' }).addTo(map);
       const pickupIcon = Lib.divIcon({
