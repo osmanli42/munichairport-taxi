@@ -139,9 +139,9 @@ export default function FahrerPage() {
             const d = haversineMeters(lat, lng, r.pickup.lat, r.pickup.lng);
             setDistanceM(d);
 
-            // Update map
             const Lib = L.current;
             if (Lib && mapRef.current) {
+              // Driver marker (taxi)
               const carIcon = Lib.divIcon({
                 html: '<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))">🚕</div>',
                 className: '', iconSize: [30, 30], iconAnchor: [15, 15],
@@ -151,16 +151,34 @@ export default function FahrerPage() {
               } else {
                 driverMarker.current.setLatLng([lat, lng]);
               }
-              // Zoom based on proximity
+
+              // Customer marker (blue person) if location available
+              if (r.customer_location) {
+                const custIcon = Lib.divIcon({
+                  html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🔵</div>',
+                  className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+                });
+                if (!customerMarker.current) {
+                  customerMarker.current = Lib.marker([r.customer_location.lat, r.customer_location.lng], { icon: custIcon, zIndexOffset: 500 })
+                    .bindPopup('Kunde')
+                    .addTo(mapRef.current);
+                } else {
+                  customerMarker.current.setLatLng([r.customer_location.lat, r.customer_location.lng]);
+                }
+              }
+
+              // Zoom: if we have customer location, include it in bounds too
+              const allPoints: [number, number][] = [[lat, lng], [r.pickup.lat, r.pickup.lng]];
+              if (r.customer_location) allPoints.push([r.customer_location.lat, r.customer_location.lng]);
+
               const zoom = zoomForDistance(d);
-              const bounds = Lib.latLngBounds([[lat, lng], [r.pickup.lat, r.pickup.lng]]);
               if (d < 300) {
-                // Very close — center between driver and pickup, tight zoom
                 mapRef.current.setView(
                   [(lat + r.pickup.lat) / 2, (lng + r.pickup.lng) / 2],
                   zoom, { animate: true }
                 );
               } else {
+                const bounds = Lib.latLngBounds(allPoints);
                 mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: zoom, animate: true });
               }
             }
