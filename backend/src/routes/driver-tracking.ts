@@ -146,6 +146,7 @@ router.post('/:booking_number/location', async (req: Request, res: Response): Pr
       driver_status: newStatus,
       pickup: pickup ?? null,
       pickup_address: booking.pickup_address ?? null,
+      dropoff_address: booking.dropoff_address ?? null,
       customer_name: booking.name ?? null,
       customer_location: hasCustLoc ? { lat: booking.customer_lat, lng: booking.customer_lng } : null,
     });
