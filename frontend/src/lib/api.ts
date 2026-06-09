@@ -339,6 +339,26 @@ export const adminApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
     await api.post('/admin/settings/reminder', data, { headers: { Authorization: `Bearer ${token}` } });
   },
+
+  getDrivers: async () => {
+    const response = await api.get('/admin/drivers');
+    return response.data;
+  },
+
+  createDriver: async (data: { name: string; phone?: string; vehicle_plate?: string; vehicle_model?: string }) => {
+    const response = await api.post('/admin/drivers', data);
+    return response.data;
+  },
+
+  assignDriver: async (bookingId: number, driver_id: number | null) => {
+    const response = await api.post(`/admin/bookings/${bookingId}/assign-driver`, { driver_id });
+    return response.data as { ok: boolean; assigned: boolean; customer_link?: string; driver_link?: string };
+  },
+
+  getTrackingLinks: async (bookingId: number) => {
+    const response = await api.get(`/admin/bookings/${bookingId}/tracking-links`);
+    return response.data as { customer_link: string; driver_link: string };
+  },
 };
 
 export default api;
