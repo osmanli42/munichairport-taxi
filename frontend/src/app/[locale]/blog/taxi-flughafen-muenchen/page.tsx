@@ -87,6 +87,10 @@ export default function TaxiFlughafenMuenchenPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
 
       <article className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
 
