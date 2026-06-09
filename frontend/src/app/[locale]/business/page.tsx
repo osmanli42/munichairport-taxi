@@ -218,8 +218,19 @@ export default function BusinessPage() {
   const locale = useLocale();
   const d = content[locale as keyof typeof content] || content.de;
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 2, name: d.hero_title },
+    ],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+
       {/* Hero */}
       <section className="bg-primary-600 text-white py-16 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
