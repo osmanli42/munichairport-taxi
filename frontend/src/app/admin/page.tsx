@@ -2316,6 +2316,52 @@ export default function AdminPage() {
             </div>
 
             <div className="p-6 space-y-4 text-sm">
+              {/* Fahrer & Live-Tracking — top of modal */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                <h3 className="font-semibold text-blue-900 text-sm">🚕 Fahrer & Live-Tracking</h3>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                    defaultValue=""
+                    onChange={(e) => handleAssignDriver(e.target.value ? Number(e.target.value) : null)}
+                    disabled={assigning}
+                  >
+                    <option value="">— Kein Fahrer —</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}{d.vehicle_plate ? ` · ${d.vehicle_plate}` : ''}</option>
+                    ))}
+                  </select>
+                  {assigning && <span className="text-xs text-gray-400 self-center">...</span>}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Neuer Fahrer Name"
+                    value={newDriverName}
+                    onChange={(e) => setNewDriverName(e.target.value)}
+                    className="flex-1 border rounded-lg px-2 py-1 text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateDriver()}
+                  />
+                  <button onClick={handleCreateDriver} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">+ Hinzufügen</button>
+                </div>
+                {trackingLinks && (
+                  <div className="space-y-2">
+                    {[
+                      { label: '🔗 Kundenlink', key: 'cust', url: trackingLinks.customer_link },
+                      { label: '📍 Fahrerlink', key: 'drv', url: trackingLinks.driver_link },
+                    ].map(({ label, key, url }) => (
+                      <div key={key} className="flex gap-2 items-center">
+                        <span className="text-xs text-gray-600 flex-1 truncate">{label}: <span className="font-mono text-gray-800">{url.split('?')[0].split('/').slice(-1)[0]}</span></span>
+                        <button onClick={() => copyLink(url, key)} className="text-xs bg-white border rounded px-2 py-0.5 hover:bg-gray-50">
+                          {copied === key ? '✓' : 'Kopieren'}
+                        </button>
+                        <a href={`https://wa.me/?text=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-green-500 text-white rounded px-2 py-0.5">WA</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Status */}
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Status:</span>
