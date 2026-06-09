@@ -5,6 +5,16 @@ import Stripe from 'stripe';
 import { query, run } from '../db';
 import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
+import { signToken } from '../utils/trackingToken';
+
+const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
+
+function buildTrackingLinks(bookingNumber: string) {
+  return {
+    customer_link: `${PUBLIC_SITE_URL}/de/track/${bookingNumber}?t=${signToken(bookingNumber, 'cust')}`,
+    driver_link: `${PUBLIC_SITE_URL}/de/fahrer/${bookingNumber}?t=${signToken(bookingNumber, 'drv')}`,
+  };
+}
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-03-25.dahlia' as any })
