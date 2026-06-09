@@ -59,6 +59,15 @@ const faqSchema = {
   ],
 };
 
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+    { '@type': 'ListItem', position: 2, name: 'Taxi Flughafen München' },
+  ],
+};
+
 const PRICES = [
   { area: 'München Hauptbahnhof / Innenstadt', km: 38, kombi: 88, van: 94 },
   { area: 'Schwabing / Maxvorstadt', km: 35, kombi: 82, van: 87 },
