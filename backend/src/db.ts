@@ -208,6 +208,35 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Drivers (Fahrer) table for live tracking
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS drivers (
+        id INT NOT NULL AUTO_INCREMENT,
+        name VARCHAR(120) NOT NULL,
+        phone VARCHAR(40) NOT NULL DEFAULT '',
+        vehicle_plate VARCHAR(40) NOT NULL DEFAULT '',
+        vehicle_model VARCHAR(80) NOT NULL DEFAULT '',
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+
+    // Migration: driver tracking columns on bookings
+    const bookingDriverCols = [
+      `ALTER TABLE bookings ADD COLUMN assigned_driver_id INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_status VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_location_updated_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN pickup_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN pickup_lng DOUBLE DEFAULT NULL`,
+    ];
+    for (const stmt of bookingDriverCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,
