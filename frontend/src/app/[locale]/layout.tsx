@@ -3,15 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import WhatsAppButton from '@/components/WhatsAppButton';
-import MobileStickyCTA from '@/components/MobileStickyCTA';
-import CookieBanner from '@/components/CookieBanner';
-import PromoBanner from '@/components/PromoBanner';
-import VisitorTracker from '@/components/VisitorTracker';
-import SessionRecorder from '@/components/SessionRecorder';
-import BookingDraftRecovery from '@/components/BookingDraftRecovery';
+import SiteChrome from '@/components/SiteChrome';
 import '../globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
