@@ -84,8 +84,10 @@ export default function TrackPage() {
   const mapRef = useRef<any>(null);
   const driverMarker = useRef<any>(null);
   const pickupMarker = useRef<any>(null);
+  const customerMarker = useRef<any>(null);
   const mapEl = useRef<HTMLDivElement>(null);
   const L = useRef<any>(null);
+  const custWatchId = useRef<number | null>(null);
 
   const tr = (k: string) => T[k]?.[locale] ?? T[k]?.de ?? k;
 
