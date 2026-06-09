@@ -22,7 +22,7 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const host = headers().get('host') ?? 'www.flughafen-muenchen.taxi';
   const baseUrl = `https://${host}`;
   const localePrefix = locale === 'de' ? '' : `/${locale}`;
 
@@ -80,7 +80,7 @@ export default async function LocaleLayout({
   params: { locale: string };
 }) {
   const messages = await getMessages();
-  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const host = headers().get('host') ?? 'www.flughafen-muenchen.taxi';
   const baseUrl = `https://${host}`;
 
   return (
