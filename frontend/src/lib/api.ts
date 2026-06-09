@@ -138,6 +138,10 @@ export const trackingApi = {
     const response = await api.post(`/tracking/${booking_number}/location`, { lat, lng, t: token });
     return response.data as { ok: boolean; driver_status: string; pickup: { lat: number; lng: number } | null; pickup_address: string | null; customer_name: string | null };
   },
+  postCustomerLocation: async (booking_number: string, lat: number, lng: number, token: string) => {
+    const response = await api.post(`/tracking/${booking_number}/customer-location`, { lat, lng, t: token });
+    return response.data as { ok: boolean };
+  },
 };
 
 export const pricesApi = {
