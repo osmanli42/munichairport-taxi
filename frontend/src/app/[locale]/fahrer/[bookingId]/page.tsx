@@ -243,10 +243,33 @@ export default function FahrerPage() {
             {customerName && (
               <div className="text-2xl font-bold text-white">👤 {customerName}</div>
             )}
-            {pickupAddress && (
-              <div className="bg-gray-800 rounded-xl px-4 py-2 text-sm text-gray-300 max-w-xs text-center">
-                <span className="text-gray-500 text-xs block mb-0.5">{tr('pickup')}</span>
-                {pickupAddress}
+            {(pickupAddress || dropoffAddress) && (
+              <div className="bg-gray-800 rounded-xl px-4 py-3 text-sm text-gray-300 w-full max-w-xs space-y-2">
+                {pickupAddress && (
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-green-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-green-300 text-xs font-bold">A</span>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 text-xs mb-0.5">{tr('pickup')}</div>
+                      <div className="text-gray-200 leading-snug">{pickupAddress}</div>
+                    </div>
+                  </div>
+                )}
+                {pickupAddress && dropoffAddress && (
+                  <div className="ml-3 border-l border-dashed border-gray-600 h-3" />
+                )}
+                {dropoffAddress && (
+                  <div className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-red-800 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-red-300 text-xs font-bold">B</span>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 text-xs mb-0.5">{tr('dropoff')}</div>
+                      <div className="text-gray-200 leading-snug">{dropoffAddress}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
