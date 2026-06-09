@@ -231,6 +231,9 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN driver_location_updated_at DATETIME DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN pickup_lat DOUBLE DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN pickup_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN customer_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN customer_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN customer_location_updated_at DATETIME DEFAULT NULL`,
     ];
     for (const stmt of bookingDriverCols) {
       try { await conn.execute(stmt); }
