@@ -69,6 +69,7 @@ export default function FahrerPage() {
   const [arrived, setArrived] = useState(false);
   const [pickup, setPickup] = useState<{ lat: number; lng: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
+  const [dropoffAddress, setDropoffAddress] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [distanceM, setDistanceM] = useState<number | null>(null);
 
