@@ -200,7 +200,7 @@ export default function CookieBanner() {
               >
                 {t('privacy')}
               </Link>
-              <span className="text-[10px] text-gray-400">munichairport.taxi</span>
+              <span className="text-[10px] text-gray-400">flughafen-muenchen.taxi</span>
             </div>
           </div>
         </div>
