@@ -141,6 +141,7 @@ router.post('/:booking_number/location', async (req: Request, res: Response): Pr
       driver_status: newStatus,
       pickup: pickup ?? null,
       pickup_address: booking.pickup_address ?? null,
+      customer_name: booking.name ?? null,
     });
   } catch (error) {
     console.error('Tracking location error:', error);
