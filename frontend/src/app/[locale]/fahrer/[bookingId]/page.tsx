@@ -75,6 +75,7 @@ export default function FahrerPage() {
   const mapRef = useRef<any>(null);
   const driverMarker = useRef<any>(null);
   const pickupMarker = useRef<any>(null);
+  const customerMarker = useRef<any>(null);
   const mapEl = useRef<HTMLDivElement>(null);
   const L = useRef<any>(null);
 
