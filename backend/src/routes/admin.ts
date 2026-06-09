@@ -2110,4 +2110,111 @@ router.get('/seo/data', authenticateAdmin, async (_req: AuthRequest, res: Respon
   }
 });
 
+// ===== Drivers (Fahrer) =====
+
+// GET /api/admin/drivers
+router.get('/drivers', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const drivers = await query('SELECT * FROM drivers ORDER BY active DESC, name ASC');
+    res.json(drivers);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/drivers
+router.post('/drivers', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, phone, vehicle_plate, vehicle_model } = req.body;
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ error: 'name required' });
+      return;
+    }
+    const result = await run(
+      'INSERT INTO drivers (name, phone, vehicle_plate, vehicle_model) VALUES (?, ?, ?, ?)',
+      [String(name).trim(), phone || '', vehicle_plate || '', vehicle_model || '']
+    );
+    const [driver] = await query('SELECT * FROM drivers WHERE id = ?', [result.insertId]);
+    res.status(201).json(driver);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/drivers/:id
+router.put('/drivers/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, phone, vehicle_plate, vehicle_model, active } = req.body;
+    await run(
+      'UPDATE drivers SET name = ?, phone = ?, vehicle_plate = ?, vehicle_model = ?, active = ? WHERE id = ?',
+      [name, phone || '', vehicle_plate || '', vehicle_model || '', active ? 1 : 0, req.params.id]
+    );
+    const [driver] = await query('SELECT * FROM drivers WHERE id = ?', [req.params.id]);
+    res.json(driver);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/drivers/:id
+router.delete('/drivers/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await run('DELETE FROM drivers WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/bookings/:id/assign-driver — assign a driver and return tracking links
+router.post('/bookings/:id/assign-driver', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { driver_id } = req.body;
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    if (driver_id) {
+      const [driver] = await query<any>('SELECT * FROM drivers WHERE id = ?', [driver_id]);
+      if (!driver) {
+        res.status(404).json({ error: 'Driver not found' });
+        return;
+      }
+      await run(
+        `UPDATE bookings SET assigned_driver_id = ?, driver_status = 'assigned',
+         driver_lat = NULL, driver_lng = NULL, driver_location_updated_at = NULL WHERE id = ?`,
+        [driver_id, booking.id]
+      );
+    } else {
+      // Unassign
+      await run(
+        `UPDATE bookings SET assigned_driver_id = NULL, driver_status = NULL,
+         driver_lat = NULL, driver_lng = NULL, driver_location_updated_at = NULL WHERE id = ?`,
+        [booking.id]
+      );
+      res.json({ ok: true, assigned: false });
+      return;
+    }
+
+    res.json({ ok: true, assigned: true, ...buildTrackingLinks(booking.booking_number) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/bookings/:id/tracking-links — fetch links for an already-assigned booking
+router.get('/bookings/:id/tracking-links', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [booking] = await query<any>('SELECT booking_number FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    res.json(buildTrackingLinks(booking.booking_number));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
