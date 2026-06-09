@@ -60,8 +60,36 @@ export default function VehiclesPage() {
     },
   ];
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 2, name: t('title') },
+    ],
+  };
+
+  const serviceSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    serviceType: 'Flughafentransfer München',
+    provider: { '@type': 'TaxiService', name: 'Munich Airport Taxi', url: 'https://www.flughafen-muenchen.taxi' },
+    areaServed: 'München, Bavaria',
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'Fahrzeugkategorien',
+      itemListElement: vehicles.map((v) => ({
+        '@type': 'Offer',
+        itemOffered: { '@type': 'Service', name: v.name, description: v.description },
+      })),
+    },
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
+
       {/* Hero */}
       <section className="bg-primary-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
