@@ -138,7 +138,7 @@ export default function TrackPage() {
       const map = Lib.map(mapEl.current, { zoomControl: false }).setView([data.pickup!.lat, data.pickup!.lng], 14);
       Lib.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
-        maxZoom: 19,
+        maxZoom: 20,
       }).addTo(map);
       Lib.control.zoom({ position: 'bottomright' }).addTo(map);
       const pickupIcon = Lib.divIcon({
