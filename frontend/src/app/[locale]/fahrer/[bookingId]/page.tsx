@@ -165,22 +165,31 @@ export default function FahrerPage() {
 
             const Lib = L.current;
             if (Lib && mapRef.current) {
-              // Driver marker (taxi)
+              // Bearings for directional arrows
+              const driverToCust = r.customer_location
+                ? bearingDeg(lat, lng, r.customer_location.lat, r.customer_location.lng)
+                : null;
+              const custToDriver = r.customer_location
+                ? bearingDeg(r.customer_location.lat, r.customer_location.lng, lat, lng)
+                : null;
+
+              // Driver marker (taxi) with arrow toward customer
               const carIcon = Lib.divIcon({
-                html: '<div style="font-size:30px;line-height:1;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))">🚕</div>',
-                className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+                html: taxiIconHtml(driverToCust),
+                className: '', iconSize: [52, 52], iconAnchor: [26, 26],
               });
               if (!driverMarker.current) {
                 driverMarker.current = Lib.marker([lat, lng], { icon: carIcon }).addTo(mapRef.current);
               } else {
                 driverMarker.current.setLatLng([lat, lng]);
+                driverMarker.current.setIcon(carIcon);
               }
 
-              // Customer marker (blue person) if location available
+              // Customer marker (blue) with arrow toward driver
               if (r.customer_location) {
                 const custIcon = Lib.divIcon({
-                  html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))">🔵</div>',
-                  className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+                  html: customerIconHtml(custToDriver),
+                  className: '', iconSize: [52, 52], iconAnchor: [26, 26],
                 });
                 if (!customerMarker.current) {
                   customerMarker.current = Lib.marker([r.customer_location.lat, r.customer_location.lng], { icon: custIcon, zIndexOffset: 500 })
@@ -188,6 +197,7 @@ export default function FahrerPage() {
                     .addTo(mapRef.current);
                 } else {
                   customerMarker.current.setLatLng([r.customer_location.lat, r.customer_location.lng]);
+                  customerMarker.current.setIcon(custIcon);
                 }
               }
 
