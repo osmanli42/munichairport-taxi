@@ -34,14 +34,14 @@ function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number)
 }
 
 function zoomForDistance(meters: number): number {
-  if (meters > 5000) return 13;
-  if (meters > 2000) return 14;
-  if (meters > 1000) return 15;
-  if (meters > 500)  return 16;
-  if (meters > 200)  return 17;
-  if (meters > 100)  return 18;
-  if (meters > 50)   return 19;
-  return 20;
+  if (meters > 5000) return 12;
+  if (meters > 2000) return 13;
+  if (meters > 1000) return 14;
+  if (meters > 500)  return 15;
+  if (meters > 200)  return 16;
+  if (meters > 100)  return 17;
+  if (meters > 50)   return 18;
+  return 19;
 }
 
 function loadLeaflet(): Promise<any> {
