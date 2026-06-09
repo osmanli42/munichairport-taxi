@@ -125,6 +125,7 @@ export interface TrackingData {
   pickup: { lat: number; lng: number } | null;
   driver: { name: string; phone: string; vehicle_plate: string; vehicle_model: string } | null;
   driver_location: { lat: number; lng: number; updated_at: string } | null;
+  customer_location: { lat: number; lng: number; updated_at: string } | null;
   eta_minutes: number | null;
 }
 
