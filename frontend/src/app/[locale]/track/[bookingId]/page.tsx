@@ -105,9 +105,27 @@ export default function TrackPage() {
 
   useEffect(() => {
     poll();
-    const id = setInterval(poll, 8000);
+    const id = setInterval(poll, 5000);
     return () => clearInterval(id);
   }, [poll]);
+
+  // Share customer's own GPS silently (no UI needed — just sends to backend)
+  useEffect(() => {
+    if (!token || !bookingId) return;
+    if (!('geolocation' in navigator)) return;
+    custWatchId.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        try {
+          await trackingApi.postCustomerLocation(bookingId, pos.coords.latitude, pos.coords.longitude, token);
+        } catch { /* silent */ }
+      },
+      () => { /* permission denied — no problem, feature is optional */ },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
+    );
+    return () => {
+      if (custWatchId.current != null) navigator.geolocation.clearWatch(custWatchId.current);
+    };
+  }, [bookingId, token]);
 
   useEffect(() => {
     if (!data?.pickup || mapRef.current || !mapEl.current) return;
