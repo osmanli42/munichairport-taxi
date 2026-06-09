@@ -4,7 +4,7 @@ import { allCitySlugs } from '@/lib/citiesData';
 import { eventsData } from '@/lib/eventsData';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const host = headers().get('host') ?? 'www.munichairport.taxi';
+  const host = headers().get('host') ?? 'www.flughafen-muenchen.taxi';
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
   const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
