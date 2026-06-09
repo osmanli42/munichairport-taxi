@@ -170,6 +170,37 @@ export default function AdminPage() {
     setToken('');
   }
 
+  const loadDrivers = useCallback(async () => {
+    try { setDrivers(await adminApi.getDrivers()); } catch { /* ignore */ }
+  }, []);
+
+  async function handleAssignDriver(driverId: number | null) {
+    if (!selectedBooking) return;
+    setAssigning(true);
+    try {
+      const r = await adminApi.assignDriver(selectedBooking.id, driverId);
+      if (r.assigned && r.customer_link && r.driver_link) {
+        setTrackingLinks({ customer_link: r.customer_link, driver_link: r.driver_link });
+      } else {
+        setTrackingLinks(null);
+      }
+    } catch { /* ignore */ }
+    finally { setAssigning(false); }
+  }
+
+  async function handleCreateDriver() {
+    if (!newDriverName.trim()) return;
+    try {
+      await adminApi.createDriver({ name: newDriverName.trim() });
+      setNewDriverName('');
+      loadDrivers();
+    } catch { /* ignore */ }
+  }
+
+  function copyLink(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); });
+  }
+
   const loadStats = useCallback(async () => {
     try {
       const data = await adminApi.getStats();
