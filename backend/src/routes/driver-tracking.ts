@@ -88,6 +88,8 @@ router.get('/:booking_number', async (req: Request, res: Response): Promise<void
       );
     }
 
+    const hasCustLoc = booking.customer_lat != null && booking.customer_lng != null;
+
     res.json({
       booking_number: bn,
       driver_status: booking.driver_status || (booking.assigned_driver_id ? 'assigned' : null),
@@ -97,6 +99,7 @@ router.get('/:booking_number', async (req: Request, res: Response): Promise<void
       pickup: pickup,
       driver: driver ? { name: driver.name, phone: driver.phone, vehicle_plate: driver.vehicle_plate, vehicle_model: driver.vehicle_model } : null,
       driver_location: hasLoc ? { lat: booking.driver_lat, lng: booking.driver_lng, updated_at: booking.driver_location_updated_at } : null,
+      customer_location: hasCustLoc ? { lat: booking.customer_lat, lng: booking.customer_lng, updated_at: booking.customer_location_updated_at } : null,
       eta_minutes,
     });
   } catch (error) {
