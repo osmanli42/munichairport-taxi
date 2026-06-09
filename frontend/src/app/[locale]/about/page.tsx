@@ -48,8 +48,18 @@ export default function AboutPage() {
     'Rosenheim', 'Dachau', 'Fürstenfeldbruck', 'Ebersberg', 'Salzburg', 'Innsbruck',
   ];
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 2, name: t('title') },
+    ],
+  };
+
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       {/* Hero */}
       <section
