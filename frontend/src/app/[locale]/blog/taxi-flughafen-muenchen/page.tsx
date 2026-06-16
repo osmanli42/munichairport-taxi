@@ -117,7 +117,7 @@ export default function TaxiFlughafenMuenchenPage() {
         <div className="bg-primary-600 text-white rounded-2xl p-6 mb-10 flex flex-col sm:flex-row items-center gap-4">
           <div className="flex-1">
             <p className="font-bold text-lg">Jetzt Festpreis berechnen</p>
-            <p className="text-primary-200 text-sm">In 60 Sekunden online buchen – kein Taxameter, kein Stress.</p>
+            <p className="text-primary-200 text-sm">In 60 Sekunden online buchen – Festpreis, kein Stress.</p>
           </div>
           <div className="flex gap-3 shrink-0">
             <Link
