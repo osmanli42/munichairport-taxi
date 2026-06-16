@@ -190,6 +190,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
             const pgDiscount = pgCfg.roundtrip_discount_enabled ? discount : 0;
             tripPrice = isRoundtrip ? effOneWay * 2 * (1 - pgDiscount / 100) : effOneWay;
             pgFareFloor = tripPrice; // promos may not undercut the mandatory fare
+            effectiveOneWay = effOneWay;
+            effectiveRoundtripDiscount = pgDiscount;
           }
         }
       }
