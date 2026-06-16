@@ -283,7 +283,12 @@ function ResultsContent() {
     return () => { cancelled = true; };
   }, [pgConfig, pickup, dropoff]);
 
-  const pgInZone = !!(pgConfig && pgConfig.enabled && (pgPointInZone(pickupCoords, pgConfig) || pgPointInZone(dropoffCoords, pgConfig)));
+  const pgInZone = !!(pgConfig && pgConfig.enabled && (
+    pgPointInZone(pickupCoords, pgConfig) ||
+    pgPointInZone(dropoffCoords, pgConfig) ||
+    // Fallback: airport-area addresses are always inside the zone (robust if geocoding fails)
+    (pgConfig.airport_enabled === 1 && (isAirportArea(pickup) || isAirportArea(dropoff)))
+  ));
 
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
