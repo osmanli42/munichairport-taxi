@@ -253,6 +253,38 @@ function ResultsContent() {
       });
   }, []);
 
+  // Pflichtfahrgebiet config + tariffs
+  const [pgConfig, setPgConfig] = useState<PgConfig | null>(null);
+  const [pgTarife, setPgTarife] = useState<PgTarif[]>([]);
+  useEffect(() => {
+    fetch(`${API_URL}/pflichtgebiet`)
+      .then(r => r.json())
+      .then((d: { config: PgConfig | null; tarife: PgTarif[] }) => { setPgConfig(d.config); setPgTarife(d.tarife || []); })
+      .catch(() => {});
+  }, []);
+
+  // Geocode pickup & dropoff for zone detection (only when feature is enabled)
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (!pgConfig || !pgConfig.enabled) return;
+    let cancelled = false;
+    const geo = async (addr: string, set: (c: { lat: number; lng: number } | null) => void) => {
+      if (!addr) return set(null);
+      try {
+        const r = await fetch(`${API_URL}/maps/geocode?address=${encodeURIComponent(addr)}`);
+        if (!r.ok) return set(null);
+        const c = await r.json();
+        if (!cancelled && typeof c.lat === 'number') set({ lat: c.lat, lng: c.lng });
+      } catch { if (!cancelled) set(null); }
+    };
+    geo(pickup, setPickupCoords);
+    geo(dropoff, setDropoffCoords);
+    return () => { cancelled = true; };
+  }, [pgConfig, pickup, dropoff]);
+
+  const pgInZone = !!(pgConfig && pgConfig.enabled && (pgPointInZone(pickupCoords, pgConfig) || pgPointInZone(dropoffCoords, pgConfig)));
+
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
         locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
