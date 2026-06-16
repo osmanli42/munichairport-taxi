@@ -145,7 +145,7 @@ export default function CityBlogPage({ params }: Props) {
         name: 'Gibt es einen Festpreis oder wird nach Taxameter abgerechnet?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: `Wir bieten garantierte Festpreise – kein Taxameter, kein Stau-Aufschlag. Der Preis von ${city.kombi_price} € (Kombi) bzw. ${city.van_price} € (Van) ist fix und wird vorab bestätigt.`,
+          text: `Wir bieten garantierte Festpreise – Ihr Preis steht vorab fest, ohne Stau-Aufschlag oder Wartezeit-Zuschlag. Der Preis von ${city.kombi_price} € (Kombi) bzw. ${city.van_price} € (Van) ist fix und wird vor der Fahrt bestätigt.`,
         },
       },
       {
