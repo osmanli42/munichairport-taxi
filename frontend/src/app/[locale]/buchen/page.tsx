@@ -36,6 +36,10 @@ function BuchenContent() {
   const duration = Number(params.get('duration') || 0);
   const vehicle = params.get('vehicle') || 'kombi';
   const basePrice = Number(params.get('price') || 0);
+  const pickupLat = params.get('pickup_lat');
+  const pickupLng = params.get('pickup_lng');
+  const dropoffLat = params.get('dropoff_lat');
+  const dropoffLng = params.get('dropoff_lng');
   const tollAmount = Number(params.get('toll_amount') || 0);
 
   const dateFormatted = date
