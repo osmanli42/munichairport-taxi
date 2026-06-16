@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { query, run } from '../db';
 import { sendAllNotifications, BookingNotificationData } from '../services/notifications';
+import { tripInZone, PgConfig, Coords } from '../utils/geo';
+import { geocodeAddress } from './maps';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
