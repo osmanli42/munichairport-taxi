@@ -156,6 +156,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
 
+    // Effective values shown in confirmation emails (overridden inside the zone)
+    let effectiveOneWay = oneWayPrice;
+    let effectiveRoundtripDiscount = priceRow.roundtrip_discount || 0;
+
     // --- Pflichtfahrgebiet (mandatory tariff zone) — isolated overlay, does not alter free pricing ---
     let pgFareFloor = 0; // final-price floor applied when the trip is inside the zone
     try {
