@@ -227,6 +227,7 @@ function AddressInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onChange(val);
+    onCoords?.(null); // address changed → previous coords are stale
     setAddressError('');
     currentInputRef.current = val;
 
