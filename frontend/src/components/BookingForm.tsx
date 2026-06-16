@@ -505,15 +505,33 @@ export default function BookingForm() {
     return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
+  // Load Pflichtfahrgebiet (mandatory tariff zone) config once
+  useEffect(() => {
+    pflichtgebietApi.get()
+      .then((d) => { setPgConfig(d.config); setPgTarife(d.tarife); })
+      .catch(() => {});
+  }, []);
+
   // Update price when distance or vehicle changes
   useEffect(() => {
     if (distanceResult && vehicleType) {
       const prices = VEHICLE_PRICES[vehicleType as keyof typeof VEHICLE_PRICES];
       if (prices) {
-        setEstimatedPrice(prices.base_price + distanceResult.distance_km * prices.price_per_km + childSeatTotal);
+        let fare = prices.base_price + distanceResult.distance_km * prices.price_per_km;
+
+        // Pflichtfahrgebiet: inside the zone the price may not fall below the mandatory tariff
+        if (pgConfig && pgConfig.enabled && (pointInPgZone(pickupCoords, pgConfig) || pointInPgZone(dropoffCoords, pgConfig))) {
+          const tar = pgTarife.find((x) => x.vehicle_type === vehicleType);
+          if (tar) {
+            const mandatory = Number(tar.grundgebuehr) + distanceResult.distance_km * Number(tar.min_per_km);
+            fare = pgConfig.mode === 'replace' ? mandatory : Math.max(fare, mandatory);
+          }
+        }
+
+        setEstimatedPrice(fare + childSeatTotal);
       }
     }
-  }, [distanceResult, vehicleType, childSeatTotal]);
+  }, [distanceResult, vehicleType, childSeatTotal, pgConfig, pgTarife, pickupCoords, dropoffCoords]);
 
   // Step 1: Show review page
   function onSubmit(data: FormData) {
