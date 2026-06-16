@@ -30,7 +30,7 @@ export default function HomePage() {
       title: 'In 3 Schritten zum Transfer',
       steps: [
         { title: 'Adresse & Zeit eingeben', text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter 1 Sekunde.', extra: ['✓ Zwischenstopp möglich', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'] },
-        { title: 'Fahrzeug & Preis wählen', text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Kein Taxameter, kein Stauaufpreis – Ihr Preis bleibt fest.', extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'] },
+        { title: 'Fahrzeug & Preis wählen', text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Transparenter Festpreis, kein Stauaufpreis – Ihr Preis bleibt fest.', extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'] },
         { title: 'Entspannt ankommen', text: 'Ihr Fahrer wartet pünktlich am Ausgang – mit Namensschild. Bei Flugverspätung warten wir 60 Minuten kostenlos.', extra: ['✓ Meet & Greet Service', '✓ 60 Min. Wartezeit gratis', '✓ Gepäckhilfe inklusive'] },
       ],
       cta: 'Alle Fahrzeuge ansehen',
