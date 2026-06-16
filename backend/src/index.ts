@@ -14,6 +14,7 @@ import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import adsRouter from './routes/ads';
 import plzSurchargesRouter from './routes/plz-surcharges';
+import pflichtgebietRouter from './routes/pflichtgebiet';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
