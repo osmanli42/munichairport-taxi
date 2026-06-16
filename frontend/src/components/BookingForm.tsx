@@ -146,6 +146,7 @@ function AddressInput({
   value,
   onChange,
   onSelect,
+  onCoords,
   error,
   placeholder,
   locale,
@@ -155,6 +156,7 @@ function AddressInput({
   value: string;
   onChange: (v: string) => void;
   onSelect: (v: string) => void;
+  onCoords?: (coords: { lat: number; lng: number } | null) => void;
   error?: boolean;
   placeholder?: string;
   locale: string;
