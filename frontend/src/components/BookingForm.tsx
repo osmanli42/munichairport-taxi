@@ -393,6 +393,10 @@ export default function BookingForm() {
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [pickupValidated, setPickupValidated] = useState('');
   const [dropoffValidated, setDropoffValidated] = useState('');
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pgConfig, setPgConfig] = useState<PflichtgebietConfig | null>(null);
+  const [pgTarife, setPgTarife] = useState<PflichtgebietTarif[]>([]);
   const isAirportPickup = pickupValidated.includes('München-Flughafen');
   const [tripType, setTripType] = useState<'oneway' | 'roundtrip'>('oneway');
   const [showDatePicker, setShowDatePicker] = useState(false);
