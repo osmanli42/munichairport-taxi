@@ -6,7 +6,7 @@ import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
-  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick
+  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -14,8 +14,9 @@ import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
+import PflichtgebietTab from '@/components/PflichtgebietTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads';
 
 interface MarketingCustomer {
   email: string;
