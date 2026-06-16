@@ -492,7 +492,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(locale === 'en' ? [
-              { name: 'Thomas K.', city: 'Munich', stars: 5, text: 'On time, friendly and the price was exactly as agreed. No meter, no stress. Will definitely book again!', date: 'March 2025' },
+              { name: 'Thomas K.', city: 'Munich', stars: 5, text: 'On time, friendly and the price was exactly as agreed. Fixed price, no stress. Will definitely book again!', date: 'March 2025' },
               { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Our flight was delayed by 2 hours – the driver waited without extra charge. Absolutely reliable!', date: 'February 2025' },
               { name: 'Mehmet Y.', city: 'Munich', stars: 5, text: 'Child seat was included for free, the car was clean and the driver very polite. Perfect family service.', date: 'January 2025' },
               { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Used the service multiple times for business trips. Always on time, always professional. Highly recommended.', date: 'March 2025' },
