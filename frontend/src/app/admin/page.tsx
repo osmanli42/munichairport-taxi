@@ -657,6 +657,9 @@ export default function AdminPage() {
         {/* Google Ads */}
         {activeTab === 'ads' && <AdsTab token={token} />}
 
+        {/* Pflichtfahrgebiet */}
+        {activeTab === 'pflichtgebiet' && <PflichtgebietTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
