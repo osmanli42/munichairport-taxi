@@ -524,9 +524,22 @@ function ResultsContent() {
             const priceData = apiPrices[vehicle.type];
             if (!priceData) return null;
             const calculatedPrice = priceData.base_price + distanceKm * priceData.price_per_km;
-            const oneWayPrice = (priceData.min_price > 0 && distanceKm <= (priceData.min_price_km || 15))
+            let oneWayPrice = (priceData.min_price > 0 && distanceKm <= (priceData.min_price_km || 15))
               ? Math.max(calculatedPrice, priceData.min_price)
               : calculatedPrice;
+
+            // Pflichtfahrgebiet: inside the zone the fare may not fall below the mandatory tariff
+            if (pgInZone && pgConfig) {
+              const tar = pgTarife.find(x => x.vehicle_type === vehicle.type);
+              if (tar) {
+                let mandatory = Number(tar.grundgebuehr) + distanceKm * Number(tar.min_per_km);
+                if (priceData.min_price > 0 && distanceKm <= (priceData.min_price_km || 15)) {
+                  mandatory = Math.max(mandatory, priceData.min_price);
+                }
+                oneWayPrice = pgConfig.mode === 'replace' ? mandatory : Math.max(oneWayPrice, mandatory);
+              }
+            }
+
             const discount = priceData.roundtrip_discount || 0;
             const oneWayWithToll = oneWayPrice + onewayToll;
             const fullRoundtripPrice = oneWayWithToll * 2;
