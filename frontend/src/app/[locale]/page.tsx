@@ -499,7 +499,7 @@ export default function HomePage() {
               { name: 'David H.', city: 'Salzburg', stars: 5, text: 'Transfer from Munich to Salzburg was relaxed and affordable. Fixed price with no nasty surprises. Top!', date: 'February 2025' },
               { name: 'Julia R.', city: 'Innsbruck', stars: 5, text: 'Booked online, got instant confirmation. The driver was already there when we arrived. Simple and stress-free.', date: 'January 2025' },
             ] : locale === 'tr' ? [
-              { name: 'Thomas K.', city: 'Münih', stars: 5, text: 'Zamanında, güler yüzlü ve fiyat tam anlaşıldığı gibi. Taksimetre yok, stres yok. Kesinlikle tekrar rezervasyon yapacağım!', date: 'Mart 2025' },
+              { name: 'Thomas K.', city: 'Münih', stars: 5, text: 'Zamanında, güler yüzlü ve fiyat tam anlaşıldığı gibi. Sabit fiyat, stres yok. Kesinlikle tekrar rezervasyon yapacağım!', date: 'Mart 2025' },
               { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Uçuşumuz 2 saat gecikmişti – sürücü ek ücret almadan bekledi. Kesinlikle güvenilir!', date: 'Şubat 2025' },
               { name: 'Mehmet Y.', city: 'Münih', stars: 5, text: 'Çocuk koltuğu ücretsiz dahildi, araç temizdi ve sürücü çok kibardi. Aile için mükemmel hizmet.', date: 'Ocak 2025' },
               { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Hizmeti iş seyahatleri için birçok kez kullandım. Her zaman zamanında, her zaman profesyonel. Kesinlikle tavsiye ederim.', date: 'Mart 2025' },
