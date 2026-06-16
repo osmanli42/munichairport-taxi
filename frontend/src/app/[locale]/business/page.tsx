@@ -198,7 +198,7 @@ const content = {
     advantages: [
       { icon: Shield, title: 'Tam Sigortalı', text: 'Tüm araçlar sorumluluk & kasko sigortası' },
       { icon: Clock, title: '7/24 Hizmet', text: 'Geceleri ve tatil günlerinde de' },
-      { icon: Tag, title: 'Sabit Fiyat', text: 'Taksimetre yok, şeffaf fiyatlar' },
+      { icon: Tag, title: 'Sabit Fiyat', text: 'Şeffaf sabit fiyatlar – önceden hesaplanır' },
       { icon: Globe, title: 'Çok Dilli', text: 'Almanca, İngilizce ve Türkçe' },
       { icon: Star, title: '20 Yıl Deneyim', text: 'Deneyimli havalimanı transfer hizmeti' },
       { icon: CheckCircle, title: 'Dakiklik', text: 'Uçuş takibi & garantili dakiklik' },
