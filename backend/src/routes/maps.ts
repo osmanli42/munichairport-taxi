@@ -187,7 +187,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
     const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
     url.searchParams.set('place_id', place_id);
     url.searchParams.set('key', GOOGLE_API_KEY);
-    url.searchParams.set('fields', 'address_components,types,formatted_address');
+    url.searchParams.set('fields', 'address_components,types,formatted_address,geometry');
     url.searchParams.set('language', (req.query.language as string) || 'de');
 
     const response = await fetch(url.toString());
@@ -197,6 +197,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
         address_components?: { long_name: string; short_name: string; types: string[] }[];
         types?: string[];
         formatted_address?: string;
+        geometry?: { location?: { lat: number; lng: number } };
       };
     };
 
