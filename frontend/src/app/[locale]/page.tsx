@@ -439,7 +439,7 @@ export default function HomePage() {
               tr: { badge: '20 yıl deneyim – Güveniniz bizim görevimiz', heading: 'Size olan vaatlerimiz', sub: 'Sürpriz yok. Gizli maliyet yok. Sadece güvenilir hizmet.', items: [
                 { icon: '🏆', title: '20 yıl deneyim', sub: '20 yıldır güvenilir havalimanı transferiniz' },
                 { icon: '🚫', title: 'Ücretsiz iptal', sub: 'Sürüşten 3 saat öncesine kadar – ücret yok' },
-                { icon: '💰', title: 'Sabit fiyat garantisi', sub: 'Taksimetre yok – fiyat rezervasyonda belirlenir' },
+                { icon: '💰', title: 'Sabit fiyat garantisi', sub: 'Fiyat rezervasyonda belirlenir – şeffaf & adil' },
                 { icon: '✈️', title: '60 dk ücretsiz bekleme', sub: 'Uçuş gecikmelerinde ücretsiz bekliyoruz' },
                 { icon: '📧', title: 'Anında onay', sub: 'Rezervasyondan hemen sonra e-posta onayı' },
                 { icon: '👶', title: 'Ücretsiz çocuk koltuğu', sub: 'Bebek koltuğu, çocuk koltuğu & yükseltici ücretsiz' },
