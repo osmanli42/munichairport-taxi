@@ -36,6 +36,10 @@ export interface BookingFormData {
   notes?: string;
   distance_km?: number;
   duration_minutes?: number;
+  pickup_lat?: number;
+  pickup_lng?: number;
+  dropoff_lat?: number;
+  dropoff_lng?: number;
   payment_method: 'cash' | 'card';
   language: string;
   trip_type?: string;
