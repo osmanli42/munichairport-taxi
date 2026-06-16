@@ -91,6 +91,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       zwischenstopp_address,
       promo_code,
       visitor_id,
+      pickup_lat,
+      pickup_lng,
+      dropoff_lat,
+      dropoff_lng,
     } = req.body;
 
     // Validation
