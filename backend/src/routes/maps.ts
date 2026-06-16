@@ -222,6 +222,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
       types.some(t => specificPlaceTypes.includes(t));
 
     const isSpecificEnough = (hasStreetNumber && hasRoute) || isEstablishment;
+    const location = result?.geometry?.location;
 
     res.json({
       formatted_address: result?.formatted_address,
@@ -230,6 +231,8 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
       is_establishment: isEstablishment,
       is_specific: isSpecificEnough,
       types,
+      lat: location?.lat,
+      lng: location?.lng,
     });
   } catch (error) {
     console.error('Place details error:', error);
