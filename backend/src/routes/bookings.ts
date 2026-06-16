@@ -342,7 +342,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 // POST /api/bookings/calculate-price - Calculate price
 router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { vehicle_type, distance_km } = req.body;
+    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng } = req.body;
 
     if (!vehicle_type || distance_km === undefined) {
       res.status(400).json({ error: 'vehicle_type and distance_km required' });
@@ -360,9 +360,37 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
 
     const km = parseFloat(distance_km);
     const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
-    const price = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
+    let price = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
       ? Math.max(calculatedPrice, priceRow.min_price)
       : calculatedPrice;
+
+    // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
+    let pflichtgebiet = false;
+    try {
+      const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+      if (pgCfg && pgCfg.enabled) {
+        const pickupCoords: Coords | null =
+          (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
+        const dropoffCoords: Coords | null =
+          (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
+        if (tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+          const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
+            'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
+            [vehicle_type]
+          );
+          if (tar) {
+            let mandatory = tar.grundgebuehr + km * tar.min_per_km;
+            if (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15)) {
+              mandatory = Math.max(mandatory, priceRow.min_price);
+            }
+            price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
+            pflichtgebiet = true;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Pflichtgebiet calc-price skipped:', e);
+    }
 
     res.json({
       vehicle_type,
@@ -370,6 +398,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
       base_price: priceRow.base_price,
       price_per_km: priceRow.price_per_km,
       total_price: parseFloat(price.toFixed(2)),
+      pflichtgebiet,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to calculate price' });
