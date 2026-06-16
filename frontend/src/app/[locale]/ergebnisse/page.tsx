@@ -316,6 +316,8 @@ function ResultsContent() {
       price: finalPrice.toFixed(2),
       trip_type: tripType,
     });
+    if (pickupCoords) { bp.set('pickup_lat', String(pickupCoords.lat)); bp.set('pickup_lng', String(pickupCoords.lng)); }
+    if (dropoffCoords) { bp.set('dropoff_lat', String(dropoffCoords.lat)); bp.set('dropoff_lng', String(dropoffCoords.lng)); }
     if (isRoundtrip && returnDate) {
       bp.set('return_date', returnDate);
       bp.set('return_time', returnTime);
