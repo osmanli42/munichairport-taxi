@@ -40,7 +40,7 @@ export default function HomePage() {
       title: 'Transfer in 3 simple steps',
       steps: [
         { title: 'Enter address & time', text: 'Enter your pickup address, destination, date and time. Our system calculates your fixed price instantly – in under 1 second.', extra: ['✓ Intermediate stop possible', '✓ All terminals available', '✓ Return trip bookable'] },
-        { title: 'Choose vehicle & price', text: 'Choose between Sedan, Van or Large Taxi. No meter, no traffic surcharge – your price stays fixed.', extra: ['✓ Sedan up to 4 Pax', '✓ Van up to 7 Pax', '✓ Large Taxi up to 8 Pax'] },
+        { title: 'Choose vehicle & price', text: 'Choose between Sedan, Van or Large Taxi. Transparent fixed price, no traffic surcharge – your price stays fixed.', extra: ['✓ Sedan up to 4 Pax', '✓ Van up to 7 Pax', '✓ Large Taxi up to 8 Pax'] },
         { title: 'Arrive relaxed', text: 'Your driver waits punctually at the exit – with a name sign. We wait 60 minutes for free in case of flight delays.', extra: ['✓ Meet & Greet Service', '✓ 60 min. waiting time free', '✓ Luggage assistance included'] },
       ],
       cta: 'View all vehicles',
