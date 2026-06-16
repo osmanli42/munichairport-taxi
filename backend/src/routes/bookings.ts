@@ -225,7 +225,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const price = Math.max(0, Math.round((baseTotal - promoDiscount) * 100) / 100);
+    let price = Math.max(0, Math.round((baseTotal - promoDiscount) * 100) / 100);
+    // Inside the Pflichtfahrgebiet, the final price may not fall below the mandatory fare
+    if (pgFareFloor > 0) {
+      price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
+    }
 
     const booking_number = generateBookingNumber();
 
