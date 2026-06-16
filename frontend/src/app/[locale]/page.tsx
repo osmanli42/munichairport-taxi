@@ -425,7 +425,7 @@ export default function HomePage() {
               en: { badge: '20 years of experience – Your trust is our mission', heading: 'Our promises to you', sub: 'No surprises. No hidden costs. Just reliable service.', items: [
                 { icon: '🏆', title: '20 years of experience', sub: 'Your reliable airport transfer for 20 years' },
                 { icon: '🚫', title: 'Free cancellation', sub: 'Up to 3 hours before the ride – no fees' },
-                { icon: '💰', title: 'Fixed price guarantee', sub: 'No meter – price is set at booking' },
+                { icon: '💰', title: 'Fixed price guarantee', sub: 'Price is set at booking – transparent & fair' },
                 { icon: '✈️', title: '60 min. free wait', sub: 'We wait free of charge for flight delays' },
                 { icon: '📧', title: 'Instant confirmation', sub: 'Email confirmation right after booking' },
                 { icon: '👶', title: 'Free child seats', sub: 'Baby seat, child seat & booster free' },
