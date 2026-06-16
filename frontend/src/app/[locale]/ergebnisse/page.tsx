@@ -10,6 +10,28 @@ import SocialProofToast from '@/components/SocialProofToast';
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
+// Pflichtfahrgebiet (mandatory tariff zone) types + helpers
+interface PgConfig {
+  enabled: number; mode: string; radius_km: number;
+  airport_enabled: number; airport_lat: number; airport_lng: number;
+  betriebssitz_enabled: number; betriebssitz_lat: number; betriebssitz_lng: number;
+}
+interface PgTarif { vehicle_type: string; grundgebuehr: number; min_per_km: number; }
+
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371, toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat), dLng = toRad(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function pgPointInZone(p: { lat: number; lng: number } | null, cfg: PgConfig): boolean {
+  if (!p) return false;
+  const r = cfg.radius_km > 0 ? cfg.radius_km : 50;
+  if (cfg.airport_enabled && haversineKm(p.lat, p.lng, cfg.airport_lat, cfg.airport_lng) <= r) return true;
+  if (cfg.betriebssitz_enabled && haversineKm(p.lat, p.lng, cfg.betriebssitz_lat, cfg.betriebssitz_lng) <= r) return true;
+  return false;
+}
+
 const VEHICLES = [
   {
     type: 'kombi' as const,
