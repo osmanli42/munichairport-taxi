@@ -273,16 +273,23 @@ function AddressInput({
         const finalAddress = data.formatted_address || desc;
         onChange(finalAddress);
         onSelect(finalAddress);
+        if (typeof data.lat === 'number' && typeof data.lng === 'number') {
+          onCoords?.({ lat: data.lat, lng: data.lng });
+        } else {
+          onCoords?.(null);
+        }
         setAddressError('');
       } else {
         // Address too vague — no street/house number, keep text but show error
         onChange(desc);
         onSelect('');
+        onCoords?.(null);
         setAddressError(errorMessages[locale]?.address || errorMessages.de.address);
       }
     } catch {
       // If validation API fails, accept the address (don't block the user)
       onSelect(desc);
+      onCoords?.(null);
     } finally {
       setValidating(false);
     }
