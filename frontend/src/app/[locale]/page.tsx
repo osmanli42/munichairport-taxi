@@ -411,7 +411,7 @@ export default function HomePage() {
               de: { badge: '20 Jahre Erfahrung – Ihr Vertrauen ist unser Auftrag', heading: 'Unsere Versprechen an Sie', sub: 'Keine Überraschungen. Keine versteckten Kosten. Nur verlässlicher Service.', items: [
                 { icon: '🏆', title: '20 Jahre Erfahrung', sub: 'Seit 20 Jahren Ihr zuverlässiger Flughafentransfer' },
                 { icon: '🚫', title: 'Kostenloser Storno', sub: 'Bis 3 Stunden vor der Fahrt – keine Gebühren' },
-                { icon: '💰', title: 'Festpreisgarantie', sub: 'Kein Taxameter – Preis steht bei Buchung fest' },
+                { icon: '💰', title: 'Festpreisgarantie', sub: 'Preis steht bei Buchung fest – transparent & fair' },
                 { icon: '✈️', title: '60 Min. Gratis-Wartezeit', sub: 'Bei Flugverspätungen warten wir kostenlos' },
                 { icon: '📧', title: 'Sofortige Bestätigung', sub: 'E-Mail-Bestätigung direkt nach der Buchung' },
                 { icon: '👶', title: 'Kindersitze kostenlos', sub: 'Babyschale, Kindersitz & Sitzerhöhung gratis' },
