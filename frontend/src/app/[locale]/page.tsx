@@ -506,7 +506,7 @@ export default function HomePage() {
               { name: 'David H.', city: 'Salzburg', stars: 5, text: 'Münih\'ten Salzburg\'a transfer rahat ve uygundu. Sürpriz olmadan sabit fiyat. Harika!', date: 'Şubat 2025' },
               { name: 'Julia R.', city: 'Innsbruck', stars: 5, text: 'Online rezervasyon yaptım, anında onay aldım. Geldiğimizde sürücü zaten oradaydı. Basit ve stressiz.', date: 'Ocak 2025' },
             ] : [
-              { name: 'Thomas K.', city: 'München', stars: 5, text: 'Pünktlich, freundlich und der Preis war genau wie vereinbart. Kein Taxameter, kein Stress. Werde definitiv wieder buchen!', date: 'März 2025' },
+              { name: 'Thomas K.', city: 'München', stars: 5, text: 'Pünktlich, freundlich und der Preis war genau wie vereinbart. Festpreis, kein Stress. Werde definitiv wieder buchen!', date: 'März 2025' },
               { name: 'Sarah M.', city: 'Augsburg', stars: 5, text: 'Unser Flug hatte 2 Stunden Verspätung – der Fahrer hat gewartet, ohne extra Kosten. Absolut zuverlässig!', date: 'Februar 2025' },
               { name: 'Mehmet Y.', city: 'München', stars: 5, text: 'Kindersitz war kostenlos dabei, das Auto war sauber und der Fahrer sehr höflich. Perfekter Service für die Familie.', date: 'Januar 2025' },
               { name: 'Andrea L.', city: 'Rosenheim', stars: 5, text: 'Habe den Service mehrfach für Geschäftsreisen genutzt. Immer pünktlich, immer professionell. Sehr empfehlenswert.', date: 'März 2025' },
