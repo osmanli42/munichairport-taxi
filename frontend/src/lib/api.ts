@@ -184,6 +184,41 @@ export const plzSurchargesApi = {
   },
 };
 
+export interface PflichtgebietConfig {
+  id: number;
+  enabled: number;
+  mode: 'floor' | 'replace';
+  radius_km: number;
+  roundtrip_discount_enabled: number;
+  airport_enabled: number;
+  airport_lat: number;
+  airport_lng: number;
+  betriebssitz_enabled: number;
+  betriebssitz_lat: number;
+  betriebssitz_lng: number;
+}
+
+export interface PflichtgebietTarif {
+  vehicle_type: string;
+  grundgebuehr: number;
+  min_per_km: number;
+}
+
+export const pflichtgebietApi = {
+  get: async (): Promise<{ config: PflichtgebietConfig | null; tarife: PflichtgebietTarif[] }> => {
+    const response = await api.get('/pflichtgebiet');
+    return response.data;
+  },
+  updateConfig: async (config: Partial<PflichtgebietConfig>): Promise<PflichtgebietConfig> => {
+    const response = await api.put('/pflichtgebiet', config);
+    return response.data;
+  },
+  updateTarif: async (vehicle_type: string, grundgebuehr: number, min_per_km: number): Promise<PflichtgebietTarif> => {
+    const response = await api.put(`/pflichtgebiet/tarife/${vehicle_type}`, { grundgebuehr, min_per_km });
+    return response.data;
+  },
+};
+
 // Admin API
 export const adminApi = {
   login: async (username: string, password: string) => {
