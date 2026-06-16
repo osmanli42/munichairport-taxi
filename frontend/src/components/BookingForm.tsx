@@ -249,6 +249,7 @@ function AddressInput({
   const handleSelectTerminal = (terminal: typeof AIRPORT_TERMINALS[0]) => {
     onChange(terminal.address);
     onSelect(terminal.address);
+    onCoords?.({ lat: 48.3538, lng: 11.7861 }); // Munich Airport center
     setAddressError('');
     setPredictions([]);
     setOpen(false);
