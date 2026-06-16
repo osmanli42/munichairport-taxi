@@ -616,6 +616,7 @@ export default function AdminPage() {
             { id: 'system' as Tab, icon: Server, label: 'System' },
             { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
             { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
+            { id: 'pflichtgebiet' as Tab, icon: MapPin, label: 'Pflichtfahrgebiet' },
             { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
             { id: 'rechnung' as Tab, icon: FileText, label: 'Rechnung' },
             { id: 'marketing' as Tab, icon: Mail, label: 'Marketing' },
