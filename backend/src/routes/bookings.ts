@@ -152,9 +152,47 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // If promo is not combinable, skip roundtrip_discount
     const discount = (validatedPromoCode && !promoKombinierbar) ? 0 : (priceRow.roundtrip_discount || 0);
-    const tripPrice = isRoundtrip
+    let tripPrice = isRoundtrip
       ? oneWayPrice * 2 * (1 - discount / 100)
       : oneWayPrice;
+
+    // --- Pflichtfahrgebiet (mandatory tariff zone) — isolated overlay, does not alter free pricing ---
+    let pgFareFloor = 0; // final-price floor applied when the trip is inside the zone
+    try {
+      const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+      if (pgCfg && pgCfg.enabled) {
+        let pickupCoords: Coords | null =
+          (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
+        let dropoffCoords: Coords | null =
+          (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
+        if (!pickupCoords) pickupCoords = await geocodeAddress(pickup_address);
+        if (!dropoffCoords) dropoffCoords = await geocodeAddress(dropoff_address);
+
+        if (tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+          const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
+            'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
+            [vehicle_type]
+          );
+          if (tar) {
+            let mandatoryOneWay = tar.grundgebuehr + km * tar.min_per_km;
+            // Mindestgebühr still applies inside the zone
+            if (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15)) {
+              mandatoryOneWay = Math.max(mandatoryOneWay, priceRow.min_price);
+            }
+            const effOneWay = pgCfg.mode === 'replace'
+              ? mandatoryOneWay
+              : Math.max(oneWayPrice, mandatoryOneWay); // floor
+            // Roundtrip discount is optional inside the zone
+            const pgDiscount = pgCfg.roundtrip_discount_enabled ? discount : 0;
+            tripPrice = isRoundtrip ? effOneWay * 2 * (1 - pgDiscount / 100) : effOneWay;
+            pgFareFloor = tripPrice; // promos may not undercut the mandatory fare
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Pflichtgebiet pricing skipped:', e);
+    }
+
     const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
     const parsedTollAmount = toll_amount ? parseFloat(toll_amount) : 0;
 
