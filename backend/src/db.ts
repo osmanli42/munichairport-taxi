@@ -208,6 +208,43 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Pflichtfahrgebiet: global config (single row, id=1)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS pflichtgebiet_config (
+        id INT NOT NULL DEFAULT 1,
+        enabled TINYINT NOT NULL DEFAULT 0,
+        mode VARCHAR(10) NOT NULL DEFAULT 'floor',
+        radius_km DOUBLE NOT NULL DEFAULT 50,
+        roundtrip_discount_enabled TINYINT NOT NULL DEFAULT 1,
+        airport_enabled TINYINT NOT NULL DEFAULT 1,
+        airport_lat DOUBLE NOT NULL DEFAULT 48.3538,
+        airport_lng DOUBLE NOT NULL DEFAULT 11.7861,
+        betriebssitz_enabled TINYINT NOT NULL DEFAULT 1,
+        betriebssitz_lat DOUBLE NOT NULL DEFAULT 48.4028,
+        betriebssitz_lng DOUBLE NOT NULL DEFAULT 11.7489,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+    await conn.execute(`INSERT IGNORE INTO pflichtgebiet_config (id) VALUES (1)`);
+
+    // Pflichtfahrgebiet: mandatory tariff per vehicle type
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS pflichtgebiet_tarife (
+        vehicle_type VARCHAR(20) NOT NULL,
+        grundgebuehr DOUBLE NOT NULL DEFAULT 4.20,
+        min_per_km DOUBLE NOT NULL DEFAULT 2.50,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (vehicle_type)
+      )
+    `);
+    for (const vt of ['kombi', 'van', 'grossraumtaxi']) {
+      await conn.execute(
+        `INSERT IGNORE INTO pflichtgebiet_tarife (vehicle_type) VALUES (?)`,
+        [vt]
+      );
+    }
+
     // Drivers (Fahrer) table for live tracking
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS drivers (
