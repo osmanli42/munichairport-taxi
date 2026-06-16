@@ -129,7 +129,7 @@ const content = {
     advantages: [
       { icon: Shield, title: 'Fully Insured', text: 'All vehicles with liability & comprehensive' },
       { icon: Clock, title: '24/7 Available', text: 'Also at night and on holidays' },
-      { icon: Tag, title: 'Fixed Prices', text: 'Transparent prices without taximeter' },
+      { icon: Tag, title: 'Fixed Prices', text: 'Transparent fixed prices – calculated in advance' },
       { icon: Globe, title: 'Multilingual', text: 'German, English and Turkish' },
       { icon: Star, title: '20 Years Experience', text: 'Experienced airport transfer service' },
       { icon: CheckCircle, title: 'Punctuality', text: 'Flight tracking & guaranteed punctuality' },
