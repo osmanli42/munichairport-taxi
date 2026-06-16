@@ -769,6 +769,7 @@ export default function BookingForm() {
             value={dropoffAddress}
             onChange={(v) => { setDropoffAddress(v); setDropoffValidated(''); setValue('dropoff_address', ''); }}
             onSelect={(v) => { if (v) { setDropoffAddress(v); setDropoffValidated(v); } else { setDropoffValidated(''); } setValue('dropoff_address', v); }}
+            onCoords={setDropoffCoords}
             error={!!errors.dropoff_address}
             placeholder={t('dropoff_placeholder')}
             locale={locale}
