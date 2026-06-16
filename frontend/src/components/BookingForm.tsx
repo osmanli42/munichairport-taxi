@@ -43,6 +43,24 @@ interface Prediction {
   description: string;
 }
 
+// Great-circle distance in km (Pflichtfahrgebiet radius check, mirrors backend utils/geo)
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function pointInPgZone(p: { lat: number; lng: number } | null, cfg: PflichtgebietConfig): boolean {
+  if (!p) return false;
+  const r = cfg.radius_km > 0 ? cfg.radius_km : 50;
+  if (cfg.airport_enabled && haversineKm(p.lat, p.lng, cfg.airport_lat, cfg.airport_lng) <= r) return true;
+  if (cfg.betriebssitz_enabled && haversineKm(p.lat, p.lng, cfg.betriebssitz_lat, cfg.betriebssitz_lng) <= r) return true;
+  return false;
+}
+
 // Munich Airport terminal definitions
 const AIRPORT_TERMINALS = [
   { id: 'muc-t1a', label: '✈️ Flughafen München — Terminal 1, Modul A', address: 'Flughafen München, Terminal 1 Modul A, 85356 München-Flughafen' },
