@@ -60,7 +60,7 @@ const content = {
     advantages: [
       { icon: Shield, title: 'Vollversichert', text: 'Alle Fahrzeuge mit Haftpflicht & Vollkasko' },
       { icon: Clock, title: '24/7 Verfügbar', text: 'Auch nachts und an Feiertagen' },
-      { icon: Tag, title: 'Festpreise', text: 'Transparente Preise ohne Taxameter' },
+      { icon: Tag, title: 'Festpreise', text: 'Transparente Festpreise – vorab kalkuliert' },
       { icon: Globe, title: 'Mehrsprachig', text: 'Deutsch, Englisch und Türkisch' },
       { icon: Star, title: '20 Jahre Erfahrung', text: 'Erfahrener Flughafentransfer-Service' },
       { icon: CheckCircle, title: 'Pünktlichkeit', text: 'Flugverfolgung & garantierte Pünktlichkeit' },
