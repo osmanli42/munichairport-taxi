@@ -755,6 +755,7 @@ export default function BookingForm() {
             value={pickupAddress}
             onChange={(v) => { setPickupAddress(v); setPickupValidated(''); setValue('pickup_address', ''); }}
             onSelect={(v) => { if (v) { setPickupAddress(v); setPickupValidated(v); } else { setPickupValidated(''); } setValue('pickup_address', v); }}
+            onCoords={setPickupCoords}
             error={!!errors.pickup_address}
             placeholder={t('pickup_placeholder')}
             locale={locale}
