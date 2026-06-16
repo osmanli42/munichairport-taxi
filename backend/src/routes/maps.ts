@@ -47,6 +47,21 @@ router.get('/debug-key', (req: Request, res: Response): void => {
   });
 });
 
+// GET /api/maps/geocode?address=... — public, resolve an address to coordinates
+router.get('/geocode', async (req: Request, res: Response): Promise<void> => {
+  const address = req.query.address as string | undefined;
+  if (!address) {
+    res.status(400).json({ error: 'address required' });
+    return;
+  }
+  const coords = await geocodeAddress(address);
+  if (!coords) {
+    res.status(404).json({ error: 'not found' });
+    return;
+  }
+  res.json(coords);
+});
+
 // GET /api/maps/autocomplete?input=...
 router.get('/autocomplete', async (req: Request, res: Response): Promise<void> => {
   try {
