@@ -90,7 +90,7 @@ export default function HomePage() {
               </div>
               <div className="inline-flex items-center bg-gold-400/20 backdrop-blur rounded-full px-4 py-2 text-sm border border-gold-400/40">
                 <span className="text-gold-300 mr-1">💰</span>
-                <span className="text-gold-200 font-medium">Festpreis – kein Taxameter</span>
+                <span className="text-gold-200 font-medium">Festpreis – transparent & fair</span>
               </div>
             </div>
 
