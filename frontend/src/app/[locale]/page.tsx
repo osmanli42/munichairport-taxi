@@ -50,7 +50,7 @@ export default function HomePage() {
       title: '3 adımda transferiniz',
       steps: [
         { title: 'Adres & saat girin', text: 'Alış adresinizi, varış noktasını, tarih ve saati girin. Sistemimiz sabit fiyatınızı anında hesaplar – 1 saniyenin altında.', extra: ['✓ Ara durak mümkün', '✓ Tüm terminaller mevcut', '✓ Dönüş yolculuğu rezerve edilebilir'] },
-        { title: 'Araç & fiyat seçin', text: 'Kombi, Van veya Büyük Taksi arasından seçin. Taksitre yok, trafik sürşarjı yok – fiyatınız sabit kalır.', extra: ['✓ Kombi 4 kişiye kadar', '✓ Van 7 kişiye kadar', '✓ Büyük Taksi 8 kişiye kadar'] },
+        { title: 'Araç & fiyat seçin', text: 'Kombi, Van veya Büyük Taksi arasından seçin. Şeffaf sabit fiyat, trafik ek ücreti yok – fiyatınız sabit kalır.', extra: ['✓ Kombi 4 kişiye kadar', '✓ Van 7 kişiye kadar', '✓ Büyük Taksi 8 kişiye kadar'] },
         { title: 'Rahatça varın', text: 'Sürücünüz isim tabelasıyla çıkışta sizi bekleyecek. Uçuş gecikmelerinde 60 dakika ücretsiz bekliyoruz.', extra: ['✓ Karşılama Hizmeti', '✓ 60 dk. bekleme ücretsiz', '✓ Bagaj yardımı dahil'] },
       ],
       cta: 'Tüm araçları görüntüle',
