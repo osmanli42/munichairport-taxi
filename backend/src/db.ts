@@ -317,6 +317,8 @@ export async function initializeDatabase(): Promise<void> {
     for (const [plz, ort] of exclusionSeeds) {
       await conn.execute(`INSERT IGNORE INTO pflichtgebiet_exclusions (plz, ort) VALUES (?, ?)`, [plz, ort]);
     }
+    // 82152 Krailling/Planegg = LK München (Pflichtfahrgebiet), yanlışlıkla eklenmişti
+    await conn.execute(`DELETE FROM pflichtgebiet_exclusions WHERE plz = '82152'`);
 
     // Drivers (Fahrer) table for live tracking
     await conn.execute(`
