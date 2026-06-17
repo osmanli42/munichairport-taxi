@@ -437,6 +437,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
       price_per_km: priceRow.price_per_km,
       total_price: parseFloat(price.toFixed(2)),
       pflichtgebiet,
+      fixed_route: fixedRouteMatch,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to calculate price' });
