@@ -77,6 +77,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api/plz-surcharges', plzSurchargesRouter);
 app.use('/api/pflichtgebiet', pflichtgebietRouter);
+app.use('/api/fixed-routes', fixedRoutesRouter);
 app.use('/api/tracking', driverTrackingRouter);
 app.use('/api', trackingRouter);
 app.use('/api', recordingRouter);
