@@ -208,6 +208,13 @@ export interface PflichtgebietTarif {
   min_per_km: number;
 }
 
+export interface PflichtgebietExclusion {
+  id: number;
+  plz: string;
+  ort: string;
+  enabled: number;
+}
+
 export const pflichtgebietApi = {
   get: async (): Promise<{ config: PflichtgebietConfig | null; tarife: PflichtgebietTarif[] }> => {
     const response = await api.get('/pflichtgebiet');
@@ -219,6 +226,18 @@ export const pflichtgebietApi = {
   },
   updateTarif: async (vehicle_type: string, grundgebuehr: number, min_per_km: number): Promise<PflichtgebietTarif> => {
     const response = await api.put(`/pflichtgebiet/tarife/${vehicle_type}`, { grundgebuehr, min_per_km });
+    return response.data;
+  },
+  getExclusions: async (): Promise<PflichtgebietExclusion[]> => {
+    const response = await api.get('/pflichtgebiet/exclusions');
+    return response.data;
+  },
+  addExclusion: async (plz: string, ort: string): Promise<PflichtgebietExclusion[]> => {
+    const response = await api.post('/pflichtgebiet/exclusions', { plz, ort });
+    return response.data;
+  },
+  removeExclusion: async (id: number): Promise<PflichtgebietExclusion[]> => {
+    const response = await api.delete(`/pflichtgebiet/exclusions/${id}`);
     return response.data;
   },
 };
