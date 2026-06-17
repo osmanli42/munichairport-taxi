@@ -278,13 +278,18 @@ function ResultsContent() {
   };
   const fixedRouteMatch = matchFixedRoute(pickup, dropoff);
 
-  // Pflichtfahrgebiet config + tariffs
+  // Pflichtfahrgebiet config + tariffs + exclusions
   const [pgConfig, setPgConfig] = useState<PgConfig | null>(null);
   const [pgTarife, setPgTarife] = useState<PgTarif[]>([]);
+  const [pgExclusions, setPgExclusions] = useState<string[]>([]);
   useEffect(() => {
     fetch(`${API_URL}/pflichtgebiet`)
       .then(r => r.json())
       .then((d: { config: PgConfig | null; tarife: PgTarif[] }) => { setPgConfig(d.config); setPgTarife(d.tarife || []); })
+      .catch(() => {});
+    fetch(`${API_URL}/pflichtgebiet/exclusions`)
+      .then(r => r.json())
+      .then((rows: { plz: string }[]) => setPgExclusions(rows.map(r => r.plz)))
       .catch(() => {});
   }, []);
 
