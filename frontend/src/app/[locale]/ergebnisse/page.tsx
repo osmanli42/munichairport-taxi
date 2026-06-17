@@ -253,6 +253,31 @@ function ResultsContent() {
       });
   }, []);
 
+  // Fixed-price routes (Festpreisrouten) — highest priority, overrides all other pricing
+  interface FixedRoute {
+    id: number; name: string; pickup_keywords: string; dropoff_keywords: string;
+    price_kombi: number; price_van: number; price_grossraumtaxi: number;
+    bidirectional: number; enabled: number;
+  }
+  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
+  useEffect(() => {
+    fetch(`${API_URL}/fixed-routes`).then(r => r.json()).then(setFixedRoutes).catch(() => {});
+  }, []);
+  const matchFixedRoute = (p: string, d: string): FixedRoute | null => {
+    const matchKw = (addr: string, kws: string) => {
+      if (!addr || !kws) return false;
+      const lower = addr.toLowerCase();
+      return kws.split(',').some(kw => lower.includes(kw.trim().toLowerCase()));
+    };
+    for (const r of fixedRoutes) {
+      if (!r.enabled) continue;
+      if (matchKw(p, r.pickup_keywords) && matchKw(d, r.dropoff_keywords)) return r;
+      if (r.bidirectional && matchKw(p, r.dropoff_keywords) && matchKw(d, r.pickup_keywords)) return r;
+    }
+    return null;
+  };
+  const fixedRouteMatch = matchFixedRoute(pickup, dropoff);
+
   // Pflichtfahrgebiet config + tariffs
   const [pgConfig, setPgConfig] = useState<PgConfig | null>(null);
   const [pgTarife, setPgTarife] = useState<PgTarif[]>([]);
