@@ -317,7 +317,10 @@ function ResultsContent() {
   // the radius. Haversine can be shorter than road distance (mountains, lakes,
   // detours), so trips with road distance > radius_km use free pricing.
   const pgRadius = pgConfig?.radius_km ?? 50;
-  const pgInZone = !!(pgConfig && pgConfig.enabled && distanceKm <= pgRadius && (
+  const pickupPlz = pickup.match(/\b(\d{5})\b/)?.[1];
+  const dropoffPlz = dropoff.match(/\b(\d{5})\b/)?.[1];
+  const pgPlzExcluded = pgExclusions.includes(pickupPlz || '') || pgExclusions.includes(dropoffPlz || '');
+  const pgInZone = !pgPlzExcluded && !!(pgConfig && pgConfig.enabled && distanceKm <= pgRadius && (
     (pgPointInZone(pickupCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(pickup))) &&
     (pgPointInZone(dropoffCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(dropoff)))
   ));
