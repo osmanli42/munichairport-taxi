@@ -267,6 +267,21 @@ export async function initializeDatabase(): Promise<void> {
       VALUES (1, 'Flughafen München ↔ Neue Messe München', 'flughafen münchen,munich airport,flughafen munchen,muc terminal,muc t1,muc t2', 'neue messe,messesee,81829,messe münchen,messe munchen,messe riem,messestadt', 94, 94, 94, 1)
     `);
 
+    // Pflichtgebiet PLZ exclusions (places within radius but legally outside the zone)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS pflichtgebiet_exclusions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        plz VARCHAR(5) NOT NULL,
+        ort VARCHAR(120) NOT NULL DEFAULT '',
+        enabled TINYINT NOT NULL DEFAULT 1,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY (plz)
+      )
+    `);
+    for (const [plz, ort] of [['84028','Landshut'],['84030','Landshut'],['84032','Landshut'],['84034','Landshut'],['84036','Ergolding/Landshut']]) {
+      await conn.execute(`INSERT IGNORE INTO pflichtgebiet_exclusions (plz, ort) VALUES (?, ?)`, [plz, ort]);
+    }
+
     // Drivers (Fahrer) table for live tracking
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS drivers (
