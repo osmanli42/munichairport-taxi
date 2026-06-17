@@ -108,6 +108,7 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
     url.searchParams.set('mode', 'driving');
     url.searchParams.set('units', 'metric');
     url.searchParams.set('language', req.body.language || 'de');
+    url.searchParams.set('alternatives', 'true');
 
     const response = await fetch(url.toString());
     const data = await response.json() as {
@@ -122,7 +123,11 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const leg = data.routes[0].legs[0];
+    // Pick the route with the shortest distance
+    const shortest = data.routes.reduce((best, r) =>
+      r.legs[0].distance.value < best.legs[0].distance.value ? r : best
+    , data.routes[0]);
+    const leg = shortest.legs[0];
     const distance_km = leg.distance.value / 1000;
     const duration_minutes = Math.ceil(leg.duration.value / 60);
     const destination_country = extractCountryCode(leg.end_address || destination);
