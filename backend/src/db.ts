@@ -278,7 +278,43 @@ export async function initializeDatabase(): Promise<void> {
         UNIQUE KEY (plz)
       )
     `);
-    for (const [plz, ort] of [['84028','Landshut'],['84030','Landshut'],['84032','Landshut'],['84034','Landshut'],['84036','Ergolding/Landshut']]) {
+    const exclusionSeeds: [string, string][] = [
+      // Stadt Landshut
+      ['84028','Landshut'],['84030','Landshut/Ergolding'],['84032','Landshut/Altdorf'],['84034','Landshut'],['84036','Landshut/Kumhausen'],
+      // Landkreis Landshut (innerhalb ~50km)
+      ['84051','Essenbach'],['84056','Rottenburg a.d.Laaber'],['84061','Ergoldsbach'],['84079','Bruckberg'],
+      ['84088','Neufahrn i.NB'],['84092','Bayerbach'],['84095','Furth'],['84098','Hohenthann'],
+      ['84100','Niederaichbach'],['84101','Obersüßbach'],['84103','Postau'],['84107','Weihmichl'],['84109','Wörth a.d.Isar'],
+      // Landkreis Dachau
+      ['85221','Dachau'],['85229','Markt Indersdorf'],['85232','Bergkirchen'],['85235','Odelzhausen'],
+      ['85238','Petershausen'],['85241','Hebertshausen'],['85244','Röhrmoos'],['85247','Schwabhausen'],
+      ['85250','Altomünster'],['85253','Erdweg'],['85254','Sulzemoos'],['85256','Vierkirchen'],
+      ['85258','Weichs'],['85757','Karlsfeld'],['85778','Haimhausen'],['86567','Hilgertshausen-Tandern'],
+      // Landkreis Pfaffenhofen a.d.Ilm
+      ['85077','Manching'],['85084','Reichertshofen'],['85088','Vohburg a.d.Donau'],['85107','Baar-Ebenhausen'],
+      ['85119','Ernsgaden'],['85126','Münchsmünster'],['85276','Pfaffenhofen a.d.Ilm'],['85283','Wolnzach'],
+      ['85290','Geisenfeld'],['85293','Reichertshausen'],['85296','Rohrbach'],['85298','Scheyern'],
+      ['85301','Schweitenkirchen'],['85302','Gerolsbach'],['85304','Ilmmünster'],['85305','Jetzendorf'],
+      ['85309','Pörnbach'],['86558','Hohenwart'],
+      // Landkreis Ebersberg
+      ['83550','Emmering (Ebersberg)'],['83553','Frauenneuharting'],['85560','Ebersberg'],['85567','Grafing/Bruck'],
+      ['85570','Markt Schwaben'],['85586','Poing'],['85591','Vaterstetten'],['85604','Zorneding'],
+      ['85614','Kirchseeon'],['85617','Aßling'],['85625','Glonn/Baiern'],['85643','Steinhöring'],
+      ['85646','Anzing'],['85652','Pliening'],['85658','Egmating'],['85661','Forstinning'],
+      ['85664','Hohenlinden'],['85665','Moosach'],
+      // Landkreis Fürstenfeldbruck
+      ['82110','Germering'],['82140','Olching'],['82178','Puchheim'],['82194','Gröbenzell'],
+      ['82216','Maisach'],['82223','Eichenau'],['82239','Alling'],['82256','Fürstenfeldbruck'],
+      ['82272','Moorenweis'],['82275','Emmering (FFB)'],['82276','Adelshofen'],['82278','Althegnenberg'],
+      ['82281','Egenhofen'],['82284','Grafrath'],['82285','Hattenhofen'],['82287','Jesenwang'],
+      ['82288','Kottgeisering'],['82290','Landsberied'],['82291','Mammendorf'],['82293','Mittelstetten'],
+      // Landkreis Starnberg
+      ['82131','Gauting'],['82152','Krailling'],['82205','Gilching'],['82211','Herrsching a.Ammersee'],
+      ['82229','Seefeld'],['82234','Weßling'],['82237','Wörthsee'],['82266','Inning a.Ammersee'],
+      ['82319','Starnberg'],['82327','Tutzing'],['82335','Berg'],['82340','Feldafing'],
+      ['82343','Pöcking'],['82346','Andechs'],
+    ];
+    for (const [plz, ort] of exclusionSeeds) {
       await conn.execute(`INSERT IGNORE INTO pflichtgebiet_exclusions (plz, ort) VALUES (?, ?)`, [plz, ort]);
     }
 
