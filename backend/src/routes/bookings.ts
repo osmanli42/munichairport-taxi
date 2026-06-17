@@ -379,7 +379,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
           (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
         const dropoffCoords: Coords | null =
           (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
-        if (tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
           const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
             'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
             [vehicle_type]
