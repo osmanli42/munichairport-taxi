@@ -223,6 +223,29 @@ export const pflichtgebietApi = {
   },
 };
 
+// Fixed-price routes (Festpreisrouten) API
+export interface FixedRoute {
+  id: number; name: string; pickup_keywords: string; dropoff_keywords: string;
+  price_kombi: number; price_van: number; price_grossraumtaxi: number;
+  bidirectional: number; enabled: number;
+}
+export const fixedRoutesApi = {
+  getAll: async (): Promise<FixedRoute[]> => {
+    const response = await api.get('/fixed-routes');
+    return response.data;
+  },
+  create: async (data: Partial<FixedRoute>): Promise<{ id: number }> => {
+    const response = await api.post('/fixed-routes', data);
+    return response.data;
+  },
+  update: async (id: number, data: Partial<FixedRoute>): Promise<void> => {
+    await api.put(`/fixed-routes/${id}`, data);
+  },
+  remove: async (id: number): Promise<void> => {
+    await api.delete(`/fixed-routes/${id}`);
+  },
+};
+
 // Admin API
 export const adminApi = {
   login: async (username: string, password: string) => {
