@@ -144,4 +144,54 @@ router.put('/tarife/:vehicle_type', authenticateAdmin, async (req: AuthRequest, 
   }
 });
 
+// ─── PLZ Exclusions (places within radius but legally outside the zone) ───
+
+interface ExclusionRow {
+  id: number;
+  plz: string;
+  ort: string;
+  enabled: number;
+}
+
+router.get('/exclusions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await query<ExclusionRow>('SELECT id, plz, ort, enabled FROM pflichtgebiet_exclusions WHERE enabled = 1 ORDER BY plz');
+    res.json(rows);
+  } catch (error) {
+    console.error('Pflichtgebiet exclusions fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch exclusions' });
+  }
+});
+
+router.post('/exclusions', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { plz, ort } = req.body || {};
+    if (!plz || !/^\d{5}$/.test(String(plz).trim())) {
+      res.status(400).json({ error: 'PLZ muss 5-stellig sein' });
+      return;
+    }
+    await run(
+      `INSERT INTO pflichtgebiet_exclusions (plz, ort) VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE ort = VALUES(ort), enabled = 1, updated_at = NOW()`,
+      [String(plz).trim(), String(ort || '').trim()]
+    );
+    const rows = await query<ExclusionRow>('SELECT id, plz, ort, enabled FROM pflichtgebiet_exclusions WHERE enabled = 1 ORDER BY plz');
+    res.json(rows);
+  } catch (error) {
+    console.error('Pflichtgebiet exclusion add error:', error);
+    res.status(500).json({ error: 'Failed to add exclusion' });
+  }
+});
+
+router.delete('/exclusions/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await run('DELETE FROM pflichtgebiet_exclusions WHERE id = ?', [req.params.id]);
+    const rows = await query<ExclusionRow>('SELECT id, plz, ort, enabled FROM pflichtgebiet_exclusions WHERE enabled = 1 ORDER BY plz');
+    res.json(rows);
+  } catch (error) {
+    console.error('Pflichtgebiet exclusion delete error:', error);
+    res.status(500).json({ error: 'Failed to delete exclusion' });
+  }
+});
+
 export default router;
