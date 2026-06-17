@@ -192,6 +192,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         if (!dropoffCoords) dropoffCoords = await geocodeAddress(dropoff_address);
 
         if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+          const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
+          const excludedSet = new Set(excludedRows.map(r => r.plz));
+          const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
+          const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
+          const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
+
+          if (!isExcluded) {
           const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
             'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
             [vehicle_type]
@@ -211,6 +218,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
             pgFareFloor = tripPrice; // promos may not undercut the mandatory fare
             effectiveOneWay = effOneWay;
             effectiveRoundtripDiscount = pgDiscount;
+          }
           }
         }
       }
