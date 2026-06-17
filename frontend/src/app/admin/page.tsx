@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi, pricesApi, settingsApi, plzSurchargesApi, Booking, Price, PlzSurcharge } from '@/lib/api';
+import { adminApi, pricesApi, settingsApi, plzSurchargesApi, fixedRoutesApi, Booking, Price, PlzSurcharge, FixedRoute } from '@/lib/api';
 import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
