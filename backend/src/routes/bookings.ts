@@ -367,7 +367,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 // POST /api/bookings/calculate-price - Calculate price
 router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng } = req.body;
+    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address } = req.body;
 
     if (!vehicle_type || distance_km === undefined) {
       res.status(400).json({ error: 'vehicle_type and distance_km required' });
@@ -389,11 +389,24 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
       ? Math.max(calculatedPrice, priceRow.min_price)
       : calculatedPrice;
 
+    // Fixed-price route override (highest priority)
+    let fixedRouteMatch = false;
+    if (pickup_address && dropoff_address) {
+      try {
+        const allRoutes = await query<any>('SELECT * FROM fixed_routes WHERE enabled = 1');
+        const match = findFixedRoute(pickup_address, dropoff_address, allRoutes);
+        if (match) {
+          const fp = getFixedPrice(match, vehicle_type);
+          if (fp > 0) { price = fp; fixedRouteMatch = true; }
+        }
+      } catch (e) { console.error('Fixed-route calc-price skipped:', e); }
+    }
+
     // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
     let pflichtgebiet = false;
     try {
       const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
-      if (pgCfg && pgCfg.enabled) {
+      if (pgCfg && pgCfg.enabled && !fixedRouteMatch) {
         const pickupCoords: Coords | null =
           (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
         const dropoffCoords: Coords | null =
