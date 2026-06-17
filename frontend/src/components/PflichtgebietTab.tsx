@@ -27,6 +27,9 @@ export default function PflichtgebietTab({ token }: { token: string }) {
   void token; // auth handled by axios interceptor (localStorage admin_token)
   const [config, setConfig] = useState<PflichtgebietConfig | null>(null);
   const [tarife, setTarife] = useState<PflichtgebietTarif[]>([]);
+  const [exclusions, setExclusions] = useState<PflichtgebietExclusion[]>([]);
+  const [newPlz, setNewPlz] = useState('');
+  const [newOrt, setNewOrt] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -36,9 +39,10 @@ export default function PflichtgebietTab({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     try {
-      const data = await pflichtgebietApi.get();
+      const [data, excl] = await Promise.all([pflichtgebietApi.get(), pflichtgebietApi.getExclusions()]);
       setConfig(data.config);
       setTarife(data.tarife);
+      setExclusions(excl);
       setErr('');
     } catch {
       setErr('Konfiguration konnte nicht geladen werden');
