@@ -562,8 +562,18 @@ function ResultsContent() {
               ? Math.max(calculatedPrice, priceData.min_price)
               : calculatedPrice;
 
+            // Fixed-price route override (highest priority)
+            const frPrice = fixedRouteMatch
+              ? (vehicle.type === 'kombi' ? fixedRouteMatch.price_kombi
+                : vehicle.type === 'van' ? fixedRouteMatch.price_van
+                : fixedRouteMatch.price_grossraumtaxi)
+              : 0;
+            if (frPrice > 0) {
+              oneWayPrice = frPrice;
+            }
+
             // Pflichtfahrgebiet: inside the zone the fare may not fall below the mandatory tariff
-            if (pgInZone && pgConfig) {
+            if (!fixedRouteMatch && pgInZone && pgConfig) {
               const tar = pgTarife.find(x => x.vehicle_type === vehicle.type);
               if (tar) {
                 let mandatory = Number(tar.grundgebuehr) + distanceKm * Number(tar.min_per_km);
