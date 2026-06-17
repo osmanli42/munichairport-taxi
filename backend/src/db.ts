@@ -245,6 +245,28 @@ export async function initializeDatabase(): Promise<void> {
       );
     }
 
+    // Fixed-price routes (Festpreisrouten) — legally mandated prices for specific routes
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS fixed_routes (
+        id INT NOT NULL AUTO_INCREMENT,
+        name VARCHAR(120) NOT NULL,
+        pickup_keywords TEXT NOT NULL,
+        dropoff_keywords TEXT NOT NULL,
+        price_kombi DOUBLE NOT NULL DEFAULT 0,
+        price_van DOUBLE NOT NULL DEFAULT 0,
+        price_grossraumtaxi DOUBLE NOT NULL DEFAULT 0,
+        bidirectional TINYINT NOT NULL DEFAULT 1,
+        enabled TINYINT NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+    await conn.execute(`
+      INSERT IGNORE INTO fixed_routes (id, name, pickup_keywords, dropoff_keywords, price_kombi, price_van, price_grossraumtaxi, bidirectional)
+      VALUES (1, 'Flughafen München ↔ Neue Messe München', 'flughafen münchen,munich airport,flughafen munchen,muc terminal,muc t1,muc t2', 'neue messe,messesee,81829,messe münchen,messe munchen,messe riem,messestadt', 94, 94, 94, 1)
+    `);
+
     // Drivers (Fahrer) table for live tracking
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS drivers (
