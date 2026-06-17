@@ -172,7 +172,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         if (!pickupCoords) pickupCoords = await geocodeAddress(pickup_address);
         if (!dropoffCoords) dropoffCoords = await geocodeAddress(dropoff_address);
 
-        if (tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
           const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
             'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
             [vehicle_type]
