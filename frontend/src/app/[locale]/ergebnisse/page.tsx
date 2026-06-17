@@ -283,12 +283,13 @@ function ResultsContent() {
     return () => { cancelled = true; };
   }, [pgConfig, pickup, dropoff]);
 
-  const pgInZone = !!(pgConfig && pgConfig.enabled && (
-    pgPointInZone(pickupCoords, pgConfig) ||
-    pgPointInZone(dropoffCoords, pgConfig) ||
-    // Fallback: airport-area addresses are always inside the zone (robust if geocoding fails)
-    (pgConfig.airport_enabled === 1 && (isAirportArea(pickup) || isAirportArea(dropoff)))
-  ));
+  // Both endpoints must be inside the zone. Long-distance trips (destination
+  // outside 50 km from both centres) use free pricing, not the mandatory tariff.
+  const pickupInZone = pgPointInZone(pickupCoords, pgConfig) ||
+    !!(pgConfig?.airport_enabled === 1 && isAirportArea(pickup));
+  const dropoffInZone = pgPointInZone(dropoffCoords, pgConfig) ||
+    !!(pgConfig?.airport_enabled === 1 && isAirportArea(dropoff));
+  const pgInZone = !!(pgConfig && pgConfig.enabled && pickupInZone && dropoffInZone);
 
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
