@@ -179,11 +179,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       console.error('Fixed-route pricing skipped:', e);
     }
 
-    // --- Pflichtfahrgebiet (mandatory tariff zone) — isolated overlay, does not alter free pricing ---
-    let pgFareFloor = 0; // final-price floor applied when the trip is inside the zone
+    // --- Pflichtfahrgebiet (mandatory tariff zone) — skipped if a fixed route already applied ---
+    let pgFareFloor = 0;
     try {
       const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
-      if (pgCfg && pgCfg.enabled) {
+      if (pgCfg && pgCfg.enabled && !fixedRouteApplied) {
         let pickupCoords: Coords | null =
           (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
         let dropoffCoords: Coords | null =
