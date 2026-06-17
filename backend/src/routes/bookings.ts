@@ -5,6 +5,7 @@ import { query, run } from '../db';
 import { sendAllNotifications, BookingNotificationData } from '../services/notifications';
 import { tripInZone, PgConfig, Coords } from '../utils/geo';
 import { geocodeAddress } from './maps';
+import { findFixedRoute, getFixedPrice } from './fixed-routes';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
