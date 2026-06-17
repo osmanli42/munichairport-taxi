@@ -309,7 +309,7 @@ export async function initializeDatabase(): Promise<void> {
       ['82281','Egenhofen'],['82284','Grafrath'],['82285','Hattenhofen'],['82287','Jesenwang'],
       ['82288','Kottgeisering'],['82290','Landsberied'],['82291','Mammendorf'],['82293','Mittelstetten'],
       // Landkreis Starnberg
-      ['82131','Gauting'],['82152','Krailling'],['82205','Gilching'],['82211','Herrsching a.Ammersee'],
+      ['82131','Gauting'],['82205','Gilching'],['82211','Herrsching a.Ammersee'],
       ['82229','Seefeld'],['82234','Weßling'],['82237','Wörthsee'],['82266','Inning a.Ammersee'],
       ['82319','Starnberg'],['82327','Tutzing'],['82335','Berg'],['82340','Feldafing'],
       ['82343','Pöcking'],['82346','Andechs'],
