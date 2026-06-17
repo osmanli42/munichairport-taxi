@@ -483,6 +483,7 @@ export default function AdminPage() {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
         plzSurchargesApi.getAll().then(setPlzSurcharges).catch(() => {});
+        fixedRoutesApi.getAll().then(setFixedRoutes).catch(() => {});
         adminApi.getReminderSettings().then(d => {
           setReminderEnabled(d.enabled);
           setReminderTime(d.time);
