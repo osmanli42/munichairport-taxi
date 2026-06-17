@@ -995,7 +995,7 @@ export default function AdminPage() {
                   <Search size={16} className="absolute left-3 top-3 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Name, Telefon, E-Mail, Buchungsnr..."
+                    placeholder="Name, Telefon, E-Mail, Buchungsnr, Ort, Straße..."
                     value={filters.search}
                     onChange={(e) => setFilters(p => ({ ...p, search: e.target.value }))}
                     className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
