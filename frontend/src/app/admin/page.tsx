@@ -63,6 +63,8 @@ export default function AdminPage() {
   const [reminderTime, setReminderTime] = useState('18:00');
   const [reminderSaving, setReminderSaving] = useState(false);
   const [plzSurcharges, setPlzSurcharges] = useState<PlzSurcharge[]>([]);
+  const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);
+  const [editingRoute, setEditingRoute] = useState<Partial<FixedRoute> | null>(null);
   const [newPlz, setNewPlz] = useState('');
   const [newPlzStadt, setNewPlzStadt] = useState('');
   const [newPlzSurcharge, setNewPlzSurcharge] = useState('10');
