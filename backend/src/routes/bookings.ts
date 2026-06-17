@@ -161,6 +161,24 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     let effectiveOneWay = oneWayPrice;
     let effectiveRoundtripDiscount = priceRow.roundtrip_discount || 0;
 
+    // --- Fixed-price routes (Festpreisrouten) — legally mandated, overrides all other pricing ---
+    let fixedRouteApplied = false;
+    try {
+      const allRoutes = await query<any>('SELECT * FROM fixed_routes WHERE enabled = 1');
+      const match = findFixedRoute(pickup_address, dropoff_address, allRoutes);
+      if (match) {
+        const fp = getFixedPrice(match, vehicle_type);
+        if (fp > 0) {
+          effectiveOneWay = fp;
+          tripPrice = isRoundtrip ? fp * 2 * (1 - discount / 100) : fp;
+          effectiveRoundtripDiscount = discount;
+          fixedRouteApplied = true;
+        }
+      }
+    } catch (e) {
+      console.error('Fixed-route pricing skipped:', e);
+    }
+
     // --- Pflichtfahrgebiet (mandatory tariff zone) — isolated overlay, does not alter free pricing ---
     let pgFareFloor = 0; // final-price floor applied when the trip is inside the zone
     try {
