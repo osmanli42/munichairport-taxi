@@ -1660,6 +1660,105 @@ export default function AdminPage() {
               ))}
             </div>
 
+            {/* Festpreisrouten (Fixed-Price Routes) */}
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">🛣️ Festpreisrouten</h3>
+                <button
+                  onClick={() => setEditingRoute({ name: '', pickup_keywords: '', dropoff_keywords: '', price_kombi: 0, price_van: 0, price_grossraumtaxi: 0, bidirectional: 1, enabled: 1 })}
+                  className="bg-primary-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-700"
+                >+ Neue Route</button>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">Gesetzlich vorgeschriebene Festpreise für bestimmte Strecken. Überschreibt alle anderen Preisberechnungen.</p>
+
+              {editingRoute && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3 border border-gray-200">
+                  <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Name (z.B. Flughafen ↔ Messe)"
+                    value={editingRoute.name || ''} onChange={e => setEditingRoute(r => ({ ...r!, name: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500">Abholort-Schlüsselwörter (kommagetrennt)</label>
+                      <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="flughafen münchen,munich airport"
+                        value={editingRoute.pickup_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, pickup_keywords: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Zielort-Schlüsselwörter (kommagetrennt)</label>
+                      <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="neue messe,81829"
+                        value={editingRoute.dropoff_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, dropoff_keywords: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500">Kombi (€)</label>
+                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={editingRoute.price_kombi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_kombi: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Van (€)</label>
+                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={editingRoute.price_van || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_van: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Großraumtaxi (€)</label>
+                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={editingRoute.price_grossraumtaxi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_grossraumtaxi: parseFloat(e.target.value) || 0 }))} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={!!editingRoute.bidirectional}
+                        onChange={e => setEditingRoute(r => ({ ...r!, bidirectional: e.target.checked ? 1 : 0 }))} />
+                      Beide Richtungen (↔)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={editingRoute.enabled !== 0}
+                        onChange={e => setEditingRoute(r => ({ ...r!, enabled: e.target.checked ? 1 : 0 }))} />
+                      Aktiv
+                    </label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+                      onClick={async () => {
+                        try {
+                          if (editingRoute.id) {
+                            await fixedRoutesApi.update(editingRoute.id, editingRoute);
+                          } else {
+                            await fixedRoutesApi.create(editingRoute);
+                          }
+                          setEditingRoute(null);
+                          fixedRoutesApi.getAll().then(setFixedRoutes);
+                        } catch { alert('Fehler beim Speichern'); }
+                      }}
+                    >Speichern</button>
+                    <button className="text-gray-500 px-4 py-2 rounded-lg text-sm hover:bg-gray-100" onClick={() => setEditingRoute(null)}>Abbrechen</button>
+                  </div>
+                </div>
+              )}
+
+              {fixedRoutes.length === 0 && !editingRoute && (
+                <p className="text-sm text-gray-400 text-center py-4">Keine Festpreisrouten definiert.</p>
+              )}
+              {fixedRoutes.map(r => (
+                <div key={r.id} className={cn('flex items-center justify-between border rounded-xl px-4 py-3 mb-2', r.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50 opacity-60')}>
+                  <div>
+                    <div className="font-medium text-sm">{r.name} {r.bidirectional ? '↔' : '→'}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Kombi: {r.price_kombi}€ · Van: {r.price_van}€ · Großraum: {r.price_grossraumtaxi}€
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="text-blue-600 hover:text-blue-800 text-sm" onClick={() => setEditingRoute({ ...r })}>Bearbeiten</button>
+                    <button className="text-red-500 hover:text-red-700 text-sm" onClick={async () => {
+                      if (confirm('Route löschen?')) {
+                        await fixedRoutesApi.remove(r.id);
+                        fixedRoutesApi.getAll().then(setFixedRoutes);
+                      }
+                    }}>Löschen</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm text-blue-700 space-y-1">
               <p><strong>Preisformel (Einfach):</strong> Gesamtpreis = Grundpreis + (Distanz in km × Preis/km)</p>
               <p><strong>Preisformel (Hin- & Rückfahrt):</strong> Gesamtpreis = (Einfach × 2) − Rabatt %</p>
