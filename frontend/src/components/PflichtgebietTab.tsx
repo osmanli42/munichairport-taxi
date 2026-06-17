@@ -252,6 +252,92 @@ export default function PflichtgebietTab({ token }: { token: string }) {
           ))}
         </div>
       </div>
+
+      {/* PLZ-Ausschlüsse */}
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        <h3 className="font-bold text-gray-900 text-lg mb-1">PLZ-Ausschlüsse</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Orte innerhalb des Radius, die gesetzlich nicht zum Pflichtfahrgebiet gehören (z.B. Landshut). Für diese PLZ gilt der normale Preis.
+        </p>
+
+        {/* Add form */}
+        <div className="flex items-end gap-2 mb-4">
+          <label className="text-xs text-gray-500">
+            PLZ
+            <input
+              type="text" maxLength={5} value={newPlz}
+              onChange={(e) => setNewPlz(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              placeholder="84028"
+              className="mt-1 block w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            />
+          </label>
+          <label className="text-xs text-gray-500 flex-1">
+            Ort
+            <input
+              type="text" value={newOrt}
+              onChange={(e) => setNewOrt(e.target.value)}
+              placeholder="Landshut"
+              className="mt-1 block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            />
+          </label>
+          <button
+            disabled={saving || newPlz.length !== 5}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const updated = await pflichtgebietApi.addExclusion(newPlz, newOrt);
+                setExclusions(updated);
+                setNewPlz('');
+                setNewOrt('');
+                flash('PLZ-Ausschluss hinzugefügt');
+              } catch { setErr('Hinzufügen fehlgeschlagen'); }
+              setSaving(false);
+            }}
+            className="flex items-center gap-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+          >
+            <Plus size={14} /> Hinzufügen
+          </button>
+        </div>
+
+        {exclusions.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">Keine Ausschlüsse definiert</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-gray-500 text-xs">
+                <th className="py-2 pr-4">PLZ</th>
+                <th className="py-2 pr-4">Ort</th>
+                <th className="py-2 w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {exclusions.map((ex) => (
+                <tr key={ex.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="py-2 pr-4 font-mono">{ex.plz}</td>
+                  <td className="py-2 pr-4">{ex.ort}</td>
+                  <td className="py-2">
+                    <button
+                      onClick={async () => {
+                        setSaving(true);
+                        try {
+                          const updated = await pflichtgebietApi.removeExclusion(ex.id);
+                          setExclusions(updated);
+                          flash('Ausschluss gelöscht');
+                        } catch { setErr('Löschen fehlgeschlagen'); }
+                        setSaving(false);
+                      }}
+                      className="text-red-400 hover:text-red-600"
+                      title="Löschen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
