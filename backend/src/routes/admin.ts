@@ -107,9 +107,9 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       params.push(date_to, date_to);
     }
     if (search) {
-      sql += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ?)';
+      sql += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ? OR pickup_address LIKE ? OR dropoff_address LIKE ?)';
       const searchParam = `%${search}%`;
-      params.push(searchParam, searchParam, searchParam, searchParam);
+      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
     }
 
     const pageNum = Math.max(1, parseInt(page));
