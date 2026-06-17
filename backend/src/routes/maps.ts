@@ -101,9 +101,9 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const url = new URL('https://maps.googleapis.com/maps/api/distancematrix/json');
-    url.searchParams.set('origins', origin);
-    url.searchParams.set('destinations', destination);
+    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
+    url.searchParams.set('origin', origin);
+    url.searchParams.set('destination', destination);
     url.searchParams.set('key', GOOGLE_API_KEY);
     url.searchParams.set('mode', 'driving');
     url.searchParams.set('units', 'metric');
@@ -112,24 +112,20 @@ router.post('/distance', async (req: Request, res: Response): Promise<void> => {
     const response = await fetch(url.toString());
     const data = await response.json() as {
       status: string;
-      destination_addresses?: string[];
-      rows: { elements: { status: string; distance: { value: number }; duration: { value: number } }[] }[];
+      routes: {
+        legs: { distance: { value: number }; duration: { value: number }; end_address: string }[];
+      }[];
     };
 
-    if (data.status !== 'OK') {
-      res.status(502).json({ error: 'Google API error', status: data.status });
+    if (data.status !== 'OK' || !data.routes?.length) {
+      res.status(data.status === 'ZERO_RESULTS' ? 404 : 502).json({ error: 'Route not found', status: data.status });
       return;
     }
 
-    const element = data.rows[0]?.elements[0];
-    if (!element || element.status !== 'OK') {
-      res.status(404).json({ error: 'Route not found', status: element?.status });
-      return;
-    }
-
-    const distance_km = element.distance.value / 1000;
-    const duration_minutes = Math.ceil(element.duration.value / 60);
-    const destination_country = extractCountryCode(data.destination_addresses?.[0] || destination);
+    const leg = data.routes[0].legs[0];
+    const distance_km = leg.distance.value / 1000;
+    const duration_minutes = Math.ceil(leg.duration.value / 60);
+    const destination_country = extractCountryCode(leg.end_address || destination);
 
     // Check if Anfahrt distance is needed (non-airport trip)
     let anfahrt_distance_km: number | undefined;
