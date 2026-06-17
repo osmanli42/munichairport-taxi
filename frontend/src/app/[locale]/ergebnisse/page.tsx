@@ -283,9 +283,11 @@ function ResultsContent() {
     return () => { cancelled = true; };
   }, [pgConfig, pickup, dropoff]);
 
-  // Both endpoints must be inside the zone. Long-distance trips (destination
-  // outside 50 km from both centres) use free pricing, not the mandatory tariff.
-  const pgInZone = !!(pgConfig && pgConfig.enabled && (
+  // Both endpoints must be inside the zone AND the road distance must not exceed
+  // the radius. Haversine can be shorter than road distance (mountains, lakes,
+  // detours), so trips with road distance > radius_km use free pricing.
+  const pgRadius = pgConfig?.radius_km ?? 50;
+  const pgInZone = !!(pgConfig && pgConfig.enabled && distanceKm <= pgRadius && (
     (pgPointInZone(pickupCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(pickup))) &&
     (pgPointInZone(dropoffCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(dropoff)))
   ));
