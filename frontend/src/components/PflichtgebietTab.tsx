@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { MapPin, Plane, Building2, Save } from 'lucide-react';
-import { pflichtgebietApi, PflichtgebietConfig, PflichtgebietTarif } from '@/lib/api';
+import { MapPin, Plane, Building2, Save, Trash2, Plus } from 'lucide-react';
+import { pflichtgebietApi, PflichtgebietConfig, PflichtgebietTarif, PflichtgebietExclusion } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const VEHICLE_LABELS: Record<string, string> = {
