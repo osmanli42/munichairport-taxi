@@ -47,11 +47,12 @@ export function pointInZone(point: Coords | undefined | null, cfg: PgConfig): bo
   return false;
 }
 
-// A trip is in the mandatory zone if pickup OR dropoff is inside the union.
+// A trip is in the mandatory zone only if BOTH pickup AND dropoff are inside the
+// union. Long-distance trips (destination outside 50 km) use free pricing.
 export function tripInZone(
   pickup: Coords | undefined | null,
   dropoff: Coords | undefined | null,
   cfg: PgConfig
 ): boolean {
-  return pointInZone(pickup, cfg) || pointInZone(dropoff, cfg);
+  return pointInZone(pickup, cfg) && pointInZone(dropoff, cfg);
 }
