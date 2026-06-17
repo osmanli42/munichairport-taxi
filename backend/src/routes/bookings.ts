@@ -420,6 +420,13 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
         const dropoffCoords: Coords | null =
           (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
         if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+          const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
+          const excludedSet = new Set(excludedRows.map(r => r.plz));
+          const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
+          const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
+          const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
+
+          if (!isExcluded) {
           const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
             'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
             [vehicle_type]
@@ -431,6 +438,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
             }
             price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
             pflichtgebiet = true;
+          }
           }
         }
       }
