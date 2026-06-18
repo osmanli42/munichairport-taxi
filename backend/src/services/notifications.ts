@@ -345,6 +345,13 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       ${t.intro}
     </div>
 
+    ${booking.night_confirm ? `
+    <div style="background:#fff8e1;border:2px solid #f6c644;border-radius:8px;padding:16px;margin:0 0 20px;">
+      <p style="margin:0 0 6px;font-weight:bold;color:#b45309;font-size:15px;">🌙 ${t.nightTitle}</p>
+      <p style="margin:0 0 10px;color:#5b4708;font-size:14px;">${t.nightMsg}</p>
+      <a href="tel:+4915141620000" style="display:inline-block;background:#1a365d;color:#f6c644;text-decoration:none;font-weight:bold;padding:10px 18px;border-radius:8px;font-size:15px;">📞 +49 151 41620000</a>
+    </div>` : ''}
+
     ${booking.promo_code && booking.discount_amount && booking.base_total ? `
     <div class="price-box">€${formatPrice(booking.price)}</div>
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:-12px 0 16px;font-size:13px;color:#374151;">
