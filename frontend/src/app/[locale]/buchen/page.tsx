@@ -61,12 +61,26 @@ function BuchenContent() {
   };
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
   const [zwischenstoppEnabled, setZwischenstoppEnabled] = useState(false);
+  const [nightConfirmEnabled, setNightConfirmEnabled] = useState(true);
+  const [nightStart, setNightStart] = useState(22);
+  const [nightEnd, setNightEnd] = useState(7);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
       if (s.zwischenstopp_enabled === '1') setZwischenstoppEnabled(true);
+      if (s.night_confirm_enabled === '0') setNightConfirmEnabled(false);
+      if (s.night_confirm_start) setNightStart(parseInt(s.night_confirm_start, 10));
+      if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
+
+  // Night-time trip → ask customer to also confirm by phone
+  const tripHour = time ? parseInt(time.split(':')[0], 10) : NaN;
+  const isNightTrip = nightConfirmEnabled && !isNaN(tripHour) && (
+    nightStart === nightEnd ? false
+      : nightStart < nightEnd ? (tripHour >= nightStart && tripHour < nightEnd)
+      : (tripHour >= nightStart || tripHour < nightEnd)
+  );
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Zwischenstopp state (only for buchen-page-added stops)
