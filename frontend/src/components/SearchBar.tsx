@@ -411,11 +411,13 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Settings (stadtfahrt toggle)
+  // Settings (stadtfahrt toggle + min advance hours)
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  const [minAdvanceHours, setMinAdvanceHours] = useState(1.5);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
+      if (s.min_advance_hours) setMinAdvanceHours(parseFloat(s.min_advance_hours));
     }).catch(() => {});
   }, []);
 
