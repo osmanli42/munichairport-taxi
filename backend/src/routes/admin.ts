@@ -564,30 +564,6 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       ORDER BY month ASC
     `);
 
-    // Visitor country stats (from tracking data, last 30 days)
-    let visitorCountries: any[] = [];
-    let visitorCities: any[] = [];
-    try {
-      visitorCountries = await query(`
-        SELECT country, COUNT(*) AS sessions, COUNT(DISTINCT visitor_id) AS visitors
-        FROM visitor_sessions
-        WHERE is_bot = 0 AND country IS NOT NULL AND country != ''
-          AND first_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        GROUP BY country
-        ORDER BY sessions DESC
-        LIMIT 20
-      `);
-      visitorCities = await query(`
-        SELECT city, country, COUNT(*) AS sessions
-        FROM visitor_sessions
-        WHERE is_bot = 0 AND city IS NOT NULL AND city != ''
-          AND first_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        GROUP BY city, country
-        ORDER BY sessions DESC
-        LIMIT 15
-      `);
-    } catch {}
-
     res.json({
       monthlyRevenue,
       mtdComparison,
