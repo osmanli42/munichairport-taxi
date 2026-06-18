@@ -428,7 +428,16 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
           (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
         const dropoffCoords: Coords | null =
           (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
-        if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+
+        let ipBypass2 = false;
+        if (pgCfg.ip_bypass_enabled) {
+          const vc = await getVisitorCoords(req);
+          if (vc.lat != null && vc.lng != null) {
+            ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
+          }
+        }
+
+        if (!ipBypass2 && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
           const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
           const excludedSet = new Set(excludedRows.map(r => r.plz));
           const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
