@@ -61,7 +61,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       }
     }
 
-    const numeric = ['radius_km', 'airport_lat', 'airport_lng', 'betriebssitz_lat', 'betriebssitz_lng'];
+    const numeric = ['radius_km', 'airport_lat', 'airport_lng', 'betriebssitz_lat', 'betriebssitz_lng', 'ip_bypass_distance_km'];
     for (const n of numeric) {
       if (b[n] !== undefined && isNaN(parseFloat(String(b[n])))) {
         res.status(400).json({ error: `${n} must be a number` });
