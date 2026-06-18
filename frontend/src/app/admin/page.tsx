@@ -229,7 +229,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  const loadGeoStats = useCallback(async (range: '30d' | '6m' | 'all') => {
+  const loadGeoStats = useCallback(async (range: 'today' | '7d' | '30d' | '6m' | 'all') => {
     setGeoLoading(true);
     try {
       const data = await adminApi.getVisitorGeoStats(range);
