@@ -582,12 +582,43 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
       topDaysByTrip,
       extrasStats,
       cancellationStats,
-      visitorCountries,
-      visitorCities,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// GET /api/admin/visitor-geo-stats?range=30d|6m|all
+router.get('/visitor-geo-stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const range = (req.query.range as string) || '30d';
+    let dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
+    if (range === '6m') dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
+    else if (range === 'all') dateSql = '';
+
+    const visitorCountries = await query(`
+      SELECT country, COUNT(*) AS sessions, COUNT(DISTINCT visitor_id) AS visitors
+      FROM visitor_sessions
+      WHERE is_bot = 0 AND country IS NOT NULL AND country != ''
+        ${dateSql}
+      GROUP BY country
+      ORDER BY sessions DESC
+      LIMIT 20
+    `);
+    const visitorCities = await query(`
+      SELECT city, country, COUNT(*) AS sessions
+      FROM visitor_sessions
+      WHERE is_bot = 0 AND city IS NOT NULL AND city != ''
+        ${dateSql}
+      GROUP BY city, country
+      ORDER BY sessions DESC
+      LIMIT 15
+    `);
+    res.json({ range, visitorCountries, visitorCities });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch visitor geo stats' });
   }
 });
 
