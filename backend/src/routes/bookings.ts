@@ -332,10 +332,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
-    // Determine whether this booking arrives outside office hours (night) and
-    // therefore needs an extra phone confirmation. Based on the CURRENT time in
-    // Munich (Europe/Berlin) at the moment the booking is placed — not the pickup
-    // time — because the point is whether someone is watching the inbox right now.
+    // Determine whether this booking is placed during night hours and therefore
+    // warrants an extra phone confirmation as a safety measure (we are open 24/7,
+    // but want the late-hour trip guaranteed). Based on the CURRENT time in Munich
+    // (Europe/Berlin) at the moment the booking is placed — not the pickup time.
     let nightConfirm = false;
     try {
       const nightRows = await query<{ setting_key: string; setting_value: string }>(
