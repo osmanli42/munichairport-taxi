@@ -98,10 +98,6 @@ function hashIp(ip: string | undefined): string {
   return crypto.createHash('sha256').update(ip + getDailySalt()).digest('hex').slice(0, 32);
 }
 
-function getClientIp(req: Request): string {
-  const xff = (req.headers['x-forwarded-for'] as string) || '';
-  return xff.split(',')[0].trim() || req.socket.remoteAddress || '';
-}
 
 const BOT_PATTERNS = /bot|crawler|spider|scanner|crawling|curl|wget|python-|java\/|go-http|ruby|axios|postman|headlesschrome|lighthouse|pagespeed|gtmetrix|slackbot|twitterbot|facebookexternalhit|whatsapp|telegrambot|linkedinbot|discordbot|preview|monitor|uptime|pingdom|statuscake|prerender|googlebot|bingbot|yandexbot|duckduckbot|baiduspider|applebot|metabot|meta-externalagent/i;
 
