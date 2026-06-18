@@ -332,7 +332,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
-    // Determine whether this is a night-time booking that needs phone confirmation
+    // Determine whether this booking arrives outside office hours (night) and
+    // therefore needs an extra phone confirmation. Based on the CURRENT time in
+    // Munich (Europe/Berlin) at the moment the booking is placed — not the pickup
+    // time — because the point is whether someone is watching the inbox right now.
     let nightConfirm = false;
     try {
       const nightRows = await query<{ setting_key: string; setting_value: string }>(
@@ -343,11 +346,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       const nightEnabled = (nightCfg['night_confirm_enabled'] ?? '1') === '1';
       const nightStart = parseInt(nightCfg['night_confirm_start'] ?? '22', 10);
       const nightEnd = parseInt(nightCfg['night_confirm_end'] ?? '7', 10);
-      const pickupHour = parseInt(String(pickup_datetime).split('T')[1] ?? '', 10);
-      if (nightEnabled && !isNaN(pickupHour)) {
+      const munichHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
+      if (nightEnabled && !isNaN(munichHour)) {
         if (nightStart === nightEnd) nightConfirm = false;
-        else if (nightStart < nightEnd) nightConfirm = pickupHour >= nightStart && pickupHour < nightEnd;
-        else nightConfirm = pickupHour >= nightStart || pickupHour < nightEnd;
+        else if (nightStart < nightEnd) nightConfirm = munichHour >= nightStart && munichHour < nightEnd;
+        else nightConfirm = munichHour >= nightStart || munichHour < nightEnd;
       }
     } catch (e) {
       console.error('Night-confirm check failed:', e);
