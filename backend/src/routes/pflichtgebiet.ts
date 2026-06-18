@@ -88,6 +88,8 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         betriebssitz_enabled = COALESCE(?, betriebssitz_enabled),
         betriebssitz_lat = COALESCE(?, betriebssitz_lat),
         betriebssitz_lng = COALESCE(?, betriebssitz_lng),
+        ip_bypass_enabled = COALESCE(?, ip_bypass_enabled),
+        ip_bypass_distance_km = COALESCE(?, ip_bypass_distance_km),
         updated_at = NOW()
       WHERE id = 1`,
       [
@@ -101,6 +103,8 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         tn(b.betriebssitz_enabled),
         fn(b.betriebssitz_lat),
         fn(b.betriebssitz_lng),
+        tn(b.ip_bypass_enabled),
+        fn(b.ip_bypass_distance_km),
       ]
     );
 
