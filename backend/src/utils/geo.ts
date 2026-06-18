@@ -13,6 +13,8 @@ export interface PgConfig {
   betriebssitz_enabled: number;
   betriebssitz_lat: number;
   betriebssitz_lng: number;
+  ip_bypass_enabled: number;
+  ip_bypass_distance_km: number;
 }
 
 export interface Coords {
