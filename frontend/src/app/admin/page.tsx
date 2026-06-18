@@ -122,6 +122,9 @@ export default function AdminPage() {
   const [tomorrowCardBooking, setTomorrowCardBooking] = useState<Booking | null>(null);
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [detailedStats, setDetailedStats] = useState<Record<string, unknown> | null>(null);
+  const [geoRange, setGeoRange] = useState<'30d' | '6m' | 'all'>('30d');
+  const [geoStats, setGeoStats] = useState<{ visitorCountries: any[]; visitorCities: any[] } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   // Promotions state
   interface Promotion {
