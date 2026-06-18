@@ -498,7 +498,7 @@ export default function AdminPage() {
       if (activeTab === 'statistics') { loadDetailedStats(); loadGeoStats('30d'); }
       if (activeTab === 'prices') {
         loadPrices();
-        settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
+        settingsApi.getAll().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
         plzSurchargesApi.getAll().then(setPlzSurcharges).catch(() => {});
         fixedRoutesApi.getAll().then(setFixedRoutes).catch(() => {});
         adminApi.getReminderSettings().then(d => {
