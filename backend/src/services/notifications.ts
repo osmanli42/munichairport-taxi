@@ -241,8 +241,8 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       returnTrip: 'Rückfahrt',
       greeting: 'Hallo',
       footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-      nightTitle: 'Buchung außerhalb der Bürozeiten – bitte zusätzlich anrufen',
-      nightMsg: 'Ihre Buchung erreicht uns gerade außerhalb unserer Bürozeiten. Damit Ihre Fahrt sicher eingeplant wird und ein Fahrer bereitsteht, rufen Sie uns bitte zusätzlich kurz an:',
+      nightTitle: 'Sicherheitshalber bitte zusätzlich anrufen',
+      nightMsg: 'Wir sind rund um die Uhr für Sie da. Damit Ihre Fahrt zu dieser späten Uhrzeit ganz sicher eingeplant ist und ein Fahrer rechtzeitig bereitsteht, rufen Sie uns bitte sicherheitshalber zusätzlich kurz an:',
     },
     en: {
       subject: `Booking Confirmation ${booking.booking_number} - Flughafen-muenchen.TAXI`,
