@@ -74,14 +74,17 @@ function BuchenContent() {
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
-  // Booking placed during night hours (current Munich time) → as a safety measure
-  // ask the customer to also confirm by phone, so the late-hour trip is guaranteed.
+  // Show the safety notice only when BOTH the booking arrives during the night
+  // window (current Munich time, owner likely asleep) AND the trip departs during
+  // the night window (owner can't dispatch in time). We are open 24/7, this is
+  // just a guarantee for genuinely late-hour trips.
+  const inNightWindow = (h: number): boolean => {
+    if (isNaN(h) || nightStart === nightEnd) return false;
+    return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
+  };
   const munichHourNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
-  const isNightBooking = nightConfirmEnabled && !isNaN(munichHourNow) && (
-    nightStart === nightEnd ? false
-      : nightStart < nightEnd ? (munichHourNow >= nightStart && munichHourNow < nightEnd)
-      : (munichHourNow >= nightStart || munichHourNow < nightEnd)
-  );
+  const pickupHour = time ? parseInt(time.split(':')[0], 10) : NaN;
+  const isNightBooking = nightConfirmEnabled && inNightWindow(munichHourNow) && inNightWindow(pickupHour);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Zwischenstopp state (only for buchen-page-added stops)
