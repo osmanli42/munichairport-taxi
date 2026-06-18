@@ -332,10 +332,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
-    // Determine whether this booking is placed during night hours and therefore
-    // warrants an extra phone confirmation as a safety measure (we are open 24/7,
-    // but want the late-hour trip guaranteed). Based on the CURRENT time in Munich
-    // (Europe/Berlin) at the moment the booking is placed — not the pickup time.
+    // Determine whether this booking warrants an extra phone confirmation as a
+    // safety measure (we are open 24/7, but want late-hour trips guaranteed). The
+    // notice appears only when BOTH the booking arrives during the night window
+    // (owner likely asleep) AND the trip departs during the night window (owner
+    // can't dispatch in time after waking). Booking time uses the CURRENT Munich
+    // time; pickup time is read from pickup_datetime — both in Europe/Berlin.
     let nightConfirm = false;
     try {
       const nightRows = await query<{ setting_key: string; setting_value: string }>(
@@ -346,12 +348,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       const nightEnabled = (nightCfg['night_confirm_enabled'] ?? '1') === '1';
       const nightStart = parseInt(nightCfg['night_confirm_start'] ?? '22', 10);
       const nightEnd = parseInt(nightCfg['night_confirm_end'] ?? '7', 10);
-      const munichHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
-      if (nightEnabled && !isNaN(munichHour)) {
-        if (nightStart === nightEnd) nightConfirm = false;
-        else if (nightStart < nightEnd) nightConfirm = munichHour >= nightStart && munichHour < nightEnd;
-        else nightConfirm = munichHour >= nightStart || munichHour < nightEnd;
-      }
+      const inWindow = (h: number): boolean => {
+        if (isNaN(h) || nightStart === nightEnd) return false;
+        return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
+      };
+      const bookingHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
+      const pickupHour = parseInt(String(pickup_datetime).split('T')[1] ?? '', 10);
+      nightConfirm = nightEnabled && inWindow(bookingHour) && inWindow(pickupHour);
     } catch (e) {
       console.error('Night-confirm check failed:', e);
     }
