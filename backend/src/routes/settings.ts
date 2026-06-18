@@ -33,7 +33,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -47,6 +47,14 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         const num = parseFloat(String(value));
         if (isNaN(num) || num < 0) {
           res.status(400).json({ error: 'anfahrt_price_per_km must be a positive number' });
+          return;
+        }
+      }
+
+      if (key === 'min_advance_hours') {
+        const num = parseFloat(String(value));
+        if (isNaN(num) || num < 0) {
+          res.status(400).json({ error: 'min_advance_hours must be a positive number' });
           return;
         }
       }
