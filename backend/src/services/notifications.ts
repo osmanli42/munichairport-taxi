@@ -134,6 +134,11 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       <span style="color:#16a34a;font-weight:bold;">${booking.roundtrip_discount ?? 0}% Hin- & Rückfahrt Rabatt</span>
     </div>` : ''}
 
+    ${booking.night_confirm ? `
+    <div style="background:#fff8e1;border:2px solid #f6c644;border-radius:8px;padding:12px 16px;margin:0 0 16px;color:#b45309;font-weight:bold;font-size:14px;">
+      ⚠️ Nachtfahrt – Kunde wurde gebeten, telefonisch zu bestätigen.
+    </div>` : ''}
+
     <div class="section">
       <h3>Fahrtdetails</h3>
       <div class="row"><span class="label">Abholung:</span><span class="value">${booking.pickup_address}</span></div>
