@@ -484,12 +484,28 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     return [...airportKeywords, ...nearbyAreas].some(kw => lower.includes(kw));
   }
 
+  function isTooSoon(tripDate: string, tripTime: string): boolean {
+    if (!tripDate || !tripTime) return false;
+    const tripDt = new Date(`${tripDate}T${tripTime}:00`);
+    const minDt = new Date(Date.now() + minAdvanceHours * 3600 * 1000);
+    return tripDt < minDt;
+  }
+
+  const advanceWarning = date && time && isTooSoon(date, time)
+    ? (locale === 'tr'
+        ? `Rezervasyon en az ${minAdvanceHours} saat önceden yapılmalıdır.`
+        : locale === 'en'
+          ? `Bookings must be made at least ${minAdvanceHours} hours in advance.`
+          : `Buchungen müssen mindestens ${minAdvanceHours} Stunden im Voraus erfolgen.`)
+    : '';
+
   async function handleSearch() {
     const resolvedPickup = pickupVal || pickup;
     const resolvedDropoff = dropoffVal || dropoff;
     if (!resolvedPickup) { setFormError(l.errFrom); return; }
     if (!resolvedDropoff) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
+    if (isTooSoon(date, time)) return;
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
     const isAirportTrip = isAirportArea(resolvedPickup) || isAirportArea(resolvedDropoff);
     if (!isAirportTrip && !stadtfahrtEnabled) {
