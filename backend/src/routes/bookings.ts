@@ -387,6 +387,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       promo_code: validatedPromoCode || undefined,
       discount_amount: promoDiscount > 0 ? promoDiscount : undefined,
       base_total: promoDiscount > 0 ? baseTotal : undefined,
+      night_confirm: nightConfirm,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
