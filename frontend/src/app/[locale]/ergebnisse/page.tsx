@@ -283,19 +283,23 @@ function ResultsContent() {
   const [pgTarife, setPgTarife] = useState<PgTarif[]>([]);
   const [pgExclusions, setPgExclusions] = useState<string[]>([]);
   const [ipBypass, setIpBypass] = useState(false);
+  const [pgConfigLoaded, setPgConfigLoaded] = useState(false);
+  const [pgCoordsLoaded, setPgCoordsLoaded] = useState(false);
   useEffect(() => {
-    fetch(`${API_URL}/pflichtgebiet`)
-      .then(r => r.json())
-      .then((d: { config: PgConfig | null; tarife: PgTarif[] }) => { setPgConfig(d.config); setPgTarife(d.tarife || []); })
-      .catch(() => {});
-    fetch(`${API_URL}/pflichtgebiet/exclusions`)
-      .then(r => r.json())
-      .then((rows: { plz: string }[]) => setPgExclusions(rows.map(r => r.plz)))
-      .catch(() => {});
-    fetch(`${API_URL}/pflichtgebiet/ip-check`)
-      .then(r => r.json())
-      .then(d => { if (d.bypass === true) setIpBypass(true); })
-      .catch(() => {});
+    Promise.all([
+      fetch(`${API_URL}/pflichtgebiet`)
+        .then(r => r.json())
+        .then((d: { config: PgConfig | null; tarife: PgTarif[] }) => { setPgConfig(d.config); setPgTarife(d.tarife || []); })
+        .catch(() => {}),
+      fetch(`${API_URL}/pflichtgebiet/exclusions`)
+        .then(r => r.json())
+        .then((rows: { plz: string }[]) => setPgExclusions(rows.map(r => r.plz)))
+        .catch(() => {}),
+      fetch(`${API_URL}/pflichtgebiet/ip-check`)
+        .then(r => r.json())
+        .then(d => { if (d.bypass === true) setIpBypass(true); })
+        .catch(() => {}),
+    ]).finally(() => setPgConfigLoaded(true));
   }, []);
 
   // Geocode pickup & dropoff for zone detection (only when feature is enabled)
