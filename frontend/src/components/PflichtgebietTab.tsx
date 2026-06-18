@@ -70,6 +70,8 @@ export default function PflichtgebietTab({ token }: { token: string }) {
         betriebssitz_enabled: config.betriebssitz_enabled,
         betriebssitz_lat: config.betriebssitz_lat,
         betriebssitz_lng: config.betriebssitz_lng,
+        ip_bypass_enabled: config.ip_bypass_enabled,
+        ip_bypass_distance_km: config.ip_bypass_distance_km,
       });
       setConfig(updated);
       flash('Einstellungen gespeichert ✓');
