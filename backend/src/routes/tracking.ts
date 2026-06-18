@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import http from 'http';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
 
 const router = Router();
 
