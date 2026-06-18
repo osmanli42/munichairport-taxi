@@ -152,6 +152,29 @@ router.put('/tarife/:vehicle_type', authenticateAdmin, async (req: AuthRequest, 
   }
 });
 
+// ─── IP-based bypass: far-away visitors see normal prices ───
+
+router.get('/ip-check', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [cfg] = await query<ConfigRow>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+    if (!cfg || !cfg.ip_bypass_enabled) {
+      res.json({ bypass: false });
+      return;
+    }
+    const coords = await getVisitorCoords(req);
+    if (coords.lat == null || coords.lng == null) {
+      res.json({ bypass: false });
+      return;
+    }
+    const dist = haversineKm(coords.lat, coords.lng, cfg.betriebssitz_lat, cfg.betriebssitz_lng);
+    const threshold = cfg.ip_bypass_distance_km || 100;
+    res.json({ bypass: dist > threshold, distance_km: Math.round(dist), threshold_km: threshold });
+  } catch (error) {
+    console.error('IP bypass check error:', error);
+    res.json({ bypass: false });
+  }
+});
+
 // ─── PLZ Exclusions (places within radius but legally outside the zone) ───
 
 interface ExclusionRow {
