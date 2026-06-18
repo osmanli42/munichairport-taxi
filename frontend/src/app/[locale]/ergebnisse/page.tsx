@@ -302,25 +302,30 @@ function ResultsContent() {
     ]).finally(() => setPgConfigLoaded(true));
   }, []);
 
-  // Geocode pickup & dropoff for zone detection (only when feature is enabled)
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
-    if (!pgConfig || !pgConfig.enabled) return;
+    setPgCoordsLoaded(false);
+    if (!pgConfigLoaded) return;
+    if (!pgConfig || !pgConfig.enabled) { setPgCoordsLoaded(true); return; }
     let cancelled = false;
+    let pending = 2;
+    const done = () => { if (--pending === 0 && !cancelled) setPgCoordsLoaded(true); };
     const geo = async (addr: string, set: (c: { lat: number; lng: number } | null) => void) => {
-      if (!addr) return set(null);
+      if (!addr) { set(null); done(); return; }
       try {
         const r = await fetch(`${API_URL}/maps/geocode?address=${encodeURIComponent(addr)}`);
-        if (!r.ok) return set(null);
+        if (!r.ok) { if (!cancelled) set(null); done(); return; }
         const c = await r.json();
         if (!cancelled && typeof c.lat === 'number') set({ lat: c.lat, lng: c.lng });
+        else if (!cancelled) set(null);
       } catch { if (!cancelled) set(null); }
+      done();
     };
     geo(pickup, setPickupCoords);
     geo(dropoff, setDropoffCoords);
     return () => { cancelled = true; };
-  }, [pgConfig, pickup, dropoff]);
+  }, [pgConfigLoaded, pgConfig, pickup, dropoff]);
 
   // Both endpoints must be inside the zone AND the road distance must not exceed
   // the radius. Haversine can be shorter than road distance (mountains, lakes,
