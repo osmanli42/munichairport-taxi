@@ -136,7 +136,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
     ${booking.night_confirm ? `
     <div style="background:#fff8e1;border:2px solid #f6c644;border-radius:8px;padding:12px 16px;margin:0 0 16px;color:#b45309;font-weight:bold;font-size:14px;">
-      ⚠️ Nachtfahrt – Kunde wurde gebeten, telefonisch zu bestätigen.
+      ⚠️ Buchung außerhalb der Bürozeiten – Kunde wurde gebeten, telefonisch zu bestätigen.
     </div>` : ''}
 
     <div class="section">
