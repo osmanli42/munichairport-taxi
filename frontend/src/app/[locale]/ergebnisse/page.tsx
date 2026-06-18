@@ -282,6 +282,7 @@ function ResultsContent() {
   const [pgConfig, setPgConfig] = useState<PgConfig | null>(null);
   const [pgTarife, setPgTarife] = useState<PgTarif[]>([]);
   const [pgExclusions, setPgExclusions] = useState<string[]>([]);
+  const [ipBypass, setIpBypass] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/pflichtgebiet`)
       .then(r => r.json())
@@ -290,6 +291,10 @@ function ResultsContent() {
     fetch(`${API_URL}/pflichtgebiet/exclusions`)
       .then(r => r.json())
       .then((rows: { plz: string }[]) => setPgExclusions(rows.map(r => r.plz)))
+      .catch(() => {});
+    fetch(`${API_URL}/pflichtgebiet/ip-check`)
+      .then(r => r.json())
+      .then(d => { if (d.bypass === true) setIpBypass(true); })
       .catch(() => {});
   }, []);
 
