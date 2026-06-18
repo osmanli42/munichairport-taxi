@@ -1278,6 +1278,38 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
+                {/* Min advance booking hours */}
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Minimum Vorlaufzeit (Stunden)</label>
+                  <p className="text-xs text-gray-500 mb-2">Buchungen müssen mindestens diese Anzahl Stunden vor der Fahrt erfolgen. Standard: 1,5 Std.</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={settings.min_advance_hours || '1.5'}
+                      onChange={(e) => setSettings(prev => ({ ...prev, min_advance_hours: e.target.value }))}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <span className="text-gray-500 text-sm">Std.</span>
+                    <button
+                      onClick={async () => {
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ min_advance_hours: settings.min_advance_hours });
+                          setSettings(updated);
+                          setPriceSuccess('Vorlaufzeit aktualisiert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      disabled={settingsSaving}
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {settingsSaving ? '...' : 'Speichern'}
+                    </button>
+                  </div>
+                </div>
                 {/* Zwischenstopp toggle */}
                 <div>
                   <div className="flex items-center justify-between">
