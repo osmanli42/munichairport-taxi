@@ -227,6 +227,12 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
     await conn.execute(`INSERT IGNORE INTO pflichtgebiet_config (id) VALUES (1)`);
+    try {
+      await conn.execute(`ALTER TABLE pflichtgebiet_config ADD COLUMN ip_bypass_enabled TINYINT NOT NULL DEFAULT 0`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE pflichtgebiet_config ADD COLUMN ip_bypass_distance_km DOUBLE NOT NULL DEFAULT 100`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     // Pflichtfahrgebiet: mandatory tariff per vehicle type
     await conn.execute(`
