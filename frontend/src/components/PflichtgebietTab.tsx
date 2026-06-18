@@ -219,6 +219,30 @@ export default function PflichtgebietTab({ token }: { token: string }) {
               </div>
             </div>
           </div>
+
+          {/* IP-Bypass */}
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-semibold text-gray-800">IP-Bypass (Fernbesucher)</label>
+                <p className="text-xs text-gray-500 mt-0.5">Weit entfernte Besucher sehen normale Preise statt Pflichtgebiet-Tarife</p>
+              </div>
+              <Toggle on={config.ip_bypass_enabled === 1} onClick={() => patch({ ip_bypass_enabled: config.ip_bypass_enabled ? 0 : 1 })} />
+            </div>
+            <div className={cn('transition-opacity', config.ip_bypass_enabled === 1 ? '' : 'opacity-50 pointer-events-none')}>
+              <label className="block text-xs text-gray-500 mb-1">Entfernung vom Betriebssitz (Schwellenwert)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" step="10" min="10"
+                  value={config.ip_bypass_distance_km}
+                  onChange={(e) => patch({ ip_bypass_distance_km: e.target.value === '' ? 100 : parseFloat(e.target.value) })}
+                  className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                />
+                <span className="text-gray-500 text-sm">km</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Besucher weiter als {config.ip_bypass_distance_km || 100} km vom Betriebssitz sehen keine Pflichtgebiet-Preise</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end pt-2">
