@@ -53,7 +53,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const toggles = ['enabled', 'roundtrip_discount_enabled', 'airport_enabled', 'betriebssitz_enabled'];
+    const toggles = ['enabled', 'roundtrip_discount_enabled', 'airport_enabled', 'betriebssitz_enabled', 'ip_bypass_enabled'];
     for (const t of toggles) {
       if (b[t] !== undefined && !['0', '1', 0, 1, true, false].includes(b[t])) {
         res.status(400).json({ error: `${t} must be 0 or 1` });
