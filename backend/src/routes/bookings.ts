@@ -332,6 +332,27 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
+    // Determine whether this is a night-time booking that needs phone confirmation
+    let nightConfirm = false;
+    try {
+      const nightRows = await query<{ setting_key: string; setting_value: string }>(
+        "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('night_confirm_enabled', 'night_confirm_start', 'night_confirm_end')"
+      );
+      const nightCfg: Record<string, string> = {};
+      for (const r of nightRows) nightCfg[r.setting_key] = r.setting_value;
+      const nightEnabled = (nightCfg['night_confirm_enabled'] ?? '1') === '1';
+      const nightStart = parseInt(nightCfg['night_confirm_start'] ?? '22', 10);
+      const nightEnd = parseInt(nightCfg['night_confirm_end'] ?? '7', 10);
+      const pickupHour = parseInt(String(pickup_datetime).split('T')[1] ?? '', 10);
+      if (nightEnabled && !isNaN(pickupHour)) {
+        if (nightStart === nightEnd) nightConfirm = false;
+        else if (nightStart < nightEnd) nightConfirm = pickupHour >= nightStart && pickupHour < nightEnd;
+        else nightConfirm = pickupHour >= nightStart || pickupHour < nightEnd;
+      }
+    } catch (e) {
+      console.error('Night-confirm check failed:', e);
+    }
+
     // Send notifications asynchronously
     const notificationData: BookingNotificationData = {
       booking_number,
