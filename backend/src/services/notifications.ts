@@ -313,8 +313,8 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       returnTrip: 'Dönüş',
       greeting: 'Merhaba',
       footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-      nightTitle: 'Mesai dışı rezervasyon – lütfen telefonla da arayın',
-      nightMsg: 'Rezervasyonunuz şu an mesai saatlerimiz dışında bize ulaşıyor. Yolculuğunuzun kesin olarak planlanması ve bir şoförün hazır olması için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:',
+      nightTitle: 'Garanti olması için lütfen telefonla da arayın',
+      nightMsg: '7/24 hizmetinizdeyiz. Bu geç saatte verdiğiniz rezervasyonun kesinlikle planlandığından ve bir şoförün zamanında hazır olduğundan emin olmak için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:',
     },
   };
 
