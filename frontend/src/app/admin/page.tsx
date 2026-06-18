@@ -1315,7 +1315,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <label className="font-semibold text-gray-700">🌙 Nacht-Bestätigung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Buchungen, die in diesem Zeitfenster (Münchner Zeit) eingehen — also außerhalb der Bürozeiten — bitten den Kunden, zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Maßgeblich ist der Zeitpunkt der Buchung, nicht die Abfahrtszeit. Standard: 22–07 Uhr.</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Buchungen, die in diesem Zeitfenster (Münchner Zeit) eingehen, bitten den Kunden, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Wir sind zwar rund um die Uhr erreichbar, möchten die Fahrt aber garantiert einplanen. Maßgeblich ist der Zeitpunkt der Buchung, nicht die Abfahrtszeit. Standard: 22–07 Uhr.</p>
                     </div>
                     <button
                       onClick={async () => {
