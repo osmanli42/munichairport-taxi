@@ -192,7 +192,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         if (!pickupCoords) pickupCoords = await geocodeAddress(pickup_address);
         if (!dropoffCoords) dropoffCoords = await geocodeAddress(dropoff_address);
 
-        if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        let ipBypass = false;
+        if (pgCfg.ip_bypass_enabled) {
+          const vc = await getVisitorCoords(req);
+          if (vc.lat != null && vc.lng != null) {
+            ipBypass = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
+          }
+        }
+
+        if (!ipBypass && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
           const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
           const excludedSet = new Set(excludedRows.map(r => r.plz));
           const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
