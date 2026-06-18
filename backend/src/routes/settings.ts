@@ -33,12 +33,12 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
 
-      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled') && !['0', '1'].includes(String(value))) {
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled') && !['0', '1'].includes(String(value))) {
         res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }
@@ -55,6 +55,14 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         const num = parseFloat(String(value));
         if (isNaN(num) || num < 0) {
           res.status(400).json({ error: 'min_advance_hours must be a positive number' });
+          return;
+        }
+      }
+
+      if (key === 'night_confirm_start' || key === 'night_confirm_end') {
+        const num = parseInt(String(value), 10);
+        if (isNaN(num) || num < 0 || num > 24) {
+          res.status(400).json({ error: `${key} must be an integer between 0 and 24` });
           return;
         }
       }
