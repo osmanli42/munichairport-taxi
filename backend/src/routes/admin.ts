@@ -594,7 +594,9 @@ router.get('/visitor-geo-stats', authenticateAdmin, async (req: AuthRequest, res
   try {
     const range = (req.query.range as string) || '30d';
     let dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
-    if (range === '6m') dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
+    if (range === 'today') dateSql = 'AND DATE(first_seen) = CURDATE()';
+    else if (range === '7d') dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+    else if (range === '6m') dateSql = 'AND first_seen >= DATE_SUB(NOW(), INTERVAL 6 MONTH)';
     else if (range === 'all') dateSql = '';
 
     const visitorCountries = await query(`
