@@ -495,7 +495,7 @@ export default function AdminPage() {
         adminApi.getTodayBookings().then(setTodayBookings).catch(() => {});
       }
       if (activeTab === 'bookings') loadBookings();
-      if (activeTab === 'statistics') loadDetailedStats();
+      if (activeTab === 'statistics') { loadDetailedStats(); loadGeoStats('30d'); }
       if (activeTab === 'prices') {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(s)).catch(() => {});
