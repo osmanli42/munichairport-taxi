@@ -780,6 +780,22 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
           <AlertCircle size={14} /> {formError}
         </div>
       )}
+
+      {/* Advance booking warning */}
+      {advanceWarning && !formError && (
+        <div className="flex items-start gap-3 mt-3 px-4 py-3 bg-amber-500/20 text-amber-100 text-sm rounded-xl backdrop-blur-sm">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            {advanceWarning}{' '}
+            {locale === 'tr'
+              ? <>Acil rezervasyonlar için lütfen bizi arayın: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
+              : locale === 'en'
+                ? <>For urgent bookings please call us: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
+                : <>Für kurzfristige Buchungen rufen Sie uns bitte an: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
+            }
+          </span>
+        </div>
+      )}
     </div>
   );
 }
