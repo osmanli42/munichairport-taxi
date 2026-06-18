@@ -1310,6 +1310,77 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
+                {/* Night confirmation */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="font-semibold text-gray-700">🌙 Nacht-Bestätigung</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Bei Fahrten in den Nachtstunden wird der Kunde gebeten, die Buchung zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: 22–07 Uhr.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.night_confirm_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ night_confirm_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Nacht-Bestätigung aktiviert' : 'Nacht-Bestätigung deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.night_confirm_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.night_confirm_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                  {settings.night_confirm_enabled === '1' && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-gray-600">Von</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        value={settings.night_confirm_start || '22'}
+                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_start: e.target.value }))}
+                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                      <span className="text-sm text-gray-600">Uhr bis</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        value={settings.night_confirm_end || '7'}
+                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_end: e.target.value }))}
+                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                      <span className="text-sm text-gray-600">Uhr</span>
+                      <button
+                        onClick={async () => {
+                          setSettingsSaving(true);
+                          try {
+                            const updated = await adminApi.updateSettings({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end });
+                            setSettings(updated);
+                            setPriceSuccess('Nachtzeitraum aktualisiert');
+                            setTimeout(() => setPriceSuccess(''), 3000);
+                          } catch { }
+                          setSettingsSaving(false);
+                        }}
+                        disabled={settingsSaving}
+                        className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {settingsSaving ? '...' : 'Speichern'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {/* Zwischenstopp toggle */}
                 <div>
                   <div className="flex items-center justify-between">
