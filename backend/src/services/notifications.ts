@@ -40,6 +40,7 @@ export interface BookingNotificationData {
   promo_code?: string;
   discount_amount?: number;
   base_total?: number;
+  night_confirm?: boolean;
 }
 
 function buildPriceBlock(booking: BookingNotificationData, lang: string): string {
