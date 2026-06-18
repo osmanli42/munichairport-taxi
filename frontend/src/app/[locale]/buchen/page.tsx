@@ -74,8 +74,8 @@ function BuchenContent() {
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
-  // Booking placed outside office hours (current Munich time) → ask customer to
-  // also confirm by phone, because no one may be watching the inbox right now.
+  // Booking placed during night hours (current Munich time) → as a safety measure
+  // ask the customer to also confirm by phone, so the late-hour trip is guaranteed.
   const munichHourNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
   const isNightBooking = nightConfirmEnabled && !isNaN(munichHourNow) && (
     nightStart === nightEnd ? false
