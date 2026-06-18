@@ -2366,7 +2366,7 @@ export default function AdminPage() {
                     SE: '🇸🇪', NO: '🇳🇴', DK: '🇩🇰', FI: '🇫🇮', BE: '🇧🇪', PT: '🇵🇹', GR: '🇬🇷', HU: '🇭🇺', RO: '🇷🇴', HR: '🇭🇷',
                     IE: '🇮🇪', SK: '🇸🇰', BG: '🇧🇬', RS: '🇷🇸', UA: '🇺🇦', IL: '🇮🇱', AE: '🇦🇪', SA: '🇸🇦', MX: '🇲🇽', AR: '🇦🇷',
                   };
-                  const rangeLabel = { '30d': 'Letzte 30 Tage', '6m': 'Letzte 6 Monate', 'all': 'Gesamt' };
+                  const rangeLabel: Record<string, string> = { 'today': 'Heute', '7d': 'Letzte 7 Tage', '30d': 'Letzte 30 Tage', '6m': 'Letzte 6 Monate', 'all': 'Gesamt' };
                   const countries = geoStats?.visitorCountries || [];
                   const cities = geoStats?.visitorCities || [];
                   const totalSessions = countries.reduce((s: number, d: any) => s + Number(d.sessions), 0);
@@ -2378,13 +2378,13 @@ export default function AdminPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-gray-900">Ziyaretçi Coğrafyası</h3>
                         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-                          {(['30d', '6m', 'all'] as const).map(r => (
+                          {(['today', '7d', '30d', '6m', 'all'] as const).map(r => (
                             <button
                               key={r}
                               onClick={() => { setGeoRange(r); loadGeoStats(r); }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${geoRange === r ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                              {r === '30d' ? '30 Tage' : r === '6m' ? '6 Monate' : 'Gesamt'}
+                              {r === 'today' ? 'Heute' : r === '7d' ? '7 Tage' : r === '30d' ? '30 Tage' : r === '6m' ? '6 Mon.' : 'Gesamt'}
                             </button>
                           ))}
                         </div>
