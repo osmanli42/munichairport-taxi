@@ -325,7 +325,7 @@ function ResultsContent() {
   const pickupPlz = pickup.match(/\b(\d{5})\b/)?.[1];
   const dropoffPlz = dropoff.match(/\b(\d{5})\b/)?.[1];
   const pgPlzExcluded = pgExclusions.includes(pickupPlz || '') || pgExclusions.includes(dropoffPlz || '');
-  const pgInZone = !pgPlzExcluded && !!(pgConfig && pgConfig.enabled && distanceKm <= pgRadius && (
+  const pgInZone = !ipBypass && !pgPlzExcluded && !!(pgConfig && pgConfig.enabled && distanceKm <= pgRadius && (
     (pgPointInZone(pickupCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(pickup))) &&
     (pgPointInZone(dropoffCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(dropoff)))
   ));
