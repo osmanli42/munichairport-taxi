@@ -518,7 +518,7 @@ export default function AdminPage() {
           .then(r => r.json()).then(setPromotions).catch(() => {});
       }
     }
-  }, [isLoggedIn, activeTab, token, loadStats, loadBookings, loadPrices, loadDetailedStats, loadMarketingCustomers, marketingCustomers.length]);
+  }, [isLoggedIn, activeTab, token, loadStats, loadBookings, loadPrices, loadDetailedStats, loadGeoStats, loadMarketingCustomers, marketingCustomers.length]);
 
   async function updateStatus(id: number, status: string) {
     try {
