@@ -85,29 +85,6 @@ async function ensureTables(): Promise<void> {
   tablesReady = true;
 }
 
-// Geo lookup using ip-api.com (free, no key, 45 req/min)
-async function geoFromIp(ip: string): Promise<{ country: string; city: string; lat: number | null; lng: number | null }> {
-  return new Promise((resolve) => {
-    const fallback = { country: '', city: '', lat: null, lng: null };
-    const timeout = setTimeout(() => resolve(fallback), 2000);
-    http.get(`http://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon`, (res) => {
-      let data = '';
-      res.on('data', (c: string) => data += c);
-      res.on('end', () => {
-        clearTimeout(timeout);
-        try {
-          const j = JSON.parse(data);
-          resolve({
-            country: j.countryCode || '',
-            city: j.city || '',
-            lat: j.lat != null ? Number(j.lat) : null,
-            lng: j.lon != null ? Number(j.lon) : null,
-          });
-        } catch { resolve(fallback); }
-      });
-    }).on('error', () => { clearTimeout(timeout); resolve(fallback); });
-  });
-}
 
 // Daily-rotating salt for IP hashing — same IP gets same hash within a day,
 // but changes daily. Prevents cross-day tracking. GDPR-friendly.
