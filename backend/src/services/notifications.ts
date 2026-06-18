@@ -277,8 +277,8 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       returnTrip: 'Return',
       greeting: 'Hello',
       footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-      nightTitle: 'Night trip – please also confirm by phone',
-      nightMsg: 'Your trip is during night hours. To make absolutely sure your booking reaches us and a driver is ready, please also give us a quick call:',
+      nightTitle: 'Booking outside office hours – please also call us',
+      nightMsg: 'Your booking is reaching us outside our office hours. To make sure your trip is scheduled and a driver is ready, please also give us a quick call:',
     },
     tr: {
       subject: `Rezervasyon Onayı ${booking.booking_number} - Flughafen-muenchen.TAXI`,
