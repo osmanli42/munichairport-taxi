@@ -2342,6 +2342,94 @@ export default function AdminPage() {
                     })()}
                   </div>
                 </div>
+
+                {/* Visitor Countries + Cities */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Besucher nach Land</h3>
+                    <p className="text-xs text-gray-400 mb-4">Letzte 30 Tage · basierend auf IP-Geolokalisierung</p>
+                    {(() => {
+                      const data = (detailedStats.visitorCountries as Array<{ country: string; sessions: number; visitors: number }>) || [];
+                      const totalSessions = data.reduce((s, d) => s + d.sessions, 0);
+                      const flags: Record<string, string> = {
+                        DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭', US: '🇺🇸', GB: '🇬🇧', FR: '🇫🇷', IT: '🇮🇹', NL: '🇳🇱', ES: '🇪🇸', PL: '🇵🇱',
+                        TR: '🇹🇷', CZ: '🇨🇿', RU: '🇷🇺', CN: '🇨🇳', JP: '🇯🇵', KR: '🇰🇷', IN: '🇮🇳', BR: '🇧🇷', CA: '🇨🇦', AU: '🇦🇺',
+                        SE: '🇸🇪', NO: '🇳🇴', DK: '🇩🇰', FI: '🇫🇮', BE: '🇧🇪', PT: '🇵🇹', GR: '🇬🇷', HU: '🇭🇺', RO: '🇷🇴', HR: '🇭🇷',
+                        IE: '🇮🇪', SK: '🇸🇰', BG: '🇧🇬', RS: '🇷🇸', UA: '🇺🇦', IL: '🇮🇱', AE: '🇦🇪', SA: '🇸🇦', MX: '🇲🇽', AR: '🇦🇷',
+                      };
+                      const maxSessions = Math.max(...data.map(d => d.sessions), 1);
+                      if (data.length === 0) return <div className="text-gray-400 text-sm text-center py-4">Keine Daten</div>;
+                      return (
+                        <div className="space-y-2">
+                          {data.map((d, i) => {
+                            const pct = totalSessions > 0 ? ((d.sessions / totalSessions) * 100).toFixed(1) : '0';
+                            const barPct = (d.sessions / maxSessions) * 100;
+                            const colors = ['bg-blue-600','bg-blue-500','bg-blue-400','bg-sky-500','bg-sky-400','bg-cyan-500'];
+                            return (
+                              <div key={d.country} className="flex items-center gap-3">
+                                <div className="w-16 text-sm shrink-0 flex items-center gap-1.5">
+                                  <span>{flags[d.country] || '🏳️'}</span>
+                                  <span className="text-xs font-medium text-gray-600">{d.country}</span>
+                                </div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full ${colors[i % colors.length]} rounded-full`} style={{ width: `${barPct}%` }} />
+                                  {d.sessions > 0 && (
+                                    <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                      <span className="text-xs font-bold text-white drop-shadow">{d.sessions}</span>
+                                      <span className="text-[10px] text-white/70 drop-shadow">{pct}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="w-16 text-xs text-gray-400 shrink-0 text-right">{d.visitors} Bes.</div>
+                              </div>
+                            );
+                          })}
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+                            <span>Gesamt: {totalSessions} Sitzungen</span>
+                            <span>{data.length} Länder</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-1">Top Städte</h3>
+                    <p className="text-xs text-gray-400 mb-4">Letzte 30 Tage · Top 15 nach Sitzungen</p>
+                    {(() => {
+                      const data = (detailedStats.visitorCities as Array<{ city: string; country: string; sessions: number }>) || [];
+                      const maxSessions = Math.max(...data.map(d => d.sessions), 1);
+                      const flags: Record<string, string> = {
+                        DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭', US: '🇺🇸', GB: '🇬🇧', FR: '🇫🇷', IT: '🇮🇹', NL: '🇳🇱', TR: '🇹🇷',
+                      };
+                      if (data.length === 0) return <div className="text-gray-400 text-sm text-center py-4">Keine Daten</div>;
+                      return (
+                        <div className="space-y-2">
+                          {data.map((d, i) => {
+                            const barPct = (d.sessions / maxSessions) * 100;
+                            const colors = ['bg-emerald-600','bg-emerald-500','bg-emerald-400','bg-teal-500','bg-teal-400','bg-cyan-500'];
+                            return (
+                              <div key={`${d.city}-${d.country}`} className="flex items-center gap-3">
+                                <div className="w-36 text-xs shrink-0 flex items-center gap-1.5 truncate">
+                                  <span className="text-sm">{flags[d.country] || '🏳️'}</span>
+                                  <span className="font-medium text-gray-600 truncate">{d.city}</span>
+                                </div>
+                                <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden">
+                                  <div className={`h-full ${colors[i % colors.length]} rounded-full`} style={{ width: `${barPct}%` }} />
+                                  {d.sessions > 0 && (
+                                    <div className="absolute inset-0 flex items-center px-3">
+                                      <span className="text-xs font-bold text-white drop-shadow">{d.sessions}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
               </>
             )}
           </div>
