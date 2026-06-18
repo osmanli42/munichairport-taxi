@@ -404,18 +404,18 @@ function BuchenContent() {
             </div>
 
             <div className="p-8">
-              {/* Night-trip phone confirmation notice */}
-              {isNightTrip && (
+              {/* Out-of-office-hours (night) phone confirmation notice */}
+              {isNightBooking && (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 mb-6">
                   <p className="font-bold text-amber-800 mb-1">
-                    🌙 {locale === 'tr' ? 'Gece yolculuğu – lütfen telefonla da teyit edin' : locale === 'en' ? 'Night trip – please also confirm by phone' : 'Nachtfahrt – bitte zusätzlich telefonisch bestätigen'}
+                    🌙 {locale === 'tr' ? 'Mesai dışı rezervasyon – lütfen telefonla da arayın' : locale === 'en' ? 'Booking outside office hours – please also call us' : 'Buchung außerhalb der Bürozeiten – bitte zusätzlich anrufen'}
                   </p>
                   <p className="text-sm text-amber-700 mb-3">
                     {locale === 'tr'
-                      ? 'Yolculuğunuz gece saatlerinde. Rezervasyonunuzun bize ulaştığından ve bir şoförün hazır olduğundan emin olmak için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:'
+                      ? 'Rezervasyonunuz şu an mesai saatlerimiz dışında bize ulaşıyor. Yolculuğunuzun kesin olarak planlanması ve bir şoförün hazır olması için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:'
                       : locale === 'en'
-                        ? 'Your trip is during night hours. To make absolutely sure your booking reaches us and a driver is ready, please also give us a quick call:'
-                        : 'Ihre Fahrt liegt in den Nachtstunden. Um ganz sicherzugehen, dass Ihre Buchung bei uns ankommt und ein Fahrer bereitsteht, rufen Sie uns bitte zusätzlich kurz an:'}
+                        ? 'Your booking is reaching us outside our office hours. To make sure your trip is scheduled and a driver is ready, please also give us a quick call:'
+                        : 'Ihre Buchung erreicht uns gerade außerhalb unserer Bürozeiten. Damit Ihre Fahrt sicher eingeplant wird und ein Fahrer bereitsteht, rufen Sie uns bitte zusätzlich kurz an:'}
                   </p>
                   <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold px-5 py-2.5 rounded-lg transition-colors">
                     <Phone size={16} /> {CONTACT_INFO.phone}
