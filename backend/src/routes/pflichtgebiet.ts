@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { getVisitorCoords } from '../utils/ipGeo';
+import { haversineKm } from '../utils/geo';
 
 const router = Router();
 
