@@ -229,6 +229,18 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadGeoStats = useCallback(async (range: '30d' | '6m' | 'all') => {
+    setGeoLoading(true);
+    try {
+      const data = await adminApi.getVisitorGeoStats(range);
+      setGeoStats(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGeoLoading(false);
+    }
+  }, []);
+
   const loadBookings = useCallback(async (page = 1) => {
     setLoading(true);
     try {
