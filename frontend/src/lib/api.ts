@@ -312,7 +312,7 @@ export const adminApi = {
     return response.data;
   },
 
-  getVisitorGeoStats: async (range: '30d' | '6m' | 'all') => {
+  getVisitorGeoStats: async (range: 'today' | '7d' | '30d' | '6m' | 'all') => {
     const response = await api.get(`/admin/visitor-geo-stats?range=${range}`);
     return response.data;
   },
