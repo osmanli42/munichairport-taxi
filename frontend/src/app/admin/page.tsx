@@ -3842,26 +3842,59 @@ export default function AdminPage() {
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gepäck (Stück)</label>
                     <input type="number" min="0" value={editForm.luggage_count ?? 0} onChange={(e) => setEditForm(p => ({ ...p, luggage_count: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrrad (Anzahl)</label>
-                    <input type="number" min="0" value={editForm.fahrrad_count ?? 0} onChange={(e) => setEditForm(p => ({ ...p, fahrrad_count: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                  </div>
-                  <div className="flex items-center gap-2 col-span-full">
-                    <input
-                      type="checkbox"
-                      id="edit-child-seat"
-                      checked={!!editForm.child_seat}
-                      onChange={(e) => setEditForm(p => ({ ...p, child_seat: e.target.checked ? 1 : 0 }))}
-                      className="w-4 h-4 text-primary-600 rounded"
-                    />
-                    <label htmlFor="edit-child-seat" className="text-sm text-gray-700">Kindersitz</label>
-                  </div>
-                  {!!editForm.child_seat && (
-                    <div className="col-span-full">
-                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Kindersitz Details</label>
-                      <input type="text" value={editForm.child_seat_details || ''} onChange={(e) => setEditForm(p => ({ ...p, child_seat_details: e.target.value }))} placeholder="Alter, Gewicht des Kindes..." className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  <div className="col-span-full">
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🚲</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Fahrrad</p>
+                          <p className="text-xs text-gray-400">{(() => { const fp = prices.find(p => p.vehicle_type === (editForm.vehicle_type || 'kombi'))?.fahrrad_price; return fp ? `${fp.toFixed(2).replace('.', ',')} € / Stk.` : ''; })()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setEditForm(p => ({ ...p, fahrrad_count: Math.max(0, (p.fahrrad_count ?? 0) - 1) }))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center text-sm">−</button>
+                        <span className="w-6 text-center text-sm font-bold text-gray-800">{editForm.fahrrad_count ?? 0}</span>
+                        <button type="button" onClick={() => setEditForm(p => ({ ...p, fahrrad_count: Math.min(4, (p.fahrrad_count ?? 0) + 1) }))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center text-sm">+</button>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <div className="col-span-full">
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">👶</span>
+                        <p className="text-sm font-medium text-gray-700">Kindersitz <span className="text-xs text-green-600 font-normal">Kostenlos</span></p>
+                      </div>
+                      <button type="button" onClick={() => {
+                        const newVal = !editForm.child_seat;
+                        setEditForm(p => ({ ...p, child_seat: newVal ? 1 : 0, child_seat_details: newVal ? buildChildSeatDetails(editChildSeatBabyschale, editChildSeatKindersitz, editChildSeatSitzerhoehung) : '' }));
+                        if (!newVal) { setEditChildSeatBabyschale(0); setEditChildSeatKindersitz(0); setEditChildSeatSitzerhoehung(0); }
+                      }} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editForm.child_seat ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editForm.child_seat ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    {!!editForm.child_seat && (
+                      <div className="mt-2 bg-green-50 rounded-xl p-3 border border-green-100 space-y-2">
+                        <p className="text-xs text-gray-500 font-medium">Bitte wählen Sie die benötigten Kindersitze:</p>
+                        {[
+                          { label: 'Babyschale', sub: '0–12 Monate', val: editChildSeatBabyschale, set: setEditChildSeatBabyschale },
+                          { label: 'Kindersitz', sub: '1–4 Jahre, bis 18 kg', val: editChildSeatKindersitz, set: setEditChildSeatKindersitz },
+                          { label: 'Sitzerhöhung', sub: '4–12 Jahre, bis 36 kg', val: editChildSeatSitzerhoehung, set: setEditChildSeatSitzerhoehung },
+                        ].map(({ label, sub, val, set }) => (
+                          <div key={label} className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{label}</p>
+                              <p className="text-xs text-gray-400">{sub}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => { const n = Math.max(0, val - 1); set(n); setEditForm(p => ({ ...p, child_seat_details: buildChildSeatDetails(label === 'Babyschale' ? n : editChildSeatBabyschale, label === 'Kindersitz' ? n : editChildSeatKindersitz, label === 'Sitzerhöhung' ? n : editChildSeatSitzerhoehung) })); }} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">−</button>
+                              <span className="w-5 text-center text-sm font-bold text-gray-800">{val}</span>
+                              <button type="button" onClick={() => { const n = Math.min(3, val + 1); set(n); setEditForm(p => ({ ...p, child_seat_details: buildChildSeatDetails(label === 'Babyschale' ? n : editChildSeatBabyschale, label === 'Kindersitz' ? n : editChildSeatKindersitz, label === 'Sitzerhöhung' ? n : editChildSeatSitzerhoehung) })); }} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">+</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className="col-span-full">
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zwischenstopp</label>
                     <input type="text" value={editForm.zwischenstopp_address || ''} onChange={(e) => setEditForm(p => ({ ...p, zwischenstopp_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
