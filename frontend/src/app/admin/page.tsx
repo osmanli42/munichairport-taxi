@@ -596,15 +596,28 @@ export default function AdminPage() {
       body: JSON.stringify({ origin: editPickupValid, destination: editDropoffValid }),
     })
       .then(r => r.json())
-      .then(data => {
-        if (data.distance_km) {
-          const km: number = data.distance_km;
+      .then(async distData => {
+        if (distData.distance_km) {
+          const km: number = distData.distance_km;
           setEditDistanceKm(km);
-          setEditForm(prev => ({ ...prev, distance_km: km, duration_minutes: data.duration_minutes || prev.duration_minutes }));
-          const priceRow = prices.find(p => p.vehicle_type === vehicleType);
-          if (priceRow) {
-            const calc = Math.ceil((priceRow.base_price + km * priceRow.price_per_km) * 2) / 2;
-            setEditForm(prev => ({ ...prev, price: calc }));
+          setEditForm(prev => ({ ...prev, distance_km: km, duration_minutes: distData.duration_minutes || prev.duration_minutes }));
+          // Use backend calculate-price so Pflichtfahrgebiet & fixed routes are included
+          const body: Record<string, unknown> = {
+            vehicle_type: vehicleType,
+            distance_km: km,
+            pickup_address: editPickupValid,
+            dropoff_address: editDropoffValid,
+          };
+          if (editPickupCoords) { body.pickup_lat = editPickupCoords.lat; body.pickup_lng = editPickupCoords.lng; }
+          if (editDropoffCoords) { body.dropoff_lat = editDropoffCoords.lat; body.dropoff_lng = editDropoffCoords.lng; }
+          const priceRes = await fetch(`${apiBase}/bookings/calculate-price`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const priceData = await priceRes.json();
+          if (priceData.total_price != null) {
+            setEditForm(prev => ({ ...prev, price: priceData.total_price }));
           }
         }
       })
