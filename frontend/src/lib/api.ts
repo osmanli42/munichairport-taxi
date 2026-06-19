@@ -85,6 +85,11 @@ export interface Booking {
   steuersatz?: number | null;
   stripe_charge_id?: string | null;
   stripe_payment_date?: string | null;
+  pickup_sign?: string;
+  zwischenstopp_address?: string;
+  promo_code?: string;
+  discount_amount?: number;
+  anfahrt_cost?: number;
 }
 
 export interface Price {
