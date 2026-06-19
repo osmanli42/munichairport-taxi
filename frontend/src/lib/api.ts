@@ -307,6 +307,21 @@ export const adminApi = {
     return response.data;
   },
 
+  createBooking: async (data: Partial<Booking>): Promise<Booking> => {
+    const response = await api.post('/admin/bookings', data);
+    return response.data;
+  },
+
+  updateBooking: async (id: number, data: Partial<Booking>): Promise<Booking> => {
+    const response = await api.put(`/admin/bookings/${id}`, data);
+    return response.data;
+  },
+
+  resendConfirmation: async (id: number): Promise<{ success: boolean }> => {
+    const response = await api.post(`/admin/bookings/${id}/resend-confirmation`, {});
+    return response.data;
+  },
+
   getStats: async () => {
     const response = await api.get('/admin/stats');
     return response.data;
