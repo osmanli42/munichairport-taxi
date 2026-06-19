@@ -553,6 +553,8 @@ export default function AdminPage() {
     setEditError('');
     setEditPickupValid(booking.pickup_address || '');
     setEditDropoffValid(booking.dropoff_address || '');
+    setEditPickupCoords(null);
+    setEditDropoffCoords(null);
     setEditDistanceKm(booking.distance_km ?? null);
   }
 
@@ -577,6 +579,8 @@ export default function AdminPage() {
     setEditError('');
     setEditPickupValid('');
     setEditDropoffValid('');
+    setEditPickupCoords(null);
+    setEditDropoffCoords(null);
     setEditDistanceKm(null);
   }
 
