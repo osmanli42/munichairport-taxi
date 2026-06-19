@@ -62,6 +62,8 @@ export default function AdminPage() {
   const [editError, setEditError] = useState('');
   const [editPickupValid, setEditPickupValid] = useState('');
   const [editDropoffValid, setEditDropoffValid] = useState('');
+  const [editPickupCoords, setEditPickupCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [editDropoffCoords, setEditDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
   const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
   const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
