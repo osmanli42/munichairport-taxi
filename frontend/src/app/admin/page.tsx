@@ -3723,6 +3723,7 @@ export default function AdminPage() {
                         setEditDropoffValid(v);
                         if (v) setEditForm(p => ({ ...p, dropoff_address: v }));
                       }}
+                      onCoords={(lat, lng) => setEditDropoffCoords(lat != null && lng != null ? { lat, lng } : null)}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
