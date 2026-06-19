@@ -384,6 +384,13 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
 
   const { sendCustomerConfirmation } = await import('../services/notifications');
 
+  const [priceRow] = await query<{ fahrrad_price: number; child_seat_price: number }>(
+    'SELECT fahrrad_price, child_seat_price FROM prices WHERE vehicle_type = ?',
+    [booking.vehicle_type]
+  );
+  const fahrradCount = booking.fahrrad_count || 0;
+  const fahrradUnitPrice = priceRow?.fahrrad_price ?? 0;
+
   await sendCustomerConfirmation({
     booking_number: booking.booking_number,
     name: booking.name,
@@ -407,7 +414,9 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
     duration_minutes: booking.duration_minutes || undefined,
     trip_type: booking.trip_type || undefined,
     return_datetime: booking.return_datetime || undefined,
-    fahrrad_count: booking.fahrrad_count || 0,
+    fahrrad_count: fahrradCount,
+    fahrrad_price: fahrradCount > 0 ? fahrradUnitPrice : undefined,
+    fahrrad_total: fahrradCount > 0 ? fahrradCount * fahrradUnitPrice : undefined,
     anfahrt_cost: booking.anfahrt_cost || undefined,
     zwischenstopp_address: booking.zwischenstopp_address || undefined,
     promo_code: booking.promo_code || undefined,
