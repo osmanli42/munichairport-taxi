@@ -572,6 +572,7 @@ export default function AdminPage() {
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditDistanceKm(booking.distance_km ?? null);
+    setEditBaseTripPrice(null);
     const counts = parseChildSeatCounts(booking.child_seat_details);
     setEditChildSeatBabyschale(counts.babyschale);
     setEditChildSeatKindersitz(counts.kindersitz);
