@@ -603,6 +603,7 @@ export default function AdminPage() {
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditDistanceKm(null);
+    setEditBaseTripPrice(null);
     setEditChildSeatBabyschale(0);
     setEditChildSeatKindersitz(0);
     setEditChildSeatSitzerhoehung(0);
