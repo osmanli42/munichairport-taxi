@@ -549,6 +549,9 @@ export default function AdminPage() {
     setEditForm({ ...booking });
     setEditSuccess(false);
     setEditError('');
+    setEditPickupValid(booking.pickup_address || '');
+    setEditDropoffValid(booking.dropoff_address || '');
+    setEditDistanceKm(booking.distance_km ?? null);
   }
 
   function openCreateModal() {
@@ -570,6 +573,9 @@ export default function AdminPage() {
     });
     setEditSuccess(false);
     setEditError('');
+    setEditPickupValid('');
+    setEditDropoffValid('');
+    setEditDistanceKm(null);
   }
 
   async function deleteBooking(id: number) {
