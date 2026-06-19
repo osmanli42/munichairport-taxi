@@ -60,6 +60,10 @@ export default function AdminPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
   const [editError, setEditError] = useState('');
+  const [editPickupValid, setEditPickupValid] = useState('');
+  const [editDropoffValid, setEditDropoffValid] = useState('');
+  const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
+  const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
   const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
