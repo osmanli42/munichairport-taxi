@@ -66,6 +66,9 @@ export default function AdminPage() {
   const [editDropoffCoords, setEditDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
   const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
+  const [editChildSeatBabyschale, setEditChildSeatBabyschale] = useState(0);
+  const [editChildSeatKindersitz, setEditChildSeatKindersitz] = useState(0);
+  const [editChildSeatSitzerhoehung, setEditChildSeatSitzerhoehung] = useState(0);
   const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
