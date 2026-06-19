@@ -67,6 +67,7 @@ router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Re
   const maxLuggage = max_luggage !== undefined ? parseInt(max_luggage) : undefined;
   const minPrice = min_price !== undefined ? parseFloat(min_price) : undefined;
   const minPriceKm = min_price_km !== undefined ? parseFloat(min_price_km) : undefined;
+  const childSeatPrice = child_seat_price !== undefined ? parseFloat(child_seat_price) : undefined;
 
   await run(`
     UPDATE prices SET
@@ -79,9 +80,10 @@ router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Re
       max_luggage = COALESCE(?, max_luggage),
       min_price = COALESCE(?, min_price),
       min_price_km = COALESCE(?, min_price_km),
+      child_seat_price = COALESCE(?, child_seat_price),
       updated_at = NOW()
     WHERE vehicle_type = ?
-  `, [parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, minPrice ?? null, minPriceKm ?? null, vehicle_type]);
+  `, [parseFloat(base_price), parseFloat(price_per_km), discount ?? null, fahrrad ?? null, fahrradEnabled ?? null, maxPassengers ?? null, maxLuggage ?? null, minPrice ?? null, minPriceKm ?? null, childSeatPrice ?? null, vehicle_type]);
 
   const [updated] = await query('SELECT * FROM prices WHERE vehicle_type = ?', [vehicle_type]);
   res.json(updated);
