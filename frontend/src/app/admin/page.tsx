@@ -1170,6 +1170,13 @@ export default function AdminPage() {
                                 >
                                   <Eye size={16} />
                                 </button>
+                                <button
+                                  onClick={() => openEditModal(booking)}
+                                  className="p-1 text-gray-500 hover:text-blue-600 transition-colors"
+                                  title="Bearbeiten"
+                                >
+                                  <Pencil size={16} />
+                                </button>
                                 {booking.status === 'new' && (
                                   <button
                                     onClick={() => updateStatus(booking.id, 'confirmed')}
