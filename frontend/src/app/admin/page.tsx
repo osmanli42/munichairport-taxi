@@ -1101,6 +1101,16 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* New Booking Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => openCreateModal()}
+                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              >
+                <Plus size={16} /> Neue Buchung
+              </button>
+            </div>
+
             {/* Bookings Table */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {loading ? (
