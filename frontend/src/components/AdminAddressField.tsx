@@ -112,6 +112,7 @@ export default function AdminAddressField({
 
   const handleSelectTerminal = (t: typeof AIRPORT_TERMINALS[0]) => {
     onChange(t.address); onValidSelect(t.address);
+    onCoords?.(48.3536, 11.7860);
     setOpen(false); setShowAirport(false);
   };
 
