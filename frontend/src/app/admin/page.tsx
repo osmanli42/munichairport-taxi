@@ -15,6 +15,7 @@ import ReplayTab from '@/components/ReplayTab';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
+import AdminAddressField from '@/components/AdminAddressField';
 
 type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads';
 
