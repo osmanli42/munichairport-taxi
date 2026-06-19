@@ -37,7 +37,7 @@ router.get('/:vehicle_type', async (req: Request, res: Response): Promise<void> 
 
 // PUT /api/prices/:vehicle_type - Update price (admin only)
 router.put('/:vehicle_type', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, min_price, min_price_km } = req.body;
+  const { base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, max_passengers, max_luggage, min_price, min_price_km, child_seat_price } = req.body;
   const { vehicle_type } = req.params;
 
   if (!['kombi', 'van', 'grossraumtaxi'].includes(vehicle_type)) {
