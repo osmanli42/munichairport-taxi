@@ -538,6 +538,35 @@ export default function AdminPage() {
     }
   }
 
+  function openEditModal(booking: Booking) {
+    setEditingBooking(booking);
+    setIsCreatingBooking(false);
+    setEditForm({ ...booking });
+    setEditSuccess(false);
+    setEditError('');
+  }
+
+  function openCreateModal() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const defaultDate = tomorrow.toISOString().substring(0, 10);
+    setEditingBooking(null);
+    setIsCreatingBooking(true);
+    setEditForm({
+      vehicle_type: 'kombi',
+      passengers: 1,
+      payment_method: 'cash',
+      language: 'de',
+      trip_type: 'oneway',
+      luggage_count: 0,
+      child_seat: 0,
+      fahrrad_count: 0,
+      pickup_datetime: `${defaultDate}T12:00:00`,
+    });
+    setEditSuccess(false);
+    setEditError('');
+  }
+
   async function deleteBooking(id: number) {
     if (!confirm('Buchung endgültig löschen?')) return;
     try {
