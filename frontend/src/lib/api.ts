@@ -100,6 +100,7 @@ export interface Price {
   roundtrip_discount: number;
   fahrrad_price: number;
   fahrrad_enabled: number;
+  child_seat_price: number;
   max_passengers: number;
   max_luggage: number;
   min_price: number;
