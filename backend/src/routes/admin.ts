@@ -265,6 +265,159 @@ router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: 
   res.json({ success: true });
 });
 
+// PUT /api/admin/bookings/:id — update editable booking fields
+router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const EDITABLE_FIELDS = [
+    'name', 'email', 'phone',
+    'pickup_address', 'dropoff_address', 'pickup_datetime', 'return_datetime',
+    'vehicle_type', 'passengers', 'flight_number', 'pickup_sign',
+    'child_seat', 'child_seat_details', 'luggage_count', 'notes', 'price',
+    'payment_method', 'language', 'trip_type', 'fahrrad_count',
+    'anfahrt_cost', 'zwischenstopp_address', 'promo_code', 'discount_amount',
+  ];
+
+  const updates: string[] = [];
+  const values: unknown[] = [];
+
+  for (const field of EDITABLE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      updates.push(`${field} = ?`);
+      const val = req.body[field];
+      values.push(val === '' ? null : val);
+    }
+  }
+
+  if (updates.length === 0) {
+    res.status(400).json({ error: 'No editable fields provided' });
+    return;
+  }
+
+  values.push(req.params.id);
+  const result = await run(
+    `UPDATE bookings SET ${updates.join(', ')} WHERE id = ?`,
+    values
+  );
+
+  if (result.affectedRows === 0) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+  res.json(decryptBooking(booking));
+});
+
+// POST /api/admin/bookings — create booking without auto-sending notifications
+router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const {
+    pickup_address, dropoff_address, pickup_datetime, return_datetime,
+    vehicle_type, passengers, name, phone, email,
+    flight_number, pickup_sign, child_seat, child_seat_details,
+    luggage_count, notes, distance_km, duration_minutes, price,
+    payment_method, language, trip_type, fahrrad_count,
+    anfahrt_cost, zwischenstopp_address, promo_code, discount_amount,
+  } = req.body;
+
+  if (!pickup_address || !dropoff_address || !pickup_datetime || !name || !phone || !email || !price) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const random = Math.floor(1000 + Math.random() * 9000);
+  const booking_number = `MAT${year}${month}${day}-${random}`;
+
+  const result = await run(`
+    INSERT INTO bookings (
+      booking_number, status, pickup_address, dropoff_address, pickup_datetime,
+      vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
+      child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
+      language, trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
+      promo_code, discount_amount
+    ) VALUES (
+      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )
+  `, [
+    booking_number,
+    pickup_address,
+    dropoff_address,
+    pickup_datetime,
+    vehicle_type || 'kombi',
+    parseInt(passengers) || 1,
+    name,
+    phone,
+    email,
+    flight_number || null,
+    pickup_sign || null,
+    child_seat ? 1 : 0,
+    child_seat_details || null,
+    parseInt(luggage_count) || 0,
+    notes || null,
+    distance_km || null,
+    parseInt(duration_minutes) || null,
+    parseFloat(price),
+    payment_method || 'cash',
+    language || 'de',
+    trip_type || 'oneway',
+    return_datetime || null,
+    parseInt(fahrrad_count) || 0,
+    anfahrt_cost || null,
+    zwischenstopp_address || null,
+    promo_code || null,
+    discount_amount || null,
+  ]);
+
+  const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
+  res.status(201).json(decryptBooking(newBooking));
+});
+
+// POST /api/admin/bookings/:id/resend-confirmation — resend customer confirmation email
+router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+  if (!booking) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+
+  const { sendCustomerConfirmation } = await import('../services/notifications');
+
+  await sendCustomerConfirmation({
+    booking_number: booking.booking_number,
+    name: booking.name,
+    email: booking.email,
+    phone: booking.phone,
+    pickup_address: booking.pickup_address,
+    dropoff_address: booking.dropoff_address,
+    pickup_datetime: booking.pickup_datetime,
+    vehicle_type: booking.vehicle_type,
+    passengers: booking.passengers,
+    price: booking.price,
+    payment_method: booking.payment_method,
+    language: booking.language || 'de',
+    child_seat: !!booking.child_seat,
+    child_seat_details: booking.child_seat_details || undefined,
+    luggage_count: booking.luggage_count || 0,
+    flight_number: booking.flight_number || undefined,
+    pickup_sign: booking.pickup_sign || undefined,
+    notes: booking.notes || undefined,
+    distance_km: booking.distance_km || undefined,
+    duration_minutes: booking.duration_minutes || undefined,
+    trip_type: booking.trip_type || undefined,
+    return_datetime: booking.return_datetime || undefined,
+    fahrrad_count: booking.fahrrad_count || 0,
+    anfahrt_cost: booking.anfahrt_cost || undefined,
+    zwischenstopp_address: booking.zwischenstopp_address || undefined,
+    promo_code: booking.promo_code || undefined,
+    discount_amount: booking.discount_amount || undefined,
+    night_confirm: false,
+  });
+
+  res.json({ success: true });
+});
+
 // GET /api/admin/stats - Dashboard statistics
 router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
