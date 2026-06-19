@@ -548,6 +548,18 @@ export default function AdminPage() {
     }
   }
 
+  function parseChildSeatCounts(details: string | undefined | null) {
+    return {
+      babyschale: parseInt(details?.match(/(\d+)[×x]\s*Babyschale/i)?.[1] || '0'),
+      kindersitz: parseInt(details?.match(/(\d+)[×x]\s*Kindersitz/i)?.[1] || '0'),
+      sitzerhoehung: parseInt(details?.match(/(\d+)[×x]\s*Sitzerhöhung/i)?.[1] || '0'),
+    };
+  }
+
+  function buildChildSeatDetails(baby: number, kind: number, sitz: number) {
+    return [baby > 0 && `${baby}× Babyschale`, kind > 0 && `${kind}× Kindersitz`, sitz > 0 && `${sitz}× Sitzerhöhung`].filter(Boolean).join(', ');
+  }
+
   function openEditModal(booking: Booking) {
     setEditingBooking(booking);
     setIsCreatingBooking(false);
@@ -559,6 +571,10 @@ export default function AdminPage() {
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditDistanceKm(booking.distance_km ?? null);
+    const counts = parseChildSeatCounts(booking.child_seat_details);
+    setEditChildSeatBabyschale(counts.babyschale);
+    setEditChildSeatKindersitz(counts.kindersitz);
+    setEditChildSeatSitzerhoehung(counts.sitzerhoehung);
   }
 
   function openCreateModal() {
