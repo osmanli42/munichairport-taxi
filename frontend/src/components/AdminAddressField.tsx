@@ -124,10 +124,12 @@ export default function AdminAddressField({
       if (data.is_specific) {
         const addr = data.formatted_address || desc;
         onChange(addr); onValidSelect(addr);
+        onCoords?.(data.lat ?? null, data.lng ?? null);
       } else {
         onValidSelect('');
+        onCoords?.(null, null);
       }
-    } catch { onValidSelect(desc); } finally { setValidating(false); }
+    } catch { onValidSelect(desc); onCoords?.(null, null); } finally { setValidating(false); }
   };
 
   const dropdown = open && mounted ? (
