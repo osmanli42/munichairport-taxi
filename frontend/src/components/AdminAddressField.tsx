@@ -34,11 +34,13 @@ export default function AdminAddressField({
   value,
   onChange,
   onValidSelect,
+  onCoords,
 }: {
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
   onValidSelect: (v: string) => void;
+  onCoords?: (lat: number | null, lng: number | null) => void;
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(false);
