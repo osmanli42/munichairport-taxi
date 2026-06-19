@@ -3683,11 +3683,27 @@ export default function AdminPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Abholadresse</label>
-                    <input type="text" value={editForm.pickup_address || ''} onChange={(e) => setEditForm(p => ({ ...p, pickup_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <AdminAddressField
+                      placeholder="Abholadresse eingeben..."
+                      value={editForm.pickup_address || ''}
+                      onChange={(v) => setEditForm(p => ({ ...p, pickup_address: v }))}
+                      onValidSelect={(v) => {
+                        setEditPickupValid(v);
+                        if (v) setEditForm(p => ({ ...p, pickup_address: v }));
+                      }}
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zieladresse</label>
-                    <input type="text" value={editForm.dropoff_address || ''} onChange={(e) => setEditForm(p => ({ ...p, dropoff_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <AdminAddressField
+                      placeholder="Zieladresse eingeben..."
+                      value={editForm.dropoff_address || ''}
+                      onChange={(v) => setEditForm(p => ({ ...p, dropoff_address: v }))}
+                      onValidSelect={(v) => {
+                        setEditDropoffValid(v);
+                        if (v) setEditForm(p => ({ ...p, dropoff_address: v }));
+                      }}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
