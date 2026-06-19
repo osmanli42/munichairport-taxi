@@ -505,7 +505,7 @@ export default function AdminPage() {
         adminApi.getTomorrowCards().then(setTomorrowCards).catch(() => {});
         adminApi.getTodayBookings().then(setTodayBookings).catch(() => {});
       }
-      if (activeTab === 'bookings') loadBookings();
+      if (activeTab === 'bookings') { loadBookings(); if (prices.length === 0) loadPrices(); }
       if (activeTab === 'statistics') { loadDetailedStats(); loadGeoStats('30d'); }
       if (activeTab === 'prices') {
         loadPrices();
