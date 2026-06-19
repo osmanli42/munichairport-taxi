@@ -3835,7 +3835,11 @@ export default function AdminPage() {
                 <h3 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-100">Preis & Zahlung</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Preis (€)</label>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">
+                      Preis (€)
+                      {editPriceCalcLoading && <span className="ml-2 text-blue-500 font-normal normal-case">⟳ wird berechnet…</span>}
+                      {!editPriceCalcLoading && editDistanceKm && <span className="ml-2 text-gray-400 font-normal normal-case">~{editDistanceKm.toFixed(1)} km · auto</span>}
+                    </label>
                     <div className="flex gap-1">
                       <input type="number" step="0.5" min="0" value={editForm.price ?? ''} onChange={(e) => setEditForm(p => ({ ...p, price: parseFloat(e.target.value) }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
                       <button
