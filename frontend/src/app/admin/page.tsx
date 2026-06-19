@@ -601,6 +601,9 @@ export default function AdminPage() {
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditDistanceKm(null);
+    setEditChildSeatBabyschale(0);
+    setEditChildSeatKindersitz(0);
+    setEditChildSeatSitzerhoehung(0);
   }
 
   // Auto-calculate price when both addresses are confirmed in edit/create modal
