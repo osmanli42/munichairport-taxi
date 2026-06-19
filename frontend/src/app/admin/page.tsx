@@ -642,9 +642,11 @@ export default function AdminPage() {
           });
           const priceData = await priceRes.json();
           if (priceData.total_price != null) {
-            const fahrradPrice = prices.find(p => p.vehicle_type === vehicleType)?.fahrrad_price ?? 0;
-            const fahrradAddon = (editForm.fahrrad_count ?? 0) * fahrradPrice;
-            const total = parseFloat((priceData.total_price + fahrradAddon).toFixed(2));
+            const priceRow = prices.find(p => p.vehicle_type === vehicleType);
+            const fahrradAddon = (editForm.fahrrad_count ?? 0) * (priceRow?.fahrrad_price ?? 0);
+            const totalChildSeats = editChildSeatBabyschale + editChildSeatKindersitz + editChildSeatSitzerhoehung;
+            const childSeatAddon = totalChildSeats * (priceRow?.child_seat_price ?? 0);
+            const total = parseFloat((priceData.total_price + fahrradAddon + childSeatAddon).toFixed(2));
             setEditBaseTripPrice(priceData.total_price);
             setEditForm(prev => ({ ...prev, price: total }));
           }
