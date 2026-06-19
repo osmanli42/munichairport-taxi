@@ -66,6 +66,7 @@ export default function AdminPage() {
   const [editDropoffCoords, setEditDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
   const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
+  const [editBaseTripPrice, setEditBaseTripPrice] = useState<number | null>(null);
   const [editChildSeatBabyschale, setEditChildSeatBabyschale] = useState(0);
   const [editChildSeatKindersitz, setEditChildSeatKindersitz] = useState(0);
   const [editChildSeatSitzerhoehung, setEditChildSeatSitzerhoehung] = useState(0);
