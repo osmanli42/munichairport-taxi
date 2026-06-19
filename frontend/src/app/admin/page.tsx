@@ -3780,7 +3780,15 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Preis (€)</label>
-                    <input type="number" step="0.5" min="0" value={editForm.price ?? ''} onChange={(e) => setEditForm(p => ({ ...p, price: parseFloat(e.target.value) }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <div className="flex gap-1">
+                      <input type="number" step="0.5" min="0" value={editForm.price ?? ''} onChange={(e) => setEditForm(p => ({ ...p, price: parseFloat(e.target.value) }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                      <button
+                        type="button"
+                        title="Auf 0,50 € aufrunden"
+                        onClick={() => setEditForm(p => ({ ...p, price: Math.ceil((p.price ?? 0) * 2) / 2 }))}
+                        className="px-2 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 text-xs font-bold transition-colors whitespace-nowrap"
+                      >↑0,5</button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zahlung</label>
