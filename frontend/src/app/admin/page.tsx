@@ -578,6 +578,35 @@ export default function AdminPage() {
     setEditDistanceKm(null);
   }
 
+  // Auto-calculate price when both addresses are confirmed in edit/create modal
+  useEffect(() => {
+    if (!editPickupValid || !editDropoffValid) return;
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api');
+    const vehicleType = editForm.vehicle_type || 'kombi';
+    setEditPriceCalcLoading(true);
+    fetch(`${apiBase}/maps/distance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin: editPickupValid, destination: editDropoffValid }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.distance_km) {
+          const km: number = data.distance_km;
+          setEditDistanceKm(km);
+          setEditForm(prev => ({ ...prev, distance_km: km, duration_minutes: data.duration_minutes || prev.duration_minutes }));
+          const priceRow = prices.find(p => p.vehicle_type === vehicleType);
+          if (priceRow) {
+            const calc = Math.ceil((priceRow.base_price + km * priceRow.price_per_km) * 2) / 2;
+            setEditForm(prev => ({ ...prev, price: calc }));
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEditPriceCalcLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editPickupValid, editDropoffValid, editForm.vehicle_type]);
+
   async function deleteBooking(id: number) {
     if (!confirm('Buchung endgültig löschen?')) return;
     try {
