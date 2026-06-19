@@ -640,7 +640,11 @@ export default function AdminPage() {
           });
           const priceData = await priceRes.json();
           if (priceData.total_price != null) {
-            setEditForm(prev => ({ ...prev, price: priceData.total_price }));
+            const fahrradPrice = prices.find(p => p.vehicle_type === vehicleType)?.fahrrad_price ?? 0;
+            const fahrradAddon = (editForm.fahrrad_count ?? 0) * fahrradPrice;
+            const total = parseFloat((priceData.total_price + fahrradAddon).toFixed(2));
+            setEditBaseTripPrice(priceData.total_price);
+            setEditForm(prev => ({ ...prev, price: total }));
           }
         }
       })
@@ -648,6 +652,16 @@ export default function AdminPage() {
       .finally(() => setEditPriceCalcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editPickupValid, editDropoffValid, editForm.vehicle_type]);
+
+  // Update price when fahrrad count changes (add/remove fahrrad addon on top of base trip price)
+  useEffect(() => {
+    if (editBaseTripPrice == null) return;
+    const vehicleType = editForm.vehicle_type || 'kombi';
+    const fahrradPrice = prices.find(p => p.vehicle_type === vehicleType)?.fahrrad_price ?? 0;
+    const total = parseFloat((editBaseTripPrice + (editForm.fahrrad_count ?? 0) * fahrradPrice).toFixed(2));
+    setEditForm(prev => ({ ...prev, price: total }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editForm.fahrrad_count]);
 
   async function deleteBooking(id: number) {
     if (!confirm('Buchung endgültig löschen?')) return;
