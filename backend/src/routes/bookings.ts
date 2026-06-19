@@ -452,10 +452,12 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     try {
       const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
       if (pgCfg && pgCfg.enabled && !fixedRouteMatch) {
-        const pickupCoords: Coords | null =
+        let pickupCoords: Coords | null =
           (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
-        const dropoffCoords: Coords | null =
+        let dropoffCoords: Coords | null =
           (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
+        if (!pickupCoords && pickup_address) pickupCoords = await geocodeAddress(pickup_address);
+        if (!dropoffCoords && dropoff_address) dropoffCoords = await geocodeAddress(dropoff_address);
 
         let ipBypass2 = false;
         if (pgCfg.ip_bypass_enabled) {
