@@ -3710,6 +3710,7 @@ export default function AdminPage() {
                         setEditPickupValid(v);
                         if (v) setEditForm(p => ({ ...p, pickup_address: v }));
                       }}
+                      onCoords={(lat, lng) => setEditPickupCoords(lat != null && lng != null ? { lat, lng } : null)}
                     />
                   </div>
                   <div>
