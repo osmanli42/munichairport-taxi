@@ -53,6 +53,12 @@ export default function AdminPage() {
   const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '' });
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Booking>>({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editSuccess, setEditSuccess] = useState(false);
+  const [editError, setEditError] = useState('');
   const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
   const [priceSuccess, setPriceSuccess] = useState('');
   const [showCardPopup, setShowCardPopup] = useState(false);
