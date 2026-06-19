@@ -3884,7 +3884,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">👶</span>
-                        <p className="text-sm font-medium text-gray-700">Kindersitz <span className="text-xs text-green-600 font-normal">Kostenlos</span></p>
+                        <p className="text-sm font-medium text-gray-700">Kindersitz <span className="text-xs text-green-600 font-normal">{(() => { const csp = prices.find(p => p.vehicle_type === (editForm.vehicle_type || 'kombi'))?.child_seat_price ?? 0; return csp > 0 ? `${csp.toFixed(2).replace('.', ',')} € / Stk.` : 'Kostenlos'; })()}</span></p>
                       </div>
                       <button type="button" onClick={() => {
                         const newVal = !editForm.child_seat;
