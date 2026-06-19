@@ -3565,6 +3565,304 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Edit / Create Booking Modal */}
+      {(editingBooking || isCreatingBooking) && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !editSaving) { setEditingBooking(null); setIsCreatingBooking(false); } }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-primary-600 text-white p-6 flex items-center justify-between sticky top-0 rounded-t-2xl z-10">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {isCreatingBooking ? <><Plus size={18} /> Neue Buchung erstellen</> : <><Pencil size={18} /> Buchung bearbeiten</>}
+                </h2>
+                {!isCreatingBooking && editingBooking && (
+                  <p className="text-primary-200 text-sm">{editingBooking.booking_number}</p>
+                )}
+              </div>
+              {!editSaving && (
+                <button onClick={() => { setEditingBooking(null); setIsCreatingBooking(false); }} className="p-2 hover:bg-primary-700 rounded-lg transition-colors">
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            <div className="p-6 space-y-6 text-sm">
+              {/* Success + resend button */}
+              {editSuccess && editingBooking && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <p className="text-green-700 font-medium flex items-center gap-2">
+                    <Check size={16} /> Buchung erfolgreich gespeichert!
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await adminApi.resendConfirmation(editingBooking.id);
+                        alert('Bestätigungs-E-Mail wurde gesendet.');
+                      } catch (err: any) {
+                        alert('Fehler beim Senden: ' + (err?.response?.data?.error || err?.message || 'Unbekannter Fehler'));
+                      }
+                    }}
+                    className="mt-2 flex items-center gap-2 text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <Send size={14} /> Bestätigungs-E-Mail senden
+                  </button>
+                </div>
+              )}
+
+              {editError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">
+                  {editError}
+                </div>
+              )}
+
+              {/* Kundendaten */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-100">Kundendaten</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                    <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm(p => ({ ...p, name: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">E-Mail</label>
+                    <input type="email" value={editForm.email || ''} onChange={(e) => setEditForm(p => ({ ...p, email: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Telefon</label>
+                    <input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm(p => ({ ...p, phone: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fahrtdetails */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-100">Fahrtdetails</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Abholadresse</label>
+                    <input type="text" value={editForm.pickup_address || ''} onChange={(e) => setEditForm(p => ({ ...p, pickup_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zieladresse</label>
+                    <input type="text" value={editForm.dropoff_address || ''} onChange={(e) => setEditForm(p => ({ ...p, dropoff_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Abholdatum</label>
+                      <input
+                        type="date"
+                        value={editForm.pickup_datetime ? editForm.pickup_datetime.substring(0, 10) : ''}
+                        onChange={(e) => {
+                          const time = editForm.pickup_datetime ? editForm.pickup_datetime.substring(11, 16) : '12:00';
+                          setEditForm(p => ({ ...p, pickup_datetime: `${e.target.value}T${time}:00` }));
+                        }}
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Abholzeit</label>
+                      <input
+                        type="time"
+                        value={editForm.pickup_datetime ? editForm.pickup_datetime.substring(11, 16) : ''}
+                        onChange={(e) => {
+                          const date = editForm.pickup_datetime ? editForm.pickup_datetime.substring(0, 10) : new Date().toISOString().substring(0, 10);
+                          setEditForm(p => ({ ...p, pickup_datetime: `${date}T${e.target.value}:00` }));
+                        }}
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                  {editForm.trip_type === 'roundtrip' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Rückfahrt Datum</label>
+                        <input
+                          type="date"
+                          value={editForm.return_datetime ? editForm.return_datetime.substring(0, 10) : ''}
+                          onChange={(e) => {
+                            const time = editForm.return_datetime ? editForm.return_datetime.substring(11, 16) : '12:00';
+                            setEditForm(p => ({ ...p, return_datetime: `${e.target.value}T${time}:00` }));
+                          }}
+                          className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Rückfahrt Zeit</label>
+                        <input
+                          type="time"
+                          value={editForm.return_datetime ? editForm.return_datetime.substring(11, 16) : ''}
+                          onChange={(e) => {
+                            const date = editForm.return_datetime ? editForm.return_datetime.substring(0, 10) : new Date().toISOString().substring(0, 10);
+                            setEditForm(p => ({ ...p, return_datetime: `${date}T${e.target.value}:00` }));
+                          }}
+                          className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrzeug</label>
+                      <select value={editForm.vehicle_type || 'kombi'} onChange={(e) => setEditForm(p => ({ ...p, vehicle_type: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <option value="kombi">Kombi</option>
+                        <option value="van">Van</option>
+                        <option value="grossraumtaxi">Großraumtaxi</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Passagiere</label>
+                      <input type="number" min="1" max="9" value={editForm.passengers ?? 1} onChange={(e) => setEditForm(p => ({ ...p, passengers: parseInt(e.target.value) || 1 }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrttyp</label>
+                      <select value={editForm.trip_type || 'oneway'} onChange={(e) => setEditForm(p => ({ ...p, trip_type: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <option value="oneway">Einfache Fahrt</option>
+                        <option value="roundtrip">Hin- & Rückfahrt</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Extras */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-100">Extras</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Flugnummer</label>
+                    <input type="text" value={editForm.flight_number || ''} onChange={(e) => setEditForm(p => ({ ...p, flight_number: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Abholschild</label>
+                    <input type="text" value={editForm.pickup_sign || ''} onChange={(e) => setEditForm(p => ({ ...p, pickup_sign: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gepäck (Stück)</label>
+                    <input type="number" min="0" value={editForm.luggage_count ?? 0} onChange={(e) => setEditForm(p => ({ ...p, luggage_count: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrrad (Anzahl)</label>
+                    <input type="number" min="0" value={editForm.fahrrad_count ?? 0} onChange={(e) => setEditForm(p => ({ ...p, fahrrad_count: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div className="flex items-center gap-2 col-span-full">
+                    <input
+                      type="checkbox"
+                      id="edit-child-seat"
+                      checked={!!editForm.child_seat}
+                      onChange={(e) => setEditForm(p => ({ ...p, child_seat: e.target.checked ? 1 : 0 }))}
+                      className="w-4 h-4 text-primary-600 rounded"
+                    />
+                    <label htmlFor="edit-child-seat" className="text-sm text-gray-700">Kindersitz</label>
+                  </div>
+                  {!!editForm.child_seat && (
+                    <div className="col-span-full">
+                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Kindersitz Details</label>
+                      <input type="text" value={editForm.child_seat_details || ''} onChange={(e) => setEditForm(p => ({ ...p, child_seat_details: e.target.value }))} placeholder="Alter, Gewicht des Kindes..." className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    </div>
+                  )}
+                  <div className="col-span-full">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zwischenstopp</label>
+                    <input type="text" value={editForm.zwischenstopp_address || ''} onChange={(e) => setEditForm(p => ({ ...p, zwischenstopp_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div className="col-span-full">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Notizen</label>
+                    <textarea rows={2} value={editForm.notes || ''} onChange={(e) => setEditForm(p => ({ ...p, notes: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preis & Zahlung */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-100">Preis & Zahlung</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Preis (€)</label>
+                    <input type="number" step="0.5" min="0" value={editForm.price ?? ''} onChange={(e) => setEditForm(p => ({ ...p, price: parseFloat(e.target.value) }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zahlung</label>
+                    <select value={editForm.payment_method || 'cash'} onChange={(e) => setEditForm(p => ({ ...p, payment_method: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                      <option value="cash">Bargeld</option>
+                      <option value="card">Kreditkarte</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Anfahrtskosten (€)</label>
+                    <input type="number" step="0.5" min="0" value={editForm.anfahrt_cost ?? ''} onChange={(e) => setEditForm(p => ({ ...p, anfahrt_cost: parseFloat(e.target.value) || undefined }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Rabatt (€)</label>
+                    <input type="number" step="0.01" min="0" value={editForm.discount_amount ?? ''} onChange={(e) => setEditForm(p => ({ ...p, discount_amount: parseFloat(e.target.value) || undefined }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div className="col-span-full md:col-span-2">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Promo-Code</label>
+                    <input type="text" value={editForm.promo_code || ''} onChange={(e) => setEditForm(p => ({ ...p, promo_code: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sprache */}
+              <div>
+                <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Sprache der E-Mail</label>
+                <select value={editForm.language || 'de'} onChange={(e) => setEditForm(p => ({ ...p, language: e.target.value }))} className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 max-w-xs">
+                  <option value="de">Deutsch (de)</option>
+                  <option value="en">Englisch (en)</option>
+                  <option value="tr">Türkisch (tr)</option>
+                </select>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setEditingBooking(null); setIsCreatingBooking(false); }}
+                  disabled={editSaving}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 py-2.5 rounded-xl font-medium transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={async () => {
+                    setEditSaving(true);
+                    setEditError('');
+                    setEditSuccess(false);
+                    try {
+                      if (isCreatingBooking) {
+                        const created = await adminApi.createBooking(editForm);
+                        setBookings(prev => [created, ...prev]);
+                        setEditingBooking(created);
+                        setIsCreatingBooking(false);
+                        setEditForm({ ...created });
+                        setEditSuccess(true);
+                      } else if (editingBooking) {
+                        const updated = await adminApi.updateBooking(editingBooking.id, editForm);
+                        setBookings(prev => prev.map(b => b.id === editingBooking.id ? updated : b));
+                        setEditingBooking(updated);
+                        setEditForm({ ...updated });
+                        setEditSuccess(true);
+                      }
+                    } catch (err: any) {
+                      setEditError(err?.response?.data?.error || 'Fehler beim Speichern');
+                    } finally {
+                      setEditSaving(false);
+                    }
+                  }}
+                  disabled={editSaving}
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  {editSaving
+                    ? <><RefreshCw size={16} className="animate-spin" /> Speichern...</>
+                    : <><Check size={16} /> Speichern</>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rechnung Modal */}
       {showRechnungModal && selectedBooking && (
         <div
