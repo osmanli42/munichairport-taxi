@@ -352,9 +352,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         if (isNaN(h) || nightStart === nightEnd) return false;
         return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
       };
-      const bookingHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
+      const now = new Date();
+      const bookingHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(now), 10);
       const pickupHour = parseInt(String(pickup_datetime).split('T')[1] ?? '', 10);
-      nightConfirm = nightEnabled && inWindow(bookingHour) && inWindow(pickupHour);
+      const pickupDate = new Date(pickup_datetime);
+      const hoursUntilPickup = (pickupDate.getTime() - now.getTime()) / 3600000;
+      nightConfirm = nightEnabled && inWindow(bookingHour) && inWindow(pickupHour) && hoursUntilPickup <= 24;
     } catch (e) {
       console.error('Night-confirm check failed:', e);
     }
