@@ -346,30 +346,71 @@ function DateTimeField({
           ) : (
             /* ── Time ── */
             <div className="p-5">
-              <div className="text-sm font-bold text-gray-600 mb-3">
+              <div className="text-sm font-bold text-gray-600 mb-2">
                 {locale === 'de' ? 'Uhrzeit wählen' : locale === 'tr' ? 'Saat seçin' : 'Select time'}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', maxHeight: '280px', overflowY: 'auto' }}>
-                {timeSlots.map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => selectTime(t)}
-                    className={cn(
-                      'py-2.5 rounded-lg text-sm font-semibold transition-colors',
-                      time === t
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-50 text-gray-700 hover:bg-primary-50 hover:text-primary-700'
-                    )}
-                  >
-                    {t}
-                  </button>
-                ))}
+              <div className="text-center text-3xl font-bold text-primary-600 mb-3 tabular-nums">
+                {pendingHour}:{pendingMinute}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <div className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                    {locale === 'de' ? 'Stunde' : locale === 'tr' ? 'Saat' : 'Hour'}
+                  </div>
+                  <div ref={hourColRef} className="flex flex-col gap-1.5 pr-1" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                    {hourOptions.map(h => (
+                      <button
+                        key={h}
+                        type="button"
+                        data-selected={pendingHour === h ? 'true' : undefined}
+                        onClick={() => setPendingHour(h)}
+                        className={cn(
+                          'py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 tabular-nums',
+                          pendingHour === h
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-50 text-gray-700 hover:bg-primary-50 hover:text-primary-700'
+                        )}
+                      >
+                        {h}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                    {locale === 'de' ? 'Minute' : locale === 'tr' ? 'Dakika' : 'Minute'}
+                  </div>
+                  <div ref={minuteColRef} className="flex flex-col gap-1.5 pr-1" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                    {minuteOptions.map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        data-selected={pendingMinute === m ? 'true' : undefined}
+                        onClick={() => setPendingMinute(m)}
+                        className={cn(
+                          'py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 tabular-nums',
+                          pendingMinute === m
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-50 text-gray-700 hover:bg-primary-50 hover:text-primary-700'
+                        )}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
+                onClick={confirmTime}
+                className="mt-4 w-full py-2.5 rounded-lg bg-primary-600 text-white text-sm font-bold hover:bg-primary-700 transition-colors"
+              >
+                {locale === 'de' ? 'Bestätigen' : locale === 'tr' ? 'Onayla' : 'Confirm'}
+              </button>
+              <button
+                type="button"
                 onClick={() => setPickerStep('date')}
-                className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
               >
                 ← {locale === 'de' ? 'Zurück zum Kalender' : locale === 'tr' ? 'Takvime dön' : 'Back to calendar'}
               </button>
