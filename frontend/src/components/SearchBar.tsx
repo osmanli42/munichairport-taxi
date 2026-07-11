@@ -265,7 +265,9 @@ function DateTimeField({
         const col = r.current;
         if (!col) return;
         const sel = col.querySelector<HTMLElement>('[data-selected="true"]');
-        if (sel) col.scrollTop = sel.offsetTop - col.clientHeight / 2 + sel.clientHeight / 2;
+        if (!sel) return;
+        const offsetInCol = sel.getBoundingClientRect().top - col.getBoundingClientRect().top + col.scrollTop;
+        col.scrollTop = offsetInCol - col.clientHeight / 2 + sel.clientHeight / 2;
       });
     }, 0);
     return () => clearTimeout(timer);
