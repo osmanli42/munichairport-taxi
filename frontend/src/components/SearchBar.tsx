@@ -241,19 +241,35 @@ function DateTimeField({
     const m = String(viewMonth.month + 1).padStart(2, '0');
     const d = String(day).padStart(2, '0');
     onDateChange(`${viewMonth.year}-${m}-${d}`);
+    const [th, tm] = (time || '10:00').split(':');
+    const h = Math.min(23, Math.max(0, parseInt(th, 10) || 0));
+    const rounded = (Math.round((parseInt(tm, 10) || 0) / 5) * 5) % 60;
+    setPendingHour(String(h).padStart(2, '0'));
+    setPendingMinute(String(rounded).padStart(2, '0'));
     setPickerStep('time');
   }
-  function selectTime(t: string) {
-    onTimeChange(t);
+  function confirmTime() {
+    onTimeChange(`${pendingHour}:${pendingMinute}`);
     setOpen(false);
     setPickerStep('date');
   }
 
-  const timeSlots: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    timeSlots.push(`${String(h).padStart(2, '0')}:00`);
-    timeSlots.push(`${String(h).padStart(2, '0')}:30`);
-  }
+  const hourOptions = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const minuteOptions = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+
+  // Center the selected hour/minute when the time step opens
+  useEffect(() => {
+    if (!open || pickerStep !== 'time') return;
+    const timer = setTimeout(() => {
+      [hourColRef, minuteColRef].forEach(r => {
+        const col = r.current;
+        if (!col) return;
+        const sel = col.querySelector<HTMLElement>('[data-selected="true"]');
+        if (sel) col.scrollTop = sel.offsetTop - col.clientHeight / 2 + sel.clientHeight / 2;
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open, pickerStep]);
 
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
