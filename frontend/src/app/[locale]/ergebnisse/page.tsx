@@ -466,19 +466,16 @@ function ResultsContent() {
             <p className="text-sm font-semibold text-primary-700">
               {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
             </p>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 font-medium">
-                  {locale === 'de' ? 'Datum' : locale === 'en' ? 'Date' : 'Tarih'}
-                </label>
-                <input type="date" value={localReturnDate} min={date} onChange={e => setLocalReturnDate(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 font-medium">
-                  {locale === 'de' ? 'Uhrzeit' : locale === 'en' ? 'Time' : 'Saat'}
-                </label>
-                <input type="time" value={localReturnTime} onChange={e => setLocalReturnTime(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" />
-              </div>
+            <div className="inline-block border border-gray-300 rounded-lg bg-white">
+              <DateTimeField
+                label={locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return' : 'Dönüş'}
+                date={localReturnDate}
+                time={localReturnTime}
+                onDateChange={setLocalReturnDate}
+                onTimeChange={setLocalReturnTime}
+                minDate={date}
+                locale={locale}
+              />
             </div>
             <div className="flex gap-2">
               <button onClick={addReturnTrip} disabled={!localReturnDate} className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
