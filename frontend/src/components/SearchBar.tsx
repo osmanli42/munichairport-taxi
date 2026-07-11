@@ -196,6 +196,10 @@ function DateTimeField({
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const ref = useRef<HTMLDivElement>(null);
+  const [pendingHour, setPendingHour] = useState('10');
+  const [pendingMinute, setPendingMinute] = useState('00');
+  const hourColRef = useRef<HTMLDivElement>(null);
+  const minuteColRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
