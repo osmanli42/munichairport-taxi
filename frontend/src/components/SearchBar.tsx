@@ -178,7 +178,7 @@ const DAYS_DE = ['Mo','Di','Mi','Do','Fr','Sa','So'];
 const DAYS_EN = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_TR = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
-function DateTimeField({
+export function DateTimeField({
   label, date, time, onDateChange, onTimeChange, minDate, locale,
 }: {
   label: string;
