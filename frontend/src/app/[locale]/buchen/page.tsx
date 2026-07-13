@@ -124,6 +124,10 @@ function BuchenContent() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
+  const [flightCheckStatus, setFlightCheckStatus] = useState<'idle' | 'checking' | 'found' | 'notfound'>('idle');
+  const [flightCheckResult, setFlightCheckResult] = useState<{ airline?: string; origin?: string; scheduledArrival?: string } | null>(null);
+  const flightCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flightCheckAbort = useRef<AbortController | null>(null);
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
