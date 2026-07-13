@@ -64,6 +64,7 @@ type Stops = { pCoords: Coords; dCoords: Coords; wCoords: Coords | null };
 // Inline Mapbox route map for the booking summary. Renders nothing (falls back to the
 // external link that lives beside it) when no token is configured or the route can't be built.
 export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, dropoffCoords }: RouteMapProps) {
+  console.log('[RouteMap] function body render');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const [stops, setStops] = useState<Stops | null>(null);
