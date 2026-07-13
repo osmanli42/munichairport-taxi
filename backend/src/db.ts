@@ -169,6 +169,14 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN discount_amount DOUBLE DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Migration: add flight validation columns to bookings
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN flight_validated VARCHAR(2) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN flight_info TEXT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // Migration: add kombinierbar to promotions
     try {
       await conn.execute(`ALTER TABLE promotions ADD COLUMN kombinierbar TINYINT(1) NOT NULL DEFAULT 0`);
