@@ -259,9 +259,9 @@ function BuchenContent() {
   }, [flightNumber, date, isAirportPickup, settingsLoaded, flightValidationEnabled]);
 
   function buildFlightInfo(): string | undefined {
-    if (flightCheckStatus !== 'found' || !flightCheckResult) return undefined;
-    const { airline, origin, scheduledArrival } = flightCheckResult;
-    return [airline, origin && `${origin} → MUC`, scheduledArrival && `${tx.flightArrival} ${scheduledArrival}`].filter(Boolean).join(' · ') || undefined;
+    if ((flightCheckStatus !== 'found' && flightCheckStatus !== 'wrongairport') || !flightCheckResult) return undefined;
+    const { airline, origin, scheduledArrival, arrivesMUC } = flightCheckResult;
+    return [airline, origin && (arrivesMUC ? `${origin} → MUC` : origin), scheduledArrival && `${tx.flightArrival} ${scheduledArrival}`].filter(Boolean).join(' · ') || undefined;
   }
 
   function luhnCheck(num: string): boolean {
