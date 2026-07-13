@@ -246,8 +246,8 @@ function BuchenContent() {
             setFlightCheckStatus('idle');
             setFlightCheckResult(null);
           } else if (data.found) {
-            setFlightCheckStatus('found');
-            setFlightCheckResult({ airline: data.airline, origin: data.origin, scheduledArrival: data.scheduledArrival });
+            setFlightCheckStatus(data.arrivesMUC === false ? 'wrongairport' : 'found');
+            setFlightCheckResult({ airline: data.airline, origin: data.origin, scheduledArrival: data.scheduledArrival, arrivesMUC: data.arrivesMUC });
           } else {
             setFlightCheckStatus('notfound');
             setFlightCheckResult(null);
