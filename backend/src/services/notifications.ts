@@ -827,8 +827,8 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
 
     <div class="section">
       <h3>${l.details}</h3>
-      <div class="row"><span class="label">${l.pickup}:</span><span class="value">${booking.pickup_address}</span></div>
-      <div class="row"><span class="label">${l.destination}:</span><span class="value">${booking.dropoff_address}</span></div>
+      <div class="row"><span class="label">${l.pickup}:</span><span class="value">${addressIcon(booking.pickup_address)}${booking.pickup_address}</span></div>
+      <div class="row"><span class="label">${l.destination}:</span><span class="value">${addressIcon(booking.dropoff_address)}${booking.dropoff_address}</span></div>
       <div class="row"><span class="label">${l.datetime}:</span><span class="value">${formattedDate}</span></div>
       <div class="row"><span class="label">${l.vehicle}:</span><span class="value">${vehicleLabel}</span></div>
     </div>
