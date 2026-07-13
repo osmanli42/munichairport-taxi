@@ -124,7 +124,11 @@ export default function AdminAddressField({
       const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=de`);
       const data = await res.json();
       if (data.is_specific) {
-        const addr = data.formatted_address || desc;
+        const base = data.formatted_address || desc;
+        // Keep POI name (hotel etc.) in front of the resolved address so it survives into booking/emails
+        const addr = data.is_establishment && data.name && !base.toLowerCase().includes(String(data.name).toLowerCase())
+          ? `${data.name}, ${base}`
+          : base;
         onChange(addr); onValidSelect(addr);
         onCoords?.(data.lat ?? null, data.lng ?? null);
       } else {
