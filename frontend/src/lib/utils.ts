@@ -122,3 +122,10 @@ export const CONTACT_INFO = {
   owners: 'Osman Nar & M.Ali Nar',
   website: 'www.flughafen-muenchen.taxi',
 };
+
+// Display-only icon prefix for addresses (airport ✈️ / hotel 🏨) — never part of the stored value
+export function addressIcon(addr: string): string {
+  if (/flughafen|airport|terminal/i.test(addr)) return '✈️ ';
+  if (/\b(hotel|hostel|pension|gasthof|gasthaus|motel|resort|novotel|mercure|ibis|marriott|hilton|hyatt)\b/i.test(addr)) return '🏨 ';
+  return '';
+}
