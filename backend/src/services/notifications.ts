@@ -180,7 +180,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       <div class="row"><span class="label">Name:</span><span class="value">${booking.name}</span></div>
       <div class="row"><span class="label">Telefon:</span><span class="value"><a href="tel:${booking.phone}">${booking.phone}</a></span></div>
       <div class="row"><span class="label">E-Mail:</span><span class="value"><a href="mailto:${booking.email}">${booking.email}</a></span></div>
-      ${booking.flight_number ? `<div class="row"><span class="label">Flugnummer:</span><span class="value">${booking.flight_number}</span></div>` : ''}
+      ${booking.flight_number ? `<div class="row"><span class="label">Flugnummer:</span><span class="value">${booking.flight_number}${booking.flight_validated === '1' ? ` <span style="color:#16a34a;">✓ ${booking.flight_info || 'bestätigt'}</span>` : ' <span style="color:#b45309;">⚠ nicht verifiziert</span>'}</span></div>` : ''}
       ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 Abholschild:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
       <div class="row"><span class="label">Gepäck:</span><span class="value">${booking.luggage_count} Stück</span></div>
       <div class="row"><span class="label">Zahlung:</span><span class="value">${booking.payment_method === 'cash' ? 'Bargeld' : 'Kartenzahlung'}</span></div>
