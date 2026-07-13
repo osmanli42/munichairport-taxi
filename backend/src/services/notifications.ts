@@ -83,6 +83,13 @@ function formatPrice(price: number): string {
   return rounded.toFixed(2);
 }
 
+// Display-only icon prefix for addresses (airport ✈️ / hotel 🏨) — never stored in DB
+function addressIcon(addr: string): string {
+  if (/flughafen|airport|terminal/i.test(addr)) return '✈️ ';
+  if (/\b(hotel|hostel|pension|gasthof|gasthaus|motel|resort|novotel|mercure|ibis|marriott|hilton|hyatt)\b/i.test(addr)) return '🏨 ';
+  return '';
+}
+
 function formatDateTime(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleString('de-DE', {
