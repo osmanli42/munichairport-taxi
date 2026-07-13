@@ -88,6 +88,7 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         resolveCoords(dropoff, dropoffCoords),
         waypoint ? resolveCoords(waypoint) : Promise.resolve(null),
       ]);
+      console.log('[RouteMap] phase1 resolved', { pCoords, dCoords, wCoords, cancelled });
       if (cancelled || !pCoords || !dCoords) return;
       setStops({ pCoords, dCoords, wCoords });
     })();
