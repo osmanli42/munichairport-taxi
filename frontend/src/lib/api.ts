@@ -67,6 +67,8 @@ export interface Booking {
   phone: string;
   email: string;
   flight_number?: string;
+  flight_validated?: string;
+  flight_info?: string;
   child_seat: number;
   child_seat_details?: string;
   luggage_count: number;
