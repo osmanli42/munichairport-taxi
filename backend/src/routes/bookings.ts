@@ -325,6 +325,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       validatedPromoCode || null,
       promoDiscount > 0 ? promoDiscount : null,
       visitor_id || null,
+      flight_validated || null,
+      flight_info || null,
     ]);
 
     // Increment used_count for applied promo
