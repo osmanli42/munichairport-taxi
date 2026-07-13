@@ -230,6 +230,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
     const data = await response.json() as {
       status: string;
       result?: {
+        name?: string;
         address_components?: { long_name: string; short_name: string; types: string[] }[];
         types?: string[];
         formatted_address?: string;
