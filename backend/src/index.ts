@@ -16,6 +16,7 @@ import adsRouter from './routes/ads';
 import plzSurchargesRouter from './routes/plz-surcharges';
 import pflichtgebietRouter from './routes/pflichtgebiet';
 import fixedRoutesRouter from './routes/fixed-routes';
+import flightsRouter from './routes/flights';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
