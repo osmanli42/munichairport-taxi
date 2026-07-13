@@ -72,6 +72,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       phone,
       email,
       flight_number,
+      flight_validated,
+      flight_info,
       pickup_sign,
       child_seat,
       luggage_count,
