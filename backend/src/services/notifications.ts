@@ -396,9 +396,9 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
 
     <div class="section">
       <h3>${t.tripDetails}</h3>
-      <div class="row"><span class="label">${t.pickup}:</span><span class="value">${booking.pickup_address}</span></div>
+      <div class="row"><span class="label">${t.pickup}:</span><span class="value">${addressIcon(booking.pickup_address)}${booking.pickup_address}</span></div>
       ${booking.zwischenstopp_address ? `<div class="row"><span class="label">📍 ${lang === 'de' ? 'Zwischenstopp' : lang === 'tr' ? 'Ara Durak' : 'Intermediate Stop'}:</span><span class="value" style="color:#2563eb;font-weight:bold;">${booking.zwischenstopp_address}</span></div>` : ''}
-      <div class="row"><span class="label">${t.destination}:</span><span class="value">${booking.dropoff_address}</span></div>
+      <div class="row"><span class="label">${t.destination}:</span><span class="value">${addressIcon(booking.dropoff_address)}${booking.dropoff_address}</span></div>
       <div class="row"><span class="label">${t.tripType}:</span><span class="value">${booking.trip_type === 'roundtrip' ? t.roundtrip : t.oneway}</span></div>
       <div class="row"><span class="label">${t.datetime}:</span><span class="value">${formattedDate}</span></div>
       ${booking.return_datetime ? `<div class="row"><span class="label">${t.returnTrip}:</span><span class="value">${formatDateTime(booking.return_datetime)}</span></div>` : ''}
