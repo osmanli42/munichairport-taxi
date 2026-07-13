@@ -1361,14 +1361,23 @@ function BuchenContent() {
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <p className="text-gray-700 text-xs leading-relaxed">{addressIcon(dropoff)}{dropoff}</p>
                   </div>
-                  {/* Route link */}
+                  {/* Inline route map + external fallback link */}
                   {(() => {
                     const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
                     const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
-                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 hover:text-gray-800 transition-colors">
-                        <span>🗺️</span> {locale === 'de' ? 'Route anzeigen' : locale === 'en' ? 'View route' : 'Rotayı göster'}
-                      </a>
+                      <>
+                        <RouteMap
+                          pickup={pickup}
+                          dropoff={dropoff}
+                          waypoint={zwStop || undefined}
+                          pickupCoords={pickupLat && pickupLng ? { lat: Number(pickupLat), lng: Number(pickupLng) } : null}
+                          dropoffCoords={dropoffLat && dropoffLng ? { lat: Number(dropoffLat), lng: Number(dropoffLng) } : null}
+                        />
+                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                          <span>🗺️</span> {locale === 'de' ? 'In Google Maps öffnen' : locale === 'en' ? 'Open in Google Maps' : "Google Maps'te aç"}
+                        </a>
+                      </>
                     );
                   })()}
                 </div>
