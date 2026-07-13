@@ -1089,7 +1089,7 @@ function BuchenContent() {
                   </div>
                 </div>
               </div>
-              {isAirportPickup && (
+              {flightNumberRequired && (
                 <div>
                   <label className={labelCls}>
                     <span className="flex items-center gap-1">
