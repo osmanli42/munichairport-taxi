@@ -380,6 +380,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       price,
       payment_method: payment_method || 'cash',
       flight_number,
+      flight_validated: flight_validated || undefined,
+      flight_info: flight_info || undefined,
       pickup_sign: pickup_sign || undefined,
       child_seat: !!child_seat,
       child_seat_details: child_seat_details || undefined,
