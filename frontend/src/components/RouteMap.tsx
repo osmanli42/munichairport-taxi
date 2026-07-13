@@ -64,9 +64,11 @@ type Stops = { pCoords: Coords; dCoords: Coords; wCoords: Coords | null };
 // Inline Mapbox route map for the booking summary. Renders nothing (falls back to the
 // external link that lives beside it) when no token is configured or the route can't be built.
 export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, dropoffCoords }: RouteMapProps) {
-  console.log('[RouteMap] function body render');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  // Guards against building the map more than once even if this component's effects
+  // fire more than once for the same mount (observed in production for this page).
+  const builtRef = useRef(false);
   const [stops, setStops] = useState<Stops | null>(null);
 
   // Callers often pass pickupCoords/dropoffCoords as fresh object literals on every
@@ -81,26 +83,26 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
   // non-null and the container below mounts at its real size — only THEN do we
   // construct the Mapbox map (phase 2), so it never initializes against a 0x0 element.
   useEffect(() => {
-    console.log('[RouteMap] phase1 effect fired', { pickup, dropoff, waypoint, pLat, pLng, dLat, dLng, mountTime: Date.now() });
+    if (!MAPBOX_TOKEN || stops) return;
     let cancelled = false;
-    if (!MAPBOX_TOKEN) return;
     (async () => {
       const [pCoords, dCoords, wCoords] = await Promise.all([
         resolveCoords(pickup, pickupCoords),
         resolveCoords(dropoff, dropoffCoords),
         waypoint ? resolveCoords(waypoint) : Promise.resolve(null),
       ]);
-      console.log('[RouteMap] phase1 resolved', { pCoords, dCoords, wCoords, cancelled });
       if (cancelled || !pCoords || !dCoords) return;
       setStops({ pCoords, dCoords, wCoords });
     })();
-    return () => { console.log('[RouteMap] phase1 cleanup'); cancelled = true; };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickup, dropoff, waypoint, pLat, pLng, dLat, dLng]);
 
-  // Phase 2: build the map once the sized container exists.
+  // Phase 2: build the map once the sized container exists. Guarded to run at most
+  // once per mount; only torn down on true unmount (separate effect below).
   useEffect(() => {
-    if (!stops || !containerRef.current) return;
+    if (!stops || !containerRef.current || builtRef.current) return;
+    builtRef.current = true;
     let cancelled = false;
     const { pCoords, dCoords, wCoords } = stops;
     const orderedStops: Coords[] = wCoords ? [pCoords, wCoords, dCoords] : [pCoords, dCoords];
@@ -109,11 +111,9 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
       let mapboxgl: any;
       try {
         mapboxgl = await loadMapbox();
-      } catch (e) {
-        console.log('[RouteMap] loadMapbox failed', e);
+      } catch {
         return;
       }
-      console.log('[RouteMap] phase2 start', { cancelled, hasContainer: !!containerRef.current, rect: containerRef.current?.getBoundingClientRect() });
       if (cancelled || !containerRef.current) return;
 
       mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -126,10 +126,8 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
-      map.on('error', (e: any) => console.log('[RouteMap] map error', e?.error?.message || e));
 
       map.on('load', async () => {
-        console.log('[RouteMap] load event fired');
         // Markers: green = pickup, blue = waypoint, red = dropoff
         new mapboxgl.Marker({ color: '#16a34a' }).setLngLat([pCoords.lng, pCoords.lat]).addTo(map);
         if (wCoords) new mapboxgl.Marker({ color: '#2563eb' }).setLngLat([wCoords.lng, wCoords.lat]).addTo(map);
@@ -167,14 +165,18 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
       });
     })();
 
+    return () => { cancelled = true; };
+  }, [stops]);
+
+  // Tear down only when the component truly unmounts.
+  useEffect(() => {
     return () => {
-      cancelled = true;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [stops]);
+  }, []);
 
   if (!MAPBOX_TOKEN || !stops) return null;
 
