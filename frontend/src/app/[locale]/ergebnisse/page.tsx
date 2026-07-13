@@ -428,7 +428,7 @@ function ResultsContent() {
             <ArrowRight size={14} className="text-primary-300 shrink-0" />
             <div className="flex items-center gap-1.5 shrink-0">
               <MapPin size={14} className="text-red-400" />
-              <span className="font-medium max-w-[160px] truncate">{dropoff}</span>
+              <span className="font-medium max-w-[160px] truncate">{addressIcon(dropoff)}{dropoff}</span>
             </div>
             <div className="flex items-center gap-3 ml-auto text-primary-200 text-xs shrink-0">
               <span className="flex items-center gap-1"><Calendar size={12} /> {dateFormatted} · {time}</span>
