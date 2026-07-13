@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Baby, Shield, Tag } from 'lucide-react';
-import { formatPrice, cn, calculateToll, extractCountryFromAddress } from '@/lib/utils';
+import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import { DateTimeField } from '@/components/SearchBar';
 
