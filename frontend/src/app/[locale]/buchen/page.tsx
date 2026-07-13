@@ -449,7 +449,7 @@ function BuchenContent() {
                 <div className="space-y-2 pb-4 border-b border-gray-100">
                   <div className="flex items-start gap-2">
                     <MapPin size={14} className="text-green-500 mt-0.5 shrink-0" />
-                    <span className="text-gray-700">{pickup}</span>
+                    <span className="text-gray-700">{addressIcon(pickup)}{pickup}</span>
                   </div>
                   {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
                     <div className="flex items-start gap-2">
