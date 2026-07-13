@@ -423,7 +423,7 @@ function ResultsContent() {
             </button>
             <div className="flex items-center gap-1.5 shrink-0">
               <MapPin size={14} className="text-green-400" />
-              <span className="font-medium max-w-[160px] truncate">{pickup}</span>
+              <span className="font-medium max-w-[160px] truncate">{addressIcon(pickup)}{pickup}</span>
             </div>
             <ArrowRight size={14} className="text-primary-300 shrink-0" />
             <div className="flex items-center gap-1.5 shrink-0">
