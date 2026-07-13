@@ -368,6 +368,8 @@ function BuchenContent() {
         phone: phone.trim(),
         email: email.trim(),
         flight_number: flightNumber || undefined,
+        flight_validated: flightNumber.trim() ? (flightCheckStatus === 'found' ? '1' : '0') : undefined,
+        flight_info: buildFlightInfo(),
         pickup_sign: pickupSign || undefined,
         child_seat: childSeat,
         child_seat_details: childSeat ? buildChildSeatDetails() : undefined,
