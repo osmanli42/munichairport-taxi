@@ -126,8 +126,11 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
+      map.on('error', (e: any) => console.log('[RouteMap] error event', e?.error?.message || JSON.stringify(e?.error || e)));
+      setTimeout(() => console.log('[RouteMap] status check', { loaded: map.loaded?.(), styleLoaded: map.isStyleLoaded?.() }), 4000);
 
       map.on('load', async () => {
+        console.log('[RouteMap] load fired');
         // Markers: green = pickup, blue = waypoint, red = dropoff
         new mapboxgl.Marker({ color: '#16a34a' }).setLngLat([pCoords.lng, pCoords.lat]).addTo(map);
         if (wCoords) new mapboxgl.Marker({ color: '#2563eb' }).setLngLat([wCoords.lng, wCoords.lat]).addTo(map);
