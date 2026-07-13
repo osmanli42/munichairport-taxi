@@ -262,6 +262,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
     const location = result?.geometry?.location;
 
     res.json({
+      name: result?.name || null,
       formatted_address: result?.formatted_address,
       has_street_number: hasStreetNumber,
       has_route: hasRoute,
