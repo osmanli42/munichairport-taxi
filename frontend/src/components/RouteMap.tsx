@@ -154,7 +154,7 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         mapRef.current = null;
       }
     };
-  }, [pickup, dropoff, waypoint, pickupCoords, dropoffCoords]);
+  }, [pickup, dropoff, waypoint, pLat, pLng, dLat, dLng]);
 
   if (!MAPBOX_TOKEN) return null;
 
