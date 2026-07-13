@@ -1536,6 +1536,38 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+                {/* Flight number validation toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="font-semibold text-gray-700">✈️ Flugnummer-Validierung</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Prüft eingegebene Flugnummern bei Flughafen-Abholungen live gegen eine Flugdaten-API und zeigt dem Kunden eine Bestätigung oder Warnung. Blockiert die Buchung nie.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.flight_validation_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ flight_validation_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Flugnummer-Validierung aktiviert' : 'Flugnummer-Validierung deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.flight_validation_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.flight_validation_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                </div>
                 {/* Zwischenstopp toggle */}
                 <div>
                   <div className="flex items-center justify-between">
