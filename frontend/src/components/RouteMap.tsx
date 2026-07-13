@@ -66,16 +66,9 @@ type Stops = { pCoords: Coords; dCoords: Coords; wCoords: Coords | null };
 export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, dropoffCoords }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  // Guards against building the map more than once even if this component's effects
-  // fire more than once for the same mount (observed in production for this page).
+  // Guards against building the map more than once for the same mount.
   const builtRef = useRef(false);
   const [stops, setStops] = useState<Stops | null>(null);
-
-  useEffect(() => {
-    const id = Math.random().toString(36).slice(2, 7);
-    console.log('[RouteMap] TRUE MOUNT', id, Date.now());
-    return () => console.log('[RouteMap] TRUE UNMOUNT', id, Date.now());
-  }, []);
 
   // Callers often pass pickupCoords/dropoffCoords as fresh object literals on every
   // render. Depending on those references directly would restart this effect on every
@@ -132,12 +125,8 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
-      (window as any).__debugMap = map;
-      map.on('error', (e: any) => console.log('[RouteMap] error:', e?.error?.message || String(e?.error || e)));
-      setTimeout(() => console.log('[RouteMap] status: loaded=' + map.loaded?.() + ' styleLoaded=' + map.isStyleLoaded?.()), 4000);
 
       map.on('load', async () => {
-        console.log('[RouteMap] load fired');
         // Markers: green = pickup, blue = waypoint, red = dropoff
         new mapboxgl.Marker({ color: '#16a34a' }).setLngLat([pCoords.lng, pCoords.lat]).addTo(map);
         if (wCoords) new mapboxgl.Marker({ color: '#2563eb' }).setLngLat([wCoords.lng, wCoords.lat]).addTo(map);
