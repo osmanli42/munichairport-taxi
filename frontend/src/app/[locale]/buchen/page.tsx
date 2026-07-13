@@ -64,6 +64,7 @@ function BuchenContent() {
   const [nightConfirmEnabled, setNightConfirmEnabled] = useState(true);
   const [nightStart, setNightStart] = useState(22);
   const [nightEnd, setNightEnd] = useState(7);
+  const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
@@ -71,6 +72,7 @@ function BuchenContent() {
       if (s.night_confirm_enabled === '0') setNightConfirmEnabled(false);
       if (s.night_confirm_start) setNightStart(parseInt(s.night_confirm_start, 10));
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
+      if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
