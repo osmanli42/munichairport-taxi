@@ -1058,6 +1058,12 @@ function BuchenContent() {
                       <span>{tx.flightConfirmed}: {buildFlightInfo()}</span>
                     </div>
                   )}
+                  {flightCheckStatus === 'wrongairport' && flightCheckResult && (
+                    <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2.5 py-1.5 text-xs text-orange-700 flex items-start gap-1.5">
+                      <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                      <span>{tx.flightWrongAirport} ({buildFlightInfo()})</span>
+                    </div>
+                  )}
                   {flightCheckStatus === 'notfound' && (
                     <div className="mt-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-700 flex items-start gap-1.5">
                       <AlertCircle size={13} className="mt-0.5 shrink-0" />
