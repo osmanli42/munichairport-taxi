@@ -66,6 +66,15 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
   const mapRef = useRef<any>(null);
   const [visible, setVisible] = useState(false);
 
+  // Callers often pass pickupCoords/dropoffCoords as fresh object literals on every
+  // render. Depending on those references directly would restart this effect (and tear
+  // down/rebuild the map) on every parent re-render, killing the async route fetch
+  // before it can finish. Depend on the primitive values instead.
+  const pLat = pickupCoords?.lat;
+  const pLng = pickupCoords?.lng;
+  const dLat = dropoffCoords?.lat;
+  const dLng = dropoffCoords?.lng;
+
   useEffect(() => {
     if (!MAPBOX_TOKEN) return;
     let cancelled = false;
