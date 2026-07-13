@@ -80,6 +80,7 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
   // non-null and the container below mounts at its real size — only THEN do we
   // construct the Mapbox map (phase 2), so it never initializes against a 0x0 element.
   useEffect(() => {
+    console.log('[RouteMap] phase1 effect fired', { pickup, dropoff, waypoint, pLat, pLng, dLat, dLng, mountTime: Date.now() });
     let cancelled = false;
     if (!MAPBOX_TOKEN) return;
     (async () => {
