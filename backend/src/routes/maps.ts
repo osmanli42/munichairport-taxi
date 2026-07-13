@@ -223,7 +223,7 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
     const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
     url.searchParams.set('place_id', place_id);
     url.searchParams.set('key', GOOGLE_API_KEY);
-    url.searchParams.set('fields', 'address_components,types,formatted_address,geometry');
+    url.searchParams.set('fields', 'name,address_components,types,formatted_address,geometry');
     url.searchParams.set('language', (req.query.language as string) || 'de');
 
     const response = await fetch(url.toString());
