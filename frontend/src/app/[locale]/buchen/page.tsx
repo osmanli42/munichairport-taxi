@@ -1047,6 +1047,23 @@ function BuchenContent() {
                   </label>
                   <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} className={cn(inputCls, (errors as any).flightNumber && 'border-red-400')} placeholder="LH 1234" />
                   {(errors as any).flightNumber && <p className="text-red-500 text-xs mt-1">{(errors as any).flightNumber}</p>}
+                  {flightCheckStatus === 'checking' && (
+                    <p className="text-gray-400 text-xs mt-1.5 flex items-center gap-1">
+                      <Loader2 size={12} className="animate-spin" /> {tx.flightChecking}
+                    </p>
+                  )}
+                  {flightCheckStatus === 'found' && flightCheckResult && (
+                    <div className="mt-1.5 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5 text-xs text-green-700 flex items-start gap-1.5">
+                      <CheckCircle size={13} className="mt-0.5 shrink-0" />
+                      <span>{tx.flightConfirmed}: {buildFlightInfo()}</span>
+                    </div>
+                  )}
+                  {flightCheckStatus === 'notfound' && (
+                    <div className="mt-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-700 flex items-start gap-1.5">
+                      <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                      <span>{tx.flightNotFound}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}><span className="flex items-center gap-1"><Luggage size={14} /> {tx.luggage}</span></label>
