@@ -223,6 +223,11 @@ function BuchenContent() {
   };
   const tx = t[locale] || t.de;
   const isAirportPickup = pickup.includes('München-Flughafen');
+  const isAirportDropoff = dropoff.includes('München-Flughafen');
+  // Flight number is required whenever the driver needs it to track an arrival:
+  // either the outbound pickup is at the airport, or a Rückfahrt was added and the
+  // outbound dropoff is the airport (so the return leg picks the customer up there).
+  const flightNumberRequired = isAirportPickup || (tripType === 'roundtrip' && isAirportDropoff);
 
   // Debounced, best-effort flight-number check against the backend's AeroDataBox proxy.
   // Never blocks booking — only shows a confirmation card or a non-blocking warning.
