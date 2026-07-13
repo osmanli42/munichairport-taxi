@@ -126,6 +126,7 @@ export async function initializeDatabase(): Promise<void> {
       ['company_ustidnr', ''],
       ['reminder_enabled', 'true'],
       ['reminder_time', '18:00'],
+      ['flight_validation_enabled', '1'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
