@@ -265,7 +265,7 @@ function BuchenContent() {
         .catch(() => { /* aborted or network error — stay silent, non-blocking */ });
     }, 700);
     return () => { if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current); };
-  }, [flightNumber, date, isAirportPickup, settingsLoaded, flightValidationEnabled]);
+  }, [flightNumber, flightCheckDate, flightNumberRequired, settingsLoaded, flightValidationEnabled]);
 
   function buildFlightInfo(): string | undefined {
     if ((flightCheckStatus !== 'found' && flightCheckStatus !== 'wrongairport') || !flightCheckResult) return undefined;
