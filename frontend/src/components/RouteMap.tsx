@@ -132,8 +132,9 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
-      map.on('error', (e: any) => console.log('[RouteMap] error event', e?.error?.message || JSON.stringify(e?.error || e)));
-      setTimeout(() => console.log('[RouteMap] status check', { loaded: map.loaded?.(), styleLoaded: map.isStyleLoaded?.() }), 4000);
+      (window as any).__debugMap = map;
+      map.on('error', (e: any) => console.log('[RouteMap] error:', e?.error?.message || String(e?.error || e)));
+      setTimeout(() => console.log('[RouteMap] status: loaded=' + map.loaded?.() + ' styleLoaded=' + map.isStyleLoaded?.()), 4000);
 
       map.on('load', async () => {
         console.log('[RouteMap] load fired');
