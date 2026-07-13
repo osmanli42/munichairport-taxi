@@ -2969,6 +2969,16 @@ export default function AdminPage() {
                   <span className="font-medium text-right max-w-xs">{value}</span>
                 </div>
               ))}
+              {selectedBooking.flight_number && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Flugstatus:</span>
+                  {selectedBooking.flight_validated === '1' ? (
+                    <span className="font-medium text-right max-w-xs text-green-600">✓ Bestätigt{selectedBooking.flight_info ? `: ${selectedBooking.flight_info}` : ''}</span>
+                  ) : (
+                    <span className="font-medium text-right max-w-xs text-yellow-600">⚠ Nicht verifiziert</span>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4 flex-wrap">
                 <a
