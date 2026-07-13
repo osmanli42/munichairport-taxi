@@ -900,8 +900,8 @@ export async function sendReminderEmail(booking: BookingNotificationData): Promi
         <tr><td style="padding:6px 0;color:#666;width:40%;">${labels.bn}</td><td style="padding:6px 0;color:#1a365d;font-weight:bold;">${booking.booking_number}</td></tr>
         <tr><td style="padding:6px 0;color:#666;">${labels.date}</td><td style="padding:6px 0;color:#333;">${dateStr}</td></tr>
         <tr><td style="padding:6px 0;color:#666;">${labels.time}</td><td style="padding:6px 0;color:#1a365d;font-weight:bold;">${pickupTime} Uhr</td></tr>
-        <tr><td style="padding:6px 0;color:#666;">${labels.pickup}</td><td style="padding:6px 0;color:#333;">${booking.pickup_address}</td></tr>
-        <tr><td style="padding:6px 0;color:#666;">${labels.drop}</td><td style="padding:6px 0;color:#333;">${booking.dropoff_address}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.pickup}</td><td style="padding:6px 0;color:#333;">${addressIcon(booking.pickup_address)}${booking.pickup_address}</td></tr>
+        <tr><td style="padding:6px 0;color:#666;">${labels.drop}</td><td style="padding:6px 0;color:#333;">${addressIcon(booking.dropoff_address)}${booking.dropoff_address}</td></tr>
         ${flightRow}
         <tr><td style="padding:6px 0;color:#666;">${labels.vehicle}</td><td style="padding:6px 0;color:#333;">${vehicleLabel}</td></tr>
         <tr><td style="padding:6px 0;color:#666;">${labels.pax}</td><td style="padding:6px 0;color:#333;">${booking.passengers}</td></tr>
