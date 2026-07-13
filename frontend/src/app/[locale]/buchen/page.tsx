@@ -231,9 +231,13 @@ function BuchenContent() {
 
   // Debounced, best-effort flight-number check against the backend's AeroDataBox proxy.
   // Never blocks booking — only shows a confirmation card or a non-blocking warning.
+  // When the pickup itself isn't the airport but a Rückfahrt was added from the
+  // airport, the flight that matters is the one landing on the RETURN date, not
+  // the outbound date.
+  const flightCheckDate = isAirportPickup ? date : returnDate;
   useEffect(() => {
     if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current);
-    if (!settingsLoaded || !flightValidationEnabled || !isAirportPickup || !flightNumber.trim() || !date) {
+    if (!settingsLoaded || !flightValidationEnabled || !flightNumberRequired || !flightNumber.trim() || !flightCheckDate) {
       flightCheckAbort.current?.abort();
       setFlightCheckStatus('idle');
       setFlightCheckResult(null);
@@ -244,7 +248,7 @@ function BuchenContent() {
       const controller = new AbortController();
       flightCheckAbort.current = controller;
       setFlightCheckStatus('checking');
-      fetch(`${API_URL}/flights/validate?flight=${encodeURIComponent(flightNumber.trim())}&date=${encodeURIComponent(date)}`, { signal: controller.signal })
+      fetch(`${API_URL}/flights/validate?flight=${encodeURIComponent(flightNumber.trim())}&date=${encodeURIComponent(flightCheckDate)}`, { signal: controller.signal })
         .then(r => r.json())
         .then(data => {
           if (!data.available) {
