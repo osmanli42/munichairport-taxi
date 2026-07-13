@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
+import RouteMap from '@/components/RouteMap';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
