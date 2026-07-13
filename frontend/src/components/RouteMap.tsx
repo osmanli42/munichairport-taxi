@@ -94,7 +94,7 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
       if (cancelled || !pCoords || !dCoords) return;
       setStops({ pCoords, dCoords, wCoords });
     })();
-    return () => { cancelled = true; };
+    return () => { console.log('[RouteMap] phase1 cleanup'); cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickup, dropoff, waypoint, pLat, pLng, dLat, dLng]);
 
