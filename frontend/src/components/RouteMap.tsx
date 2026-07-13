@@ -107,9 +107,11 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
       let mapboxgl: any;
       try {
         mapboxgl = await loadMapbox();
-      } catch {
+      } catch (e) {
+        console.log('[RouteMap] loadMapbox failed', e);
         return;
       }
+      console.log('[RouteMap] phase2 start', { cancelled, hasContainer: !!containerRef.current, rect: containerRef.current?.getBoundingClientRect() });
       if (cancelled || !containerRef.current) return;
 
       mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -122,8 +124,10 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
+      map.on('error', (e: any) => console.log('[RouteMap] map error', e?.error?.message || e));
 
       map.on('load', async () => {
+        console.log('[RouteMap] load event fired');
         // Markers: green = pickup, blue = waypoint, red = dropoff
         new mapboxgl.Marker({ color: '#16a34a' }).setLngLat([pCoords.lng, pCoords.lat]).addTo(map);
         if (wCoords) new mapboxgl.Marker({ color: '#2563eb' }).setLngLat([wCoords.lng, wCoords.lat]).addTo(map);
