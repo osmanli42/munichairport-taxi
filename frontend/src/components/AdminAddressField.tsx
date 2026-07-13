@@ -28,7 +28,7 @@ function isAirportResult(description: string): boolean {
   return AIRPORT_FILTER_KEYWORDS.some(kw => description.toLowerCase().includes(kw));
 }
 
-interface Prediction { place_id: string; description: string; }
+interface Prediction { place_id: string; description: string; types?: string[]; }
 interface DropdownPos { top: number; left: number; width: number; }
 
 export default function AdminAddressField({
