@@ -310,7 +310,7 @@ function BuchenContent() {
       else if (!/^\d{3,4}$/.test(cardCvv)) errs.card = locale === 'de' ? 'Ungültiger CVV' : locale === 'en' ? 'Invalid CVV' : 'Geçersiz CVV';
     }
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
-    if (isAirportPickup && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
+    if (flightNumberRequired && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
