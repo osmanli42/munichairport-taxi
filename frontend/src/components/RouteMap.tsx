@@ -71,6 +71,12 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
   const builtRef = useRef(false);
   const [stops, setStops] = useState<Stops | null>(null);
 
+  useEffect(() => {
+    const id = Math.random().toString(36).slice(2, 7);
+    console.log('[RouteMap] TRUE MOUNT', id, Date.now());
+    return () => console.log('[RouteMap] TRUE UNMOUNT', id, Date.now());
+  }, []);
+
   // Callers often pass pickupCoords/dropoffCoords as fresh object literals on every
   // render. Depending on those references directly would restart this effect on every
   // parent re-render. Depend on the primitive values instead.
