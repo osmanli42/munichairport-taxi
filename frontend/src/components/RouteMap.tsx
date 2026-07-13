@@ -59,26 +59,29 @@ async function resolveCoords(address: string, preset?: Coords | null): Promise<C
   }
 }
 
+type Stops = { pCoords: Coords; dCoords: Coords; wCoords: Coords | null };
+
 // Inline Mapbox route map for the booking summary. Renders nothing (falls back to the
 // external link that lives beside it) when no token is configured or the route can't be built.
 export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, dropoffCoords }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const [visible, setVisible] = useState(false);
+  const [stops, setStops] = useState<Stops | null>(null);
 
   // Callers often pass pickupCoords/dropoffCoords as fresh object literals on every
-  // render. Depending on those references directly would restart this effect (and tear
-  // down/rebuild the map) on every parent re-render, killing the async route fetch
-  // before it can finish. Depend on the primitive values instead.
+  // render. Depending on those references directly would restart this effect on every
+  // parent re-render. Depend on the primitive values instead.
   const pLat = pickupCoords?.lat;
   const pLng = pickupCoords?.lng;
   const dLat = dropoffCoords?.lat;
   const dLng = dropoffCoords?.lng;
 
+  // Phase 1: resolve coordinates (no DOM dependency). Once resolved, `stops` becomes
+  // non-null and the container below mounts at its real size — only THEN do we
+  // construct the Mapbox map (phase 2), so it never initializes against a 0x0 element.
   useEffect(() => {
-    if (!MAPBOX_TOKEN) return;
     let cancelled = false;
-
+    if (!MAPBOX_TOKEN) return;
     (async () => {
       const [pCoords, dCoords, wCoords] = await Promise.all([
         resolveCoords(pickup, pickupCoords),
@@ -86,7 +89,20 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         waypoint ? resolveCoords(waypoint) : Promise.resolve(null),
       ]);
       if (cancelled || !pCoords || !dCoords) return;
+      setStops({ pCoords, dCoords, wCoords });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickup, dropoff, waypoint, pLat, pLng, dLat, dLng]);
 
+  // Phase 2: build the map once the sized container exists.
+  useEffect(() => {
+    if (!stops || !containerRef.current) return;
+    let cancelled = false;
+    const { pCoords, dCoords, wCoords } = stops;
+    const orderedStops: Coords[] = wCoords ? [pCoords, wCoords, dCoords] : [pCoords, dCoords];
+
+    (async () => {
       let mapboxgl: any;
       try {
         mapboxgl = await loadMapbox();
@@ -96,8 +112,6 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
       if (cancelled || !containerRef.current) return;
 
       mapboxgl.accessToken = MAPBOX_TOKEN;
-      const orderedStops: Coords[] = wCoords ? [pCoords, wCoords, dCoords] : [pCoords, dCoords];
-
       const map = new mapboxgl.Map({
         container: containerRef.current,
         style: 'mapbox://styles/mapbox/streets-v12',
@@ -107,7 +121,6 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         attributionControl: false,
       });
       mapRef.current = map;
-      setVisible(true);
 
       map.on('load', async () => {
         // Markers: green = pickup, blue = waypoint, red = dropoff
@@ -154,15 +167,15 @@ export default function RouteMap({ pickup, dropoff, waypoint, pickupCoords, drop
         mapRef.current = null;
       }
     };
-  }, [pickup, dropoff, waypoint, pLat, pLng, dLat, dLng]);
+  }, [stops]);
 
-  if (!MAPBOX_TOKEN) return null;
+  if (!MAPBOX_TOKEN || !stops) return null;
 
   return (
     <div
       ref={containerRef}
       className="mt-3 rounded-xl overflow-hidden border border-gray-200"
-      style={{ height: 200, display: visible ? 'block' : 'none' }}
+      style={{ height: 200 }}
     />
   );
 }
