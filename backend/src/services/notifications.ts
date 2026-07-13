@@ -148,9 +148,9 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 
     <div class="section">
       <h3>Fahrtdetails</h3>
-      <div class="row"><span class="label">Abholung:</span><span class="value">${booking.pickup_address}</span></div>
+      <div class="row"><span class="label">Abholung:</span><span class="value">${addressIcon(booking.pickup_address)}${booking.pickup_address}</span></div>
       ${booking.zwischenstopp_address ? `<div class="row"><span class="label">📍 Zwischenstopp:</span><span class="value" style="color:#2563eb;font-weight:bold;">${booking.zwischenstopp_address}</span></div>` : ''}
-      <div class="row"><span class="label">Ziel:</span><span class="value">${booking.dropoff_address}</span></div>
+      <div class="row"><span class="label">Ziel:</span><span class="value">${addressIcon(booking.dropoff_address)}${booking.dropoff_address}</span></div>
       <div class="row"><span class="label">Fahrttyp:</span><span class="value">${booking.trip_type === 'roundtrip' ? '⇄ Hin & Rückfahrt' : '→ Einfache Fahrt'}</span></div>
       <div class="row"><span class="label">Abfahrt:</span><span class="value">${formattedDate}</span></div>
       ${booking.return_datetime ? `<div class="row"><span class="label">Rückfahrt:</span><span class="value">${formatDateTime(booking.return_datetime)}</span></div>` : ''}
