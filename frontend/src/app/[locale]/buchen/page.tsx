@@ -459,7 +459,7 @@ function BuchenContent() {
                   )}
                   <div className="flex items-start gap-2">
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
-                    <span className="text-gray-700">{dropoff}</span>
+                    <span className="text-gray-700">{addressIcon(dropoff)}{dropoff}</span>
                   </div>
                   {/* Route link */}
                   {(() => {
