@@ -30,7 +30,7 @@ function isAirportResult(description: string): boolean {
   return AIRPORT_FILTER_KEYWORDS.some(kw => description.toLowerCase().includes(kw));
 }
 
-interface Prediction { place_id: string; description: string; }
+interface Prediction { place_id: string; description: string; types?: string[]; }
 
 const MONTHS_SHORT_DE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const MONTHS_SHORT_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
