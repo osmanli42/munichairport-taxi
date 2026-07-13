@@ -102,15 +102,24 @@ router.get('/validate', async (req: Request, res: Response): Promise<void> => {
 
   try {
     const url = `https://${AERODATABOX_HOST}/flights/number/${encodeURIComponent(flight)}/${encodeURIComponent(date)}`;
-    const response = await fetch(url, {
+    const fetchOpts = {
       headers: {
         'x-rapidapi-key': AERODATABOX_API_KEY,
         'x-rapidapi-host': AERODATABOX_HOST,
       },
       signal: AbortSignal.timeout(8000),
-    });
+    };
 
-    if (response.status === 404) {
+    let response = await fetch(url, fetchOpts);
+    // Basic tier has a very low per-second rate limit — one short retry
+    // absorbs the occasional collision instead of surfacing a false negative.
+    if (response.status === 429) {
+      await new Promise(r => setTimeout(r, 1100));
+      response = await fetch(url, fetchOpts);
+    }
+
+    // AeroDataBox returns 204 (empty body) or 404 when no matching flight exists.
+    if (response.status === 204 || response.status === 404) {
       const result: FlightValidationResult = { available: true, found: false };
       setCache(cacheKey, result);
       res.json(result);
