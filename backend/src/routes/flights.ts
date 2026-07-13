@@ -5,7 +5,9 @@ const router = Router();
 const AERODATABOX_API_KEY = process.env.AERODATABOX_API_KEY || '';
 const AERODATABOX_HOST = 'aerodatabox.p.rapidapi.com';
 
-const FLIGHT_NUMBER_RE = /^[A-Z]{2}\d{1,4}[A-Z]?$/;
+// IATA airline designators are 2 alphanumeric chars, not always 2 letters
+// (e.g. "4Y" Eurowings Discover, "6E" IndiGo, "9U" Air Moldova).
+const FLIGHT_NUMBER_RE = /^[A-Z0-9]{2}\d{1,4}[A-Z]?$/;
 
 interface FlightValidationResult {
   available: boolean;
