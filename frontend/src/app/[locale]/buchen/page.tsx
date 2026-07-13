@@ -224,6 +224,46 @@ function BuchenContent() {
   const tx = t[locale] || t.de;
   const isAirportPickup = pickup.includes('München-Flughafen');
 
+  // Debounced, best-effort flight-number check against the backend's AeroDataBox proxy.
+  // Never blocks booking — only shows a confirmation card or a non-blocking warning.
+  useEffect(() => {
+    if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current);
+    if (!settingsLoaded || !flightValidationEnabled || !isAirportPickup || !flightNumber.trim() || !date) {
+      flightCheckAbort.current?.abort();
+      setFlightCheckStatus('idle');
+      setFlightCheckResult(null);
+      return;
+    }
+    flightCheckTimer.current = setTimeout(() => {
+      flightCheckAbort.current?.abort();
+      const controller = new AbortController();
+      flightCheckAbort.current = controller;
+      setFlightCheckStatus('checking');
+      fetch(`${API_URL}/flights/validate?flight=${encodeURIComponent(flightNumber.trim())}&date=${encodeURIComponent(date)}`, { signal: controller.signal })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.available) {
+            setFlightCheckStatus('idle');
+            setFlightCheckResult(null);
+          } else if (data.found) {
+            setFlightCheckStatus('found');
+            setFlightCheckResult({ airline: data.airline, origin: data.origin, scheduledArrival: data.scheduledArrival });
+          } else {
+            setFlightCheckStatus('notfound');
+            setFlightCheckResult(null);
+          }
+        })
+        .catch(() => { /* aborted or network error — stay silent, non-blocking */ });
+    }, 700);
+    return () => { if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current); };
+  }, [flightNumber, date, isAirportPickup, settingsLoaded, flightValidationEnabled]);
+
+  function buildFlightInfo(): string | undefined {
+    if (flightCheckStatus !== 'found' || !flightCheckResult) return undefined;
+    const { airline, origin, scheduledArrival } = flightCheckResult;
+    return [airline, origin && `${origin} → MUC`, scheduledArrival && `${tx.flightArrival} ${scheduledArrival}`].filter(Boolean).join(' · ') || undefined;
+  }
+
   function luhnCheck(num: string): boolean {
     const digits = num.replace(/\s/g, '');
     if (!/^\d{13,19}$/.test(digits)) return false;
