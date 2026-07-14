@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
+import TrustBadges from './TrustBadges';
 
 export default function Footer() {
   const t = useTranslations('footer');
+  const locale = useLocale();
   const year = new Date().getFullYear();
 
   return (
