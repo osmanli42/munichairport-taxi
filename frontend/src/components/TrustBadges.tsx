@@ -63,7 +63,7 @@ export default function TrustBadges({ locale }: { locale?: string }) {
     locale === 'en' ? 'Secure & easy payment' :
     'Sichere & einfache Bezahlung';
   const tuev =
-    locale === 'tr' ? 'TÜV-geprüfte Fahrzeuge' :
+    locale === 'tr' ? 'TÜV onaylı araçlar' :
     locale === 'en' ? 'TÜV-inspected vehicles' :
     'TÜV-geprüfte Fahrzeuge';
 
