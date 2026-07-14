@@ -87,6 +87,9 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-primary-500 mt-8 pt-6">
+          <div className="mb-6">
+            <TrustBadges locale={locale} />
+          </div>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-primary-300 mb-4">
             <span>🏆 20 Jahre Erfahrung</span>
             <span>🚫 Kostenloser Storno bis 3 Std.</span>
