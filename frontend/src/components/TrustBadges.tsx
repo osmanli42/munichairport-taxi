@@ -59,7 +59,7 @@ function TextBadge({ icon, label }: { icon?: React.ReactNode; label: string }) {
 
 export default function TrustBadges({ locale }: { locale?: string }) {
   const heading =
-    locale === 'tr' ? 'Güvenli & einfache Bezahlung' :
+    locale === 'tr' ? 'Güvenli & kolay ödeme' :
     locale === 'en' ? 'Secure & easy payment' :
     'Sichere & einfache Bezahlung';
   const tuev =
