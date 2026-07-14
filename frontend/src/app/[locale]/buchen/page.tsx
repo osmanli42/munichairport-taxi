@@ -1354,9 +1354,6 @@ function BuchenContent() {
                       </div>
                     </>
                   )}
-                  <div className="flex items-center gap-2 pl-6">
-                    <ArrowRight size={12} className="text-gray-300" />
-                  </div>
                   <div className="flex items-start gap-2">
                     <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
                     <p className="text-gray-700 text-xs leading-relaxed">{addressIcon(dropoff)}{dropoff}</p>
