@@ -81,6 +81,7 @@ export default function TrustBadges({ locale }: { locale?: string }) {
         <TextBadge icon={<LockIcon />} label="SSL-verschlüsselt" />
         <TextBadge label="IHK-Mitglied" />
         <TextBadge label={tuev} />
+        <TextBadge label={licensed} />
       </div>
     </div>
   );
