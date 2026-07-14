@@ -66,6 +66,10 @@ export default function TrustBadges({ locale }: { locale?: string }) {
     locale === 'tr' ? 'TÜV onaylı araçlar' :
     locale === 'en' ? 'TÜV-inspected vehicles' :
     'TÜV-geprüfte Fahrzeuge';
+  const licensed =
+    locale === 'tr' ? 'Resmi ruhsatlı taksi' :
+    locale === 'en' ? 'Licensed taxi operator' :
+    'Behördlich konzessioniert';
 
   return (
     <div className="flex flex-col items-center gap-3">
