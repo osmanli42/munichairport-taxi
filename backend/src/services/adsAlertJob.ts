@@ -9,7 +9,7 @@ import { Resend } from 'resend';
 import { query, run } from '../db';
 import { computeOverview } from '../routes/ads';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 const SITE_HOST = 'flughafen-muenchen.taxi';

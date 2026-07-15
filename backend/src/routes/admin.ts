@@ -1586,7 +1586,7 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
     const pdfBuffer = await generateRechnungPdf({ booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse, zahlungsart });
 
     // ── Send email via Resend ───────────────────────────────────────────────
-    const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+    const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
     const fromEmail = 'info@flughafen-muenchen.taxi';
 
     const subject = lang === 'en'

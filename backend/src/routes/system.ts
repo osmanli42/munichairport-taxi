@@ -8,7 +8,7 @@ import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 
 const router = Router();
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 

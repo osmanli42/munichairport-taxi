@@ -52,7 +52,7 @@ router.post('/apply', async (req, res): Promise<void> => {
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const adminEmail = 'info@flughafen-muenchen.taxi';
       const applyBody = `
           <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:24px;">
@@ -377,7 +377,7 @@ router.post('/bookings/:id/cancel', authenticateCompany, async (req: CompanyAuth
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const adminEmail = 'info@flughafen-muenchen.taxi';
       const cancelBody = `
           <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:24px;">
@@ -577,7 +577,7 @@ router.post('/users', authenticateCompany, async (req: CompanyAuthRequest, res: 
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const fromEmail = 'info@flughafen-muenchen.taxi';
       const inviteBody = `
           <div style="background:#ecfdf5;border-left:4px solid #10b981;padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:24px;">

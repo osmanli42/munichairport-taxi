@@ -85,7 +85,7 @@ router.post('/:id/approve', authenticateAdmin, async (req: AuthRequest, res: Res
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const fromEmail = 'info@flughafen-muenchen.taxi';
       const portalUrl = `${process.env.SITE_URL || 'https://flughafen-muenchen.taxi'}/portal`;
       const bodyHtml = `
@@ -259,7 +259,7 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
         });
 
         const { Resend } = await import('resend');
-        const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+        const resend = new Resend(process.env.RESEND_API_KEY);
         const fromEmail = 'info@flughafen-muenchen.taxi';
         const sammelBody = `
           <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Sehr geehrte Damen und Herren der <strong>${company.company_name}</strong>,<br><br>anbei erhalten Sie Ihre Sammelrechnung <strong>${invoiceNumber}</strong> für den Zeitraum <strong>${month}</strong>.</p>
@@ -420,7 +420,7 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
 
     try {
       const { Resend } = await import('resend');
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const fromEmail = 'info@flughafen-muenchen.taxi';
       const subjectPrefix = newLevel === 3 ? 'Mahnung' : `${newLevel}. Zahlungserinnerung`;
       await resend.emails.send({
