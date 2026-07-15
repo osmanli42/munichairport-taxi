@@ -150,7 +150,7 @@ function AddressField({
         </div>
       )}
       {open && showAirport && (
-        <ul className="absolute z-[9999] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 overflow-hidden">
+        <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 overflow-hidden">
           <li className="px-4 py-2.5 text-xs font-bold text-primary-600 bg-primary-50 border-b border-gray-100">
             ✈️ Flughafen München — Terminal wählen
           </li>
@@ -163,7 +163,7 @@ function AddressField({
         </ul>
       )}
       {open && !showAirport && predictions.length > 0 && (
-        <ul className="absolute z-[9999] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
+        <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
           {predictions.map(p => (
             <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className="px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors">
               {p.types?.includes('lodging') ? (
@@ -173,7 +173,7 @@ function AddressField({
               ) : (
                 <MapPin size={12} className="text-gray-400 shrink-0" />
               )}
-              {p.description}
+              <span className="truncate">{p.description}</span>
             </li>
           ))}
         </ul>

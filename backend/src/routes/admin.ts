@@ -6,6 +6,8 @@ import { query, run } from '../db';
 import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
 import { signToken } from '../utils/trackingToken';
+import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
+import { chargeSavedCard, getCompanyForCharge } from '../services/stripeCards';
 
 const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
 
@@ -85,29 +87,29 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       limit = '20',
     } = req.query as Record<string, string>;
 
-    let sql = 'SELECT * FROM bookings WHERE 1=1';
+    let sql = 'SELECT bookings.*, companies.company_name AS company_name FROM bookings LEFT JOIN companies ON bookings.company_id = companies.id WHERE 1=1';
     const params: (string | number)[] = [];
 
     if (status) {
-      sql += ' AND status = ?';
+      sql += ' AND bookings.status = ?';
       params.push(status);
     }
     if (vehicle_type) {
-      sql += ' AND vehicle_type = ?';
+      sql += ' AND bookings.vehicle_type = ?';
       params.push(vehicle_type);
     }
     if (date_from && date_to) {
-      sql += ' AND (DATE(pickup_datetime) BETWEEN ? AND ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) BETWEEN ? AND ?))';
+      sql += ' AND (DATE(bookings.pickup_datetime) BETWEEN ? AND ? OR (bookings.return_datetime IS NOT NULL AND DATE(bookings.return_datetime) BETWEEN ? AND ?))';
       params.push(date_from, date_to, date_from, date_to);
     } else if (date_from) {
-      sql += ' AND (DATE(pickup_datetime) >= ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) >= ?))';
+      sql += ' AND (DATE(bookings.pickup_datetime) >= ? OR (bookings.return_datetime IS NOT NULL AND DATE(bookings.return_datetime) >= ?))';
       params.push(date_from, date_from);
     } else if (date_to) {
-      sql += ' AND (DATE(pickup_datetime) <= ? OR (return_datetime IS NOT NULL AND DATE(return_datetime) <= ?))';
+      sql += ' AND (DATE(bookings.pickup_datetime) <= ? OR (bookings.return_datetime IS NOT NULL AND DATE(bookings.return_datetime) <= ?))';
       params.push(date_to, date_to);
     }
     if (search) {
-      sql += ' AND (name LIKE ? OR phone LIKE ? OR email LIKE ? OR booking_number LIKE ? OR pickup_address LIKE ? OR dropoff_address LIKE ?)';
+      sql += ' AND (bookings.name LIKE ? OR bookings.phone LIKE ? OR bookings.email LIKE ? OR bookings.booking_number LIKE ? OR bookings.pickup_address LIKE ? OR bookings.dropoff_address LIKE ?)';
       const searchParam = `%${search}%`;
       params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
     }
@@ -116,10 +118,10 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const countSql = sql.replace('SELECT bookings.*, companies.company_name AS company_name', 'SELECT COUNT(*) as count');
     const [countResult] = await query<{ count: number }>(countSql, params);
 
-    sql += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
+    sql += ` ORDER BY bookings.created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
 
     const rawBookings = await query(sql, params);
     const bookings = rawBookings.map(decryptBooking);
@@ -169,7 +171,8 @@ router.get('/bookings/tomorrow-cards', authenticateAdmin, async (req: AuthReques
     const bookings = await query(`
       SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
              pickup_datetime, vehicle_type, passengers, price, status,
-             card_holder, card_number_enc, card_expiry, card_cvv_enc
+             card_holder, card_number_enc, card_expiry, card_cvv_enc,
+             company_id, charge_status, charge_error
       FROM bookings
       WHERE payment_method = 'card'
         AND status IN ('new', 'confirmed')
@@ -212,6 +215,14 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
 
   const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
 
+  // Company card-on-file: charge automatically if this company charges on trip completion
+  if (status === 'completed' && booking?.company_id && booking.payment_method === 'card' && booking.charge_status !== 'succeeded') {
+    const company = await getCompanyForCharge(booking.company_id);
+    if (company?.charge_mode === 'on_completion' && company.stripe_payment_method_id) {
+      chargeSavedCard(booking.id, company, Number(booking.price)).catch(err => console.error('On-completion charge error:', err));
+    }
+  }
+
   // Send cancellation email when booking is cancelled
   if (status === 'cancelled' && booking?.email) {
     const { sendCancellationEmail } = await import('../services/notifications');
@@ -245,9 +256,9 @@ router.patch('/bookings/:id/steuersatz', authenticateAdmin, async (req: AuthRequ
     return;
   }
 
-  const result = await run('UPDATE bookings SET steuersatz = ? WHERE id = ? AND payment_method = ?', [steuersatz, req.params.id, 'card']);
+  const result = await run('UPDATE bookings SET steuersatz = ? WHERE id = ?', [steuersatz, req.params.id]);
   if (result.affectedRows === 0) {
-    res.status(404).json({ error: 'Booking not found or not a card payment' });
+    res.status(404).json({ error: 'Booking not found' });
     return;
   }
 
@@ -1496,12 +1507,6 @@ router.post('/stripe/auto-sync', authenticateAdmin, async (req: AuthRequest, res
 
 // ─── BANK & COMPANY SETTINGS ─────────────────────────────────────────────────
 
-const BANK_SETTINGS_KEYS = [
-  'bank_name', 'bank_iban', 'bank_bic', 'bank_kontoinhaber',
-  'company_name', 'company_address', 'company_phone', 'company_email',
-  'company_steuernr', 'company_ustidnr',
-];
-
 // GET /api/admin/bank-settings
 router.get('/bank-settings', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -1576,21 +1581,13 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
       return;
     }
 
-    // Fetch bank/company settings
-    const rows = await query<{ setting_key: string; setting_value: string }>(
-      `SELECT setting_key, setting_value FROM settings WHERE setting_key IN (${BANK_SETTINGS_KEYS.map(() => '?').join(',')})`,
-      BANK_SETTINGS_KEYS
-    );
-    const s: Record<string, string> = {};
-    for (const key of BANK_SETTINGS_KEYS) s[key] = '';
-    for (const row of rows) s[row.setting_key] = row.setting_value;
+    const s = await fetchBankSettings();
 
-    // ── PDF generation ──────────────────────────────────────────────────────
     const pdfBuffer = await generateRechnungPdf({ booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse, zahlungsart });
 
     // ── Send email via Resend ───────────────────────────────────────────────
     const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn');
-    const fromEmail = process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
+    const fromEmail = 'info@flughafen-muenchen.taxi';
 
     const subject = lang === 'en'
       ? `Your Invoice ${rechnungsnummer} – Munich Airport Taxi`
@@ -1615,379 +1612,6 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
     res.status(500).json({ error: error.message || 'Failed to generate invoice' });
   }
 });
-
-// ─── PDF HELPER ───────────────────────────────────────────────────────────────
-
-function fmtPrice(amount: number): string {
-  return amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
-
-// Round gross price up to the nearest 0.50 — must match frontend formatPrice()
-function roundGrossPrice(price: number): number {
-  return Math.ceil(price * 2) / 2;
-}
-
-function fmtDate(dateStr: string, lang: string): string {
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString(lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  } catch { return dateStr; }
-}
-
-function generateRechnungPdf(opts: {
-  booking: any;
-  rechnungsnummer: string;
-  mwst: 0 | 7 | 19;
-  lang: 'de' | 'en';
-  s: Record<string, string>;
-  empfaenger_adresse?: string;
-  zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
-}): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const { booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse, zahlungsart } = opts;
-    const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
-    const isEn = lang === 'en';
-
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
-    const chunks: Buffer[] = [];
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-
-    const BRAND = '#0c2d48';
-    const GRAY = '#6b7280';
-    const LIGHTGRAY = '#f3f4f6';
-    const pageW = doc.page.width - 100; // usable width (margins 50 each side)
-    const marginL = 50;
-
-    // ── HEADER ─────────────────────────────────────────────────────────────
-    // Left: Company info
-    const companyName = s.company_name || 'Taxi N&N GbR';
-    doc.fontSize(13).font('Helvetica-Bold').fillColor(BRAND).text(companyName, marginL, 50);
-    doc.fontSize(9).font('Helvetica').fillColor(GRAY);
-    doc.text(s.company_address || 'Eisvogelweg 2, 85356 Freising', marginL, doc.y + 2);
-    if (s.company_phone) doc.text(s.company_phone, marginL, doc.y + 1);
-    if (s.company_email) doc.text(s.company_email, marginL, doc.y + 1);
-
-    // Right: RECHNUNG title
-    const titleX = marginL + pageW - 200;
-    doc.fontSize(28).font('Helvetica-Bold').fillColor(BRAND)
-      .text(isEn ? 'INVOICE' : 'RECHNUNG', titleX, 50, { width: 200, align: 'right' });
-
-    const today = new Date();
-    const todayStr = fmtDate(today.toISOString(), lang);
-    const dueDate = new Date(today);
-    dueDate.setDate(dueDate.getDate() + 14);
-    const dueDateStr = fmtDate(dueDate.toISOString(), lang);
-
-    // Zahlungsart label
-    const zahlungsartLabel = isPaid
-      ? (zahlungsart === 'bar'
-          ? (isEn ? 'Paid in Cash' : 'Bar bezahlt')
-          : (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt'))
-      : (isEn ? 'Bank Transfer' : 'Überweisung');
-
-    doc.fontSize(9).font('Helvetica').fillColor(GRAY);
-    const metaY = 90;
-    const labelW = 95;
-    const valW = 105;
-    const metaX = titleX;
-    const rows2: [string, string][] = [
-      [isEn ? 'Invoice No.:' : 'Rechnungsnr.:', rechnungsnummer],
-      [isEn ? 'Invoice Date:' : 'Datum:', todayStr],
-      [isEn ? 'Booking No.:' : 'Buchungsnr.:', booking.booking_number || '—'],
-      isPaid
-        ? [isEn ? 'Payment:' : 'Zahlung:', zahlungsartLabel]
-        : [isEn ? 'Payment Due:' : 'Zahlungsziel:', dueDateStr],
-    ];
-    let ry = metaY;
-    for (const [label, val] of rows2) {
-      doc.font('Helvetica').fillColor(GRAY).text(label, metaX, ry, { width: labelW, lineBreak: false });
-      doc.font('Helvetica-Bold').fillColor('#111827').text(val, metaX + labelW, ry, { width: valW, align: 'right', lineBreak: false });
-      ry += 14;
-    }
-
-    // ── CUSTOMER BLOCK ─────────────────────────────────────────────────────
-    const custY = Math.max(doc.y + 20, 185);
-    doc.fontSize(8).font('Helvetica').fillColor(GRAY)
-      .text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
-    if (empfaenger_adresse && empfaenger_adresse.trim()) {
-      // Custom address entered by admin — render each line with explicit Y tracking
-      const lines = empfaenger_adresse.trim().replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-      let addrY = custY + 12;
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
-        .text(lines[0] || '—', marginL, addrY, { width: pageW, lineBreak: false });
-      addrY += 16;
-      doc.fontSize(9).font('Helvetica').fillColor('#374151');
-      for (let i = 1; i < lines.length; i++) {
-        doc.text(lines[i], marginL, addrY, { width: pageW, lineBreak: false });
-        addrY += 13;
-      }
-      // Advance PDFKit's internal cursor to after the address block
-      doc.text('', marginL, addrY - 4);
-    } else {
-      // Fallback: use booking data
-      let addrY = custY + 12;
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
-        .text(booking.name || '—', marginL, addrY, { width: pageW, lineBreak: false });
-      addrY += 16;
-      doc.fontSize(9).font('Helvetica').fillColor('#374151');
-      if (booking.email) { doc.text(booking.email, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-      if (booking.phone) { doc.text(booking.phone, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-      doc.text('', marginL, addrY - 4);
-    }
-
-    // ── SEPARATOR ─────────────────────────────────────────────────────────
-    const sepY = doc.y + 18;
-    doc.moveTo(marginL, sepY).lineTo(marginL + pageW, sepY)
-      .lineWidth(1).strokeColor(BRAND).stroke();
-
-    // ── SERVICES TABLE ─────────────────────────────────────────────────────
-    const tableTop = sepY + 16;
-    const colPos    = marginL;                      // x=50,  w=25
-    const colDesc   = marginL + 30;                 // x=80,  w=flexible
-    const colMenge  = marginL + pageW - 195;        // x=350, w=50
-    const colEinzel = marginL + pageW - 138;        // x=407, w=70
-    const colGesamt = marginL + pageW - 62;         // x=483, w=62 → ends at right margin
-    const wDesc     = colMenge - colDesc - 8;       // ~262px
-    const wMenge    = colEinzel - colMenge - 4;     // ~53px
-    const wEinzel   = colGesamt - colEinzel - 4;    // ~72px
-    const wGesamt   = marginL + pageW - colGesamt;  // ~62px
-
-    // Table header
-    doc.rect(marginL, tableTop, pageW, 20).fill(BRAND);
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#ffffff');
-    doc.text(isEn ? 'Pos.' : 'Pos.', colPos, tableTop + 6, { width: 25, align: 'left', lineBreak: false });
-    doc.text(isEn ? 'Description' : 'Beschreibung', colDesc, tableTop + 6, { width: wDesc, lineBreak: false });
-    doc.text(isEn ? 'Qty' : 'Menge', colMenge, tableTop + 6, { width: wMenge, align: 'center', lineBreak: false });
-    doc.text(isEn ? 'Unit Price' : 'Einzelpreis', colEinzel, tableTop + 6, { width: wEinzel, align: 'right', lineBreak: false });
-    doc.text(isEn ? 'Total' : 'Gesamt', colGesamt, tableTop + 6, { width: wGesamt, align: 'right', lineBreak: false });
-
-    // Net price calculation
-    const grossPrice = roundGrossPrice(Number(booking.price) || 0);
-    const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
-    const mwstAmount = grossPrice - netPrice;
-
-    // Service description
-    const pickupDate = booking.pickup_datetime ? fmtDate(booking.pickup_datetime, lang) : '';
-    const descLine1 = isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München';
-    const descLine2 = `${isEn ? 'From:' : 'Von:'} ${(booking.pickup_address || '').substring(0, 60)}`;
-    const descLine3 = `${isEn ? 'To:' : 'Nach:'} ${(booking.dropoff_address || '').substring(0, 60)}`;
-    const descLine4 = pickupDate ? (isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}`) : '';
-
-    // Row height: title + 3 description lines (+ optional date line)
-    const ROW_H_SERVICE = descLine4 ? 65 : 54;
-    const rowTop = tableTop + 20;
-    doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
-    doc.fillColor('#111827').fontSize(8.5).font('Helvetica-Bold');
-    doc.text('1', colPos, rowTop + 8, { width: 25, lineBreak: false });
-    doc.font('Helvetica-Bold').text(descLine1, colDesc, rowTop + 8, { width: wDesc, lineBreak: false, ellipsis: true });
-    doc.font('Helvetica').fontSize(8).fillColor(GRAY)
-      .text(descLine2, colDesc, rowTop + 20, { width: wDesc, lineBreak: false, ellipsis: true });
-    doc.text(descLine3, colDesc, rowTop + 31, { width: wDesc, lineBreak: false, ellipsis: true });
-    if (descLine4) {
-      doc.text(descLine4, colDesc, rowTop + 42, { width: wDesc, lineBreak: false, ellipsis: true });
-    }
-    doc.fontSize(8.5).fillColor('#111827').font('Helvetica');
-    doc.text('1×', colMenge, rowTop + 8, { width: wMenge, align: 'center', lineBreak: false });
-    doc.text(fmtPrice(grossPrice), colEinzel, rowTop + 8, { width: wEinzel, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: wGesamt, align: 'right', lineBreak: false });
-
-    // Table bottom border
-    const tableBottom = rowTop + ROW_H_SERVICE;
-    doc.moveTo(marginL, tableBottom).lineTo(marginL + pageW, tableBottom)
-      .lineWidth(0.5).strokeColor('#e5e7eb').stroke();
-
-    // ── TOTALS ─────────────────────────────────────────────────────────────
-    const totX = marginL + pageW - 250;
-    const totValX = marginL + pageW - 40;
-    let totY = tableBottom + 16;
-
-    const totRows: [string, number, boolean][] = [
-      [isEn ? 'Net Amount:' : 'Nettobetrag:', netPrice, false],
-      [isEn ? `VAT (${mwst}%):` : `MwSt. (${mwst}%):`, mwstAmount, false],
-      [isEn ? 'TOTAL AMOUNT:' : 'GESAMTBETRAG:', grossPrice, true],
-    ];
-    for (const [label, amount, bold] of totRows) {
-      if (bold) {
-        // Total line separator
-        doc.moveTo(totX, totY - 4).lineTo(marginL + pageW, totY - 4).lineWidth(0.5).strokeColor(BRAND).stroke();
-      }
-      doc.fontSize(bold ? 11 : 9)
-        .font(bold ? 'Helvetica-Bold' : 'Helvetica')
-        .fillColor(bold ? BRAND : '#374151');
-      doc.text(label, totX, totY, { width: 160, lineBreak: false });
-      doc.text(fmtPrice(amount), totValX, totY, { width: 50, align: 'right', lineBreak: false });
-      totY += bold ? 18 : 14;
-    }
-
-    // MwSt=0 note
-    if (mwst === 0) {
-      doc.fontSize(8).font('Helvetica').fillColor(GRAY)
-        .text(isEn
-          ? 'VAT-exempt pursuant to §4 No. 21 UStG'
-          : 'Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG',
-          marginL, totY + 8, { width: pageW });
-      totY += 24;
-    }
-
-    // ── BANK TRANSFER BOX or BEZAHLT BOX ──────────────────────────────────
-    const bankY = totY + 24;
-    if (isPaid) {
-      // Green "bezahlt" confirmation box
-      const paidLabel = zahlungsart === 'bar'
-        ? (isEn ? '✓  Paid in Cash' : '✓  Bar bezahlt')
-        : (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt');
-      doc.rect(marginL, bankY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#15803d')
-        .text(paidLabel, marginL + 12, bankY + 15);
-    } else {
-      // Bank transfer details box
-      doc.rect(marginL, bankY, pageW, 90).fill('#f9fafb').stroke();
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(BRAND)
-        .text(isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG', marginL + 12, bankY + 12);
-      doc.fontSize(8.5).font('Helvetica').fillColor('#374151');
-
-      const bankRows: [string, string][] = [
-        [isEn ? 'Account Holder:' : 'Kontoinhaber:', s.bank_kontoinhaber || companyName],
-        [isEn ? 'Bank:' : 'Bank:', s.bank_name || '—'],
-        ['IBAN:', s.bank_iban || '—'],
-        ['BIC/SWIFT:', s.bank_bic || '—'],
-        [isEn ? 'Reference:' : 'Verwendungszweck:', rechnungsnummer],
-      ];
-      let bY = bankY + 26;
-      for (const [label, val] of bankRows) {
-        doc.font('Helvetica').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
-        doc.font('Helvetica-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
-        bY += 12;
-      }
-    }
-
-    // ── FOOTER ────────────────────────────────────────────────────────────
-    const footerY = doc.page.height - 80;
-    doc.moveTo(marginL, footerY).lineTo(marginL + pageW, footerY)
-      .lineWidth(0.5).strokeColor('#e5e7eb').stroke();
-    doc.fontSize(7.5).font('Helvetica').fillColor(GRAY);
-    const footerParts: string[] = [companyName, s.company_address || ''].filter(Boolean);
-    if (s.company_steuernr) footerParts.push((isEn ? 'Tax No.: ' : 'Steuer-Nr.: ') + s.company_steuernr);
-    if (s.company_ustidnr) footerParts.push((isEn ? 'VAT ID: ' : 'USt-IdNr.: ') + s.company_ustidnr);
-    doc.text(footerParts.join('  ·  '), marginL, footerY + 8, { width: pageW, align: 'center' });
-    doc.text('flughafen-muenchen.taxi', marginL, footerY + 20, { width: pageW, align: 'center' });
-
-    doc.end();
-  });
-}
-
-// ─── RECHNUNG EMAIL HELPER ────────────────────────────────────────────────────
-
-function buildRechnungEmail(opts: {
-  booking: any;
-  rechnungsnummer: string;
-  mwst: 0 | 7 | 19;
-  lang: 'de' | 'en';
-  s: Record<string, string>;
-  zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
-}): string {
-  const { booking, rechnungsnummer, mwst, lang, s, zahlungsart } = opts;
-  const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
-  const isEn = lang === 'en';
-  const companyName = s.company_name || 'Taxi N&N GbR';
-  const grossPrice = roundGrossPrice(Number(booking.price) || 0);
-  const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
-  const mwstAmount = grossPrice - netPrice;
-  const BRAND = '#0c2d48';
-
-  const greeting = isEn
-    ? `Dear ${booking.name || 'Customer'},`
-    : `Sehr geehrte/r ${booking.name || 'Kunde/Kundin'},`;
-
-  const intro = isEn
-    ? `Thank you for choosing Munich Airport Taxi. Please find your invoice <strong>${rechnungsnummer}</strong> attached to this email.`
-    : `Vielen Dank für Ihre Buchung bei Flughafen München Taxi. Anbei erhalten Sie Ihre Rechnung <strong>${rechnungsnummer}</strong> als PDF-Anhang.`;
-
-  const tableRows = `
-    <tr style="background:#f3f4f6;">
-      <td style="padding:10px 12px;font-weight:600;color:#111827;">${isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München'}</td>
-      <td style="padding:10px 12px;text-align:right;color:#111827;">${fmtPrice(netPrice)}</td>
-    </tr>
-    <tr><td style="padding:8px 12px;color:#6b7280;font-size:12px;" colspan="2">${booking.pickup_address} → ${booking.dropoff_address}</td></tr>
-    <tr style="border-top:1px solid #e5e7eb;">
-      <td style="padding:8px 12px;color:#6b7280;">${isEn ? 'Net Amount' : 'Nettobetrag'}</td>
-      <td style="padding:8px 12px;text-align:right;color:#374151;">${fmtPrice(netPrice)}</td>
-    </tr>
-    <tr>
-      <td style="padding:8px 12px;color:#6b7280;">${isEn ? `VAT (${mwst}%)` : `MwSt. (${mwst}%)`}</td>
-      <td style="padding:8px 12px;text-align:right;color:#374151;">${fmtPrice(mwstAmount)}</td>
-    </tr>
-    <tr style="border-top:2px solid ${BRAND};background:#f0f9ff;">
-      <td style="padding:12px;font-weight:700;color:${BRAND};font-size:15px;">${isEn ? 'Total Amount' : 'Gesamtbetrag'}</td>
-      <td style="padding:12px;text-align:right;font-weight:700;color:${BRAND};font-size:15px;">${fmtPrice(grossPrice)}</td>
-    </tr>
-  `;
-
-  const paidLabel = zahlungsart === 'bar'
-    ? (isEn ? '✓ Paid in Cash' : '✓ Bar bezahlt')
-    : (isEn ? '✓ Paid by Credit Card' : '✓ Kreditkarte bezahlt');
-
-  const bankSection = isPaid ? `
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-top:20px;">
-      <p style="margin:0;font-weight:700;color:#15803d;font-size:14px;">${paidLabel}</p>
-    </div>
-  ` : (s.bank_iban ? `
-    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-top:20px;">
-      <p style="margin:0 0 10px;font-weight:700;color:${BRAND};font-size:13px;">${isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG'}</p>
-      <table style="width:100%;font-size:13px;border-collapse:collapse;">
-        ${s.bank_kontoinhaber ? `<tr><td style="color:#6b7280;padding:3px 0;width:130px;">${isEn ? 'Account Holder:' : 'Kontoinhaber:'}</td><td style="font-weight:600;">${s.bank_kontoinhaber}</td></tr>` : ''}
-        ${s.bank_name ? `<tr><td style="color:#6b7280;padding:3px 0;">${isEn ? 'Bank:' : 'Bank:'}</td><td style="font-weight:600;">${s.bank_name}</td></tr>` : ''}
-        <tr><td style="color:#6b7280;padding:3px 0;">IBAN:</td><td style="font-weight:600;font-family:monospace;">${s.bank_iban}</td></tr>
-        ${s.bank_bic ? `<tr><td style="color:#6b7280;padding:3px 0;">BIC/SWIFT:</td><td style="font-weight:600;font-family:monospace;">${s.bank_bic}</td></tr>` : ''}
-        <tr><td style="color:#6b7280;padding:3px 0;">${isEn ? 'Reference:' : 'Verwendungszweck:'}</td><td style="font-weight:600;">${rechnungsnummer}</td></tr>
-      </table>
-    </div>
-  ` : '');
-
-  const closing = isEn
-    ? 'If you have any questions, please do not hesitate to contact us.'
-    : 'Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.';
-
-  return `<!DOCTYPE html>
-<html lang="${lang}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f7;">
-<tr><td align="center" style="padding:32px 16px;">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-  <!-- Header -->
-  <tr><td style="background:${BRAND};padding:24px 32px;">
-    <p style="margin:0;color:#fff;font-size:20px;font-weight:700;">${isEn ? 'Your Invoice' : 'Ihre Rechnung'}</p>
-    <p style="margin:4px 0 0;color:#93c5fd;font-size:13px;">${rechnungsnummer} · ${companyName}</p>
-  </td></tr>
-  <!-- Body -->
-  <tr><td style="padding:28px 32px;">
-    <p style="margin:0 0 16px;color:#374151;font-size:14px;">${greeting}</p>
-    <p style="margin:0 0 24px;color:#374151;font-size:14px;line-height:1.6;">${intro}</p>
-    <!-- Invoice table -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:13px;">
-      <tr style="background:${BRAND};">
-        <td style="padding:10px 12px;color:#fff;font-weight:700;">${isEn ? 'Description' : 'Beschreibung'}</td>
-        <td style="padding:10px 12px;color:#fff;font-weight:700;text-align:right;">${isEn ? 'Amount' : 'Betrag'}</td>
-      </tr>
-      ${tableRows}
-    </table>
-    ${bankSection}
-    <p style="margin:24px 0 0;color:#374151;font-size:14px;">${closing}</p>
-    <p style="margin:8px 0 0;color:#374151;font-size:14px;">${isEn ? 'With kind regards,<br>' : 'Mit freundlichen Grüßen,<br>'}<strong>${companyName}</strong></p>
-  </td></tr>
-  <!-- Footer -->
-  <tr><td style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="margin:0;color:#9ca3af;font-size:11px;">${companyName} · ${s.company_address || ''}</p>
-    ${s.company_phone ? `<p style="margin:4px 0 0;color:#9ca3af;font-size:11px;">${s.company_phone} · <a href="mailto:${s.company_email || ''}" style="color:#9ca3af;">${s.company_email || ''}</a></p>` : ''}
-  </td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>`;
-}
 
 // ─── MARKETING ────────────────────────────────────────────────────────────────
 
@@ -2097,7 +1721,7 @@ router.post('/marketing/parse-ics', authenticateAdmin, async (req: AuthRequest, 
     }
 
     // Filter out the company's own email and common system addresses
-    const ownEmail = (process.env.SMTP_USER || 'info@flughafen-muenchen.taxi').toLowerCase();
+    const ownEmail = ('info@flughafen-muenchen.taxi').toLowerCase();
     const blocklist = new Set([ownEmail, 'noreply@', 'no-reply@']);
     const result = Array.from(contactMap.values()).filter(
       (c) => !c.email.startsWith('noreply') && !c.email.startsWith('no-reply') && c.email !== ownEmail

@@ -14,24 +14,28 @@ function getDbConfig(): mysql.ConnectionOptions {
   };
 }
 
-export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-  const conn = await mysql.createConnection(getDbConfig());
-  try {
-    const [rows] = await conn.execute(sql, params);
-    return rows as T[];
-  } finally {
-    await conn.end().catch(() => {});
+let pool: mysql.Pool | null = null;
+
+function getPool(): mysql.Pool {
+  if (!pool) {
+    pool = mysql.createPool({
+      ...getDbConfig(),
+      waitForConnections: true,
+      connectionLimit: 5,
+      queueLimit: 0,
+    });
   }
+  return pool;
+}
+
+export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  const [rows] = await getPool().execute(sql, params);
+  return rows as T[];
 }
 
 export async function run(sql: string, params: any[] = []): Promise<mysql.ResultSetHeader> {
-  const conn = await mysql.createConnection(getDbConfig());
-  try {
-    const [result] = await conn.execute(sql, params);
-    return result as mysql.ResultSetHeader;
-  } finally {
-    await conn.end().catch(() => {});
-  }
+  const [result] = await getPool().execute(sql, params);
+  return result as mysql.ResultSetHeader;
 }
 
 export async function initializeDatabase(): Promise<void> {
@@ -127,6 +131,8 @@ export async function initializeDatabase(): Promise<void> {
       ['reminder_enabled', 'true'],
       ['reminder_time', '18:00'],
       ['flight_validation_enabled', '1'],
+      ['portal_tracking_enabled', '1'],
+      ['b2b_applications_enabled', '1'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
@@ -376,6 +382,117 @@ export async function initializeDatabase(): Promise<void> {
         PRIMARY KEY (id)
       )
     `);
+
+    // ── B2B Firmenkundenportal ──────────────────────────────────────────
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS companies (
+        id INT NOT NULL AUTO_INCREMENT,
+        company_name VARCHAR(200) NOT NULL,
+        contact_name VARCHAR(200) NOT NULL,
+        email VARCHAR(200) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        address TEXT NOT NULL,
+        ust_idnr VARCHAR(50) DEFAULT NULL,
+        message TEXT,
+        discount_percent DOUBLE NOT NULL DEFAULT 0,
+        allowed_payment_methods VARCHAR(50) NOT NULL DEFAULT 'cash,card',
+        pg_discount_override TINYINT(1) NOT NULL DEFAULT 0,
+        discount_kombinierbar TINYINT(1) NOT NULL DEFAULT 0,
+        payment_term_days INT NOT NULL DEFAULT 14,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS company_users (
+        id INT NOT NULL AUTO_INCREMENT,
+        company_id INT NOT NULL,
+        email VARCHAR(200) UNIQUE NOT NULL,
+        password_hash VARCHAR(100) NOT NULL,
+        name VARCHAR(200) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'member',
+        must_change_password TINYINT(1) NOT NULL DEFAULT 1,
+        last_login_at DATETIME DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_cu_company (company_id)
+      )
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS company_invoices (
+        id INT NOT NULL AUTO_INCREMENT,
+        company_id INT NOT NULL,
+        invoice_number VARCHAR(50) UNIQUE NOT NULL,
+        period_month VARCHAR(7) NOT NULL,
+        mwst_satz INT NOT NULL DEFAULT 7,
+        booking_ids TEXT NOT NULL,
+        total DOUBLE NOT NULL,
+        due_date DATE DEFAULT NULL,
+        reminder_level TINYINT NOT NULL DEFAULT 0,
+        reminder_sent_at DATETIME DEFAULT NULL,
+        mahngebuehr DOUBLE NOT NULL DEFAULT 0,
+        status VARCHAR(20) NOT NULL DEFAULT 'sent',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_ci_period (company_id, period_month)
+      )
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS company_favorites (
+        id INT NOT NULL AUTO_INCREMENT,
+        company_id INT NOT NULL,
+        label VARCHAR(200) NOT NULL,
+        pickup_address TEXT NOT NULL,
+        dropoff_address TEXT NOT NULL,
+        vehicle_type VARCHAR(20) NOT NULL DEFAULT 'kombi',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_cf_company (company_id)
+      )
+    `);
+
+    // Migration: B2B columns on bookings
+    const bookingB2bCols = [
+      `ALTER TABLE bookings ADD COLUMN company_id INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN company_user_id INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_number VARCHAR(50) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN cost_center VARCHAR(100) DEFAULT NULL`,
+    ];
+    for (const stmt of bookingB2bCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+    // ────────────────────────────────────────────────────────────────────
+
+    // Migration: company card-on-file (Stripe) columns
+    const companyCardCols = [
+      `ALTER TABLE companies ADD COLUMN stripe_customer_id VARCHAR(100) DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN stripe_payment_method_id VARCHAR(100) DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN card_brand VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN card_last4 VARCHAR(4) DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN card_exp_month INT DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN card_exp_year INT DEFAULT NULL`,
+      `ALTER TABLE companies ADD COLUMN charge_mode VARCHAR(20) NOT NULL DEFAULT 'manual'`,
+    ];
+    for (const stmt of companyCardCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
+    // Migration: booking charge status (for company card-on-file charges)
+    const bookingChargeCols = [
+      `ALTER TABLE bookings ADD COLUMN charge_status VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN charge_error TEXT DEFAULT NULL`,
+    ];
+    for (const stmt of bookingChargeCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+    // ────────────────────────────────────────────────────────────────────
 
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
