@@ -25,7 +25,11 @@ export function authenticateAdmin(req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: number; username: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (decoded.type === 'company' || !decoded.id || !decoded.username) {
+      res.status(401).json({ error: 'Invalid token type' });
+      return;
+    }
     req.adminId = decoded.id;
     req.adminUsername = decoded.username;
     next();

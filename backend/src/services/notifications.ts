@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_fLtaXc2i_KSwkQA9PQduHyfhjq1m8B2Nn';
-const FROM_EMAIL = process.env.SMTP_USER || 'info@flughafen-muenchen.taxi';
+const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 
 export interface BookingNotificationData {
@@ -43,6 +43,24 @@ export interface BookingNotificationData {
   discount_amount?: number;
   base_total?: number;
   night_confirm?: boolean;
+  company_name?: string;
+  company_discount?: number;
+}
+
+function paymentLabel(method: string, lang: string): string {
+  if (method === 'rechnung') {
+    if (lang === 'en') return 'By Invoice';
+    if (lang === 'tr') return 'Faturalı';
+    return 'Auf Rechnung';
+  }
+  if (method === 'card') {
+    if (lang === 'en') return 'Card Payment';
+    if (lang === 'tr') return 'Kredi Kartı';
+    return 'Kartenzahlung';
+  }
+  if (lang === 'en') return 'Cash';
+  if (lang === 'tr') return 'Nakit';
+  return 'Bargeld';
 }
 
 function buildPriceBlock(booking: BookingNotificationData, lang: string): string {
@@ -133,6 +151,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
     <h1>Flughafen-muenchen.TAXI</h1>
     <p style="margin:8px 0">Neue Buchungsanfrage</p>
     <span class="badge">Buchungsnummer: ${booking.booking_number}</span>
+    ${booking.company_name ? `<div style="background:#fef3c7;color:#92400e;padding:6px 14px;border-radius:6px;display:inline-block;margin-top:8px;font-weight:600;font-size:13px;">🏢 Firmenkunde: ${booking.company_name}</div>` : ''}
   </div>
   <div class="content">
     ${buildPriceBlock(booking, 'de')}
@@ -183,7 +202,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
       ${booking.flight_number ? `<div class="row"><span class="label">Flugnummer:</span><span class="value">${booking.flight_number}${booking.flight_validated === '1' ? ` <span style="color:#16a34a;">✓ ${booking.flight_info || 'bestätigt'}</span>` : ' <span style="color:#b45309;">⚠ nicht verifiziert</span>'}</span></div>` : ''}
       ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 Abholschild:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
       <div class="row"><span class="label">Gepäck:</span><span class="value">${booking.luggage_count} Stück</span></div>
-      <div class="row"><span class="label">Zahlung:</span><span class="value">${booking.payment_method === 'cash' ? 'Bargeld' : 'Kartenzahlung'}</span></div>
+      <div class="row"><span class="label">Zahlung:</span><span class="value">${paymentLabel(booking.payment_method, 'de')}</span></div>
       <div class="row"><span class="label">Sprache:</span><span class="value">${booking.language.toUpperCase()}</span></div>
     </div>
 
@@ -415,7 +434,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <div class="row"><span class="label"><strong>${lang === 'de' ? 'Endpreis' : lang === 'tr' ? 'Son Fiyat' : 'Final Price'}:</strong></span><span class="value"><strong>€${formatPrice(booking.price)}</strong></span></div>` : ''}
       ${booking.anfahrt_cost ? `<div class="row"><span class="label">🚗 ${lang === 'de' ? 'Anfahrtskosten' : lang === 'tr' ? 'Yaklaşım Ücreti' : 'Approach Fee'}:</span><span class="value">€${formatPrice(booking.anfahrt_cost)}</span></div>` : ''}
       <div class="row"><span class="label">${t.luggage}:</span><span class="value">${booking.luggage_count} ${t.pieces}</span></div>
-      <div class="row"><span class="label">${t.payment}:</span><span class="value">${booking.payment_method === 'cash' ? t.cash : t.card}</span></div>
+      <div class="row"><span class="label">${t.payment}:</span><span class="value">${paymentLabel(booking.payment_method, booking.language)}</span></div>
     </div>
 
     ${(booking.child_seat || (booking.fahrrad_count && booking.fahrrad_count > 0)) ? `
@@ -432,7 +451,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <div class="row"><span class="label">${lang === 'de' ? 'E-Mail' : lang === 'tr' ? 'E-Posta' : 'Email'}:</span><span class="value">${booking.email}</span></div>
       ${booking.flight_number ? `<div class="row"><span class="label">${t.flightNumber}:</span><span class="value">${booking.flight_number}</span></div>` : ''}
       ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 ${t.pickupSign}:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
-      <div class="row"><span class="label">${t.payment}:</span><span class="value">${booking.payment_method === 'cash' ? t.cash : t.card}</span></div>
+      <div class="row"><span class="label">${t.payment}:</span><span class="value">${paymentLabel(booking.payment_method, booking.language)}</span></div>
     </div>
 
     ${booking.notes ? `

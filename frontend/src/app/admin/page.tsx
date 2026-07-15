@@ -6,7 +6,8 @@ import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
-  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus
+  Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
+  Zap, CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -15,9 +16,10 @@ import ReplayTab from '@/components/ReplayTab';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
+import B2BTab from '@/components/B2BTab';
 import AdminAddressField from '@/components/AdminAddressField';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b';
 
 interface MarketingCustomer {
   email: string;
@@ -137,6 +139,7 @@ export default function AdminPage() {
   const [stripeSyncResult, setStripeSyncResult] = useState<{ matched: number; unmatched: number; total: number } | null>(null);
   const [tomorrowCards, setTomorrowCards] = useState<Booking[]>([]);
   const [tomorrowCardBooking, setTomorrowCardBooking] = useState<Booking | null>(null);
+  const [chargingId, setChargingId] = useState<number | null>(null);
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [detailedStats, setDetailedStats] = useState<Record<string, unknown> | null>(null);
   const [geoRange, setGeoRange] = useState<'today' | '7d' | '30d' | '6m' | 'all'>('30d');
@@ -504,6 +507,15 @@ export default function AdminPage() {
     }
   }
 
+  async function handleChargeSavedCard(bookingId: number) {
+    setChargingId(bookingId);
+    try {
+      await adminApi.chargeSavedCard(bookingId);
+    } catch { /* result reflected via charge_status on reload regardless of outcome */ }
+    adminApi.getTomorrowCards().then(setTomorrowCards).catch(() => {});
+    setChargingId(null);
+  }
+
   useEffect(() => {
     if (isLoggedIn) {
       if (activeTab === 'dashboard') {
@@ -779,6 +791,7 @@ export default function AdminPage() {
             { id: 'promotions' as Tab, icon: BadgePercent, label: 'Aktionen' },
             { id: 'seo' as Tab, icon: TrendingUp, label: 'SEO' },
             { id: 'ads' as Tab, icon: MousePointerClick, label: 'Google Ads' },
+            { id: 'b2b' as Tab, icon: Building2, label: 'B2B Business' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
@@ -815,6 +828,9 @@ export default function AdminPage() {
 
         {/* Pflichtfahrgebiet */}
         {activeTab === 'pflichtgebiet' && <PflichtgebietTab token={token} />}
+
+        {/* B2B Business */}
+        {activeTab === 'b2b' && <B2BTab token={token} />}
 
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
@@ -1001,23 +1017,52 @@ export default function AdminPage() {
                                 <div className="truncate text-gray-400">→ {b.dropoff_address}</div>
                               </td>
                               <td className="py-2 px-2 font-bold text-primary-600 whitespace-nowrap">{formatPrice(b.price)}</td>
-                              <td className="py-2 px-2 text-xs">{b.card_holder || '—'}</td>
-                              <td className="py-2 px-2 font-mono text-xs">
-                                {b.card_number ? `•••• •••• •••• ${b.card_number.slice(-4)}` : '—'}
-                              </td>
+                              {b.company_id ? (
+                                <td className="py-2 px-2 text-xs" colSpan={2}>
+                                  <span className="inline-flex items-center gap-1 text-gray-500">
+                                    🏢 Firmenkunde — hinterlegte Karte
+                                    {b.charge_status === 'succeeded' && <CheckCircle2 size={13} className="text-green-500" />}
+                                    {b.charge_status === 'failed' && (
+                                      <span title={b.charge_error || undefined}><AlertCircle size={13} className="text-red-500" /></span>
+                                    )}
+                                  </span>
+                                </td>
+                              ) : (
+                                <>
+                                  <td className="py-2 px-2 text-xs">{b.card_holder || '—'}</td>
+                                  <td className="py-2 px-2 font-mono text-xs">
+                                    {b.card_number ? `•••• •••• •••• ${b.card_number.slice(-4)}` : '—'}
+                                  </td>
+                                </>
+                              )}
                               <td className="py-2 px-2">
-                                <button
-                                  onClick={() => {
-                                    setTomorrowCardBooking(b);
-                                    setSelectedBooking(b);
-                                    setShowCardPopup(true);
-                                    setCardVisible(false);
-                                  }}
-                                  className="flex items-center gap-1 text-xs bg-primary-600 hover:bg-primary-700 text-white px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-colors"
-                                >
-                                  <Eye size={12} />
-                                  Karte
-                                </button>
+                                {b.company_id ? (
+                                  b.charge_status === 'succeeded' ? (
+                                    <span className="text-xs text-green-600 font-medium">Abgebucht</span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleChargeSavedCard(b.id)}
+                                      disabled={chargingId === b.id}
+                                      className="flex items-center gap-1 text-xs bg-primary-600 hover:bg-primary-700 text-white px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-colors disabled:opacity-50"
+                                    >
+                                      <Zap size={12} />
+                                      {chargingId === b.id ? 'Wird abgebucht...' : (b.charge_status === 'failed' ? 'Erneut versuchen' : 'Stripe: Abbuchen')}
+                                    </button>
+                                  )
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setTomorrowCardBooking(b);
+                                      setSelectedBooking(b);
+                                      setShowCardPopup(true);
+                                      setCardVisible(false);
+                                    }}
+                                    className="flex items-center gap-1 text-xs bg-primary-600 hover:bg-primary-700 text-white px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-colors"
+                                  >
+                                    <Eye size={12} />
+                                    Karte
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -1244,20 +1289,23 @@ export default function AdminPage() {
                             <td className="py-3 px-4">
                               <div className="font-medium text-gray-900">{booking.name}</div>
                               <div className="text-xs text-gray-500">{booking.phone}</div>
+                              {booking.company_id && (
+                                <span className="inline-flex items-center gap-1 mt-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                                  🏢 {booking.company_name || 'Kurumsal'}
+                                </span>
+                              )}
                             </td>
                             <td className="py-3 px-4 capitalize">{booking.vehicle_type}</td>
                             <td className="py-3 px-4">
                               <span className="font-bold text-primary-600">{formatPrice(booking.price)}</span>
-                              {booking.payment_method === 'card' && (
-                                <span className={cn(
-                                  'ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-                                  booking.steuersatz === 7 ? 'bg-green-100 text-green-700'
-                                    : booking.steuersatz === 19 ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-red-100 text-red-600'
-                                )}>
-                                  {booking.steuersatz ? `${booking.steuersatz}%` : 'MwSt?'}
-                                </span>
-                              )}
+                              <span className={cn(
+                                'ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                                booking.steuersatz === 7 ? 'bg-green-100 text-green-700'
+                                  : booking.steuersatz === 19 ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-red-100 text-red-600'
+                              )}>
+                                {booking.steuersatz ? `${booking.steuersatz}%` : 'MwSt?'}
+                              </span>
                             </td>
                             <td className="py-3 px-4">
                               {booking.status === 'cancelled' ? (
@@ -2922,35 +2970,33 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Steuersatz - only for card payments */}
-              {selectedBooking.payment_method === 'card' && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Steuersatz:</span>
-                  <div className="flex gap-2">
-                    {[7, 19].map((rate) => (
-                      <button
-                        key={rate}
-                        onClick={async () => {
-                          const newRate = selectedBooking.steuersatz === rate ? null : rate;
-                          try {
-                            const updated = await adminApi.updateSteuersatz(selectedBooking.id, newRate);
-                            setSelectedBooking(prev => prev ? { ...prev, steuersatz: newRate } : null);
-                            setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { ...b, steuersatz: newRate } : b));
-                          } catch (err) { console.error(err); }
-                        }}
-                        className={cn(
-                          'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                          selectedBooking.steuersatz === rate
-                            ? rate === 7 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        )}
-                      >
-                        {rate}%
-                      </button>
-                    ))}
-                  </div>
+              {/* Steuersatz - applies to any payment method (relevant for company/Sammelrechnung billing too) */}
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Steuersatz:</span>
+                <div className="flex gap-2">
+                  {[7, 19].map((rate) => (
+                    <button
+                      key={rate}
+                      onClick={async () => {
+                        const newRate = selectedBooking.steuersatz === rate ? null : rate;
+                        try {
+                          const updated = await adminApi.updateSteuersatz(selectedBooking.id, newRate);
+                          setSelectedBooking(prev => prev ? { ...prev, steuersatz: newRate } : null);
+                          setBookings(prev => prev.map(b => b.id === selectedBooking.id ? { ...b, steuersatz: newRate } : b));
+                        } catch (err) { console.error(err); }
+                      }}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                        selectedBooking.steuersatz === rate
+                          ? rate === 7 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      )}
+                    >
+                      {rate}%
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Stripe Zahlungsdatum - only for card payments */}
               {selectedBooking.payment_method === 'card' && (
@@ -3030,7 +3076,11 @@ export default function AdminPage() {
                 <button
                   onClick={() => {
                     setRechnungsnummer('');
-                    setRechnungMwst(7);
+                    setRechnungMwst(
+                      selectedBooking.steuersatz === 7 || selectedBooking.steuersatz === 19 || selectedBooking.steuersatz === 0
+                        ? selectedBooking.steuersatz
+                        : 19
+                    );
                     setRechnungSprache('de');
                     setRechnungEmpfaenger(selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : ''));
                     setEditingEmpfaenger(false);

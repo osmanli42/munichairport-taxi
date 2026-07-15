@@ -33,12 +33,12 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'flight_validation_enabled'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'flight_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
 
-      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled') && !['0', '1'].includes(String(value))) {
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled' || key === 'portal_tracking_enabled' || key === 'b2b_applications_enabled') && !['0', '1'].includes(String(value))) {
         res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }

@@ -7,6 +7,8 @@ import { tripInZone, haversineKm, PgConfig, Coords } from '../utils/geo';
 import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords } from '../utils/ipGeo';
+import { getCompanyAuth } from '../middleware/companyAuth';
+import { chargeSavedCard } from '../services/stripeCards';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -99,6 +101,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       pickup_lng,
       dropoff_lat,
       dropoff_lng,
+      cost_center,
     } = req.body;
 
     // Validation
@@ -112,9 +115,31 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (!['cash', 'card'].includes(payment_method || 'cash')) {
-      res.status(400).json({ error: 'Invalid payment method' });
-      return;
+    const companyAuth = getCompanyAuth(req);
+    let companyData: any = null;
+    if (companyAuth) {
+      const [company] = await query('SELECT * FROM companies WHERE id = ? AND status = ?', [companyAuth.companyId, 'active']);
+      if (!company) { res.status(403).json({ error: 'Company account is not active' }); return; }
+      companyData = company;
+      const allowed = (company.allowed_payment_methods || 'cash,card').split(',').map((m: string) => m.trim());
+      const pm = payment_method || 'cash';
+      if (!allowed.includes(pm)) {
+        res.status(403).json({ error: 'Payment method not allowed for this account' });
+        return;
+      }
+      if (pm === 'card' && !company.stripe_payment_method_id) {
+        res.status(403).json({ error: 'Bitte zuerst eine Kreditkarte in den Einstellungen hinterlegen' });
+        return;
+      }
+    } else {
+      if (!['cash', 'card'].includes(payment_method || 'cash')) {
+        res.status(400).json({ error: 'Invalid payment method' });
+        return;
+      }
+      if (payment_method === 'rechnung') {
+        res.status(400).json({ error: 'Invoice payment requires a company account' });
+        return;
+      }
     }
 
     // Get price from database
@@ -269,17 +294,31 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    let price = Math.max(0, Math.round((baseTotal - promoDiscount) * 100) / 100);
-    // Inside the Pflichtfahrgebiet, the final price may not fall below the mandatory fare
-    if (pgFareFloor > 0) {
+    let companyDiscount = 0;
+    if (companyData && Number(companyData.discount_percent) > 0) {
+      const corpPct = Number(companyData.discount_percent);
+      if (isRoundtrip && !companyData.discount_kombinierbar) {
+        tripPrice = isRoundtrip ? effectiveOneWay * 2 : effectiveOneWay;
+        effectiveRoundtripDiscount = 0;
+      }
+      const preTotalForDiscount = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount + plzSurcharge - promoDiscount;
+      companyDiscount = Math.round(preTotalForDiscount * (corpPct / 100) * 100) / 100;
+    }
+
+    let price = Math.max(0, Math.round((baseTotal - promoDiscount - companyDiscount) * 100) / 100);
+
+    if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override) {
+      price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
+    } else if (pgFareFloor > 0 && !companyData) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
     }
 
     const booking_number = generateBookingNumber();
 
-    // Encrypt card data if provided
-    const card_number_enc = card_number ? encrypt(card_number) : null;
-    const card_cvv_enc = card_cvv ? encrypt(card_cvv) : null;
+    // Encrypt card data if provided. Company bookings never accept raw card data —
+    // "card" payment for a company relies solely on their saved Stripe payment method.
+    const card_number_enc = (!companyData && card_number) ? encrypt(card_number) : null;
+    const card_cvv_enc = (!companyData && card_cvv) ? encrypt(card_cvv) : null;
 
     const result = await run(`
       INSERT INTO bookings (
@@ -288,9 +327,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-        promo_code, discount_amount, visitor_id, flight_validated, flight_info
+        promo_code, discount_amount, visitor_id, flight_validated, flight_info,
+        company_id, company_user_id, cost_center
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -327,6 +367,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       visitor_id || null,
       flight_validated || null,
       flight_info || null,
+      companyAuth?.companyId || null,
+      companyAuth?.companyUserId || null,
+      cost_center || null,
     ]);
 
     // Increment used_count for applied promo
@@ -335,6 +378,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
+
+    // Company card-on-file: charge immediately if this company is configured to
+    // charge on booking confirmation rather than manually or on trip completion.
+    let chargeResult: { success: boolean; error?: string } | undefined;
+    if (companyData && (payment_method || 'cash') === 'card' && companyData.charge_mode === 'on_confirm') {
+      chargeResult = await chargeSavedCard(result.insertId, companyData, price);
+    }
 
     // Determine whether this booking warrants an extra phone confirmation as a
     // safety measure (we are open 24/7, but want late-hour trips guaranteed). The
@@ -403,6 +453,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       discount_amount: promoDiscount > 0 ? promoDiscount : undefined,
       base_total: promoDiscount > 0 ? baseTotal : undefined,
       night_confirm: nightConfirm,
+      company_name: companyData?.company_name || undefined,
+      company_discount: companyDiscount > 0 ? companyDiscount : undefined,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
@@ -411,6 +463,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       success: true,
       booking_number,
       booking: newBooking,
+      charge: chargeResult,
     });
   } catch (error) {
     console.error('Error creating booking:', error);

@@ -94,6 +94,10 @@ export interface Booking {
   promo_code?: string;
   discount_amount?: number;
   anfahrt_cost?: number;
+  company_id?: number | null;
+  company_name?: string | null;
+  charge_status?: 'pending' | 'succeeded' | 'failed' | null;
+  charge_error?: string | null;
 }
 
 export interface Price {
@@ -364,6 +368,11 @@ export const adminApi = {
 
   getTomorrowCards: async (): Promise<Booking[]> => {
     const response = await api.get('/admin/bookings/tomorrow-cards');
+    return response.data;
+  },
+
+  chargeSavedCard: async (bookingId: number): Promise<{ success: boolean; error?: string }> => {
+    const response = await api.post(`/admin/companies/bookings/${bookingId}/charge-saved-card`);
     return response.data;
   },
 
