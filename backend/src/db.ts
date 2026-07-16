@@ -494,6 +494,34 @@ export async function initializeDatabase(): Promise<void> {
     }
     // ────────────────────────────────────────────────────────────────────
 
+    // Migration: Google-Kalender-Import columns (Sammelrechnung für Telefon/E-Mail-Fahrten)
+    const bookingCalendarCols = [
+      `ALTER TABLE bookings ADD COLUMN source VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN calendar_event_uid VARCHAR(255) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN imported_at DATETIME DEFAULT NULL`,
+    ];
+    for (const stmt of bookingCalendarCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+    try {
+      await conn.execute(`CREATE UNIQUE INDEX idx_bookings_cal_uid ON bookings (calendar_event_uid)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+
+    // Alias-Zuordnung: Kalender-Eventtext → Firma (z.B. "BMW" → company 3)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS company_aliases (
+        id INT NOT NULL AUTO_INCREMENT,
+        company_id INT NOT NULL,
+        alias VARCHAR(255) NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_ca_alias (alias),
+        KEY idx_ca_company (company_id)
+      )
+    `);
+    // ────────────────────────────────────────────────────────────────────
+
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
     if (priceRows[0].count === 0) {
