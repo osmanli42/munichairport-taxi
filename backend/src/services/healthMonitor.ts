@@ -142,10 +142,13 @@ async function checkBookingsSystem(): Promise<HealthResult> {
     // 1) bookings tablosu erişilebilir mi?
     const [c] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM bookings`);
     // 2) Son 24 saatte oluşan booking'ler arasında price=0 veya boş email gibi bozuk kayıt var mı?
+    // Kalender-Fahrten (source='calendar') haben bewusst keine E-Mail (Kunde bekommt keine
+    // automatischen Mails, siehe Kalender-Import-Workflow) — die zählen hier nicht als kaputt.
     const broken = await query<any>(
       `SELECT id, booking_number, status, price, email
        FROM bookings
        WHERE created_at >= NOW() - INTERVAL 24 HOUR
+         AND source != 'calendar'
          AND (price IS NULL OR price <= 0 OR email IS NULL OR email = '')`
     );
     if (broken.length > 0) {
