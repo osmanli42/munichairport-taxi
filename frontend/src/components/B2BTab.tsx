@@ -240,7 +240,12 @@ export default function B2BTab({ token }: { token: string }) {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-700">{active.length} Aktive Firmen</h3>
-              <button onClick={loadCompanies} className="text-gray-400 hover:text-gray-600"><RefreshCw size={16} /></button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setNewFirmaModal(true)} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 flex items-center gap-1">
+                  <span>+</span> Neue Firma
+                </button>
+                <button onClick={loadCompanies} className="text-gray-400 hover:text-gray-600"><RefreshCw size={16} /></button>
+              </div>
             </div>
             {active.map(c => (
               <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
