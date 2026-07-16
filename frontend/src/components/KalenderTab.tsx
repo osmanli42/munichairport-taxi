@@ -110,7 +110,19 @@ export default function KalenderTab({ token }: { token: string }) {
     } catch (e) { console.error(e); }
   }, [token]);
 
-  useEffect(() => { loadSettings(); }, [loadSettings]);
+  const loadAliases = useCallback(async () => {
+    try {
+      const res = await api('/aliases', token);
+      if (res.ok) setAliases(await res.json());
+    } catch (e) { console.error(e); }
+  }, [token]);
+
+  useEffect(() => { loadSettings(); loadAliases(); }, [loadSettings, loadAliases]);
+
+  const deleteAlias = async (id: number) => {
+    const res = await api(`/aliases/${id}`, token, { method: 'DELETE' });
+    if (res.ok) { flash('Alias gelöscht'); loadAliases(); }
+  };
 
   const toRows = (drafts: Draft[]): Row[] =>
     drafts.map((d) => ({
