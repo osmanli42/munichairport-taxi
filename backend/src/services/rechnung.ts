@@ -460,6 +460,7 @@ export function generateSammelrechnungPdf(opts: {
     const { company, invoiceNumber, periodMonth, mwst, bookings, total, dueDate, mahngebuehr, reminderLevel, s } = opts;
 
     const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+    registerUnicodeFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
