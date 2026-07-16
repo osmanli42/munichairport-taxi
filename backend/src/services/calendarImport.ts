@@ -225,8 +225,8 @@ function parsePrice(text: string): number | null {
 
 function parseRoute(text: string): { from: string | null; to: string | null } {
   // "von A nach B"
-  let m = text.match(/\bvon\s+(.+?)\s+nach\s+(.+?)(?:[,;\n]|\s+um\s|\s*\d{1,3}[.,]?\d{0,2}\s*€|$)/i);
-  if (m) return { from: m[1].trim(), to: m[2].trim() };
+  let m = text.match(/\bvon\s+(.+?)\s+nach\s+(.+?)(?:[,;\n]|\s+um\s|\s+\d{1,4}[.,]?\d{0,2}\s*(?:€|eur\b|euro\b)|$)/i);
+  if (m) return { from: cleanRoutePart(m[1]), to: cleanRoutePart(m[2]) };
 
   // "A → B", "A -> B", "A => B"
   m = text.match(/([^\n,;→>]{3,}?)\s*(?:→|->|=>)\s*([^\n,;→>]{3,})/);
@@ -240,8 +240,12 @@ function parseRoute(text: string): { from: string | null; to: string | null } {
 }
 
 function cleanRoutePart(s: string): string | null {
-  // Preis/Uhrzeit-Reste am Rand abschneiden
-  const cleaned = s.replace(/\d{1,2}:\d{2}\s*(uhr)?/gi, '').replace(/\d{1,4}[.,]?\d{0,2}\s*€.*/g, '').trim();
+  // Preis/Uhrzeit-Reste und hängende Trennzeichen am Rand abschneiden
+  const cleaned = s
+    .replace(/\d{1,2}:\d{2}\s*(uhr)?/gi, '')
+    .replace(/\d{1,4}[.,]?\d{0,2}\s*(?:€|eur\b|euro\b).*/gi, '')
+    .replace(/^[\s\-–—,;:.→>]+|[\s\-–—,;:.→>]+$/g, '')
+    .trim();
   return cleaned.length >= 3 ? cleaned : null;
 }
 
