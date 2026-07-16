@@ -580,7 +580,10 @@ export function generateSammelrechnungPdf(opts: {
       doc.text(route, colX.route, curY + 4, { width: colWidths.route, height: cellH, ellipsis: true });
       doc.text(b.name || '', colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
       doc.text((b.cost_center || ''), colX.kst, curY + 4, { width: colWidths.kst, height: cellH, ellipsis: true });
-      doc.font('WorkSans-Bold').text(fmtPrice(roundGrossPrice(Number(b.price) || 0, b.source === 'calendar')), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
+      const rowGross = roundGrossPrice(Number(b.price) || 0, b.source === 'calendar');
+      const rowRate = (b.steuersatz !== null && b.steuersatz !== undefined && [0, 7, 19].includes(Number(b.steuersatz))) ? Number(b.steuersatz) : mwst;
+      const rowNet = rowRate > 0 ? rowGross / (1 + rowRate / 100) : rowGross;
+      doc.font('WorkSans-Bold').text(fmtPrice(rowNet), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
       curY += ROW_H;
     }
 
