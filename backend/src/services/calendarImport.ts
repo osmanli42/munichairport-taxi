@@ -177,21 +177,26 @@ function normalize(s: string): string {
 
 // Firmenname ohne Rechtsform ("Müller Logistik GmbH" → "müller logistik")
 function stripLegalForm(name: string): string {
-  return normalize(name).replace(/\b(gmbh & co\.? kg|gmbh|ag|gbr|kg|ug|ohg|e\.?\s?v\.?|se)\b\.?/g, '').trim();
+  return normalize(name)
+    .replace(/\b(gmbh & co\.? kg|gmbh|ag|gbr|ug|ohg|se|e\.?\s?v\.?|e\.?\s?k(fr)?\.?|kg)\b\.?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function matchCompany(
   text: string,
   companies: CompanyRef[],
   aliases: AliasRef[]
-): { company_id: number; matched: string } | null {
+): { company_id: number; matched: string; needle: string } | null {
   const haystack = normalize(text);
 
   // 1) Aliasse (längster zuerst, damit "BMW Werk 2" vor "BMW" gewinnt)
   const sortedAliases = [...aliases].sort((a, b) => b.alias.length - a.alias.length);
   for (const a of sortedAliases) {
     const needle = normalize(a.alias);
-    if (needle && haystack.includes(needle)) return { company_id: a.company_id, matched: a.alias };
+    if (needle && haystack.includes(needle)) {
+      return { company_id: a.company_id, matched: a.alias, needle };
+    }
   }
 
   // 2) Voller Firmenname, dann Name ohne Rechtsform
@@ -203,7 +208,7 @@ function matchCompany(
     .filter((c) => c.needle.length >= 3)
     .sort((a, b) => b.needle.length - a.needle.length);
   for (const c of candidates) {
-    if (haystack.includes(c.needle)) return { company_id: c.company_id, matched: c.matched };
+    if (haystack.includes(c.needle)) return { company_id: c.company_id, matched: c.matched, needle: c.needle };
   }
   return null;
 }
