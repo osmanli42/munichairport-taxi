@@ -25,6 +25,7 @@ interface Draft {
   raw_summary: string;
   raw_description: string;
   parse_ok: boolean;
+  invoice_hint?: boolean;
   already_imported: boolean;
 }
 
