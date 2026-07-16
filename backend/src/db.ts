@@ -522,6 +522,11 @@ export async function initializeDatabase(): Promise<void> {
     `);
     // ────────────────────────────────────────────────────────────────────
 
+    // Migration: manueller Rechnungsversand (E-Mail-Icon → grün nach erfolgreichem Senden)
+    try {
+      await conn.execute(`ALTER TABLE company_invoices ADD COLUMN manual_sent_at DATETIME DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
     if (priceRows[0].count === 0) {
