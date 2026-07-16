@@ -497,7 +497,7 @@ export async function initializeDatabase(): Promise<void> {
     // Migration: Google-Kalender-Import columns (Sammelrechnung für Telefon/E-Mail-Fahrten)
     const bookingCalendarCols = [
       `ALTER TABLE bookings ADD COLUMN source VARCHAR(20) DEFAULT NULL`,
-      `ALTER TABLE bookings ADD COLUMN calendar_event_uid VARCHAR(255) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN calendar_event_uid VARCHAR(191) DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN imported_at DATETIME DEFAULT NULL`,
     ];
     for (const stmt of bookingCalendarCols) {
