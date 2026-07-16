@@ -516,6 +516,8 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
     });
     if (sendError) { res.status(500).json({ error: sendError.message || 'E-Mail-Versand fehlgeschlagen' }); return; }
 
+    await run('UPDATE company_invoices SET manual_sent_at = NOW() WHERE id = ?', [invoice.id]);
+
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to send invoice email' });
