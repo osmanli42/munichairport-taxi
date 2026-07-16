@@ -226,7 +226,7 @@ export function generateRechnungPdf(opts: {
     doc.text(isEn ? 'Unit Price' : 'Einzelpreis', colEinzel, tableTop + 6, { width: wEinzel, align: 'right', lineBreak: false });
     doc.text(isEn ? 'Total' : 'Gesamt', colGesamt, tableTop + 6, { width: wGesamt, align: 'right', lineBreak: false });
 
-    const grossPrice = roundGrossPrice(Number(booking.price) || 0);
+    const grossPrice = roundGrossPrice(Number(booking.price) || 0, booking.source === 'calendar');
     const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
     const mwstAmount = grossPrice - netPrice;
 
@@ -349,7 +349,7 @@ export function buildRechnungEmail(opts: {
   const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
   const isEn = lang === 'en';
   const companyName = s.company_name || 'Taxi N&N GbR';
-  const grossPrice = roundGrossPrice(Number(booking.price) || 0);
+  const grossPrice = roundGrossPrice(Number(booking.price) || 0, booking.source === 'calendar');
   const netPrice = mwst > 0 ? grossPrice / (1 + mwst / 100) : grossPrice;
   const mwstAmount = grossPrice - netPrice;
   const BRAND = '#0c2d48';
@@ -580,7 +580,7 @@ export function generateSammelrechnungPdf(opts: {
       doc.text(route, colX.route, curY + 4, { width: colWidths.route, height: cellH, ellipsis: true });
       doc.text(b.name || '', colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
       doc.text((b.cost_center || ''), colX.kst, curY + 4, { width: colWidths.kst, height: cellH, ellipsis: true });
-      doc.font('WorkSans-Bold').text(fmtPrice(roundGrossPrice(Number(b.price) || 0)), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
+      doc.font('WorkSans-Bold').text(fmtPrice(roundGrossPrice(Number(b.price) || 0, b.source === 'calendar')), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
       curY += ROW_H;
     }
 
@@ -599,7 +599,7 @@ export function generateSammelrechnungPdf(opts: {
     const rateGroups = new Map<number, number>();
     for (const b of bookings) {
       const rate = (b.steuersatz !== null && b.steuersatz !== undefined && [0, 7, 19].includes(Number(b.steuersatz))) ? Number(b.steuersatz) : mwst;
-      const gross = roundGrossPrice(Number(b.price) || 0);
+      const gross = roundGrossPrice(Number(b.price) || 0, b.source === 'calendar');
       rateGroups.set(rate, (rateGroups.get(rate) || 0) + gross);
     }
     const sortedRates = Array.from(rateGroups.keys()).sort((a, b) => b - a);

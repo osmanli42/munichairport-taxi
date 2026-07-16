@@ -256,7 +256,7 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
     );
     if (bookings.length === 0) { res.status(400).json({ error: 'No bookings found for this month' }); return; }
 
-    const total = bookings.reduce((sum: number, b: any) => sum + roundGrossPrice(Number(b.price) || 0), 0);
+    const total = bookings.reduce((sum: number, b: any) => sum + roundGrossPrice(Number(b.price) || 0, b.source === 'calendar'), 0);
     const bookingIds = bookings.map((b: any) => b.id);
 
     const [company] = await query('SELECT * FROM companies WHERE id = ?', [companyId]);
