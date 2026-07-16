@@ -84,6 +84,7 @@ export default function KalenderTab({ token }: { token: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [calendarId, setCalendarId] = useState('');
   const [saConfigured, setSaConfigured] = useState(false);
+  const [aliases, setAliases] = useState<Alias[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Sammelrechnung-Panel
