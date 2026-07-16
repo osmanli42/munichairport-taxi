@@ -408,6 +408,10 @@ export default function B2BTab({ token }: { token: string }) {
                             className="p-1.5 hover:bg-gray-100 rounded-lg" title="PDF">
                             <Download size={14} />
                           </a>
+                          <button onClick={() => { setSendModal(inv); setSendEmailAddr(''); }}
+                            className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600" title="Per E-Mail senden">
+                            <Mail size={14} />
+                          </button>
                           {inv.status === 'sent' && inv.reminder_level < 3 && (
                             <button onClick={() => {
                               if (inv.reminder_level === 2) {
