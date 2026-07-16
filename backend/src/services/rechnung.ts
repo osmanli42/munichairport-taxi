@@ -108,6 +108,7 @@ export function generateRechnungPdf(opts: {
     const isEn = lang === 'en';
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    registerUnicodeFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
