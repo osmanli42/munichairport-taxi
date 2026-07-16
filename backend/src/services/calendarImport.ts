@@ -258,8 +258,14 @@ export function parseEventToDraft(
 
   const company = matchCompany(fullText, companies, aliases);
   const price = parsePrice(fullText);
+  // Firmenname aus dem Titel entfernen, damit er nicht als Adresse durchgeht
+  let routeSource = raw.summary;
+  if (company) {
+    const escaped = company.needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    routeSource = routeSource.replace(new RegExp(escaped, 'i'), '').trim();
+  }
   // Route zuerst im Titel suchen (dort steht sie üblicherweise), dann in der Beschreibung
-  let route = parseRoute(raw.summary);
+  let route = parseRoute(routeSource);
   if (!route.from && !route.to && raw.description) route = parseRoute(raw.description);
   // LOCATION-Feld als Abholadresse, wenn Titel/Beschreibung nichts hergeben
   const pickup = route.from || (raw.location || null);
