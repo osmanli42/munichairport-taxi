@@ -57,22 +57,20 @@ router.get('/:id', authenticateAdmin, async (req: AuthRequest, res: Response): P
 
 router.post('/direct', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { company_name, contact_name, email, phone, address, city, zip } = req.body as {
+    const { company_name, contact_name, email, phone, address } = req.body as {
       company_name?: string; contact_name?: string; email?: string;
-      phone?: string; address?: string; city?: string; zip?: string;
+      phone?: string; address?: string;
     };
     if (!company_name?.trim()) { res.status(400).json({ error: 'company_name erforderlich' }); return; }
     const result = await run(
-      `INSERT INTO companies (company_name, contact_name, email, phone, address, city, zip, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW())`,
+      `INSERT INTO companies (company_name, contact_name, email, phone, address, status, created_at)
+       VALUES (?, ?, ?, ?, ?, 'active', NOW())`,
       [
         company_name.trim(),
         contact_name?.trim() || company_name.trim(),
         email?.trim() || '',
         phone?.trim() || '',
         address?.trim() || '',
-        city?.trim() || '',
-        zip?.trim() || '',
       ]
     );
     res.json({ id: (result as any).insertId, company_name: company_name.trim() });
