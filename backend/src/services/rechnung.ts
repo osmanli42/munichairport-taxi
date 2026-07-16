@@ -557,7 +557,7 @@ export function generateSammelrechnungPdf(opts: {
     doc.text('Strecke', colX.route, tableTop + 4.5, { width: colWidths.route, lineBreak: false });
     doc.text('Gast', colX.guest, tableTop + 4.5, { width: colWidths.guest, lineBreak: false });
     doc.text('KSt.', colX.kst, tableTop + 4.5, { width: colWidths.kst, lineBreak: false });
-    doc.text('Betrag', colX.price, tableTop + 4.5, { width: colWidths.price, align: 'right', lineBreak: false });
+    doc.text('Betrag (Netto)', colX.price, tableTop + 4.5, { width: colWidths.price, align: 'right', lineBreak: false });
 
     let curY = tableTop + 16;
     const ROW_H = 26;
