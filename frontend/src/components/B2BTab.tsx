@@ -410,8 +410,8 @@ export default function B2BTab({ token }: { token: string }) {
                             <Download size={14} />
                           </a>
                           <button onClick={() => { setSendModal(inv); setSendEmailAddr(''); }}
-                            className={`p-1.5 rounded-lg ${inv.manual_sent_at ? 'text-green-600 hover:bg-green-50' : 'text-blue-600 hover:bg-blue-50'}`}
-                            title={inv.manual_sent_at ? `Gesendet am ${fmtDate(inv.manual_sent_at)}` : 'Per E-Mail senden'}>
+                            className={`p-1.5 rounded-lg ${inv.manual_sent_at ? 'text-green-600 hover:bg-green-50' : 'text-red-500 hover:bg-red-50'}`}
+                            title={inv.manual_sent_at ? `Gesendet am ${fmtDate(inv.manual_sent_at)}` : 'Noch nicht gesendet — per E-Mail senden'}>
                             <Mail size={14} />
                           </button>
                           {inv.status === 'sent' && inv.reminder_level < 3 && (
@@ -425,11 +425,12 @@ export default function B2BTab({ token }: { token: string }) {
                               <Send size={14} />
                             </button>
                           )}
-                          {inv.status === 'sent' && (
-                            <button onClick={() => handleMarkPaid(inv.id)} className="p-1.5 hover:bg-green-50 rounded-lg text-green-600" title="Bezahlt">
-                              <Check size={14} />
-                            </button>
-                          )}
+                          <button onClick={() => inv.status !== 'paid' && handleMarkPaid(inv.id)}
+                            disabled={inv.status === 'paid'}
+                            className={`p-1.5 rounded-lg ${inv.status === 'paid' ? 'text-green-600 cursor-default' : 'text-red-500 hover:bg-red-50'}`}
+                            title={inv.status === 'paid' ? 'Bezahlt' : 'Noch nicht bezahlt — als bezahlt markieren'}>
+                            <Check size={14} />
+                          </button>
                           <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400" title="Löschen">
                             <X size={14} />
                           </button>
