@@ -40,6 +40,13 @@ interface SrResult {
   detail?: string;
 }
 
+interface Alias {
+  id: number;
+  alias: string;
+  company_id: number;
+  company_name: string | null;
+}
+
 async function api(path: string, token: string, opts?: RequestInit) {
   return fetch(`${API}/admin/calendar${path}`, {
     ...opts,
