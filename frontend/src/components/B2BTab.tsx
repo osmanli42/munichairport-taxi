@@ -477,6 +477,63 @@ export default function B2BTab({ token }: { token: string }) {
           </div>
         </div>
       )}
+
+      {/* Neue Firma Modal */}
+      {newFirmaModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setNewFirmaModal(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900">Neue Firma anlegen</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500">Firmenname *</label>
+                <input autoFocus value={newFirma.company_name} onChange={e => setNewFirma(f => ({ ...f, company_name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="z.B. Müller GmbH" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Ansprechpartner</label>
+                <input value={newFirma.contact_name} onChange={e => setNewFirma(f => ({ ...f, contact_name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="Max Mustermann" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">E-Mail</label>
+                  <input type="email" value={newFirma.email} onChange={e => setNewFirma(f => ({ ...f, email: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="optional" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Telefon</label>
+                  <input value={newFirma.phone} onChange={e => setNewFirma(f => ({ ...f, phone: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="optional" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Adresse</label>
+                <input value={newFirma.address} onChange={e => setNewFirma(f => ({ ...f, address: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="Straße + Hausnummer" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">PLZ</label>
+                  <input value={newFirma.zip} onChange={e => setNewFirma(f => ({ ...f, zip: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="85356" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Stadt</label>
+                  <input value={newFirma.city} onChange={e => setNewFirma(f => ({ ...f, city: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="Freising" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleCreateFirma} disabled={!newFirma.company_name.trim() || newFirmaLoading}
+                className="flex-1 bg-primary-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
+                {newFirmaLoading ? 'Speichern…' : 'Firma anlegen'}
+              </button>
+              <button onClick={() => setNewFirmaModal(false)} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
