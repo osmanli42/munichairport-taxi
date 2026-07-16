@@ -312,6 +312,22 @@ export default function KalenderTab({ token }: { token: string }) {
                 Speichern
               </button>
             </div>
+            {aliases.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-1">Gespeicherte Aliasse</div>
+                <ul className="space-y-1">
+                  {aliases.map((a) => (
+                    <li key={a.id} className="flex items-center gap-2 text-xs text-gray-600">
+                      <span className="font-mono bg-white border border-gray-200 rounded px-1.5 py-0.5">{a.alias}</span>
+                      <span>→ {a.company_name || `Firma ${a.company_id}`}</span>
+                      <button onClick={() => deleteAlias(a.id)} title="Alias löschen" className="text-gray-400 hover:text-red-600">
+                        <X size={12} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
