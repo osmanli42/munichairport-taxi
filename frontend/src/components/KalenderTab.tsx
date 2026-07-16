@@ -127,7 +127,7 @@ export default function KalenderTab({ token }: { token: string }) {
   const toRows = (drafts: Draft[]): Row[] =>
     drafts.map((d) => ({
       ...d,
-      include: !d.already_imported && d.parse_ok,
+      include: false,
       save_alias: false,
       alias_text: suggestAlias(d.raw_summary),
     }));
