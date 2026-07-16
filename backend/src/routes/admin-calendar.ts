@@ -173,7 +173,7 @@ router.post('/import', authenticateAdmin, async (req: AuthRequest, res: Response
             ride.dropoff_address.trim(),
             ride.pickup_datetime,
             ride.vehicle_type || 'kombi',
-            company.contact_name || company.company_name,
+            ride.guest_name?.trim() || company.contact_name || company.company_name,
             company.phone || '',
             company.email || '',
             ride.notes || null,
