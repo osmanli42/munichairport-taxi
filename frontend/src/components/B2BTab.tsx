@@ -409,7 +409,8 @@ export default function B2BTab({ token }: { token: string }) {
                             <Download size={14} />
                           </a>
                           <button onClick={() => { setSendModal(inv); setSendEmailAddr(''); }}
-                            className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-600" title="Per E-Mail senden">
+                            className={`p-1.5 rounded-lg ${inv.manual_sent_at ? 'text-green-600 hover:bg-green-50' : 'text-blue-600 hover:bg-blue-50'}`}
+                            title={inv.manual_sent_at ? `Gesendet am ${fmtDate(inv.manual_sent_at)}` : 'Per E-Mail senden'}>
                             <Mail size={14} />
                           </button>
                           {inv.status === 'sent' && inv.reminder_level < 3 && (
