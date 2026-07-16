@@ -257,6 +257,8 @@ export function parseEventToDraft(
   aliases: AliasRef[]
 ): DraftRide {
   const fullText = [raw.summary, raw.description, raw.location].filter(Boolean).join('\n');
+  const cancelled = /\b(anulliert|storniert|storno|cancelled|abgesagt|iptal)\b/i.test(fullText);
+  const invoiceHint = !cancelled && /rechnung/i.test(fullText);
 
   const company = matchCompany(fullText, companies, aliases);
   const price = parsePrice(fullText);
