@@ -6,8 +6,8 @@ import { query } from '../db';
 // Work Sans (SIL OFL) deckt alle Türkisch-Zeichen ab — für Rechnungen mit türkischen Namen registriert.
 const FONT_DIR = path.join(__dirname, '../assets/fonts');
 function registerUnicodeFonts(doc: PDFKit.PDFDocument): void {
-  doc.registerFont('Helvetica', path.join(FONT_DIR, 'WorkSans-Regular.ttf'));
-  doc.registerFont('Helvetica-Bold', path.join(FONT_DIR, 'WorkSans-Bold.ttf'));
+  doc.registerFont('WorkSans', path.join(FONT_DIR, 'WorkSans-Regular.ttf'));
+  doc.registerFont('WorkSans-Bold', path.join(FONT_DIR, 'WorkSans-Bold.ttf'));
 }
 
 // ─── BANK & COMPANY SETTINGS ─────────────────────────────────────────────────
@@ -77,7 +77,11 @@ export function fmtPrice(amount: number): string {
   return amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
-export function roundGrossPrice(price: number): number {
+// Reguläre Web-Buchungen werden auf 0,50 aufgerundet (Bargeld-Handhabung). Kalender-Fahrten
+// (source='calendar') sind bereits fest zugesagte Brutto-Preise (z.B. "RechnungFahrt 111,90€")
+// — die dürfen NICHT verändert werden, sonst weicht die Rechnung vom zugesagten Preis ab.
+export function roundGrossPrice(price: number, exact: boolean = false): number {
+  if (exact) return Math.round(price * 100) / 100;
   return Math.ceil(price * 2) / 2;
 }
 
@@ -123,7 +127,7 @@ export function generateRechnungPdf(opts: {
 
     // ── LOGO (above RECHNUNGSEMPFÄNGER)
     const logoY = 50;
-    doc.fontSize(13).font('Helvetica-Bold');
+    doc.fontSize(13).font('WorkSans-Bold');
     const logoPart1 = 'Flughafen-muenchen.';
     const logoPart2 = 'TAXI';
     const logoW = doc.widthOfString(logoPart1) + doc.widthOfString(logoPart2);
@@ -131,12 +135,12 @@ export function generateRechnungPdf(opts: {
     doc.fillColor('#fbbf24').text(logoPart2, { lineBreak: false });
 
     const logoAddress = s.company_address || 'Eisvogelweg 2, 85356 Freising';
-    doc.fontSize(8).font('Helvetica');
+    doc.fontSize(8).font('WorkSans');
     const logoAddressW = doc.widthOfString(logoAddress);
     doc.fillColor(GRAY).text(logoAddress, marginL + (logoW - logoAddressW) / 2, logoY + 18, { lineBreak: false });
 
     const titleX = marginL + pageW - 250;
-    doc.fontSize(17).font('Helvetica-Bold').fillColor(BRAND)
+    doc.fontSize(17).font('WorkSans-Bold').fillColor(BRAND)
       .text(isEn ? 'INVOICE' : 'RECHNUNG', titleX, 50, { width: 250, align: 'right' });
 
     const today = new Date();
@@ -151,7 +155,7 @@ export function generateRechnungPdf(opts: {
           : (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt'))
       : (isEn ? 'Bank Transfer' : 'Überweisung');
 
-    doc.fontSize(8).font('Helvetica').fillColor(GRAY);
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY);
     const metaX = titleX + 60;
     const metaLabelW = 95;
     const metaValW = 250 - 60 - metaLabelW;
@@ -165,22 +169,22 @@ export function generateRechnungPdf(opts: {
     ];
     let ry = 74;
     for (const [label, val] of rows2) {
-      doc.font('Helvetica').fillColor(GRAY).text(label, metaX, ry, { width: metaLabelW, lineBreak: false });
-      doc.font('Helvetica-Bold').fillColor('#111827').text(val, metaX + metaLabelW, ry, { width: metaValW, align: 'right', lineBreak: false });
+      doc.font('WorkSans').fillColor(GRAY).text(label, metaX, ry, { width: metaLabelW, lineBreak: false });
+      doc.font('WorkSans-Bold').fillColor('#111827').text(val, metaX + metaLabelW, ry, { width: metaValW, align: 'right', lineBreak: false });
       ry += 11;
     }
 
     // ── CUSTOMER BLOCK
     const custY = logoY + 60;
-    doc.fontSize(8).font('Helvetica').fillColor(GRAY)
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY)
       .text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
     if (empfaenger_adresse && empfaenger_adresse.trim()) {
       const lines = empfaenger_adresse.trim().replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
       let addrY = custY + 12;
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
+      doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
         .text(lines[0] || '—', marginL, addrY, { width: pageW, lineBreak: false });
       addrY += 16;
-      doc.fontSize(9).font('Helvetica').fillColor('#374151');
+      doc.fontSize(9).font('WorkSans').fillColor('#374151');
       for (let i = 1; i < lines.length; i++) {
         doc.text(lines[i], marginL, addrY, { width: pageW, lineBreak: false });
         addrY += 13;
@@ -188,10 +192,10 @@ export function generateRechnungPdf(opts: {
       doc.text('', marginL, addrY - 4);
     } else {
       let addrY = custY + 12;
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
+      doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
         .text(booking.name || '—', marginL, addrY, { width: pageW, lineBreak: false });
       addrY += 16;
-      doc.fontSize(9).font('Helvetica').fillColor('#374151');
+      doc.fontSize(9).font('WorkSans').fillColor('#374151');
       if (booking.email) { doc.text(booking.email, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
       if (booking.phone) { doc.text(booking.phone, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
       doc.text('', marginL, addrY - 4);
@@ -215,7 +219,7 @@ export function generateRechnungPdf(opts: {
     const wGesamt   = marginL + pageW - colGesamt;
 
     doc.rect(marginL, tableTop, pageW, 20).fill(BRAND);
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#ffffff');
+    doc.fontSize(8.5).font('WorkSans-Bold').fillColor('#ffffff');
     doc.text(isEn ? 'Pos.' : 'Pos.', colPos, tableTop + 6, { width: 25, align: 'left', lineBreak: false });
     doc.text(isEn ? 'Description' : 'Beschreibung', colDesc, tableTop + 6, { width: wDesc, lineBreak: false });
     doc.text(isEn ? 'Qty' : 'Menge', colMenge, tableTop + 6, { width: wMenge, align: 'center', lineBreak: false });
@@ -235,19 +239,19 @@ export function generateRechnungPdf(opts: {
     const ROW_H_SERVICE = descLine4 ? 65 : 54;
     const rowTop = tableTop + 20;
     doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
-    doc.fillColor('#111827').fontSize(8.5).font('Helvetica-Bold');
+    doc.fillColor('#111827').fontSize(8.5).font('WorkSans-Bold');
     doc.text('1', colPos, rowTop + 8, { width: 25, lineBreak: false });
-    doc.font('Helvetica-Bold').text(descLine1, colDesc, rowTop + 8, { width: wDesc, height: 10, ellipsis: true });
-    doc.font('Helvetica').fontSize(8).fillColor(GRAY)
+    doc.font('WorkSans-Bold').text(descLine1, colDesc, rowTop + 8, { width: wDesc, height: 10, ellipsis: true });
+    doc.font('WorkSans').fontSize(8).fillColor(GRAY)
       .text(descLine2, colDesc, rowTop + 20, { width: wDesc, height: 9, ellipsis: true });
     doc.text(descLine3, colDesc, rowTop + 31, { width: wDesc, height: 9, ellipsis: true });
     if (descLine4) {
       doc.text(descLine4, colDesc, rowTop + 42, { width: wDesc, height: 9, ellipsis: true });
     }
-    doc.fontSize(8.5).fillColor('#111827').font('Helvetica');
+    doc.fontSize(8.5).fillColor('#111827').font('WorkSans');
     doc.text('1×', colMenge, rowTop + 8, { width: wMenge, align: 'center', lineBreak: false });
     doc.text(fmtPrice(grossPrice), colEinzel, rowTop + 8, { width: wEinzel, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: wGesamt, align: 'right', lineBreak: false });
+    doc.font('WorkSans-Bold').text(fmtPrice(grossPrice), colGesamt, rowTop + 8, { width: wGesamt, align: 'right', lineBreak: false });
 
     const tableBottom = rowTop + ROW_H_SERVICE;
     doc.moveTo(marginL, tableBottom).lineTo(marginL + pageW, tableBottom)
@@ -268,7 +272,7 @@ export function generateRechnungPdf(opts: {
         doc.moveTo(totX, totY - 4).lineTo(marginL + pageW, totY - 4).lineWidth(0.5).strokeColor(BRAND).stroke();
       }
       doc.fontSize(bold ? 11 : 9)
-        .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+        .font(bold ? 'WorkSans-Bold' : 'WorkSans')
         .fillColor(bold ? BRAND : '#374151');
       doc.text(label, totX, totY, { width: 160, lineBreak: false });
       doc.text(fmtPrice(amount), totValX, totY, { width: 50, align: 'right', lineBreak: false });
@@ -276,7 +280,7 @@ export function generateRechnungPdf(opts: {
     }
 
     if (mwst === 0) {
-      doc.fontSize(8).font('Helvetica').fillColor(GRAY)
+      doc.fontSize(8).font('WorkSans').fillColor(GRAY)
         .text(isEn
           ? 'VAT-exempt pursuant to §4 No. 21 UStG'
           : 'Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG',
@@ -293,13 +297,13 @@ export function generateRechnungPdf(opts: {
         ? (isEn ? '✓  Paid in Cash' : '✓  Bar bezahlt')
         : (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt');
       doc.rect(marginL, bankY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#15803d')
+      doc.fontSize(11).font('WorkSans-Bold').fillColor('#15803d')
         .text(paidLabel, marginL + 12, bankY + 15);
     } else {
       doc.rect(marginL, bankY, pageW, 90).fill('#f9fafb').stroke();
-      doc.fontSize(8).font('Helvetica-Bold').fillColor(BRAND)
+      doc.fontSize(8).font('WorkSans-Bold').fillColor(BRAND)
         .text(isEn ? 'BANK TRANSFER DETAILS' : 'BANKVERBINDUNG', marginL + 12, bankY + 14);
-      doc.fontSize(7.5).font('Helvetica').fillColor('#374151');
+      doc.fontSize(7.5).font('WorkSans').fillColor('#374151');
 
       const bankRows: [string, string][] = [
         [isEn ? 'Account Holder:' : 'Kontoinhaber:', s.bank_kontoinhaber || companyName],
@@ -310,8 +314,8 @@ export function generateRechnungPdf(opts: {
       ];
       let bY = bankY + 32;
       for (const [label, val] of bankRows) {
-        doc.font('Helvetica').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
-        doc.font('Helvetica-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
+        doc.font('WorkSans').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
+        doc.font('WorkSans-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
         bY += 11;
       }
     }
@@ -320,7 +324,7 @@ export function generateRechnungPdf(opts: {
     const footerY = doc.page.height - 80;
     doc.moveTo(marginL, footerY).lineTo(marginL + pageW, footerY)
       .lineWidth(0.5).strokeColor('#e5e7eb').stroke();
-    doc.fontSize(7.5).font('Helvetica').fillColor(GRAY);
+    doc.fontSize(7.5).font('WorkSans').fillColor(GRAY);
     const footerParts: string[] = [companyName, s.company_address || ''].filter(Boolean);
     if (s.company_steuernr) footerParts.push((isEn ? 'Tax No.: ' : 'Steuer-Nr.: ') + s.company_steuernr);
     if (s.company_ustidnr) footerParts.push((isEn ? 'VAT ID: ' : 'USt-IdNr.: ') + s.company_ustidnr);
@@ -476,13 +480,13 @@ export function generateSammelrechnungPdf(opts: {
     // ── HEADER
     const titleX = marginL + pageW - 250;
     const titleLabel = reminderLevel >= 3 ? 'MAHNUNG' : reminderLevel > 0 ? 'ZAHLUNGSERINNERUNG' : 'RECHNUNG';
-    doc.fontSize(17).font('Helvetica-Bold').fillColor(reminderLevel >= 3 ? '#dc2626' : BRAND)
+    doc.fontSize(17).font('WorkSans-Bold').fillColor(reminderLevel >= 3 ? '#dc2626' : BRAND)
       .text(titleLabel, titleX, 50, { width: 250, align: 'right' });
 
     const todayStr = fmtDate(new Date().toISOString(), 'de');
     const dueDateStr = fmtDate(dueDate, 'de');
 
-    doc.fontSize(8).font('Helvetica').fillColor(GRAY);
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY);
     const metaX = titleX + 60;
     const metaLabelW = 75;
     const metaValueW = 250 - 60 - metaLabelW;
@@ -494,14 +498,14 @@ export function generateSammelrechnungPdf(opts: {
     ];
     let ry = 74;
     for (const [label, val] of metaRows) {
-      doc.font('Helvetica').fillColor(GRAY).text(label, metaX, ry, { width: metaLabelW, lineBreak: false });
-      doc.font('Helvetica-Bold').fillColor('#111827').text(val, metaX + metaLabelW, ry, { width: metaValueW, align: 'right', lineBreak: false });
+      doc.font('WorkSans').fillColor(GRAY).text(label, metaX, ry, { width: metaLabelW, lineBreak: false });
+      doc.font('WorkSans-Bold').fillColor('#111827').text(val, metaX + metaLabelW, ry, { width: metaValueW, align: 'right', lineBreak: false });
       ry += 11;
     }
 
     // ── LOGO (above RECHNUNGSEMPFÄNGER)
     const logoY = 50;
-    doc.fontSize(13).font('Helvetica-Bold');
+    doc.fontSize(13).font('WorkSans-Bold');
     const logoPart1 = 'Flughafen-muenchen.';
     const logoPart2 = 'TAXI';
     const logoW = doc.widthOfString(logoPart1) + doc.widthOfString(logoPart2);
@@ -509,19 +513,19 @@ export function generateSammelrechnungPdf(opts: {
     doc.fillColor('#fbbf24').text(logoPart2, { lineBreak: false });
 
     const logoAddress = 'Eisvogelweg 2, 85356 Freising';
-    doc.fontSize(8).font('Helvetica');
+    doc.fontSize(8).font('WorkSans');
     const logoAddressW = doc.widthOfString(logoAddress);
     doc.fillColor(GRAY).text(logoAddress, marginL + (logoW - logoAddressW) / 2, logoY + 18, { lineBreak: false });
 
     // ── CUSTOMER BLOCK
     const custY = logoY + 60;
-    doc.fontSize(8).font('Helvetica').fillColor(GRAY)
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY)
       .text('RECHNUNGSEMPFÄNGER', marginL, custY);
     let addrY = custY + 12;
-    doc.fontSize(11).font('Helvetica-Bold').fillColor('#111827')
+    doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
       .text(company.company_name, marginL, addrY, { width: pageW, lineBreak: false });
     addrY += 16;
-    doc.fontSize(9).font('Helvetica').fillColor('#374151');
+    doc.fontSize(9).font('WorkSans').fillColor('#374151');
     if (company.contact_name) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.address) { doc.text(company.address, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.ust_idnr) { doc.text('USt-IdNr.: ' + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
@@ -546,7 +550,7 @@ export function generateSammelrechnungPdf(opts: {
 
     // Table header
     doc.rect(marginL, tableTop, pageW, 16).fill(BRAND);
-    doc.fontSize(6.5).font('Helvetica-Bold').fillColor('#ffffff');
+    doc.fontSize(6.5).font('WorkSans-Bold').fillColor('#ffffff');
     doc.text('Pos.', colX.pos, tableTop + 4.5, { width: colWidths.pos, lineBreak: false });
     doc.text('Datum', colX.date, tableTop + 4.5, { width: colWidths.date, lineBreak: false });
     doc.text('Buchung', colX.nr, tableTop + 4.5, { width: colWidths.nr, lineBreak: false });
@@ -567,7 +571,7 @@ export function generateSammelrechnungPdf(opts: {
       const b = bookings[i];
       const bg = i % 2 === 0 ? LIGHTGRAY : '#ffffff';
       doc.rect(marginL, curY, pageW, ROW_H).fill(bg);
-      doc.fontSize(6.5).font('Helvetica').fillColor('#111827');
+      doc.fontSize(6.5).font('WorkSans').fillColor('#111827');
       const cellH = ROW_H - 6;
       doc.text(String(i + 1), colX.pos, curY + 4, { width: colWidths.pos, height: cellH, ellipsis: true });
       doc.text(b.pickup_datetime ? fmtDate(b.pickup_datetime, 'de') : '', colX.date, curY + 4, { width: colWidths.date, height: cellH, ellipsis: true });
@@ -576,7 +580,7 @@ export function generateSammelrechnungPdf(opts: {
       doc.text(route, colX.route, curY + 4, { width: colWidths.route, height: cellH, ellipsis: true });
       doc.text(b.name || '', colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
       doc.text((b.cost_center || ''), colX.kst, curY + 4, { width: colWidths.kst, height: cellH, ellipsis: true });
-      doc.font('Helvetica-Bold').text(fmtPrice(roundGrossPrice(Number(b.price) || 0)), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
+      doc.font('WorkSans-Bold').text(fmtPrice(roundGrossPrice(Number(b.price) || 0)), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
       curY += ROW_H;
     }
 
@@ -622,7 +626,7 @@ export function generateSammelrechnungPdf(opts: {
         doc.moveTo(totX, totY - 4).lineTo(marginL + pageW, totY - 4).lineWidth(0.5).strokeColor(BRAND).stroke();
       }
       doc.fontSize(bold ? 11 : 9)
-        .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+        .font(bold ? 'WorkSans-Bold' : 'WorkSans')
         .fillColor(bold ? BRAND : '#374151');
       doc.text(label, totX, totY, { width: 160, lineBreak: false });
       doc.text(fmtPrice(amount), totValX, totY, { width: 50, align: 'right', lineBreak: false });
@@ -630,7 +634,7 @@ export function generateSammelrechnungPdf(opts: {
     }
 
     if (sortedRates.length === 1 && sortedRates[0] === 0) {
-      doc.fontSize(8).font('Helvetica').fillColor(GRAY)
+      doc.fontSize(8).font('WorkSans').fillColor(GRAY)
         .text('Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG', marginL, totY + 8, { width: pageW });
       totY += 24;
     }
@@ -642,12 +646,12 @@ export function generateSammelrechnungPdf(opts: {
       doc.addPage();
       bankStartY = 50 + 13;
     }
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(BRAND)
+    doc.fontSize(10).font('WorkSans-Bold').fillColor(BRAND)
       .text(`Zahlbar bis: ${dueDateStr}`, marginL, bankStartY - 13, { width: pageW });
     doc.rect(marginL, bankStartY, pageW, 90).fill('#f9fafb').stroke();
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(BRAND)
+    doc.fontSize(8).font('WorkSans-Bold').fillColor(BRAND)
       .text('BANKVERBINDUNG', marginL + 12, bankStartY + 14);
-    doc.fontSize(7.5).font('Helvetica').fillColor('#374151');
+    doc.fontSize(7.5).font('WorkSans').fillColor('#374151');
 
     const bankRows: [string, string][] = [
       ['Kontoinhaber:', s.bank_kontoinhaber || companyName],
@@ -658,8 +662,8 @@ export function generateSammelrechnungPdf(opts: {
     ];
     let bY = bankStartY + 32;
     for (const [label, val] of bankRows) {
-      doc.font('Helvetica').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
-      doc.font('Helvetica-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
+      doc.font('WorkSans').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
+      doc.font('WorkSans-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
       bY += 11;
     }
 
@@ -669,7 +673,7 @@ export function generateSammelrechnungPdf(opts: {
       doc.switchToPage(i);
       const fY = doc.page.height - 80;
       doc.moveTo(marginL, fY).lineTo(marginL + pageW, fY).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
-      doc.fontSize(7.5).font('Helvetica').fillColor(GRAY);
+      doc.fontSize(7.5).font('WorkSans').fillColor(GRAY);
       const footerParts: string[] = [companyName, s.company_address || ''].filter(Boolean);
       if (s.company_steuernr) footerParts.push('Steuer-Nr.: ' + s.company_steuernr);
       if (s.company_ustidnr) footerParts.push('USt-IdNr.: ' + s.company_ustidnr);
