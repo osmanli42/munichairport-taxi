@@ -34,6 +34,8 @@ export interface DraftRide {
   raw_summary: string;
   raw_description: string;
   parse_ok: boolean;
+  // "Rechnung" in Titel/Beschreibung/Ort und nicht storniert → Vorauswahl im UI
+  invoice_hint: boolean;
 }
 
 const BERLIN_TZ = 'Europe/Berlin';
