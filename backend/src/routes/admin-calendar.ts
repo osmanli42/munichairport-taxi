@@ -205,6 +205,30 @@ router.post('/import', authenticateAdmin, async (req: AuthRequest, res: Response
   }
 });
 
+// ─── Alias-Verwaltung (Eventtext → Firma) ────────────────────────────────────
+
+router.get('/aliases', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const aliases = await query(
+      `SELECT ca.id, ca.alias, ca.company_id, c.company_name
+       FROM company_aliases ca LEFT JOIN companies c ON ca.company_id = c.id
+       ORDER BY c.company_name, ca.alias`
+    );
+    res.json(aliases);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch aliases' });
+  }
+});
+
+router.delete('/aliases/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await run('DELETE FROM company_aliases WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete alias' });
+  }
+});
+
 // ─── GET/PUT /settings — Kalender-ID (Service-Account-Key nur als Boolean) ───
 
 router.get('/settings', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
