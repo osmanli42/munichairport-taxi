@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/assets/fonts && cp src/assets/fonts/*.ttf dist/assets/fonts/",
     "start": "node dist/index.js",
     "seed": "ts-node src/seed.ts"
   },
