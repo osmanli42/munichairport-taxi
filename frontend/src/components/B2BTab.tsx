@@ -97,6 +97,7 @@ export default function B2BTab({ token }: { token: string }) {
       });
       const d = await res.json();
       if (res.ok) {
+        setInvoices(list => list.map(i => i.id === sendModal.id ? { ...i, manual_sent_at: new Date().toISOString() } : i));
         setSendModal(null);
         setSendEmailAddr('');
         flash('Rechnung per E-Mail gesendet');
