@@ -19,7 +19,7 @@ interface Invoice {
   id: number; company_id: number; invoice_number: string; period_month: string;
   mwst_satz: number; total: number; due_date: string; status: string;
   reminder_level: number; reminder_sent_at: string; mahngebuehr: number;
-  company_name?: string; created_at: string;
+  company_name?: string; created_at: string; manual_sent_at?: string | null;
 }
 
 async function api(path: string, token: string, opts?: RequestInit) {
