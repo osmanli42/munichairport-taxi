@@ -286,5 +286,6 @@ export function parseEventToDraft(
     raw_summary: raw.summary,
     raw_description: raw.description,
     parse_ok: !!(raw.start && company && price),
+    invoice_hint: invoiceHint,
   };
 }
