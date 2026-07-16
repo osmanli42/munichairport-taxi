@@ -88,6 +88,25 @@ export default function B2BTab({ token }: { token: string }) {
     } catch (e) { console.error(e); }
   }, [token]);
 
+  async function handleSendInvoice() {
+    if (!sendModal || !sendEmailAddr.trim()) return;
+    setSendLoading(true);
+    try {
+      const res = await api(`/invoices/${sendModal.id}/send`, token, {
+        method: 'POST', body: JSON.stringify({ email: sendEmailAddr.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setSendModal(null);
+        setSendEmailAddr('');
+        flash('Rechnung per E-Mail gesendet');
+      } else {
+        alert(d.error || 'Fehler beim Senden');
+      }
+    } catch (e) { alert('Netzwerkfehler'); }
+    setSendLoading(false);
+  }
+
   async function handleCreateFirma() {
     if (!newFirma.company_name.trim()) return;
     setNewFirmaLoading(true);
