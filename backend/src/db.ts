@@ -513,7 +513,7 @@ export async function initializeDatabase(): Promise<void> {
       CREATE TABLE IF NOT EXISTS company_aliases (
         id INT NOT NULL AUTO_INCREMENT,
         company_id INT NOT NULL,
-        alias VARCHAR(255) NOT NULL,
+        alias VARCHAR(191) NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY uq_ca_alias (alias),
