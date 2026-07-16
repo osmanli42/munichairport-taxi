@@ -466,6 +466,62 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
   }
 });
 
+// ─── RECHNUNG MANUELL AN BELIEBIGE E-MAIL SENDEN ─────────────────────────────
+
+router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ error: 'Gültige E-Mail-Adresse erforderlich' });
+      return;
+    }
+
+    const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
+    if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
+    const [company] = await query('SELECT * FROM companies WHERE id = ?', [invoice.company_id]);
+    if (!company) { res.status(404).json({ error: 'Company not found' }); return; }
+
+    const bookingIds = JSON.parse(invoice.booking_ids || '[]');
+    const bookings = bookingIds.length > 0
+      ? await query(`SELECT * FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')}) ORDER BY pickup_datetime`, bookingIds)
+      : [];
+
+    const s = await fetchBankSettings();
+    const pdfBuffer = await generateSammelrechnungPdf({
+      company: { company_name: company.company_name, contact_name: company.contact_name, address: company.address, ust_idnr: company.ust_idnr },
+      invoiceNumber: invoice.invoice_number, periodMonth: invoice.period_month,
+      mwst: Number(invoice.mwst_satz) as 0 | 7 | 19,
+      bookings, total: Number(invoice.total), dueDate: invoice.due_date,
+      mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
+    });
+
+    const bodyHtml = `
+      <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Sehr geehrte Damen und Herren der <strong>${company.company_name}</strong>,<br><br>anbei erhalten Sie Ihre Rechnung <strong>${invoice.invoice_number}</strong> für den Zeitraum <strong>${invoice.period_month}</strong>.</p>
+      <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 20px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;width:140px;">Gesamtbetrag:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${Number(invoice.total).toFixed(2).replace('.', ',')} €</td></tr>
+          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Zahlbar bis:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;color:#374151;font-size:15px;line-height:1.6;">Mit freundlichen Grüßen,<br>${s.company_name || 'Taxi N&N GbR'}</p>`;
+
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error: sendError } = await resend.emails.send({
+      from: `Flughafen München Taxi <info@flughafen-muenchen.taxi>`,
+      to: email.trim(),
+      subject: `Rechnung ${invoice.invoice_number} – Flughafen München Taxi`,
+      html: wrapBrandedEmail({ title: `Rechnung ${invoice.invoice_number}`, bodyHtml }),
+      attachments: [{ filename: `Rechnung_${invoice.invoice_number}.pdf`, content: pdfBuffer.toString('base64') }],
+    });
+    if (sendError) { res.status(500).json({ error: sendError.message || 'E-Mail-Versand fehlgeschlagen' }); return; }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to send invoice email' });
+  }
+});
+
 // ─── USER MANAGEMENT (admin-side) ───────────────────────────────────────────
 
 router.post('/:id/reset-password/:userId', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
