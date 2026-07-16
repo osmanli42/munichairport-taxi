@@ -124,6 +124,7 @@ interface ImportRide {
   steuersatz?: number;
   vehicle_type?: string;
   notes?: string;
+  guest_name?: string;
   save_alias?: boolean;
   alias_text?: string;
 }
