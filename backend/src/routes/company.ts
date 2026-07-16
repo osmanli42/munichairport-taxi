@@ -309,7 +309,7 @@ router.get('/bookings.csv', authenticateCompany, async (req: CompanyAuthRequest,
     const header = 'Datum;Buchungsnr;Gast;Von;Nach;Kostenstelle;Preis;Status;Gebucht von\n';
     const rows = bookings.map((b: any) => {
       const date = b.pickup_datetime ? fmtDate(b.pickup_datetime, 'de') : '';
-      const price = roundGrossPrice(Number(b.price) || 0).toFixed(2).replace('.', ',');
+      const price = roundGrossPrice(Number(b.price) || 0, b.source === 'calendar').toFixed(2).replace('.', ',');
       return [date, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.cost_center || '', price, b.status, b.booked_by_name || ''].join(';');
     }).join('\n');
 
