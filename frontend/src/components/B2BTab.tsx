@@ -53,6 +53,9 @@ export default function B2BTab({ token }: { token: string }) {
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const [applicationsEnabled, setApplicationsEnabled] = useState(true);
   const [msg, setMsg] = useState('');
+  const [newFirmaModal, setNewFirmaModal] = useState(false);
+  const [newFirma, setNewFirma] = useState({ company_name: '', contact_name: '', email: '', phone: '', address: '', city: '', zip: '' });
+  const [newFirmaLoading, setNewFirmaLoading] = useState(false);
 
   const loadCompanies = useCallback(async () => {
     setLoading(true);
