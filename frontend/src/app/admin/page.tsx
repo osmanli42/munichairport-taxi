@@ -833,6 +833,9 @@ export default function AdminPage() {
         {/* B2B Business */}
         {activeTab === 'b2b' && <B2BTab token={token} />}
 
+        {/* Kalender-Import (Sammelrechnung für Telefon/E-Mail-Fahrten) */}
+        {activeTab === 'kalender' && <KalenderTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
