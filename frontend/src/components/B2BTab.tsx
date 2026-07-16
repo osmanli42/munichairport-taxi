@@ -85,6 +85,25 @@ export default function B2BTab({ token }: { token: string }) {
     } catch (e) { console.error(e); }
   }, [token]);
 
+  async function handleCreateFirma() {
+    if (!newFirma.company_name.trim()) return;
+    setNewFirmaLoading(true);
+    try {
+      const res = await api('/direct', token, { method: 'POST', body: JSON.stringify(newFirma) });
+      if (res.ok) {
+        setNewFirmaModal(false);
+        setNewFirma({ company_name: '', contact_name: '', email: '', phone: '', address: '', city: '', zip: '' });
+        setMsg('Firma angelegt.');
+        setTimeout(() => setMsg(''), 3000);
+        loadCompanies();
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Fehler');
+      }
+    } catch (e) { alert('Netzwerkfehler'); }
+    setNewFirmaLoading(false);
+  }
+
   useEffect(() => {
     loadCompanies();
     loadInvoices();
