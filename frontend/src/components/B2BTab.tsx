@@ -504,6 +504,32 @@ export default function B2BTab({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Rechnung per E-Mail senden Modal */}
+      {sendModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSendModal(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900">Rechnung per E-Mail senden</h3>
+            <p className="text-sm text-gray-600">{sendModal.invoice_number} · {sendModal.company_name}</p>
+            <div>
+              <label className="text-xs font-medium text-gray-500">Empfänger-E-Mail</label>
+              <input autoFocus type="email" value={sendEmailAddr} onChange={e => setSendEmailAddr(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && sendEmailAddr.trim()) handleSendInvoice(); }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" placeholder="empfang@firma.de" />
+            </div>
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+              Versendet die Rechnung als HTML-E-Mail mit PDF-Anhang an die eingegebene Adresse.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={handleSendInvoice} disabled={!sendEmailAddr.trim() || sendLoading}
+                className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                {sendLoading ? 'Wird gesendet…' : 'Senden'}
+              </button>
+              <button onClick={() => setSendModal(null)} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Neue Firma Modal */}
       {newFirmaModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setNewFirmaModal(false)}>
