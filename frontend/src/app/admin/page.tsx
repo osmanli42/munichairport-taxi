@@ -792,6 +792,7 @@ export default function AdminPage() {
             { id: 'seo' as Tab, icon: TrendingUp, label: 'SEO' },
             { id: 'ads' as Tab, icon: MousePointerClick, label: 'Google Ads' },
             { id: 'b2b' as Tab, icon: Building2, label: 'B2B Business' },
+            { id: 'kalender' as Tab, icon: CalendarDays, label: 'Kalender' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
