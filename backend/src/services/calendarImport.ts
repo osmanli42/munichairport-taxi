@@ -257,8 +257,11 @@ export function parseEventToDraft(
   aliases: AliasRef[]
 ): DraftRide {
   const fullText = [raw.summary, raw.description, raw.location].filter(Boolean).join('\n');
-  const cancelled = /\b(anulliert|storniert|storno|cancelled|abgesagt|iptal)\b/i.test(fullText);
-  const invoiceHint = !cancelled && /rechnung/i.test(fullText);
+  // "Rechnung gön" = Rechnung bereits verschickt; "Abrechnung" = Fahrer-Abrechnung — beides keine offene Rechnung
+  const cancelled = /anulliert|storniert|storno|cancelled|abgesagt|iptal/i.test(fullText);
+  const alreadySent = /rechnung\s*gön/i.test(fullText);
+  const driverSettlement = /abrechnung/i.test(raw.summary);
+  const invoiceHint = !cancelled && !alreadySent && !driverSettlement && /rechnung/i.test(fullText);
 
   const company = matchCompany(fullText, companies, aliases);
   const price = parsePrice(fullText);
