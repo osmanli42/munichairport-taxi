@@ -91,12 +91,19 @@ export default function Footer() {
             <TrustBadges locale={locale} />
           </div>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-primary-300 mb-4">
-            <span>🏆 20 Jahre Erfahrung</span>
-            <span>🚫 Kostenloser Storno bis 3 Std.</span>
-            <span>💰 Festpreisgarantie</span>
-            <span>✈️ 60 Min. Gratis-Wartezeit</span>
-            <span>🛡️ Vollversicherte Fahrzeuge</span>
-            <span>📱 24/7 Telefon & WhatsApp</span>
+            {[
+              { Icon: Trophy, de: '20 Jahre Erfahrung', en: '20 years of experience', tr: '20 yıllık deneyim' },
+              { Icon: Ban, de: 'Kostenloser Storno bis 3 Std.', en: 'Free cancellation up to 3 hrs', tr: '3 saate kadar ücretsiz iptal' },
+              { Icon: BadgeEuro, de: 'Festpreisgarantie', en: 'Fixed price guarantee', tr: 'Sabit fiyat garantisi' },
+              { Icon: Plane, de: '60 Min. Gratis-Wartezeit', en: '60 min. free waiting time', tr: '60 dk. ücretsiz bekleme' },
+              { Icon: ShieldCheck, de: 'Vollversicherte Fahrzeuge', en: 'Fully insured vehicles', tr: 'Tam sigortalı araçlar' },
+              { Icon: Smartphone, de: '24/7 Telefon & WhatsApp', en: '24/7 phone & WhatsApp', tr: '24/7 telefon & WhatsApp' },
+            ].map(({ Icon, ...txt }, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5">
+                <Icon size={12} className="text-gold-400" />
+                {txt[locale as 'de' | 'en' | 'tr'] || txt.de}
+              </span>
+            ))}
           </div>
           <div className="text-center text-sm text-primary-300">
             {t('copyright', { year })}
