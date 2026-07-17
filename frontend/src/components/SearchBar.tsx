@@ -528,7 +528,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     de: {
       from: 'Abholadresse...', to: 'Zieladresse...', search: 'Suchen', searching: 'Suchen...',
       errFrom: 'Bitte Abholadresse auswählen', errTo: 'Bitte Zieladresse auswählen',
-      errDate: 'Bitte Datum auswählen', errRoute: 'Route konnte nicht berechnet werden.',
+      errDate: 'Bitte Datum auswählen', errRoute: 'Route konnte nicht berechnet werden. Bitte wählen Sie eine Adresse aus der Vorschlagsliste.',
       errAirport: 'Wir bieten nur Flughafentransfers an. Bitte wählen Sie den Flughafen München oder eine Adresse in der Nähe (Oberding, Hallbergmoos, Freising) als Abhol- oder Zielort.',
       arrival: 'Hinfahrt', addReturn: 'Rückfahrt hinzufügen', returnFlight: 'Rückfahrt',
       swap: 'Adressen tauschen', persons: 'Personen', person: 'Person',
