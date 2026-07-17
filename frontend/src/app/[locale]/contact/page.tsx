@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
-import { Phone, Mail, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, MessageCircle, ClipboardList, HelpCircle } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -32,7 +32,7 @@ export default function ContactPage() {
   const contactItems = [
     {
       icon: Phone,
-      emoji: '📞',
+      emoji: <Phone size={22} />,
       label: t('phone'),
       value: CONTACT_INFO.phone,
       href: CONTACT_INFO.phoneHref,
@@ -50,7 +50,7 @@ export default function ContactPage() {
     },
     {
       icon: Mail,
-      emoji: '✉️',
+      emoji: <Mail size={22} />,
       label: t('email'),
       value: CONTACT_INFO.email,
       href: `mailto:${CONTACT_INFO.email}`,
@@ -58,7 +58,7 @@ export default function ContactPage() {
     },
     {
       icon: MapPin,
-      emoji: '📍',
+      emoji: <MapPin size={22} />,
       label: t('address'),
       value: CONTACT_INFO.address,
       href: undefined,
@@ -66,7 +66,7 @@ export default function ContactPage() {
     },
     {
       icon: Clock,
-      emoji: '🕐',
+      emoji: <Clock size={22} />,
       label: t('hours'),
       value: t('hours_value'),
       href: undefined,
@@ -149,7 +149,7 @@ export default function ContactPage() {
                   className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
                 >
-                  📋
+                  <ClipboardList size={20} style={{ color: '#c9a84c' }} />
                 </div>
                 <div>
                   <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Direkt erreichen</span>
@@ -269,7 +269,7 @@ export default function ContactPage() {
                   className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
                 >
-                  ❓
+                  <HelpCircle size={20} style={{ color: '#c9a84c' }} />
                 </div>
                 <div>
                   <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Schnellantworten</span>

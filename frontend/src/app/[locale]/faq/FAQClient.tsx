@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Phone, MessageCircle } from 'lucide-react';
+import { Phone, MessageCircle, Car, Plane, Bus, MapPin } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { CONTACT_INFO } from '@/lib/utils';
 import { faqData } from './faqData';
@@ -92,7 +92,7 @@ export default function FAQClient() {
   const data = faqData[locale] || faqData.de;
   const [activeCategory, setActiveCategory] = useState(0);
 
-  const categoryIcons = ['🚗', '✈️', '🚐', '📍'];
+  const categoryIcons = [<Car key="c" size={18} />, <Plane key="p" size={18} />, <Bus key="b" size={18} />, <MapPin key="m" size={18} />];
 
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>

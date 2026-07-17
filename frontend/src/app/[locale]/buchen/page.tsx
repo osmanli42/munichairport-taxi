@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Briefcase, Lock, BadgeCheck } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -218,9 +218,9 @@ function BuchenContent() {
   const finalPrice = Math.max(0, promoBase - discountAmount);
 
   const t: Record<string, Record<string, string>> = {
-    de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: '💵 Barzahlung', card: '💳 Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: '→ Einfache Fahrt', roundtrip: '⇄ Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich! 🎉', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: '← Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: '← Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
-    en: { title: 'Your details', summary: 'Booking summary', name: 'Name *', phone: 'Mobile number *', email: 'Email *', flight: 'Flight number (optional)', flightRequired: 'Flight number *', flightChecking: 'Checking flight...', flightConfirmed: 'Flight confirmed', flightNotFound: 'Flight not found – please check the flight number', flightWrongAirport: 'This flight does not appear to land in Munich (MUC) – please check the flight number', flightArrival: 'Arrival', luggage: 'Pieces of luggage', notes: 'Notes', payment: 'Payment method', cash: '💵 Cash', card: '💳 Credit card', cardHolder: 'Card holder', cardNumber: 'Card number', cardExpiry: 'Expiry date', cardCvv: 'CVV', oneway: '→ One way', roundtrip: '⇄ Round trip', returnDate: 'Return date', returnTime: 'Return time', submit: 'Continue to review', submitting: 'Booking...', success_title: 'Booking confirmed! 🎉', success_msg: 'Your booking has been confirmed. You will receive a confirmation email at', new_booking: 'New booking', back: '← Back to vehicle selection', err_name: 'Name required', err_phone: 'Phone required', err_email: 'Valid email required', err_card: 'Card details required', err_submit: 'Error submitting. Please try again.', review_title: 'Review your booking', review_subtitle: 'Please review your details before confirming the booking.', review_route: 'Route', review_datetime: 'Date & Time', review_vehicle: 'Vehicle', review_contact: 'Contact details', review_payment_label: 'Payment', review_confirm: 'Confirm booking', review_edit: '← Edit details', review_persons: 'Passengers', review_luggage_label: 'Luggage', review_notes_label: 'Notes', review_flight_label: 'Flight number' },
-    tr: { title: 'Bilgileriniz', summary: 'Rezervasyon özeti', name: 'Ad Soyad *', phone: 'Cep numarası *', email: 'E-posta *', flight: 'Uçuş numarası (isteğe bağlı)', flightRequired: 'Uçuş numarası *', flightChecking: 'Uçuş kontrol ediliyor...', flightConfirmed: 'Uçuş doğrulandı', flightNotFound: 'Uçuş bulunamadı – lütfen uçuş numarasını kontrol edin', flightWrongAirport: 'Bu uçuş verilere göre Münih\'e (MUC) inmiyor – lütfen uçuş numarasını kontrol edin', flightArrival: 'Varış', luggage: 'Bagaj sayısı', notes: 'Notlar', payment: 'Ödeme yöntemi', cash: '💵 Nakit', card: '💳 Kredi kartı', cardHolder: 'Kart sahibi', cardNumber: 'Kart numarası', cardExpiry: 'Son kullanma tarihi', cardCvv: 'CVV', oneway: '→ Tek yön', roundtrip: '⇄ Gidiş-dönüş', returnDate: 'Dönüş tarihi', returnTime: 'Dönüş saati', submit: 'Kontrol et', submitting: 'Rezervasyon yapılıyor...', success_title: 'Rezervasyon onaylandı! 🎉', success_msg: 'Rezervasyonunuz onaylandı. Kısa süre içinde onay e-postası alacaksınız:', new_booking: 'Yeni rezervasyon', back: '← Araç seçimine dön', err_name: 'Ad gerekli', err_phone: 'Telefon gerekli', err_email: 'Geçerli e-posta gerekli', err_card: 'Kart bilgileri gerekli', err_submit: 'Gönderme hatası. Lütfen tekrar deneyin.', review_title: 'Rezervasyonu kontrol edin', review_subtitle: 'Lütfen rezervasyonu onaylamadan önce bilgilerinizi kontrol edin.', review_route: 'Güzergah', review_datetime: 'Tarih & Saat', review_vehicle: 'Araç', review_contact: 'İletişim bilgileri', review_payment_label: 'Ödeme', review_confirm: 'Rezervasyonu onayla', review_edit: '← Bilgileri düzenle', review_persons: 'Kişi', review_luggage_label: 'Bagaj', review_notes_label: 'Notlar', review_flight_label: 'Uçuş numarası' },
+    de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: 'Barzahlung', card: 'Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: 'Einfache Fahrt', roundtrip: 'Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich!', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: 'Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: 'Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
+    en: { title: 'Your details', summary: 'Booking summary', name: 'Name *', phone: 'Mobile number *', email: 'Email *', flight: 'Flight number (optional)', flightRequired: 'Flight number *', flightChecking: 'Checking flight...', flightConfirmed: 'Flight confirmed', flightNotFound: 'Flight not found – please check the flight number', flightWrongAirport: 'This flight does not appear to land in Munich (MUC) – please check the flight number', flightArrival: 'Arrival', luggage: 'Pieces of luggage', notes: 'Notes', payment: 'Payment method', cash: 'Cash', card: 'Credit card', cardHolder: 'Card holder', cardNumber: 'Card number', cardExpiry: 'Expiry date', cardCvv: 'CVV', oneway: 'One way', roundtrip: 'Round trip', returnDate: 'Return date', returnTime: 'Return time', submit: 'Continue to review', submitting: 'Booking...', success_title: 'Booking confirmed!', success_msg: 'Your booking has been confirmed. You will receive a confirmation email at', new_booking: 'New booking', back: 'Back to vehicle selection', err_name: 'Name required', err_phone: 'Phone required', err_email: 'Valid email required', err_card: 'Card details required', err_submit: 'Error submitting. Please try again.', review_title: 'Review your booking', review_subtitle: 'Please review your details before confirming the booking.', review_route: 'Route', review_datetime: 'Date & Time', review_vehicle: 'Vehicle', review_contact: 'Contact details', review_payment_label: 'Payment', review_confirm: 'Confirm booking', review_edit: 'Edit details', review_persons: 'Passengers', review_luggage_label: 'Luggage', review_notes_label: 'Notes', review_flight_label: 'Flight number' },
+    tr: { title: 'Bilgileriniz', summary: 'Rezervasyon özeti', name: 'Ad Soyad *', phone: 'Cep numarası *', email: 'E-posta *', flight: 'Uçuş numarası (isteğe bağlı)', flightRequired: 'Uçuş numarası *', flightChecking: 'Uçuş kontrol ediliyor...', flightConfirmed: 'Uçuş doğrulandı', flightNotFound: 'Uçuş bulunamadı – lütfen uçuş numarasını kontrol edin', flightWrongAirport: 'Bu uçuş verilere göre Münih\'e (MUC) inmiyor – lütfen uçuş numarasını kontrol edin', flightArrival: 'Varış', luggage: 'Bagaj sayısı', notes: 'Notlar', payment: 'Ödeme yöntemi', cash: 'Nakit', card: 'Kredi kartı', cardHolder: 'Kart sahibi', cardNumber: 'Kart numarası', cardExpiry: 'Son kullanma tarihi', cardCvv: 'CVV', oneway: 'Tek yön', roundtrip: 'Gidiş-dönüş', returnDate: 'Dönüş tarihi', returnTime: 'Dönüş saati', submit: 'Kontrol et', submitting: 'Rezervasyon yapılıyor...', success_title: 'Rezervasyon onaylandı!', success_msg: 'Rezervasyonunuz onaylandı. Kısa süre içinde onay e-postası alacaksınız:', new_booking: 'Yeni rezervasyon', back: 'Araç seçimine dön', err_name: 'Ad gerekli', err_phone: 'Telefon gerekli', err_email: 'Geçerli e-posta gerekli', err_card: 'Kart bilgileri gerekli', err_submit: 'Gönderme hatası. Lütfen tekrar deneyin.', review_title: 'Rezervasyonu kontrol edin', review_subtitle: 'Lütfen rezervasyonu onaylamadan önce bilgilerinizi kontrol edin.', review_route: 'Güzergah', review_datetime: 'Tarih & Saat', review_vehicle: 'Araç', review_contact: 'İletişim bilgileri', review_payment_label: 'Ödeme', review_confirm: 'Rezervasyonu onayla', review_edit: 'Bilgileri düzenle', review_persons: 'Kişi', review_luggage_label: 'Bagaj', review_notes_label: 'Notlar', review_flight_label: 'Uçuş numarası' },
   };
   const tx = t[locale] || t.de;
   const isAirportPickup = pickup.includes('München-Flughafen');
@@ -469,7 +469,7 @@ function BuchenContent() {
               {isNightBooking && (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 mb-6">
                   <p className="font-bold text-amber-800 mb-1">
-                    🌙 {locale === 'tr' ? 'Garanti olması için lütfen telefonla da arayın' : locale === 'en' ? 'Please also call us, just to be safe' : 'Sicherheitshalber bitte zusätzlich anrufen'}
+                    <Moon size={13} className="inline mr-1" /> {locale === 'tr' ? 'Garanti olması için lütfen telefonla da arayın' : locale === 'en' ? 'Please also call us, just to be safe' : 'Sicherheitshalber bitte zusätzlich anrufen'}
                   </p>
                   <p className="text-sm text-amber-700 mb-3">
                     {locale === 'tr'
@@ -512,7 +512,7 @@ function BuchenContent() {
                   {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
                     <div className="flex items-start gap-2">
                       <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
-                      <span className="text-blue-700 font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</span>
+                      <span className="text-blue-700 font-medium inline-flex items-center gap-1"><MapPin size={14} /> {params.get('zwischenstopp_address') || localZwischenstopp}</span>
                     </div>
                   )}
                   <div className="flex items-start gap-2">
@@ -525,7 +525,7 @@ function BuchenContent() {
                     const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
                       <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-600 hover:text-gray-800 transition-colors">
-                        <span>🗺️</span> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
+                        <Map size={14} /> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
                       </a>
                     );
                   })()}
@@ -556,11 +556,11 @@ function BuchenContent() {
                   <div className="flex items-center gap-2"><Users size={14} className="text-gray-400" /> {passengers} {locale === 'de' ? 'Person(en)' : locale === 'en' ? 'Passenger(s)' : 'Kişi'}</div>
                   <div className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {luggageCount} {locale === 'de' ? 'Gepäckstück(e)' : locale === 'en' ? 'Luggage' : 'Bagaj'}</div>
                   {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> {flightNumber}</div>}
-                  {pickupSign && <div className="flex items-center gap-2"><span className="text-gray-400">🪧</span> <span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> {pickupSign}</div>}
+                  {pickupSign && <div className="flex items-center gap-2"><Signpost size={14} className="text-gray-400" /> <span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> {pickupSign}</div>}
                   <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
-                  {childSeat && <div className="flex items-center gap-2 col-span-2">👶 {buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')}</div>}
-                  {fahrradCount > 0 && <div className="flex items-center gap-2">🚲 {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</div>}
-                  {notes && <div className="flex items-start gap-2 col-span-2"><span className="text-gray-400">📝</span> {notes}</div>}
+                  {childSeat && <div className="flex items-center gap-2 col-span-2"><Baby size={14} className="text-gray-400 inline mr-1" /> {buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')}</div>}
+                  {fahrradCount > 0 && <div className="flex items-center gap-2"><Bike size={14} className="text-gray-400 inline mr-1" /> {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</div>}
+                  {notes && <div className="flex items-start gap-2 col-span-2"><StickyNote size={14} className="text-gray-400" /> {notes}</div>}
                 </div>
               </div>
 
@@ -638,7 +638,7 @@ function BuchenContent() {
                     {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
                       <div className="flex items-start gap-3">
                         <MapPin size={16} className="text-blue-500 mt-0.5 shrink-0" />
-                        <p className="text-blue-700 text-sm font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</p>
+                        <p className="text-blue-700 text-sm font-medium flex items-center gap-1"><MapPin size={14} /> {params.get('zwischenstopp_address') || localZwischenstopp}</p>
                       </div>
                     )}
                     <div className="flex items-start gap-3">
@@ -652,7 +652,7 @@ function BuchenContent() {
                     const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
                     return (
                       <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-600 hover:text-gray-800 transition-colors">
-                        <span>🗺️</span> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
+                        <Map size={14} /> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
                       </a>
                     );
                   })()}
@@ -703,8 +703,8 @@ function BuchenContent() {
                     <div>
                       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Extras</h3>
                       <div className="space-y-1 text-sm">
-                        {childSeat && <p className="text-gray-800">👶 {locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'}){buildChildSeatDetails() ? ` — ${buildChildSeatDetails()}` : ''}</p>}
-                        {fahrradCount > 0 && <p className="text-gray-800">🚲 {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</p>}
+                        {childSeat && <p className="text-gray-800"><Baby size={14} className="text-gray-400 inline mr-1" /> {locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'}){buildChildSeatDetails() ? ` — ${buildChildSeatDetails()}` : ''}</p>}
+                        {fahrradCount > 0 && <p className="text-gray-800"><Bike size={14} className="text-gray-400 inline mr-1" /> {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</p>}
                       </div>
                     </div>
                   </>
@@ -720,7 +720,7 @@ function BuchenContent() {
                     <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span className="text-gray-800">{phone}</span></div>
                     <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /> <span className="text-gray-800">{email}</span></div>
                     {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> <span className="text-gray-800">{flightNumber}</span></div>}
-                    {pickupSign && <div className="flex items-center gap-2"><span>🪧</span> <span className="text-gray-800"><span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> <span className="font-medium">{pickupSign}</span></span></div>}
+                    {pickupSign && <div className="flex items-center gap-2"><Signpost size={14} className="text-gray-400" /> <span className="text-gray-800"><span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> <span className="font-medium">{pickupSign}</span></span></div>}
                   </div>
                 </div>
 
@@ -754,11 +754,11 @@ function BuchenContent() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
                         <span className="text-green-700 font-medium">
-                          🎉 {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}
+                          <PartyPopper size={13} className="inline mr-1" /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}
                         </span>
                         <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }}
                           className="text-gray-400 hover:text-gray-600 text-xs">
-                          ✕ {locale === 'tr' ? 'Kaldır' : locale === 'en' ? 'Remove' : 'Entfernen'}
+                          × {locale === 'tr' ? 'Kaldır' : locale === 'en' ? 'Remove' : 'Entfernen'}
                         </button>
                       </div>
                       <div className="flex items-center justify-between text-sm px-1">
@@ -808,9 +808,9 @@ function BuchenContent() {
                     {locale === 'tr' ? '✅ 0 Risk — Güvenle Rezervasyon Yap' : locale === 'en' ? '✅ Zero Risk — Book with Confidence' : '✅ 0 Risiko — Einfach & sicher buchen'}
                   </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                    <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vorher'}</span>
-                    <span>💵 {locale === 'tr' ? 'Şoföre ödeme de mümkün — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver also possible — booking is free' : 'Zahlung auch beim Fahrer möglich — Reservierung kostenlos'}</span>
-                    <span>💰 {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
+                    <span className="inline-flex items-center gap-1"><Ban size={12} /> {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vorher'}</span>
+                    <span className="inline-flex items-center gap-1"><Banknote size={12} /> {locale === 'tr' ? 'Şoföre ödeme de mümkün — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver also possible — booking is free' : 'Zahlung auch beim Fahrer möglich — Reservierung kostenlos'}</span>
+                    <span className="inline-flex items-center gap-1"><BadgeEuro size={12} /> {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
                   </div>
                 </div>
                 {(submitState as string) === 'error' && (
@@ -864,7 +864,7 @@ function BuchenContent() {
                     onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); setAppliedPromo(null); setPromoInput(''); setPromoError(''); }}
                     className="text-xs text-red-500 hover:text-red-700 font-medium"
                   >
-                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                    × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -893,7 +893,7 @@ function BuchenContent() {
                   </div>
                 </div>
                 <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-700 font-medium">
-                  🏷️ {roundtripDiscount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt inklusive' : locale === 'en' ? 'Round trip discount included' : 'Gidiş-dönüş indirimi dahil'}
+                  <Tag size={12} className="inline mr-1" /> {roundtripDiscount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt inklusive' : locale === 'en' ? 'Round trip discount included' : 'Gidiş-dönüş indirimi dahil'}
                 </div>
               </div>
             ) : (
@@ -915,20 +915,20 @@ function BuchenContent() {
               localZwischenstopp ? (
                 <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
                   <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
-                    <span>📍</span>
+                    <MapPin size={14} className="shrink-0" />
                     <span>
                       {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
                       {localZwischenstopp}
                     </span>
                   </div>
                   <button type="button" onClick={() => { setLocalZwischenstopp(''); setLocalZwischenstoppBasePrice(0); setLocalZwischenstoppDistanceKm(0); setLocalZwischenstoppDuration(0); }} className="text-xs text-red-500 hover:text-red-700 font-medium">
-                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                    × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                   </button>
                 </div>
               ) : showZwischenstoppPicker ? (
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 space-y-3 relative">
                   <p className="text-sm font-semibold text-primary-700">
-                    {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
+                    {locale === 'de' ? 'Zwischenstopp hinzufügen' : locale === 'en' ? 'Add intermediate stop' : 'Ara durak ekle'}
                   </p>
                   <div className="relative">
                     <input
@@ -997,7 +997,7 @@ function BuchenContent() {
                   onClick={() => setShowZwischenstoppPicker(true)}
                   className="flex items-center gap-2 w-full border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
                 >
-                  <span>📍</span>
+                  <MapPin size={14} className="shrink-0" />
                   {locale === 'de' ? '+ Zwischenstopp hinzufügen' : locale === 'en' ? '+ Add intermediate stop' : '+ Ara durak ekle'}
                 </button>
               )
@@ -1094,7 +1094,7 @@ function BuchenContent() {
                 <div>
                   <label className={labelCls}>
                     <span className="flex items-center gap-1">
-                      🪧 {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *
+                      <Signpost size={13} className="inline mr-1" /> {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *
                       <span className="relative group ml-0.5">
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
@@ -1125,12 +1125,12 @@ function BuchenContent() {
 
             {/* Extras */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">🎒 Extras</h3>
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={16} /> Extras</h3>
 
               {/* Kindersitz */}
               <div className="flex items-center justify-between py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">👶</span>
+                  <Baby size={22} className="text-gray-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'}</p>
                     <p className="text-xs text-green-600 font-medium">{locale === 'de' ? 'Kostenlos' : locale === 'en' ? 'Free' : 'Ücretsiz'}</p>
@@ -1200,7 +1200,7 @@ function BuchenContent() {
               {fahrradEnabled && (
               <div className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">🚲</span>
+                  <Bike size={22} className="text-gray-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</p>
                     <p className="text-xs text-gray-500">{fahrradPrice > 0 ? `${formatPrice(fahrradPrice)} / ${locale === 'de' ? 'Stk.' : locale === 'en' ? 'each' : 'adet'}` : (locale === 'de' ? 'Kostenlos' : locale === 'en' ? 'Free' : 'Ücretsiz')}</p>
@@ -1266,19 +1266,19 @@ function BuchenContent() {
                   {/* SSL trust box */}
                   <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-base leading-none">🔒</span>
+                      <Lock size={15} />
                       <p className="font-semibold">
                         {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-base leading-none">💳</span>
+                      <CreditCard size={15} />
                       <p className="text-blue-600">
                         {locale === 'tr' ? 'Ödeme yolculuktan 1 gün önce — iptal halinde tam iade' : locale === 'en' ? 'Payment 1 day before the trip — full refund if cancelled' : 'Keine Abbuchung bis 1 Tag vor der Fahrt — vollständige Rückerstattung bei Storno'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-base leading-none">💯</span>
+                      <BadgeCheck size={15} />
                       <p className="font-semibold text-blue-800">
                         {locale === 'tr' ? '%100 Risk Yok — Güvenle Rezervasyon Yap' : locale === 'en' ? '100% No Risk — Book with Confidence' : '100% Kein Risiko — Einfach & sicher buchen'}
                       </p>
@@ -1297,9 +1297,9 @@ function BuchenContent() {
             {/* Trust mini-bar */}
             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                <span>🚫 {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vor Abfahrt'}</span>
-                <span>💰 {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
-                <span>📧 {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
+                <span className="inline-flex items-center gap-1"><Ban size={12} /> {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vor Abfahrt'}</span>
+                <span className="inline-flex items-center gap-1"><BadgeEuro size={12} /> {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
+                <span className="inline-flex items-center gap-1"><Mail size={12} /> {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
               </div>
             </div>
             <button onClick={() => { if (validate()) { setSubmitState('review'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50); } }}
@@ -1320,7 +1320,7 @@ function BuchenContent() {
               {/* Payment trust badge */}
               <div className="mx-4 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-center">
                 <p className="font-bold text-amber-800 text-sm">
-                  💵 {locale === 'tr' ? 'Şoföre Ödeme de Mümkün' : locale === 'en' ? 'Pay the Driver Also Possible' : 'Zahlung auch beim Fahrer möglich'}
+                  <Banknote size={14} className="inline mr-1" /> {locale === 'tr' ? 'Şoföre Ödeme de Mümkün' : locale === 'en' ? 'Pay the Driver Also Possible' : 'Zahlung auch beim Fahrer möglich'}
                 </p>
               </div>
               <div className="p-5 space-y-4 text-sm">
@@ -1343,7 +1343,7 @@ function BuchenContent() {
                   {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
                     <div className="flex items-start gap-2">
                       <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
-                      <p className="text-blue-700 text-xs leading-relaxed font-medium">📍 {params.get('zwischenstopp_address') || localZwischenstopp}</p>
+                      <p className="text-blue-700 text-xs leading-relaxed font-medium flex items-center gap-1"><MapPin size={12} /> {params.get('zwischenstopp_address') || localZwischenstopp}</p>
                     </div>
                   )}
                   <div className="flex items-start gap-2">
@@ -1393,8 +1393,8 @@ function BuchenContent() {
                 {/* Extras in sidebar */}
                 {(childSeat || fahrradCount > 0) && (
                   <div className="space-y-1 text-xs text-gray-600 border-t border-gray-100 pt-3">
-                    {childSeat && <div className="flex items-center gap-2">👶 <span>{buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'})</span></div>}
-                    {fahrradCount > 0 && <div className="flex items-center gap-2">🚲 <span>{fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</span></div>}
+                    {childSeat && <div className="flex items-center gap-2"><Baby size={14} className="text-gray-400" /> <span>{buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'})</span></div>}
+                    {fahrradCount > 0 && <div className="flex items-center gap-2"><Bike size={14} className="text-gray-400" /> <span>{fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</span></div>}
                   </div>
                 )}
                 {/* Price */}
@@ -1410,10 +1410,10 @@ function BuchenContent() {
                     <span className="text-2xl font-bold text-primary-600">{formatPrice(price)}</span>
                   </div>
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
-                    <p className="text-xs text-green-600 font-medium mt-1">🏷️ {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
+                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
                   )}
                   {anfahrtCost > 0 && (
-                    <p className="text-xs text-amber-600 font-medium mt-1">🚗 {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
+                    <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><Car size={12} /> {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
                   )}
                   <p className="text-xs text-green-600 font-medium mt-1">✅ {locale === 'de' ? 'Inkl. Maut & Gepäck' : locale === 'en' ? 'Incl. tolls & luggage' : 'Otoyol & bagaj dahil'}</p>
                 </div>

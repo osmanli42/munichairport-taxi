@@ -348,9 +348,9 @@ function ResultsContent() {
     : '';
 
   const texts: Record<string, Record<string, string>> = {
-    de: { title: 'Fahrzeug wählen', subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck', book: 'Dieses Fahrzeug buchen', notSuitable: 'Nicht geeignet für', passengers_label: 'Person', duration_label: 'Min. Fahrtzeit', back: '← Suche ändern', total: 'Gesamtpreis', oneway_price: 'Einfache Fahrt', roundtrip_price: 'Hin- & Rückfahrt', discount: 'Rabatt', fixed: '✅ Festpreis garantiert', badge_popular: 'BELIEBT', persons: 'Passagiere', luggage: 'Gepäckstücke' },
-    en: { title: 'Choose your vehicle', subtitle: 'All prices are fixed rates incl. tolls & luggage', book: 'Book this vehicle', notSuitable: 'Not suitable for', passengers_label: 'Person', duration_label: 'min. journey', back: '← Change search', total: 'Total price', oneway_price: 'One way', roundtrip_price: 'Round trip', discount: 'Discount', fixed: '✅ Fixed price guaranteed', badge_popular: 'POPULAR', persons: 'Passengers', luggage: 'Pieces of luggage' },
-    tr: { title: 'Araç seçin', subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır', book: 'Bu aracı rezerve et', notSuitable: 'Uygun değil:', passengers_label: 'Kişi', duration_label: 'dk. yolculuk', back: '← Aramayı değiştir', total: 'Toplam fiyat', oneway_price: 'Tek yön', roundtrip_price: 'Gidiş-Dönüş', discount: 'İndirim', fixed: '✅ Sabit fiyat garantili', badge_popular: 'POPÜLER', persons: 'Yolcu', luggage: 'Bagaj' },
+    de: { title: 'Fahrzeug wählen', subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck', book: 'Dieses Fahrzeug buchen', notSuitable: 'Nicht geeignet für', passengers_label: 'Person', duration_label: 'Min. Fahrtzeit', back: '← Suche ändern', total: 'Gesamtpreis', oneway_price: 'Einfache Fahrt', roundtrip_price: 'Hin- & Rückfahrt', discount: 'Rabatt', fixed: 'Festpreis garantiert', badge_popular: 'BELIEBT', persons: 'Passagiere', luggage: 'Gepäckstücke' },
+    en: { title: 'Choose your vehicle', subtitle: 'All prices are fixed rates incl. tolls & luggage', book: 'Book this vehicle', notSuitable: 'Not suitable for', passengers_label: 'Person', duration_label: 'min. journey', back: '← Change search', total: 'Total price', oneway_price: 'One way', roundtrip_price: 'Round trip', discount: 'Discount', fixed: 'Fixed price guaranteed', badge_popular: 'POPULAR', persons: 'Passengers', luggage: 'Pieces of luggage' },
+    tr: { title: 'Araç seçin', subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır', book: 'Bu aracı rezerve et', notSuitable: 'Uygun değil:', passengers_label: 'Kişi', duration_label: 'dk. yolculuk', back: '← Aramayı değiştir', total: 'Toplam fiyat', oneway_price: 'Tek yön', roundtrip_price: 'Gidiş-Dönüş', discount: 'İndirim', fixed: 'Sabit fiyat garantili', badge_popular: 'POPÜLER', persons: 'Yolcu', luggage: 'Bagaj' },
   };
   const t = texts[locale] || texts.de;
 
@@ -490,7 +490,7 @@ function ResultsContent() {
         {showZwischenstoppPicker && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
             <p className="text-sm font-semibold text-primary-700">
-              {locale === 'de' ? '📍 Zwischenstopp hinzufügen' : locale === 'en' ? '📍 Add intermediate stop' : '📍 Ara durak ekle'}
+              {locale === 'de' ? 'Zwischenstopp hinzufügen' : locale === 'en' ? 'Add intermediate stop' : 'Ara durak ekle'}
             </p>
             <div className="relative">
               <input type="text" value={zwischenstoppInput} onChange={e => setZwischenstoppInput(e.target.value)} placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" autoFocus />
@@ -531,7 +531,7 @@ function ResultsContent() {
                   </span>
                 </div>
                 <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
-                  ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                  × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                 </button>
               </div>
             ) : (
@@ -552,11 +552,11 @@ function ResultsContent() {
               zwischenstoppAddress ? (
                 <div className="flex items-center justify-between flex-1 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 text-sm text-blue-700 font-medium truncate">
-                    <span>📍</span>
+                    <MapPin size={14} className="shrink-0" />
                     <span className="truncate">{zwischenstoppAddress}</span>
                   </div>
                   <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
-                    ✕ {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                    × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                   </button>
                 </div>
               ) : (
@@ -564,7 +564,7 @@ function ResultsContent() {
                   onClick={() => setShowZwischenstoppPicker(true)}
                   className="flex items-center gap-2 flex-1 border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
                 >
-                  <span>📍</span>
+                  <MapPin size={14} className="shrink-0" />
                   {locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}
                 </button>
               )
@@ -707,7 +707,7 @@ function ResultsContent() {
                     {/* CTA */}
                     <div className="mt-4">
                       {tooMany ? (
-                        <p className="text-sm text-red-500 font-medium">⚠️ {t.notSuitable} {passengers} {t.passengers_label}</p>
+                        <p className="text-sm text-red-500 font-medium">{t.notSuitable} {passengers} {t.passengers_label}</p>
                       ) : (
                         <button
                           onClick={() => handleBook(vehicle.type, oneWayWithToll + plzSurcharge)}
