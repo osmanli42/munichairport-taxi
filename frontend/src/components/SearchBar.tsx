@@ -606,10 +606,8 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     // the suggestion list (mouse or keyboard) — never fall back to raw typed
     // text here, since Google's Distance Matrix can silently "resolve" vague
     // text to the wrong nearby place and produce a wrong fare.
-    if (!pickup) { setFormError(l.errFrom); return; }
-    if (!dropoff) { setFormError(l.errTo); return; }
-    if (!pickupVal) { setFormError(l.errRoute); return; }
-    if (!dropoffVal) { setFormError(l.errRoute); return; }
+    if (!pickupVal) { setFormError(l.errFrom); return; }
+    if (!dropoffVal) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
     if (isTooSoon(date, time)) return;
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
