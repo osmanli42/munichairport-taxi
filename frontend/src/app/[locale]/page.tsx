@@ -244,7 +244,7 @@ export default function HomePage() {
                 boxShadow: '0 4px 24px rgba(201,168,76,.3)',
               }}
             >
-              Jetzt kostenlos Preis berechnen →
+              {locale === 'en' ? 'Get your free price quote →' : locale === 'tr' ? 'Ücretsiz fiyat hesapla →' : 'Jetzt kostenlos Preis berechnen →'}
             </a>
           </div>
         </div>
