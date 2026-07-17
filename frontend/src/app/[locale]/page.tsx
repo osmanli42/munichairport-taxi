@@ -168,7 +168,7 @@ export default function HomePage() {
 
           {/* Steps — alternating left/right rows */}
           <div className="flex flex-col gap-6">
-            {(['📍', '🚗', '✈️'] as const).map((icon, idx) => {
+            {([MapPin, Car, Plane] as const).map((StepIcon, idx) => {
               const { title, text, extra } = sd.steps[idx];
               const step = idx + 1;
               const reverse = idx === 1;
