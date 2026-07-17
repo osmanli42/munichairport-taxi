@@ -201,10 +201,9 @@ export default function HomePage() {
                   {/* Step pill */}
                   <div className="mb-4 text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full"
                     style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}>
-                    Schritt {step}
+                    {locale === 'en' ? 'Step' : locale === 'tr' ? 'Adım' : 'Schritt'} {step}
                   </div>
-                  {/* Emoji icon */}
-                  <div style={{ fontSize: '52px', lineHeight: 1 }}>{icon}</div>
+                  <StepIcon size={52} strokeWidth={1.5} style={{ color: '#c9a84c' }} />
                 </div>
 
                 {/* Text side */}
