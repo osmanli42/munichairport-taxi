@@ -29,7 +29,7 @@ export default function PortalApplyPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await portalApi.apply(form);
+      const res = await portalApi.apply({ ...form, website: honeypot, elapsed_ms: Date.now() - mountedAtRef.current });
       if (!res.ok) { const d = await res.json(); setError(d.error || 'Fehler'); setLoading(false); return; }
       setSuccess(true);
     } catch { setError('Verbindungsfehler'); }
