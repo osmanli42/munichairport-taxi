@@ -122,6 +122,12 @@ export default function PortalApplyPage() {
           {error && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Honeypot — invisible to real users, bots that auto-fill every field trip this */}
+            <div className="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off"
+                value={honeypot} onChange={e => setHoneypot(e.target.value)} />
+            </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Firmenname *</label>
               <div className="relative">
