@@ -281,7 +281,7 @@ export default function AboutPage() {
               <MapPin size={20} style={{ color: '#c9a84c' }} />
             </div>
             <div>
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Einzugsgebiet</span>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('section_area')}</span>
               <h2 className="text-lg font-bold text-white leading-tight">Unser Fahrtgebiet</h2>
             </div>
           </div>
