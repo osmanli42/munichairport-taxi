@@ -103,7 +103,7 @@ export default function Header() {
                       l === locale ? 'text-primary-600 font-bold' : 'text-gray-700'
                     )}
                   >
-                    {localeLabels[l]}
+                    <span className="inline-flex items-center gap-2"><FlagIcon code={l} /> {localeLabels[l]}</span>
                   </button>
                 ))}
               </div>
