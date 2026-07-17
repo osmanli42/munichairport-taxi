@@ -36,7 +36,7 @@ function pgPointInZone(p: { lat: number; lng: number } | null, cfg: PgConfig): b
 const VEHICLES = [
   {
     type: 'kombi' as const,
-    image: '/images/kombi.PNG',
+    image: '/images/kombi.webp',
     nameDE: 'Kombi', nameEN: 'Sedan', nameTR: 'Kombi',
     descDE: 'Ideal für Einzelreisende & Paare',
     descEN: 'Ideal for solo travelers & couples',
@@ -49,7 +49,7 @@ const VEHICLES = [
   },
   {
     type: 'van' as const,
-    image: '/images/van.PNG',
+    image: '/images/van.webp',
     nameDE: 'Van / Minibus', nameEN: 'Van / Minibus', nameTR: 'Van / Minibüs',
     descDE: 'Perfekt für Familien & Gruppen',
     descEN: 'Perfect for families & groups',
@@ -62,7 +62,7 @@ const VEHICLES = [
   },
   {
     type: 'grossraumtaxi' as const,
-    image: '/images/van.PNG',
+    image: '/images/van.webp',
     nameDE: 'Großraumtaxi', nameEN: 'Large Taxi', nameTR: 'Büyük Taksi',
     descDE: 'Für große Gruppen mit viel Gepäck',
     descEN: 'For large groups with lots of luggage',

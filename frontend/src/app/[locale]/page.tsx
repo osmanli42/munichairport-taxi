@@ -66,7 +66,7 @@ export default function HomePage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: "url('/images/hero-taxis.PNG')",
+            backgroundImage: "url('/images/hero-taxis.webp')",
             backgroundSize: 'cover',
             backgroundPosition: 'center right',
             opacity: 0.18,
@@ -279,21 +279,21 @@ export default function HomePage() {
             const f = vf[locale] || vf.de;
             const vehicles = [
               {
-                image: '/images/kombi.PNG',
+                image: '/images/kombi.webp',
                 name: tVehicles('kombi.name'),
                 model: 'Mercedes E-Klasse',
                 persons: tVehicles('kombi.persons'),
                 features: f.kombi,
               },
               {
-                image: '/images/van.PNG',
+                image: '/images/van.webp',
                 name: tVehicles('van.name'),
                 model: 'Mercedes Viano',
                 persons: tVehicles('van.persons'),
                 features: f.van,
               },
               {
-                image: '/images/van.PNG',
+                image: '/images/van.webp',
                 name: tVehicles('grossraumtaxi.name'),
                 model: 'Mercedes Vito',
                 persons: tVehicles('grossraumtaxi.persons'),

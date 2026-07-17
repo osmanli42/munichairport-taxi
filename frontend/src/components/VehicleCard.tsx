@@ -17,9 +17,9 @@ interface VehicleCardProps {
 }
 
 const vehicleImage: Record<string, string> = {
-  kombi: '/images/kombi.PNG',
-  van: '/images/van.PNG',
-  grossraumtaxi: '/images/van.PNG',
+  kombi: '/images/kombi.webp',
+  van: '/images/van.webp',
+  grossraumtaxi: '/images/van.webp',
 };
 
 export default function VehicleCard({
@@ -48,7 +48,7 @@ export default function VehicleCard({
       {/* Header */}
       <div className="bg-primary-600 p-6 text-center">
         <div className="w-full h-40 overflow-hidden rounded-lg mb-2">
-          <img src={vehicleImage[type]} alt={name} className="w-full h-full object-cover" />
+          <img src={vehicleImage[type]} alt={name} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
         </div>
         <h3 className="text-2xl font-bold text-white">{name}</h3>
         <p className="text-gold-400 font-medium mt-1">{persons}</p>
