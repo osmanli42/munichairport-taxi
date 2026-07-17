@@ -98,7 +98,7 @@ function AddressField({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    onChange(val); onValidSelect(''); setFieldError('');
+    onChange(val); onValidSelect(''); setFieldError(''); setHighlightIdx(-1);
     if (val.length >= 3 && isAirportSearch(val)) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       setPredictions([]); setShowAirport(true); airportRef.current = true; setOpen(true); return;
