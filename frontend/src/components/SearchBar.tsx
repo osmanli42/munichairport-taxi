@@ -164,6 +164,7 @@ function AddressField({
           type="text"
           value={value}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           onFocus={() => (showAirport || predictions.length > 0) && setOpen(true)}
           placeholder={placeholder}
           className="flex-1 bg-transparent text-gray-800 text-[15px] font-medium outline-none placeholder:text-gray-400 min-w-0"
