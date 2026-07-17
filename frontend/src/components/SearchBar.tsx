@@ -592,7 +592,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       const res = await fetch(`${API_URL}/maps/distance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin: pickupVal, destination: dropoffVal, language: locale, check_anfahrt: !isAirportTrip }),
+        body: JSON.stringify({ origin: resolvedPickup, destination: resolvedDropoff, language: locale, check_anfahrt: !isAirportTrip }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error('Route not found');
