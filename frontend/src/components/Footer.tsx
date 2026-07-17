@@ -49,6 +49,8 @@ export default function Footer() {
               <li><Link href="/about" className="hover:text-white transition-colors">Über uns</Link></li>
               <li><Link href="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
               <li><Link href="/contact" className="hover:text-white transition-colors">Kontakt</Link></li>
+              <li><Link href="/treffpunkt-flughafen-muenchen" className="hover:text-white transition-colors">{t('meetingPoint')}</Link></li>
+              <li><Link href="/buchung-verwalten" className="hover:text-white transition-colors">{t('manageBooking')}</Link></li>
             </ul>
           </div>
 
