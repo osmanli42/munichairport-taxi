@@ -1944,6 +1944,8 @@ const cities: CityData[] = [
       }
     ],
     ...calcPrice(38),
+    kombi_price: 96,
+    van_price: 102,
   },
   {
     slug: 'taxi-pfaffenhofen-flughafen-muenchen',
