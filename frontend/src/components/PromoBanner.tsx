@@ -89,7 +89,7 @@ export default function PromoBanner({ locale = 'de' }: { locale?: string }) {
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
         {/* Left: message + code */}
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-lg">🎉</span>
+          <PartyPopper size={18} className="shrink-0" />
           <span className="font-medium text-sm sm:text-base">
             {l.msg}{' '}
             <strong className="bg-white text-amber-700 px-2 py-0.5 rounded font-bold tracking-wider text-sm mx-1">
