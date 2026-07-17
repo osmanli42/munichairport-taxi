@@ -181,8 +181,8 @@ function AddressField({
           <li className="px-4 py-2.5 text-xs font-bold text-primary-600 bg-primary-50 border-b border-gray-100">
             ✈️ Flughafen München — Terminal wählen
           </li>
-          {AIRPORT_TERMINALS.map(t => (
-            <li key={t.id} onMouseDown={() => handleSelectTerminal(t)} className="px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors">
+          {AIRPORT_TERMINALS.map((t, ti) => (
+            <li key={t.id} onMouseDown={() => handleSelectTerminal(t)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${ti === highlightIdx ? 'bg-primary-50' : ''}`}>
               <Plane size={12} className="text-primary-500 shrink-0" />
               {t.label}
             </li>
