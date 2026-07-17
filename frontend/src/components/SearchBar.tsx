@@ -597,7 +597,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
       const data = await res.json();
       if (!res.ok) throw new Error('Route not found');
       const params = new URLSearchParams({
-        pickup: pickupVal, dropoff: dropoffVal,
+        pickup: resolvedPickup, dropoff: resolvedDropoff,
         date, time,
         passengers: String(passengers),
         distance_km: String(data.distance_km),
