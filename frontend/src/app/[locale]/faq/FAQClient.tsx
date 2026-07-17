@@ -221,7 +221,7 @@ export default function FAQClient() {
               className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
               style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
             >
-              Kontakt
+              {locale === 'en' ? 'Contact' : locale === 'tr' ? 'İletişim' : 'Kontakt'}
             </div>
             <h3 className="text-2xl font-extrabold text-white mb-2">{data.cta_title}</h3>
             <p className="mb-7" style={{ color: '#7a9ab8' }}>{data.cta_text}</p>
