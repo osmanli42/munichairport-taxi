@@ -67,6 +67,22 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
+      if (key === 'auto_confirm_hours') {
+        const num = parseFloat(String(value));
+        if (isNaN(num) || num < 0) {
+          res.status(400).json({ error: 'auto_confirm_hours must be a positive number' });
+          return;
+        }
+      }
+
+      if (key === 'auto_complete_buffer_minutes') {
+        const num = parseInt(String(value), 10);
+        if (isNaN(num) || num < 0) {
+          res.status(400).json({ error: 'auto_complete_buffer_minutes must be a non-negative integer' });
+          return;
+        }
+      }
+
       await run(
         `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`,
         [key, String(value), String(value)]
