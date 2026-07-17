@@ -1378,7 +1378,9 @@ const cities: CityData[] = [
       'Salzburger Festspiele (Sommer)',
     ],
     known_for: 'Mozart, Festspiele, UNESCO-Altstadt, Salzach',
-    ...calcPrice(148),
+    ...calcPrice(183),
+    kombi_price: 410,
+    van_price: 433,
   },
   {
     slug: 'taxi-innsbruck-flughafen-muenchen',
