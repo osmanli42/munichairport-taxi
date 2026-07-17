@@ -121,7 +121,25 @@
       }
     },
     "owner": "İşletme Sahibi",
-    "contact": "İletişim"
+    "contact": "İletişim",
+    "stats": [
+      {
+        "value": "20+",
+        "label": "Yıllık deneyim"
+      },
+      {
+        "value": "10.000+",
+        "label": "Yolculuk"
+      },
+      {
+        "value": "4,9 ★",
+        "label": "Ort. puan"
+      },
+      {
+        "value": "7/24",
+        "label": "Hizmette"
+      }
+    ]
   },
   "contact": {
     "title": "İletişim",

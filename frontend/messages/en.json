@@ -121,7 +121,25 @@
       }
     },
     "owner": "Owner",
-    "contact": "Contact"
+    "contact": "Contact",
+    "stats": [
+      {
+        "value": "20+",
+        "label": "Years of experience"
+      },
+      {
+        "value": "10,000+",
+        "label": "Rides"
+      },
+      {
+        "value": "4.9 ★",
+        "label": "Avg. rating"
+      },
+      {
+        "value": "24/7",
+        "label": "Available"
+      }
+    ]
   },
   "contact": {
     "title": "Contact",

@@ -121,7 +121,25 @@
       }
     },
     "owner": "Inhaber",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "stats": [
+      {
+        "value": "20+",
+        "label": "Jahre Erfahrung"
+      },
+      {
+        "value": "10.000+",
+        "label": "Fahrten"
+      },
+      {
+        "value": "4,9 ★",
+        "label": "Ø Bewertung"
+      },
+      {
+        "value": "24/7",
+        "label": "Verfügbar"
+      }
+    ]
   },
   "contact": {
     "title": "Kontakt",

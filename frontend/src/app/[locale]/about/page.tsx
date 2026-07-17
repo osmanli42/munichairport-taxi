@@ -36,12 +36,8 @@ export default function AboutPage() {
     { icon: Globe, title: t('reasons.multilingual.title'), text: t('reasons.multilingual.text') },
   ];
 
-  const stats = [
-    { value: '20+', label: 'Jahre Erfahrung', icon: Award },
-    { value: '10.000+', label: 'Fahrten', icon: CheckCircle },
-    { value: '4,9 ★', label: 'Ø Bewertung', icon: Star },
-    { value: '24/7', label: 'Verfügbar', icon: Clock },
-  ];
+  const statIcons = [Award, CheckCircle, Star, Clock];
+  const stats = (t.raw('stats') as { value: string; label: string }[]).map((s, i) => ({ ...s, icon: statIcons[i] }));
 
   const cities = [
     'München', 'Freising', 'Erding', 'Landshut', 'Ingolstadt', 'Augsburg',
