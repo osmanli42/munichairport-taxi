@@ -155,7 +155,11 @@
         "q": "Can I pay by card?",
         "a": "Yes, credit card before the ride or cash at the end of the ride."
       }
-    ]
+    ],
+    "booking_badge": "Booking",
+    "booking_title": "Fast & easy booking",
+    "booking_text": "Book online or contact us directly.",
+    "book_online": "Book online →"
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",

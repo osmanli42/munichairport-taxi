@@ -155,7 +155,11 @@
         "q": "Kann ich mit Karte zahlen?",
         "a": "Ja, Kreditkarte vor Fahrtantritt oder Barzahlung am Ende der Fahrt."
       }
-    ]
+    ],
+    "booking_badge": "Buchung",
+    "booking_title": "Schnell & einfach buchen",
+    "booking_text": "Buchen Sie online oder kontaktieren Sie uns direkt.",
+    "book_online": "Online buchen →"
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",

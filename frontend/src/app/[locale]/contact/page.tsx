@@ -207,10 +207,10 @@ export default function ContactPage() {
                   className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-3"
                   style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
                 >
-                  Buchung
+                  {t('booking_badge')}
                 </div>
-                <h2 className="text-xl font-extrabold text-white mb-1">Schnell & einfach buchen</h2>
-                <p className="text-sm" style={{ color: '#7a9ab8' }}>Buchen Sie online oder kontaktieren Sie uns direkt.</p>
+                <h2 className="text-xl font-extrabold text-white mb-1">{t('booking_title')}</h2>
+                <p className="text-sm" style={{ color: '#7a9ab8' }}>{t('booking_text')}</p>
               </div>
               <div className="px-7 py-6 space-y-3">
                 <a

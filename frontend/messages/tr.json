@@ -155,7 +155,11 @@
         "q": "Kartla ödeme yapabilir miyim?",
         "a": "Evet, yolculuk öncesi kredi kartı veya yolculuk sonunda nakit."
       }
-    ]
+    ],
+    "booking_badge": "Rezervasyon",
+    "booking_title": "Hızlı & kolay rezervasyon",
+    "booking_text": "Online rezervasyon yapın veya doğrudan bize ulaşın.",
+    "book_online": "Online rezervasyon →"
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",
