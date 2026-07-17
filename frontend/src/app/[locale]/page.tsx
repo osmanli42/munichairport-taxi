@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, MapPin, Car, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, Check } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
+import PopularRoutes from '@/components/PopularRoutes';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export async function generateMetadata({
