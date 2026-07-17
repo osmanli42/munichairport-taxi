@@ -544,7 +544,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     tr: {
       from: 'Alış adresi...', to: 'Varış adresi...', search: 'Ara', searching: 'Aranıyor...',
       errFrom: 'Lütfen alış adresi seçin', errTo: 'Lütfen varış adresi seçin',
-      errDate: 'Lütfen tarih seçin', errRoute: 'Rota hesaplanamadı.',
+      errDate: 'Lütfen tarih seçin', errRoute: 'Rota hesaplanamadı. Lütfen öneri listesinden bir adres seçin.',
       errAirport: 'Sadece havalimanı transferi sunuyoruz. Lütfen Münih Havalimanı veya yakın bir adres (Oberding, Hallbergmoos, Freising) seçin.',
       arrival: 'Gidiş', addReturn: 'Dönüş ekle', returnFlight: 'Dönüş',
       swap: 'Adresleri değiştir', persons: 'Kişi', person: 'Kişi',
