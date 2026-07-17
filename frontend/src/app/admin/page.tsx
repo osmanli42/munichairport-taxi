@@ -1621,6 +1621,122 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
+                {/* Automatic booking status transitions */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="font-semibold text-gray-700">Automatischer Buchungsstatus</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Neue Buchungen werden nach einer festgelegten Zeit automatisch bestätigt, und bestätigte Buchungen automatisch abgeschlossen, sobald die Abholzeit vorbei ist — ohne manuelles Klicken. Beim Aktivieren werden bereits fällige Buchungen sofort umgestellt, daher vorher die Liste kurz prüfen.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.auto_status_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ auto_status_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Automatischer Status aktiviert' : 'Automatischer Status deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.auto_status_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.auto_status_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                  {settings.auto_status_enabled === '1' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-gray-600">Neu → Bestätigt nach</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={settings.auto_confirm_hours || '1'}
+                          onChange={(e) => setSettings(prev => ({ ...prev, auto_confirm_hours: e.target.value }))}
+                          className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        />
+                        <span className="text-sm text-gray-600">Std.</span>
+                        <span className="text-sm text-gray-600 ml-3">Bestätigt → Abgeschlossen</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={settings.auto_complete_buffer_minutes || '0'}
+                          onChange={(e) => setSettings(prev => ({ ...prev, auto_complete_buffer_minutes: e.target.value }))}
+                          className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        />
+                        <span className="text-sm text-gray-600">Min. nach Abholzeit</span>
+                        <button
+                          onClick={async () => {
+                            setSettingsSaving(true);
+                            try {
+                              const updated = await adminApi.updateSettings({ auto_confirm_hours: settings.auto_confirm_hours, auto_complete_buffer_minutes: settings.auto_complete_buffer_minutes });
+                              setSettings(updated);
+                              setPriceSuccess('Zeiten aktualisiert');
+                              setTimeout(() => setPriceSuccess(''), 3000);
+                            } catch { }
+                            setSettingsSaving(false);
+                          }}
+                          disabled={settingsSaving}
+                          className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          {settingsSaving ? '...' : 'Speichern'}
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1.5">Firmenkunden mit hinterlegter Karte, die bei Fahrtabschluss automatisch belastet werden ("bei Abschluss zahlen")</p>
+                        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                          <button
+                            onClick={async () => {
+                              setSettingsSaving(true);
+                              try {
+                                const updated = await adminApi.updateSettings({ auto_complete_include_company_charge: '0' });
+                                setSettings(updated);
+                                setPriceSuccess('Firmenkunden werden von der Automatik ausgeschlossen');
+                                setTimeout(() => setPriceSuccess(''), 3000);
+                              } catch { }
+                              setSettingsSaving(false);
+                            }}
+                            disabled={settingsSaving}
+                            className={cn(
+                              'px-3 py-2 text-sm font-medium transition-colors',
+                              settings.auto_complete_include_company_charge !== '1' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                            )}
+                          >
+                            Firmenkunden ausschließen
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setSettingsSaving(true);
+                              try {
+                                const updated = await adminApi.updateSettings({ auto_complete_include_company_charge: '1' });
+                                setSettings(updated);
+                                setPriceSuccess('Alle Fahrten werden automatisch abgeschlossen — inkl. automatischer Kartenbelastung');
+                                setTimeout(() => setPriceSuccess(''), 3000);
+                              } catch { }
+                              setSettingsSaving(false);
+                            }}
+                            disabled={settingsSaving}
+                            className={cn(
+                              'px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200',
+                              settings.auto_complete_include_company_charge === '1' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                            )}
+                          >
+                            Alle Fahrten
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Zwischenstopp toggle */}
                 <div>
                   <div className="flex items-center justify-between">
