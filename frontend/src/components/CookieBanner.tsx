@@ -70,11 +70,11 @@ export default function CookieBanner() {
 
   if (!visible) return null;
 
-  const cookieCategories: { key: keyof CookiePreferences; icon: string; locked?: boolean }[] = [
-    { key: 'necessary', icon: '🔒', locked: true },
-    { key: 'maps', icon: '🗺️' },
-    { key: 'analytics', icon: '📊' },
-    { key: 'marketing', icon: '📢' },
+  const cookieCategories: { key: keyof CookiePreferences; icon: React.ReactNode; locked?: boolean }[] = [
+    { key: 'necessary', icon: <Lock size={16} className="text-primary-600" />, locked: true },
+    { key: 'maps', icon: <Map size={16} className="text-primary-600" /> },
+    { key: 'analytics', icon: <BarChart3 size={16} className="text-primary-600" /> },
+    { key: 'marketing', icon: <Megaphone size={16} className="text-primary-600" /> },
   ];
 
   return (
