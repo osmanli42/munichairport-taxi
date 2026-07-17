@@ -16,10 +16,21 @@ interface FixedRoute {
   enabled: number;
 }
 
+// Comma-separated groups are OR'd; within a group, '+' joins terms that must
+// ALL be present (AND) — e.g. "münchen+hauptbahnhof,bahnhofplatz" matches any
+// address containing both "münchen" and "hauptbahnhof" (in any order/position),
+// or containing "bahnhofplatz". Needed because Google returns several address
+// formats for the same real-world place (e.g. Munich Hauptbahnhof shows up as
+// "Hauptbahnhof (S, U, Bus, Tram), Bahnhofplatz, München" or "Hauptbahnhof,
+// München-Maxvorstadt" etc.) — a single substring can't reliably match every
+// variant without also being generic enough to match other cities' stations.
 function matchesKeywords(address: string, keywords: string): boolean {
   if (!address || !keywords) return false;
   const lower = address.toLowerCase();
-  return keywords.split(',').some(kw => lower.includes(kw.trim().toLowerCase()));
+  return keywords.split(',').some(group => {
+    const terms = group.split('+').map(t => t.trim().toLowerCase()).filter(Boolean);
+    return terms.length > 0 && terms.every(term => lower.includes(term));
+  });
 }
 
 export function findFixedRoute(
