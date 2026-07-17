@@ -3,11 +3,13 @@ import { computeRoutePrice } from './bookings';
 
 const router = Router();
 
-// Curated set of popular routes shown on the homepage and as dedicated SEO
-// landing pages (/taxi-<slug>-flughafen). Prices are computed live from the
-// real tariff engine (prices table + Pflichtfahrgebiet mandatory zone +
-// fixed-route overrides) via computeRoutePrice — never hardcoded — so the
-// "ab X €" teaser always matches what the customer sees at checkout.
+// Curated set of popular routes shown as a homepage price teaser. Slugs match
+// the existing /blog/[citySlug] SEO landing pages (frontend/src/lib/citiesData.ts)
+// — this endpoint does NOT create separate landing pages, it only computes a
+// live "ab X €" price for cities that already have a blog page, since that page's
+// price is static/hardcoded and can drift from the real tariff engine.
+// Prices are computed live via computeRoutePrice (prices table + Pflichtfahrgebiet
+// mandatory zone + fixed-route overrides) — never hardcoded.
 export interface PopularRoute {
   slug: string;
   city: string;
