@@ -44,7 +44,7 @@ export const POPULAR_ROUTES: PopularRoute[] = [
     pickup_lng: 11.7477,
   },
   {
-    slug: 'taxi-erding-flughafen',
+    slug: 'taxi-erding-flughafen-muenchen',
     city: 'Erding',
     distance_km: 18,
     duration_min: 18,
