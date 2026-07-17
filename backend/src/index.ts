@@ -20,6 +20,7 @@ import flightsRouter from './routes/flights';
 import companyRouter from './routes/company';
 import adminCompaniesRouter from './routes/admin-companies';
 import adminCalendarRouter from './routes/admin-calendar';
+import popularRoutesRouter from './routes/popular-routes';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
