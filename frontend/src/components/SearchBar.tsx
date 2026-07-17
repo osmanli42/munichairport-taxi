@@ -60,6 +60,7 @@ function AddressField({
   const [open, setOpen] = useState(false);
   const [showAirport, setShowAirport] = useState(false);
   const [fieldError, setFieldError] = useState('');
+  const [highlightIdx, setHighlightIdx] = useState(-1);
   const airportRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
