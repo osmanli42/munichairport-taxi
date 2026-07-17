@@ -1026,7 +1026,9 @@ const cities: CityData[] = [
         textEN: 'Neuschwanstein Castle near Füssen (approx. 60 km from Garmisch-Partenkirchen) is the world\'s most famous castle and Walt Disney\'s inspiration for Sleeping Beauty\'s castle. King Ludwig II had it built from 1869 as a romantic retreat. The Romanesque and Gothic architecture perched on a rocky crag above the Alpsee is breathtaking. Thousands of visitors from around the world come here every day.',
       }
     ],
-    ...calcPrice(123),
+    ...calcPrice(126),
+    kombi_price: 279,
+    van_price: 296,
   },
   {
     slug: 'taxi-bad-reichenhall-flughafen-muenchen',
