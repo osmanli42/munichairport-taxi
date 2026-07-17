@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { trackingApi, TrackingData } from '@/lib/api';
-import { Search, Phone } from 'lucide-react';
+import { Search, Phone, User } from 'lucide-react';
 
 type Lang = 'de' | 'en' | 'tr';
 
