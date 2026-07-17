@@ -104,7 +104,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// GET /api/popular-routes/:slug - single route detail (for the SEO landing page)
+// GET /api/popular-routes/:slug - single route detail (live price for a given city, e.g. for use on its /blog page)
 router.get('/:slug', async (req: Request, res: Response): Promise<void> => {
   try {
     const route = POPULAR_ROUTES.find(r => r.slug === req.params.slug);
