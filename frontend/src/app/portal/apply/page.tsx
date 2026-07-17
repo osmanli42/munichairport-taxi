@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { portalApi } from '@/lib/portalApi';
 import { Car, Send, ArrowLeft, CheckCircle, XCircle, Building2, User, Phone, Mail, MapPin, FileText, MessageSquare } from 'lucide-react';
@@ -8,6 +8,8 @@ import { Car, Send, ArrowLeft, CheckCircle, XCircle, Building2, User, Phone, Mai
 export default function PortalApplyPage() {
   const router = useRouter();
   const [form, setForm] = useState({ company_name: '', contact_name: '', email: '', phone: '', address: '', ust_idnr: '', message: '' });
+  const [honeypot, setHoneypot] = useState('');
+  const mountedAtRef = useRef(Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
