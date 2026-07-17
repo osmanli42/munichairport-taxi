@@ -88,10 +88,10 @@ export default function HomePage() {
               <span className="block text-gold-400">{t('subtitle')}</span>
             </h1>
 
-            <p className="text-primary-200 text-lg mb-8 max-w-2xl mx-auto">{t('description')}</p>
+            <p className="text-primary-200 text-lg mb-4 sm:mb-8 max-w-2xl mx-auto">{t('description')}</p>
 
-            {/* Feature badges */}
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
+            {/* Feature badges — hidden on mobile so the search bar stays above the fold */}
+            <div className="hidden sm:flex flex-wrap justify-center gap-3 mb-8">
               {[
                 { icon: Shield, text: t('features.fixed_price') },
                 { icon: Clock, text: t('features.punctual') },
@@ -104,7 +104,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+            <div className="hidden sm:flex flex-col sm:flex-row gap-3 justify-center mb-10">
               <a
                 href={CONTACT_INFO.phoneHref}
                 className="flex items-center justify-center gap-2 bg-gold-400 hover:bg-gold-500 text-primary-600 px-6 py-3 rounded-xl font-bold transition-colors"
