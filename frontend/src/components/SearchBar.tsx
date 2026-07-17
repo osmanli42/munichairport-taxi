@@ -113,6 +113,31 @@ function AddressField({
     setOpen(false); setShowAirport(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open) return;
+    const count = showAirport ? AIRPORT_TERMINALS.length : predictions.length;
+    if (count === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx(i => (i + 1) % count);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx(i => (i <= 0 ? count - 1 : i - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = highlightIdx >= 0 ? highlightIdx : 0;
+      if (showAirport) {
+        handleSelectTerminal(AIRPORT_TERMINALS[idx]);
+      } else {
+        const p = predictions[idx];
+        if (p) handleSelect(p.place_id, p.description);
+      }
+      setHighlightIdx(-1);
+    } else if (e.key === 'Escape') {
+      setOpen(false); setShowAirport(false); setHighlightIdx(-1);
+    }
+  };
+
   const handleSelect = async (placeId: string, desc: string) => {
     onChange(desc); setPredictions([]); setOpen(false); setShowAirport(false); setValidating(true);
     try {
