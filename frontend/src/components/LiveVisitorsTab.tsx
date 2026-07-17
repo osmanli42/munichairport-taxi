@@ -280,9 +280,11 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           const src = sourceLabel(s);
           addEvent({ type: 'new_visitor', icon: '🟢', color: 'text-green-600', message: `Yeni ziyaretçi geldi`, detail: `${loc} · ${src.label}` });
         } else {
-          if (s.form_submit_clicks > old.form_submit_clicks) {
+          if (s.past_bookings_count > old.past_bookings_count) {
             addEvent({ type: 'booking_completed', icon: '✅', color: 'text-emerald-700', message: `Rezervasyon tamamlandı!`, detail: s.city || '' });
             sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
+          } else if (s.form_submit_clicks > old.form_submit_clicks) {
+            addEvent({ type: 'booking_started', icon: '📤', color: 'text-orange-600', message: `Rezervasyon gönderimi denendi`, detail: s.city || '' });
           } else if (s.booking_clicks > old.booking_clicks && old.booking_clicks === 0) {
             addEvent({ type: 'booking_started', icon: '🛒', color: 'text-orange-600', message: `Buchen sayfasına geçti`, detail: s.city || '' });
           } else if (s.price_clicks > old.price_clicks && old.price_clicks === 0) {
