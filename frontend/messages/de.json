@@ -198,7 +198,9 @@
     "impressum": "Impressum",
     "datenschutz": "Datenschutz",
     "agb": "AGB",
-    "copyright": "© {year} Flughafen-Muenchen.TAXI. Alle Rechte vorbehalten."
+    "copyright": "© {year} Flughafen-Muenchen.TAXI. Alle Rechte vorbehalten.",
+    "manageBooking": "Buchung verwalten",
+    "meetingPoint": "Treffpunkt-Guide"
   },
   "common": {
     "book_now": "Jetzt buchen",
@@ -306,6 +308,196 @@
     "faq_title": "Häufige Fragen - Munich Airport Taxi",
     "faq_description": "Antworten auf häufig gestellte Fragen zu unserem Taxiservice am Flughafen München: Preise, Buchung, Stornierung, Fahrzeuge und Abholung.",
     "business_title": "Business Service - Flughafen-muenchen.TAXI | Firmentransfer München",
-    "business_description": "Professioneller Flughafentransfer für Unternehmen: Sammelrechnung, Abholung mit Namensschild, Geschäftspartner & Mitarbeiter Transfer. Festpreise, 24/7 verfügbar."
+    "business_description": "Professioneller Flughafentransfer für Unternehmen: Sammelrechnung, Abholung mit Namensschild, Geschäftspartner & Mitarbeiter Transfer. Festpreise, 24/7 verfügbar.",
+    "manage_booking_title": "Buchung verwalten - Flughafen-muenchen.TAXI",
+    "manage_booking_description": "Rezervierung ansehen oder kostenlos stornieren – einfach Buchungsnummer und E-Mail eingeben. Kostenlose Stornierung bis 3 Stunden vor Abfahrt.",
+    "meeting_point_title": "Treffpunkt-Guide Flughafen München - Flughafen-muenchen.TAXI",
+    "meeting_point_description": "Wo wartet Ihr Fahrer? Alle Treffpunkte für Terminal 1 (Module A-F) und Terminal 2 am Flughafen München – inkl. 60 Min. Gratis-Wartezeit und Flugüberwachung."
+  },
+  "popularRoutes": {
+    "sectionLabel": "Beliebte Strecken",
+    "title": "Festpreise für beliebte Strecken",
+    "subtitle": "Transparente Preise direkt aus unserem Tarifsystem – ab Preis, ohne versteckte Kosten.",
+    "fromLabel": "ab",
+    "distanceLabel": "Entfernung",
+    "durationLabel": "Fahrzeit",
+    "minLabel": "Min.",
+    "viewDetails": "Details & buchen",
+    "loadError": "Preise werden gerade aktualisiert – bitte später erneut versuchen."
+  },
+  "routePage": {
+    "badge": "Festpreis-Route",
+    "breadcrumbHome": "Startseite",
+    "heroTitle": "Taxi {city} ↔ Flughafen München",
+    "heroSubtitle": "{distance} km · ca. {duration} Min. Fahrzeit · Festpreis ab {price} €",
+    "intro": "Sie suchen ein zuverlässiges Taxi von {city} zum Flughafen München (MUC) oder zurück? Wir bringen Sie pünktlich und zum garantierten Festpreis ans Ziel – ganz ohne Stauzuschlag oder versteckte Kosten. Die Strecke beträgt ca. {distance} km und dauert bei normalem Verkehr etwa {duration} Minuten.",
+    "cardDistance": "Entfernung",
+    "cardDuration": "Fahrzeit",
+    "cardFrom": "Festpreis ab",
+    "priceTableTitle": "Festpreise nach Fahrzeugtyp",
+    "tableHeaders": [
+      "Fahrzeug",
+      "Personen",
+      "Gepäck",
+      "Festpreis"
+    ],
+    "vehicles": {
+      "kombi": {
+        "name": "Kombi / Limousine",
+        "pax": "1–3 Personen",
+        "luggage": "bis 3 Koffer"
+      },
+      "van": {
+        "name": "Van",
+        "pax": "4–7 Personen",
+        "luggage": "bis 6 Koffer"
+      },
+      "grossraumtaxi": {
+        "name": "Großraumtaxi",
+        "pax": "bis 8 Personen",
+        "luggage": "bis 8 Koffer"
+      }
+    },
+    "includedTitle": "In Ihrem Festpreis enthalten",
+    "included": [
+      "Kostenloser Meet & Greet Service im Terminal",
+      "60 Minuten kostenlose Wartezeit bei Flugverspätung",
+      "Echtzeit-Flugüberwachung – ohne Aufpreis",
+      "Kein Stauaufschlag, keine Extra-Mautkosten",
+      "Kindersitz auf Wunsch kostenlos"
+    ],
+    "meetingTitle": "Wo wartet Ihr Fahrer am Flughafen?",
+    "meetingText": "Ihr Fahrer erwartet Sie mit einem Namensschild direkt im Ankunftsbereich – ob Terminal 1 oder Terminal 2. Alle Details zum Treffpunkt finden Sie in unserem Guide.",
+    "meetingCta": "Zum Treffpunkt-Guide",
+    "faqTitle": "Häufige Fragen – Taxi {city} Flughafen München",
+    "faqs": [
+      {
+        "q": "Was kostet ein Taxi von {city} zum Flughafen München?",
+        "a": "Der Festpreis von {city} zum Flughafen München (MUC) beträgt ab {price} € für einen Kombi (1–3 Personen). Der Preis ist ein Festpreis und wird vor der Fahrt bestätigt – keine versteckten Kosten."
+      },
+      {
+        "q": "Wie lange dauert die Fahrt von {city} zum Flughafen München?",
+        "a": "Die Fahrt von {city} zum Flughafen München dauert bei normaler Verkehrslage ca. {duration} Minuten. Die Strecke beträgt ca. {distance} km."
+      },
+      {
+        "q": "Kann ich online buchen und den Preis vorab sehen?",
+        "a": "Ja. Geben Sie einfach Ihre Adresse in unsere Suche ein – der Festpreis wird sofort berechnet und angezeigt, noch bevor Sie buchen."
+      },
+      {
+        "q": "Fährt das Taxi auch vom Flughafen München zurück nach {city}?",
+        "a": "Selbstverständlich. Wir fahren beide Richtungen. Bei der Abholung am Flughafen überwachen wir Ihren Flug und warten bei Verspätungen bis zu 60 Minuten kostenlos."
+      }
+    ],
+    "ctaTitle": "Jetzt Taxi von {city} buchen",
+    "ctaSubtitle": "Festpreis ab {price} € · 24/7 verfügbar · Sofortbestätigung",
+    "ctaBook": "Online buchen",
+    "ctaCall": "Anrufen",
+    "seoTitle": "Taxi {city} Flughafen München – Festpreis ab {price} €",
+    "seoDescription": "Taxi von {city} zum Flughafen München (MUC): {distance} km, ca. {duration} Min. Festpreis ab {price} € – jetzt online buchen!"
+  },
+  "manageBooking": {
+    "badge": "Selbstservice",
+    "title": "Buchung verwalten",
+    "subtitle": "Buchungsnummer und E-Mail-Adresse eingeben, um Ihre Fahrt anzuzeigen oder kostenlos zu stornieren.",
+    "formBookingNumber": "Buchungsnummer",
+    "formBookingNumberPlaceholder": "z. B. MAT260716-1234",
+    "formEmail": "E-Mail-Adresse",
+    "formEmailPlaceholder": "ihre@email.de",
+    "lookupButton": "Buchung suchen",
+    "lookupLoading": "Wird gesucht…",
+    "errorNotFound": "Keine Buchung mit dieser Nummer und E-Mail-Adresse gefunden. Bitte überprüfen Sie Ihre Eingaben.",
+    "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut oder rufen Sie uns an.",
+    "resultTitle": "Ihre Buchung",
+    "statusLabel": "Status",
+    "status": {
+      "new": "Neu / in Bearbeitung",
+      "confirmed": "Bestätigt",
+      "completed": "Abgeschlossen",
+      "cancelled": "Storniert"
+    },
+    "pickupLabel": "Abholung",
+    "dropoffLabel": "Ziel",
+    "datetimeLabel": "Datum & Uhrzeit",
+    "vehicleLabel": "Fahrzeug",
+    "passengersLabel": "Personen",
+    "priceLabel": "Preis",
+    "paymentLabel": "Zahlungsart",
+    "paymentCash": "Barzahlung",
+    "paymentCard": "Kartenzahlung",
+    "cancelSectionTitle": "Buchung stornieren",
+    "cancelFreeText": "Kostenlose Stornierung bis 3 Stunden vor Abfahrt möglich.",
+    "cancelWindowClosedText": "Die kostenlose Stornofrist (3 Std. vor Abfahrt) ist leider abgelaufen. Bitte kontaktieren Sie uns telefonisch oder per WhatsApp.",
+    "cancelButton": "Jetzt kostenlos stornieren",
+    "cancelling": "Wird storniert…",
+    "cancelConfirmPrompt": "Möchten Sie diese Buchung wirklich stornieren? Dies kann nicht rückgängig gemacht werden.",
+    "cancelConfirmYes": "Ja, stornieren",
+    "cancelConfirmNo": "Zurück",
+    "cancelSuccess": "Ihre Buchung wurde storniert. Eine Bestätigung wurde per E-Mail versendet.",
+    "cancelError": "Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut oder rufen Sie uns an.",
+    "alreadyCancelled": "Diese Buchung wurde bereits storniert.",
+    "alreadyCompleted": "Diese Fahrt wurde bereits durchgeführt und kann nicht mehr storniert werden.",
+    "newSearch": "Andere Buchung suchen",
+    "contactHint": "Fragen zu Ihrer Buchung? Rufen Sie uns an oder schreiben Sie per WhatsApp – wir sind rund um die Uhr erreichbar."
+  },
+  "meetingPoint": {
+    "badge": "Abholung",
+    "title": "Wo wartet Ihr Fahrer?",
+    "subtitle": "Ihr Treffpunkt-Guide für den Flughafen München",
+    "intro": "Damit Sie nach der Landung entspannt ankommen, erklären wir hier genau, wo und wie Sie Ihren Fahrer am Flughafen München finden – für Terminal 1 und Terminal 2.",
+    "waitTitle": "60 Minuten kostenlose Wartezeit",
+    "waitText": "Wir überwachen Ihren Flug in Echtzeit. Verspätet sich die Landung, passt Ihr Fahrer die Ankunftszeit automatisch an und wartet bis zu 60 Minuten kostenlos – ganz ohne Aufpreis.",
+    "trackingTitle": "Echtzeit-Flugüberwachung",
+    "trackingText": "Sobald Sie Ihre Flugnummer bei der Buchung angeben, verfolgen wir Ihren Flug automatisch. Ihr Fahrer weiß genau, wann Sie landen – auch bei Verspätungen oder Gate-Änderungen.",
+    "signTitle": "Empfang mit Namensschild",
+    "signText": "Ihr Fahrer erwartet Sie direkt im Ankunftsbereich mit einem gut sichtbaren Namensschild mit Ihrem Namen. So finden Sie sich auch bei vollem Terminal sofort.",
+    "terminalsTitle": "Treffpunkte nach Terminal",
+    "terminal1Title": "Terminal 1 – Module A bis F",
+    "terminal1Text": "Terminal 1 ist in die Module A, B, C, D, E und F unterteilt. Nach der Gepäckausgabe folgen Sie den Schildern zum Ankunftsbereich „Terminal 1\" – Ihr Fahrer wartet dort mit Namensschild. Geben Sie bei der Buchung einfach Ihr genaues Modul an, dann finden wir Sie noch schneller.",
+    "terminal2Title": "Terminal 2",
+    "terminal2Text": "Terminal 2 verfügt über einen eigenen Ankunftsbereich. Ihr Fahrer wartet direkt am Ausgang der Ankunftshalle. Auch hier gilt: Namensschild, pünktlich und mit Blick auf Ihren Flugstatus.",
+    "macTitle": "München Airport Center (MAC)",
+    "macText": "Das MAC verbindet Terminal 1 und Terminal 2 und liegt zentral zwischen beiden. Bei Bedarf vereinbaren wir auch hier gerne einen Treffpunkt – sprechen Sie uns einfach an.",
+    "howToTitle": "So läuft die Abholung ab",
+    "steps": [
+      {
+        "title": "Flugnummer bei Buchung angeben",
+        "text": "So können wir Ihren Flug von Anfang an verfolgen."
+      },
+      {
+        "title": "Nach der Landung: Gepäck & Ausgang",
+        "text": "Nehmen Sie sich Zeit für Gepäckausgabe und Ausgang – wir warten."
+      },
+      {
+        "title": "Fahrer im Ankunftsbereich finden",
+        "text": "Halten Sie Ausschau nach dem Namensschild mit Ihrem Namen."
+      },
+      {
+        "title": "Direkter Kontakt bei Fragen",
+        "text": "Sie erhalten die Telefonnummer Ihres Fahrers per E-Mail – rufen Sie an oder schreiben Sie eine Nachricht."
+      }
+    ],
+    "faqTitle": "Häufige Fragen zur Abholung",
+    "faqs": [
+      {
+        "q": "Was passiert, wenn ich meinen Fahrer nicht finde?",
+        "a": "Sie erhalten vor der Fahrt die Telefonnummer Ihres Fahrers. Rufen Sie einfach an oder schreiben Sie per WhatsApp – wir helfen Ihnen sofort weiter."
+      },
+      {
+        "q": "Muss ich das genaue Modul bei Terminal 1 kennen?",
+        "a": "Nein, das ist nicht zwingend nötig. Wenn Sie es wissen, geben Sie es gerne bei der Buchung an – das erleichtert die Abholung zusätzlich."
+      },
+      {
+        "q": "Was, wenn sich mein Flug verspätet?",
+        "a": "Kein Problem. Wir überwachen Ihren Flug automatisch und passen die Abholzeit an. Sie zahlen keinen Aufpreis für bis zu 60 Minuten Wartezeit."
+      },
+      {
+        "q": "Wartet der Fahrer auch bei sehr früher Landung?",
+        "a": "Ja, unser Fahrer ist grundsätzlich pünktlich zur geplanten Ankunftszeit vor Ort und wartet, bis Sie durch den Ankunftsbereich kommen."
+      }
+    ],
+    "ctaTitle": "Bereit für Ihren Flughafentransfer?",
+    "ctaSubtitle": "Festpreis, pünktlich und mit persönlichem Empfang – jetzt buchen.",
+    "ctaBook": "Jetzt buchen",
+    "ctaCall": "Anrufen"
   }
 }

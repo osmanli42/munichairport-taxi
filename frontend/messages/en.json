@@ -198,7 +198,9 @@
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
     "agb": "Terms & Conditions",
-    "copyright": "© {year} Flughafen-Muenchen.TAXI. All rights reserved."
+    "copyright": "© {year} Flughafen-Muenchen.TAXI. All rights reserved.",
+    "manageBooking": "Manage booking",
+    "meetingPoint": "Meeting point guide"
   },
   "common": {
     "book_now": "Book Now",
@@ -306,6 +308,196 @@
     "faq_title": "Frequently Asked Questions - Munich Airport Taxi",
     "faq_description": "Answers to frequently asked questions about our taxi service at Munich Airport: prices, booking, cancellation, vehicles and pickup.",
     "business_title": "Business Service - Flughafen-muenchen.TAXI | Corporate Transfer Munich",
-    "business_description": "Professional airport transfer for companies: collective invoicing, pickup with name sign, business partners & employee transfers. Fixed prices, 24/7 available."
+    "business_description": "Professional airport transfer for companies: collective invoicing, pickup with name sign, business partners & employee transfers. Fixed prices, 24/7 available.",
+    "manage_booking_title": "Manage Your Booking - Flughafen-muenchen.TAXI",
+    "manage_booking_description": "View or cancel your booking for free – just enter your booking number and email. Free cancellation up to 3 hours before departure.",
+    "meeting_point_title": "Munich Airport Meeting Point Guide - Flughafen-muenchen.TAXI",
+    "meeting_point_description": "Where does your driver wait? All meeting points for Terminal 1 (Modules A-F) and Terminal 2 at Munich Airport – incl. 60 min free waiting time and flight tracking."
+  },
+  "popularRoutes": {
+    "sectionLabel": "Popular Routes",
+    "title": "Fixed prices for popular routes",
+    "subtitle": "Transparent prices straight from our live tariff system – starting price, no hidden costs.",
+    "fromLabel": "from",
+    "distanceLabel": "Distance",
+    "durationLabel": "Travel time",
+    "minLabel": "min",
+    "viewDetails": "Details & book",
+    "loadError": "Prices are being updated right now – please try again shortly."
+  },
+  "routePage": {
+    "badge": "Fixed-Price Route",
+    "breadcrumbHome": "Home",
+    "heroTitle": "Taxi {city} ↔ Munich Airport",
+    "heroSubtitle": "{distance} km · approx. {duration} min travel time · fixed price from {price} €",
+    "intro": "Looking for a reliable taxi from {city} to Munich Airport (MUC) or back? We get you there on time at a guaranteed fixed price – no traffic surcharge, no hidden costs. The route is approx. {distance} km and takes about {duration} minutes in normal traffic.",
+    "cardDistance": "Distance",
+    "cardDuration": "Travel time",
+    "cardFrom": "Fixed price from",
+    "priceTableTitle": "Fixed prices by vehicle type",
+    "tableHeaders": [
+      "Vehicle",
+      "Passengers",
+      "Luggage",
+      "Fixed price"
+    ],
+    "vehicles": {
+      "kombi": {
+        "name": "Saloon / Sedan",
+        "pax": "1–3 passengers",
+        "luggage": "up to 3 suitcases"
+      },
+      "van": {
+        "name": "Van",
+        "pax": "4–7 passengers",
+        "luggage": "up to 6 suitcases"
+      },
+      "grossraumtaxi": {
+        "name": "Large Taxi",
+        "pax": "up to 8 passengers",
+        "luggage": "up to 8 suitcases"
+      }
+    },
+    "includedTitle": "Included in your fixed price",
+    "included": [
+      "Free meet & greet service in the terminal",
+      "60 minutes free waiting time for flight delays",
+      "Real-time flight monitoring – no surcharge",
+      "No traffic surcharge, no extra toll costs",
+      "Child seat free of charge on request"
+    ],
+    "meetingTitle": "Where does your driver wait at the airport?",
+    "meetingText": "Your driver will be waiting for you with a name sign right in the arrivals area – whether Terminal 1 or Terminal 2. Find all the details in our meeting point guide.",
+    "meetingCta": "View the meeting point guide",
+    "faqTitle": "FAQ – Taxi {city} Munich Airport",
+    "faqs": [
+      {
+        "q": "How much does a taxi from {city} to Munich Airport cost?",
+        "a": "The fixed price from {city} to Munich Airport (MUC) starts at {price} € for a saloon (1–3 passengers). This is a fixed price confirmed before the trip – no hidden costs."
+      },
+      {
+        "q": "How long does the journey from {city} to Munich Airport take?",
+        "a": "The journey from {city} to Munich Airport takes approx. {duration} minutes in normal traffic. The distance is approx. {distance} km."
+      },
+      {
+        "q": "Can I book online and see the price in advance?",
+        "a": "Yes. Simply enter your address in our search bar – the fixed price is calculated and shown instantly, before you even book."
+      },
+      {
+        "q": "Does the taxi also go from Munich Airport back to {city}?",
+        "a": "Of course. We drive both directions. For airport pickups we monitor your flight and wait up to 60 minutes free of charge in case of delays."
+      }
+    ],
+    "ctaTitle": "Book your taxi from {city} now",
+    "ctaSubtitle": "Fixed price from {price} € · Available 24/7 · Instant confirmation",
+    "ctaBook": "Book online",
+    "ctaCall": "Call",
+    "seoTitle": "Taxi {city} Munich Airport – Fixed price from {price} €",
+    "seoDescription": "Taxi from {city} to Munich Airport (MUC): {distance} km, approx. {duration} min. Fixed price from {price} € – book online now!"
+  },
+  "manageBooking": {
+    "badge": "Self-Service",
+    "title": "Manage your booking",
+    "subtitle": "Enter your booking number and email address to view your trip or cancel it free of charge.",
+    "formBookingNumber": "Booking number",
+    "formBookingNumberPlaceholder": "e.g. MAT260716-1234",
+    "formEmail": "Email address",
+    "formEmailPlaceholder": "your@email.com",
+    "lookupButton": "Find booking",
+    "lookupLoading": "Searching…",
+    "errorNotFound": "No booking found with this number and email address. Please check your details.",
+    "errorGeneric": "Something went wrong. Please try again later or give us a call.",
+    "resultTitle": "Your booking",
+    "statusLabel": "Status",
+    "status": {
+      "new": "New / processing",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "pickupLabel": "Pickup",
+    "dropoffLabel": "Destination",
+    "datetimeLabel": "Date & time",
+    "vehicleLabel": "Vehicle",
+    "passengersLabel": "Passengers",
+    "priceLabel": "Price",
+    "paymentLabel": "Payment method",
+    "paymentCash": "Cash",
+    "paymentCard": "Card",
+    "cancelSectionTitle": "Cancel booking",
+    "cancelFreeText": "Free cancellation is possible up to 3 hours before departure.",
+    "cancelWindowClosedText": "Unfortunately the free cancellation window (3 hrs before departure) has passed. Please contact us by phone or WhatsApp.",
+    "cancelButton": "Cancel free of charge",
+    "cancelling": "Cancelling…",
+    "cancelConfirmPrompt": "Are you sure you want to cancel this booking? This cannot be undone.",
+    "cancelConfirmYes": "Yes, cancel",
+    "cancelConfirmNo": "Back",
+    "cancelSuccess": "Your booking has been cancelled. A confirmation has been sent by email.",
+    "cancelError": "Cancellation failed. Please try again or give us a call.",
+    "alreadyCancelled": "This booking has already been cancelled.",
+    "alreadyCompleted": "This trip has already taken place and can no longer be cancelled.",
+    "newSearch": "Look up another booking",
+    "contactHint": "Questions about your booking? Call us or write on WhatsApp – we're available around the clock."
+  },
+  "meetingPoint": {
+    "badge": "Pickup",
+    "title": "Where does your driver wait?",
+    "subtitle": "Your meeting point guide for Munich Airport",
+    "intro": "So you can arrive relaxed after landing, here's exactly where and how to find your driver at Munich Airport – for both Terminal 1 and Terminal 2.",
+    "waitTitle": "60 minutes free waiting time",
+    "waitText": "We monitor your flight in real time. If your landing is delayed, your driver automatically adjusts the pickup time and waits up to 60 minutes free of charge – no surcharge.",
+    "trackingTitle": "Real-time flight monitoring",
+    "trackingText": "As soon as you provide your flight number at booking, we track your flight automatically. Your driver knows exactly when you land – even with delays or gate changes.",
+    "signTitle": "Meet & greet with a name sign",
+    "signText": "Your driver will be waiting right in the arrivals area holding a clearly visible sign with your name. You'll spot them instantly, even in a crowded terminal.",
+    "terminalsTitle": "Meeting points by terminal",
+    "terminal1Title": "Terminal 1 – Modules A to F",
+    "terminal1Text": "Terminal 1 is divided into modules A, B, C, D, E and F. After baggage claim, follow the signs to the \"Terminal 1\" arrivals area – your driver waits there with a name sign. Just let us know your exact module when booking and we'll find you even faster.",
+    "terminal2Title": "Terminal 2",
+    "terminal2Text": "Terminal 2 has its own arrivals area. Your driver waits right at the arrivals hall exit. Same as always: name sign, on time, watching your flight status.",
+    "macTitle": "Munich Airport Center (MAC)",
+    "macText": "The MAC connects Terminal 1 and Terminal 2 and sits centrally between them. If needed, we can also arrange a meeting point here – just let us know.",
+    "howToTitle": "How your pickup works",
+    "steps": [
+      {
+        "title": "Provide your flight number at booking",
+        "text": "This lets us track your flight from the very start."
+      },
+      {
+        "title": "After landing: baggage & exit",
+        "text": "Take your time at baggage claim and the exit – we'll be waiting."
+      },
+      {
+        "title": "Find your driver in the arrivals area",
+        "text": "Look out for the sign with your name on it."
+      },
+      {
+        "title": "Direct contact if needed",
+        "text": "You'll receive your driver's phone number by email – call or send a message any time."
+      }
+    ],
+    "faqTitle": "Frequently asked questions about pickup",
+    "faqs": [
+      {
+        "q": "What happens if I can't find my driver?",
+        "a": "You'll receive your driver's phone number before the trip. Just call or message us on WhatsApp – we'll help you right away."
+      },
+      {
+        "q": "Do I need to know the exact module at Terminal 1?",
+        "a": "No, that's not required. If you know it, feel free to add it at booking – it makes the pickup even smoother."
+      },
+      {
+        "q": "What if my flight is delayed?",
+        "a": "No problem. We track your flight automatically and adjust the pickup time. You won't pay any surcharge for up to 60 minutes of waiting."
+      },
+      {
+        "q": "Does the driver wait if my flight lands early?",
+        "a": "Yes, our driver is always on site by the scheduled arrival time and waits until you come through the arrivals area."
+      }
+    ],
+    "ctaTitle": "Ready for your airport transfer?",
+    "ctaSubtitle": "Fixed price, punctual and with a personal welcome – book now.",
+    "ctaBook": "Book now",
+    "ctaCall": "Call"
   }
 }
