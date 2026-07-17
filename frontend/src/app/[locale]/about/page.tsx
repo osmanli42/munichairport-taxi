@@ -175,7 +175,7 @@ export default function AboutPage() {
                   F
                 </div>
                 <h3 className="text-xl font-extrabold text-white mb-1">Flughafen-München.TAXI</h3>
-                <p style={{ color: '#7a9ab8' }} className="text-sm">Professioneller Flughafentransfer</p>
+                <p style={{ color: '#7a9ab8' }} className="text-sm">{t('owner_subtitle')}</p>
 
                 <div className="flex justify-center gap-3 mt-4">
                   {['DE', 'EN', 'TR'].map(lang => (
