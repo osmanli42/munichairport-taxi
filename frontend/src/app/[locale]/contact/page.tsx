@@ -233,7 +233,7 @@ export default function ContactPage() {
                     boxShadow: '0 4px 16px rgba(201,168,76,.3)',
                   }}
                 >
-                  <Phone size={15} /> Jetzt anrufen
+                  <Phone size={15} /> {t('call')}
                 </a>
                 <a
                   href={CONTACT_INFO.whatsapp}
