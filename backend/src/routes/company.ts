@@ -50,6 +50,22 @@ function monthRange(yearMonth: string): [string, string] {
 
 router.post('/apply', async (req, res): Promise<void> => {
   try {
+    const { company_name, contact_name, email, phone, address, ust_idnr, message, website, elapsed_ms } = req.body;
+
+    // Honeypot filled or submitted suspiciously fast (real users need a few
+    // seconds to read+fill the form) — bots wired to auto-submit trip this.
+    // Respond with a fake success so the bot doesn't learn to adapt.
+    if (website || (typeof elapsed_ms === 'number' && elapsed_ms < 2500)) {
+      console.warn(`[company/apply] Spam gefiltert (honeypot=${!!website}, elapsed_ms=${elapsed_ms}) — IP: ${getClientIp(req)}`);
+      res.json({ success: true });
+      return;
+    }
+
+    if (!checkApplyRateLimit(getClientIp(req))) {
+      res.status(429).json({ error: 'Zu viele Anfragen. Bitte versuchen Sie es später erneut.' });
+      return;
+    }
+
     const [setting] = await query<{ setting_value: string }>(
       "SELECT setting_value FROM settings WHERE setting_key = 'b2b_applications_enabled'"
     );
@@ -58,7 +74,6 @@ router.post('/apply', async (req, res): Promise<void> => {
       return;
     }
 
-    const { company_name, contact_name, email, phone, address, ust_idnr, message } = req.body;
     if (!company_name || !contact_name || !email || !phone) {
       res.status(400).json({ error: 'company_name, contact_name, email, phone required' });
       return;
