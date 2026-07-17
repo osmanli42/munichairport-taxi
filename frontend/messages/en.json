@@ -132,7 +132,30 @@
     "hours": "Availability",
     "hours_value": "24 hours, 7 days a week",
     "whatsapp": "Write on WhatsApp",
-    "call": "Call Now"
+    "call": "Call Now",
+    "badge": "Contact",
+    "direct_label": "Reach us directly",
+    "contact_info_title": "Contact information",
+    "quick_answers_label": "Quick answers",
+    "faq_title": "Frequently asked questions",
+    "faqs": [
+      {
+        "q": "How early can I book?",
+        "a": "You can book up to a year in advance."
+      },
+      {
+        "q": "What happens if my flight is delayed?",
+        "a": "We monitor your flight and wait free of charge for up to 60 minutes."
+      },
+      {
+        "q": "Is a child seat available?",
+        "a": "Yes, free of charge on request – please mention it when booking."
+      },
+      {
+        "q": "Can I pay by card?",
+        "a": "Yes, credit card before the ride or cash at the end of the ride."
+      }
+    ]
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",

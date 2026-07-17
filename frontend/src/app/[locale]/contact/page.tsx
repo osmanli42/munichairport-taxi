@@ -74,12 +74,7 @@ export default function ContactPage() {
     },
   ];
 
-  const faqs = [
-    { q: 'Wie früh kann ich buchen?', a: 'Sie können bis zu einem Jahr im Voraus buchen.' },
-    { q: 'Was passiert bei Flugverspätung?', a: 'Wir überwachen Ihren Flug und warten kostenlos bis zu 60 Minuten.' },
-    { q: 'Gibt es einen Kindersitz?', a: 'Ja, kostenlos auf Anfrage – bitte bei der Buchung angeben.' },
-    { q: 'Kann ich mit Karte zahlen?', a: 'Ja, Kreditkarte vor Fahrtantritt oder Barzahlung am Ende der Fahrt.' },
-  ];
+  const faqs = t.raw('faqs') as { q: string; a: string }[];
 
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>

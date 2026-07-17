@@ -132,7 +132,30 @@
     "hours": "Ulaşılabilirlik",
     "hours_value": "Haftanın 7 günü, 24 saat",
     "whatsapp": "WhatsApp'tan Yaz",
-    "call": "Hemen Ara"
+    "call": "Hemen Ara",
+    "badge": "İletişim",
+    "direct_label": "Doğrudan ulaşın",
+    "contact_info_title": "İletişim bilgileri",
+    "quick_answers_label": "Hızlı yanıtlar",
+    "faq_title": "Sıkça sorulan sorular",
+    "faqs": [
+      {
+        "q": "Ne kadar erken rezervasyon yapabilirim?",
+        "a": "Bir yıl öncesine kadar rezervasyon yapabilirsiniz."
+      },
+      {
+        "q": "Uçuş gecikmesinde ne olur?",
+        "a": "Uçuşunuzu takip eder ve 60 dakikaya kadar ücretsiz bekleriz."
+      },
+      {
+        "q": "Çocuk koltuğu var mı?",
+        "a": "Evet, talep üzerine ücretsiz – lütfen rezervasyonda belirtin."
+      },
+      {
+        "q": "Kartla ödeme yapabilir miyim?",
+        "a": "Evet, yolculuk öncesi kredi kartı veya yolculuk sonunda nakit."
+      }
+    ]
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",

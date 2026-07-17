@@ -132,7 +132,30 @@
     "hours": "Erreichbarkeit",
     "hours_value": "24 Stunden, 7 Tage die Woche",
     "whatsapp": "WhatsApp schreiben",
-    "call": "Jetzt anrufen"
+    "call": "Jetzt anrufen",
+    "badge": "Kontakt",
+    "direct_label": "Direkt erreichen",
+    "contact_info_title": "Kontaktinformationen",
+    "quick_answers_label": "Schnellantworten",
+    "faq_title": "Häufige Fragen",
+    "faqs": [
+      {
+        "q": "Wie früh kann ich buchen?",
+        "a": "Sie können bis zu einem Jahr im Voraus buchen."
+      },
+      {
+        "q": "Was passiert bei Flugverspätung?",
+        "a": "Wir überwachen Ihren Flug und warten kostenlos bis zu 60 Minuten."
+      },
+      {
+        "q": "Gibt es einen Kindersitz?",
+        "a": "Ja, kostenlos auf Anfrage – bitte bei der Buchung angeben."
+      },
+      {
+        "q": "Kann ich mit Karte zahlen?",
+        "a": "Ja, Kreditkarte vor Fahrtantritt oder Barzahlung am Ende der Fahrt."
+      }
+    ]
   },
   "footer": {
     "company": "Flughafen-Muenchen.TAXI",
