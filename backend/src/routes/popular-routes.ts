@@ -37,8 +37,8 @@ export const POPULAR_ROUTES: PopularRoute[] = [
   {
     slug: 'taxi-landshut-flughafen-muenchen',
     city: 'Landshut',
-    distance_km: 38.1,
-    duration_min: 29,
+    distance_km: 39.1,
+    duration_min: 30,
     pickup_address: 'Landshut, Hauptbahnhof (ZOB), 84032 Landshut, Deutschland',
     pickup_lat: 48.5325,
     pickup_lng: 12.1509,
