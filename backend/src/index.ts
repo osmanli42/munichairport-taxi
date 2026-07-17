@@ -110,6 +110,7 @@ app.listen(PORT, () => {
       startSystemAlertJob();
       startHealthMonitorJob();
       startAdsAlertJob();
+      startAutoStatusJob();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });
