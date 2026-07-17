@@ -246,7 +246,7 @@ export default function ContactPage() {
                     boxShadow: '0 4px 16px rgba(37,211,102,.25)',
                   }}
                 >
-                  <MessageCircle size={15} /> WhatsApp schreiben
+                  <MessageCircle size={15} /> {t('whatsapp')}
                 </a>
               </div>
             </div>
