@@ -191,8 +191,8 @@ function AddressField({
       )}
       {open && !showAirport && predictions.length > 0 && (
         <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
-          {predictions.map(p => (
-            <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className="px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors">
+          {predictions.map((p, pi) => (
+            <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
               {p.types?.includes('lodging') ? (
                 <span className="text-xs shrink-0">🏨</span>
               ) : p.types?.includes('airport') ? (
