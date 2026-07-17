@@ -55,8 +55,8 @@ export const POPULAR_ROUTES: PopularRoute[] = [
   {
     slug: 'taxi-garmisch-partenkirchen-flughafen-muenchen',
     city: 'Garmisch-Partenkirchen',
-    distance_km: 123,
-    duration_min: 85,
+    distance_km: 126.05,
+    duration_min: 87,
     pickup_address: 'Garmisch-Partenkirchen, 82467 Garmisch-Partenkirchen',
     pickup_lat: 47.4917,
     pickup_lng: 11.0956,
