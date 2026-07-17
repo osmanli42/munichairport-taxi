@@ -313,7 +313,7 @@ export default function HomePage() {
                     <ul className="text-left space-y-1.5 mt-auto">
                       {v.features.map((feat) => (
                         <li key={feat} className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="text-green-500 font-bold">✓</span>
+                          <Check size={14} className="text-green-500 shrink-0" />
                           {feat}
                         </li>
                       ))}
