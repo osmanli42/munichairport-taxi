@@ -222,7 +222,7 @@ export default function ContactPage() {
                     color: '#fff',
                   }}
                 >
-                  Online buchen →
+                  {t('book_online')}
                 </a>
                 <a
                   href={CONTACT_INFO.phoneHref}
