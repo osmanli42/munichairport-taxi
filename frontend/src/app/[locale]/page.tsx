@@ -82,18 +82,7 @@ export default function HomePage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
           {/* Hero text - centered top */}
-          <div className="text-center animate-fade-in mb-10">
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              <div className="inline-flex items-center bg-white/10 backdrop-blur rounded-full px-4 py-2 text-sm">
-                <Star size={14} className="text-gold-400 mr-2" />
-                <span>Professioneller Flughafentransfer München</span>
-              </div>
-              <div className="inline-flex items-center bg-gold-400/20 backdrop-blur rounded-full px-4 py-2 text-sm border border-gold-400/40">
-                <span className="text-gold-300 mr-1">💰</span>
-                <span className="text-gold-200 font-medium">Festpreis – transparent & fair</span>
-              </div>
-            </div>
-
+          <div className="text-center animate-fade-in mb-6 sm:mb-10">
             <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-4">
               {t('title')}
               <span className="block text-gold-400">{t('subtitle')}</span>
