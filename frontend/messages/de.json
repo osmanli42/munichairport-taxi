@@ -141,7 +141,14 @@
       }
     ],
     "section_company": "Unternehmen",
-    "section_area": "Einzugsgebiet"
+    "section_area": "Einzugsgebiet",
+    "label_phone": "Telefon",
+    "label_email": "E-Mail",
+    "label_address": "Adresse",
+    "label_availability": "Verfügbarkeit",
+    "availability_value": "24 Stunden · 7 Tage die Woche",
+    "area_title": "Unser Fahrtgebiet",
+    "area_text": "Wir fahren zu und von allen Adressen im Großraum München zum Flughafen München (MUC) und zurück – sowie nach Österreich und in alle angrenzenden Regionen."
   },
   "contact": {
     "title": "Kontakt",

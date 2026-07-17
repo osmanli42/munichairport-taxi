@@ -201,10 +201,10 @@ export default function AboutPage() {
 
                 <div className="space-y-3 pt-2" style={{ borderTop: '1px solid #f0f4f8' }}>
                   {[
-                    { icon: Phone, label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
-                    { icon: Mail, label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
-                    { icon: MapPin, label: 'Adresse', value: CONTACT_INFO.address, href: undefined },
-                    { icon: Users, label: 'Verfügbarkeit', value: '24 Stunden · 7 Tage die Woche', href: undefined },
+                    { icon: Phone, label: t('label_phone'), value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
+                    { icon: Mail, label: t('label_email'), value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
+                    { icon: MapPin, label: t('label_address'), value: CONTACT_INFO.address, href: undefined },
+                    { icon: Users, label: t('label_availability'), value: t('availability_value'), href: undefined },
                   ].map(item => (
                     <div key={item.label} className="flex items-start gap-3">
                       <div

@@ -141,7 +141,14 @@
       }
     ],
     "section_company": "Şirket",
-    "section_area": "Hizmet bölgesi"
+    "section_area": "Hizmet bölgesi",
+    "label_phone": "Telefon",
+    "label_email": "E-posta",
+    "label_address": "Adres",
+    "label_availability": "Ulaşılabilirlik",
+    "availability_value": "24 saat · Haftanın 7 günü",
+    "area_title": "Hizmet bölgemiz",
+    "area_text": "Münih ve çevresindeki tüm adreslerden Münih Havalimanı'na (MUC) ve geri dönüşe, ayrıca Avusturya ve tüm komşu bölgelere hizmet veriyoruz."
   },
   "contact": {
     "title": "İletişim",
