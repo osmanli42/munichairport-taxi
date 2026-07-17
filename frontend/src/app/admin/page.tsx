@@ -2201,7 +2201,9 @@ export default function AdminPage() {
                           }
                           setEditingRoute(null);
                           fixedRoutesApi.getAll().then(setFixedRoutes);
-                        } catch { alert('Fehler beim Speichern'); }
+                        } catch (err: any) {
+                          alert(`Fehler beim Speichern: ${err?.response?.data?.error || err?.message || 'Unbekannter Fehler'}`);
+                        }
                       }}
                     >Speichern</button>
                     <button className="text-gray-500 px-4 py-2 rounded-lg text-sm hover:bg-gray-100" onClick={() => setEditingRoute(null)}>Abbrechen</button>
