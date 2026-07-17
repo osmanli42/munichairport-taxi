@@ -87,6 +87,7 @@ export default function Header() {
             {/* Language Switcher */}
             <div className="relative group">
               <button className="flex items-center space-x-1 bg-primary-700 hover:bg-primary-800 text-white px-3 py-2 rounded-md text-sm transition-colors">
+                <FlagIcon code={locale} />
                 <span>{localeLabels[locale]}</span>
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
