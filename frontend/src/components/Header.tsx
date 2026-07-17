@@ -6,12 +6,13 @@ import { useTranslations, useLocale } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Phone } from 'lucide-react';
 import { cn, CONTACT_INFO } from '@/lib/utils';
+import FlagIcon from './FlagIcon';
 
 const locales = ['de', 'en', 'tr'];
 const localeLabels: Record<string, string> = {
-  de: '🇩🇪 DE',
-  en: '🇬🇧 EN',
-  tr: '🇹🇷 TR',
+  de: 'DE',
+  en: 'EN',
+  tr: 'TR',
 };
 
 export default function Header() {
