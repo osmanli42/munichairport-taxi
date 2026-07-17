@@ -87,6 +87,7 @@ app.use('/api/flights', flightsRouter);
 app.use('/api/company', companyRouter);
 app.use('/api/admin/companies', adminCompaniesRouter);
 app.use('/api/admin/calendar', adminCalendarRouter);
+app.use('/api/popular-routes', popularRoutesRouter);
 app.use('/api/tracking', driverTrackingRouter);
 app.use('/api', trackingRouter);
 app.use('/api', recordingRouter);
