@@ -3,21 +3,21 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X } from 'lucide-react';
+import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
 const AIRPORT_TERMINALS = [
-  { id: 'muc-t1a', label: '✈️ Terminal 1 · Modul A', address: 'Flughafen München, Terminal 1 Modul A, 85356 München-Flughafen' },
-  { id: 'muc-t1b', label: '✈️ Terminal 1 · Modul B', address: 'Flughafen München, Terminal 1 Modul B, 85356 München-Flughafen' },
-  { id: 'muc-t1c', label: '✈️ Terminal 1 · Modul C', address: 'Flughafen München, Terminal 1 Modul C, 85356 München-Flughafen' },
-  { id: 'muc-t1d', label: '✈️ Terminal 1 · Modul D', address: 'Flughafen München, Terminal 1 Modul D, 85356 München-Flughafen' },
-  { id: 'muc-t1e', label: '✈️ Terminal 1 · Modul E', address: 'Flughafen München, Terminal 1 Modul E, 85356 München-Flughafen' },
-  { id: 'muc-t1f', label: '✈️ Terminal 1 · Modul F', address: 'Flughafen München, Terminal 1 Modul F, 85356 München-Flughafen' },
-  { id: 'muc-t2',  label: '✈️ Terminal 2', address: 'Flughafen München, Terminal 2, Terminalstraße Mitte 18, 85356 München-Flughafen' },
-  { id: 'muc-mac', label: '✈️ München Airport Center (MAC)', address: 'München Airport Center, Terminalstraße Mitte, 85356 München-Flughafen' },
+  { id: 'muc-t1a', label: 'Terminal 1 · Modul A', address: 'Flughafen München, Terminal 1 Modul A, 85356 München-Flughafen' },
+  { id: 'muc-t1b', label: 'Terminal 1 · Modul B', address: 'Flughafen München, Terminal 1 Modul B, 85356 München-Flughafen' },
+  { id: 'muc-t1c', label: 'Terminal 1 · Modul C', address: 'Flughafen München, Terminal 1 Modul C, 85356 München-Flughafen' },
+  { id: 'muc-t1d', label: 'Terminal 1 · Modul D', address: 'Flughafen München, Terminal 1 Modul D, 85356 München-Flughafen' },
+  { id: 'muc-t1e', label: 'Terminal 1 · Modul E', address: 'Flughafen München, Terminal 1 Modul E, 85356 München-Flughafen' },
+  { id: 'muc-t1f', label: 'Terminal 1 · Modul F', address: 'Flughafen München, Terminal 1 Modul F, 85356 München-Flughafen' },
+  { id: 'muc-t2',  label: 'Terminal 2', address: 'Flughafen München, Terminal 2, Terminalstraße Mitte 18, 85356 München-Flughafen' },
+  { id: 'muc-mac', label: 'München Airport Center (MAC)', address: 'München Airport Center, Terminalstraße Mitte, 85356 München-Flughafen' },
 ];
 
 const AIRPORT_KEYWORDS = ['flughafen', 'flugplatz', 'airport', 'aeropuerto', 'aéroport', 'aeroport', 'aeroporto', 'havalimanı', 'havaalanı', 'havaalani', 'havalimani', 'lotnisko', 'port lotniczy', 'luchthaven', 'vliegveld', 'letiště', 'letiste', 'repülőtér', 'repuloter', 'aerodrom', 'muc ', 'muc)', '(muc', 'munich ai', 'münchen flug', 'munchen flug', 'münih hava', 'munih hava', 'terminal 1', 'terminal 2', 'terminal1', 'terminal2'];
@@ -179,7 +179,7 @@ function AddressField({
       {open && showAirport && (
         <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 overflow-hidden">
           <li className="px-4 py-2.5 text-xs font-bold text-primary-600 bg-primary-50 border-b border-gray-100">
-            ✈️ Flughafen München — Terminal wählen
+            Flughafen München — Terminal wählen
           </li>
           {AIRPORT_TERMINALS.map((t, ti) => (
             <li key={t.id} onMouseDown={() => handleSelectTerminal(t)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${ti === highlightIdx ? 'bg-primary-50' : ''}`}>
@@ -194,9 +194,9 @@ function AddressField({
           {predictions.map((p, pi) => (
             <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
               {p.types?.includes('lodging') ? (
-                <span className="text-xs shrink-0">🏨</span>
+                <Hotel size={12} className="text-gray-400 shrink-0" />
               ) : p.types?.includes('airport') ? (
-                <span className="text-xs shrink-0">✈️</span>
+                <Plane size={12} className="text-primary-500 shrink-0" />
               ) : (
                 <MapPin size={12} className="text-gray-400 shrink-0" />
               )}
