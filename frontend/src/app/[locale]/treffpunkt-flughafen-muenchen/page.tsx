@@ -195,7 +195,7 @@ export default function MeetingPointPage() {
           <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('ctaTitle')}</h3>
           <p className="text-gray-700 mb-6">{t('ctaSubtitle')}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/#booking" className="bg-gray-900 hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-xl transition">
+            <Link href={`${prefix}/#booking`} className="bg-gray-900 hover:bg-gray-800 text-white font-bold px-8 py-3 rounded-xl transition">
               {t('ctaBook')}
             </Link>
             <a
