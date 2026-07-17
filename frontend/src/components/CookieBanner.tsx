@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { Shield, ChevronDown, ChevronUp, Cookie } from 'lucide-react';
+import { Shield, ChevronDown, ChevronUp, Cookie, Lock, Map, BarChart3, Megaphone } from 'lucide-react';
 import { updateGtagConsent } from '@/lib/gtag';
 
 interface CookiePreferences {
