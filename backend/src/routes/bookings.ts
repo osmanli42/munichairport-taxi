@@ -630,6 +630,109 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
   }
 });
 
+// ─── Self-service booking management ("Buchung verwalten") ───
+// Requires booking_number + email match to prevent unauthorized access to
+// someone else's booking. Free cancellation up to 3 hours before pickup,
+// matching the policy already published in the FAQ / AGB.
+
+const CANCEL_FREE_HOURS = 3;
+
+function sanitizeBookingForCustomer(booking: any) {
+  if (!booking) return booking;
+  const {
+    card_number_enc, card_cvv_enc, card_holder, card_expiry,
+    visitor_id, company_id, company_user_id, cost_center,
+    ...safe
+  } = booking;
+  const hoursUntilPickup = (new Date(booking.pickup_datetime).getTime() - Date.now()) / 3600000;
+  return {
+    ...safe,
+    can_cancel_free: booking.status !== 'cancelled' && booking.status !== 'completed' && hoursUntilPickup >= CANCEL_FREE_HOURS,
+  };
+}
+
+// POST /api/bookings/manage/lookup - Look up a booking by number + email (public; email must match)
+router.post('/manage/lookup', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { booking_number, email } = req.body;
+    if (!booking_number || !email) {
+      res.status(400).json({ error: 'booking_number and email required' });
+      return;
+    }
+    const [booking] = await query<any>(
+      'SELECT * FROM bookings WHERE booking_number = ? AND LOWER(email) = LOWER(?)',
+      [String(booking_number).trim(), String(email).trim()]
+    );
+    if (!booking) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json(sanitizeBookingForCustomer(booking));
+  } catch (error) {
+    console.error('Booking manage lookup error:', error);
+    res.status(500).json({ error: 'Failed to fetch booking' });
+  }
+});
+
+// POST /api/bookings/manage/cancel - Self-service cancellation (email must match; free up to 3h before pickup)
+router.post('/manage/cancel', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { booking_number, email } = req.body;
+    if (!booking_number || !email) {
+      res.status(400).json({ error: 'booking_number and email required' });
+      return;
+    }
+    const [booking] = await query<any>(
+      'SELECT * FROM bookings WHERE booking_number = ? AND LOWER(email) = LOWER(?)',
+      [String(booking_number).trim(), String(email).trim()]
+    );
+    if (!booking) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    if (booking.status === 'cancelled') {
+      res.status(400).json({ error: 'already_cancelled' });
+      return;
+    }
+    if (booking.status === 'completed') {
+      res.status(400).json({ error: 'already_completed' });
+      return;
+    }
+    const hoursUntilPickup = (new Date(booking.pickup_datetime).getTime() - Date.now()) / 3600000;
+    if (hoursUntilPickup < CANCEL_FREE_HOURS) {
+      res.status(400).json({ error: 'cancellation_window_closed' });
+      return;
+    }
+
+    await run("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [booking.id]);
+
+    if (booking.email) {
+      const { sendCancellationEmail } = await import('../services/notifications');
+      sendCancellationEmail({
+        booking_number: booking.booking_number,
+        name: booking.name,
+        email: booking.email,
+        phone: booking.phone,
+        pickup_address: booking.pickup_address,
+        dropoff_address: booking.dropoff_address,
+        pickup_datetime: booking.pickup_datetime,
+        vehicle_type: booking.vehicle_type,
+        passengers: booking.passengers,
+        price: booking.price,
+        payment_method: booking.payment_method,
+        language: booking.language || 'de',
+        child_seat: !!booking.child_seat,
+        luggage_count: booking.luggage_count || 0,
+      }).catch(err => console.error('Self-service cancellation email error:', err));
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Booking manage cancel error:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
 // GET /api/bookings/:booking_number - Get booking by number (public)
 router.get('/:booking_number', async (req: Request, res: Response): Promise<void> => {
   try {
