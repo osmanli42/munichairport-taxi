@@ -198,7 +198,7 @@ export default function FAQClient() {
               className="ml-auto text-xs font-bold px-3 py-1 rounded-full"
               style={{ background: 'rgba(201,168,76,.15)', color: '#c9a84c', border: '1px solid rgba(201,168,76,.3)' }}
             >
-              {data.categories[activeCategory].items.length} Fragen
+              {data.categories[activeCategory].items.length} {locale === 'en' ? 'questions' : locale === 'tr' ? 'soru' : 'Fragen'}
             </span>
           </div>
         </div>
