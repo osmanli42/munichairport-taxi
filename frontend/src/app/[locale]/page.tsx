@@ -305,7 +305,7 @@ export default function HomePage() {
                 {vehicles.map((v) => (
                   <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
                     <div className="w-full h-36 overflow-hidden rounded-lg mb-3">
-                      <img src={v.image} alt={v.name} className="w-full h-full object-cover" />
+                      <img src={v.image} alt={v.name} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
                     </div>
                     <h3 className="font-bold text-xl text-primary-600">{v.name}</h3>
                     <p className="text-xs text-gray-400 font-medium mb-1">{v.model}</p>

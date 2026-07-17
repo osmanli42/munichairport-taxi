@@ -286,7 +286,7 @@ export default function PortalVehicleSelect({
             )}
             <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-5">
               <div className="shrink-0 w-32 h-32 rounded-2xl overflow-hidden border border-gray-100">
-                <img src={vehicle.image} alt={vehicle.name} className="w-full h-full object-cover" />
+                <img src={vehicle.image} alt={vehicle.name} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between flex-wrap gap-3">
