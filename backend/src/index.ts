@@ -24,6 +24,7 @@ import popularRoutesRouter from './routes/popular-routes';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
+import { startAutoStatusJob } from './services/autoStatusJob';
 
 dotenv.config();
 
