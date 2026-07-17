@@ -53,7 +53,7 @@ export const POPULAR_ROUTES: PopularRoute[] = [
     pickup_lng: 11.9078,
   },
   {
-    slug: 'taxi-augsburg-flughafen',
+    slug: 'taxi-augsburg-flughafen-muenchen',
     city: 'Augsburg',
     distance_km: 82,
     duration_min: 60,
