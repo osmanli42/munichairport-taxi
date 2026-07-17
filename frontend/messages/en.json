@@ -139,7 +139,9 @@
         "value": "24/7",
         "label": "Available"
       }
-    ]
+    ],
+    "section_company": "Company",
+    "section_area": "Service area"
   },
   "contact": {
     "title": "Contact",

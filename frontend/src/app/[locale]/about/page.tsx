@@ -112,7 +112,7 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
-                    Unternehmen
+                    {t('section_company')}
                   </span>
                   <h2 className="text-lg font-bold text-white leading-tight">{t('why_us')}</h2>
                 </div>

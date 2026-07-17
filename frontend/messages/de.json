@@ -139,7 +139,9 @@
         "value": "24/7",
         "label": "Verfügbar"
       }
-    ]
+    ],
+    "section_company": "Unternehmen",
+    "section_area": "Einzugsgebiet"
   },
   "contact": {
     "title": "Kontakt",

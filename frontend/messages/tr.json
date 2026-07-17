@@ -139,7 +139,9 @@
         "value": "7/24",
         "label": "Hizmette"
       }
-    ]
+    ],
+    "section_company": "Şirket",
+    "section_area": "Hizmet bölgesi"
   },
   "contact": {
     "title": "İletişim",
