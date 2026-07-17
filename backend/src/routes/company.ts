@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, run } from '../db';
 import {
@@ -12,6 +12,32 @@ import { generateRechnungPdf, generateSammelrechnungPdf, fetchBankSettings, fmtP
 import { createSetupIntent, attachPaymentMethod, detachPaymentMethod, getCompanyForCharge } from '../services/stripeCards';
 
 const router = Router();
+
+// ─── Spam protection for the public /apply form ────────────────────────────
+// A bot started flooding this endpoint with garbage submissions (random-string
+// company/contact names, dot-spaced Gmail addresses) — no CAPTCHA/rate-limit
+// existed before. Layered, low-friction defenses: honeypot field, minimum
+// time-on-page, and per-IP rate limit (mirrors checkLoginRateLimit's pattern).
+function getClientIp(req: Request): string {
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
+  return req.socket.remoteAddress || 'unknown';
+}
+
+const applyAttempts = new Map<string, { count: number; resetAt: number }>();
+const APPLY_MAX_ATTEMPTS = 3;
+const APPLY_WINDOW_MS = 60 * 60 * 1000;
+
+function checkApplyRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = applyAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    applyAttempts.set(ip, { count: 1, resetAt: now + APPLY_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= APPLY_MAX_ATTEMPTS;
+}
 
 function monthRange(yearMonth: string): [string, string] {
   const [y, m] = yearMonth.split('-').map(Number);
