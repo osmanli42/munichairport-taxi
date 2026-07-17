@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslations, useLocale } from 'next-intl';
-import { MapPin, Clock, Users, Car, User, Phone, Mail, Plane, Baby, Luggage, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Users, Car, User, Phone, Mail, Plane, Baby, Luggage, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Ban, BadgeEuro, ShieldCheck, Bus, Signpost, Lock } from 'lucide-react';
 import { bookingsApi, pflichtgebietApi, PflichtgebietConfig, PflichtgebietTarif } from '@/lib/api';
 import { VEHICLE_PRICES, formatPrice, cn } from '@/lib/utils';
 import { fireBookingConversion } from '@/lib/gtag';
