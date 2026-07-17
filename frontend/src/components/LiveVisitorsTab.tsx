@@ -118,7 +118,11 @@ function deviceIcon(d: string) {
 }
 
 function getFunnelStage(s: LiveSession): { label: string; color: string; step: number } {
-  if (s.form_submit_clicks > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
+  // past_bookings_count is the authoritative signal (a real row in `bookings`).
+  // form_submit_clicks only counts clicks on buttons matching "Weiter"/"submit"/etc,
+  // which fires even when the actual booking request fails — don't claim completion from it.
+  if (s.past_bookings_count > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
+  if (s.form_submit_clicks > 0) return { label: '📤 Gönderim Denedi', color: 'bg-orange-600 text-white', step: 3 };
   if (s.form_fields_touched > 0) return { label: '📝 Form Dolduruyor', color: 'bg-orange-500 text-white', step: 3 };
   if (s.booking_clicks > 0 || (s.current_path && s.current_path.includes('/buchen'))) return { label: '🛒 Buchen\'de', color: 'bg-orange-400 text-white', step: 3 };
   if (s.price_clicks > 0 || (s.current_path && s.current_path.includes('/ergebnisse'))) return { label: '💰 Fiyata Bakıyor', color: 'bg-yellow-500 text-white', step: 2 };
