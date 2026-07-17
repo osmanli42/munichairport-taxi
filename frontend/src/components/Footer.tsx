@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Trophy, Ban, BadgeEuro, Plane, ShieldCheck, Smartphone } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 import TrustBadges from './TrustBadges';
 
