@@ -154,10 +154,15 @@ export default function PortalVehicleSelect({
   const anfahrtCost = anfahrtKm > 0 ? anfahrtKm * anfahrtPricePerKm : 0;
 
   const matchFixedRoute = (p: string, d: string): FixedRoute | null => {
+    // Comma-separated groups are OR'd; within a group, '+' joins terms that must
+    // ALL be present (AND) — mirrors backend/src/routes/fixed-routes.ts matchesKeywords.
     const matchKw = (addr: string, kws: string) => {
       if (!addr || !kws) return false;
       const lower = addr.toLowerCase();
-      return kws.split(',').some(kw => lower.includes(kw.trim().toLowerCase()));
+      return kws.split(',').some(group => {
+        const terms = group.split('+').map(t => t.trim().toLowerCase()).filter(Boolean);
+        return terms.length > 0 && terms.every(term => lower.includes(term));
+      });
     };
     for (const r of fixedRoutes) {
       if (!r.enabled) continue;
