@@ -282,7 +282,7 @@ export default function AboutPage() {
             </div>
             <div>
               <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('section_area')}</span>
-              <h2 className="text-lg font-bold text-white leading-tight">Unser Fahrtgebiet</h2>
+              <h2 className="text-lg font-bold text-white leading-tight">{t('area_title')}</h2>
             </div>
           </div>
           <div className="px-7 py-6">
