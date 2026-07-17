@@ -471,72 +471,82 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// POST /api/bookings/calculate-price - Calculate price
-router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address } = req.body;
+export interface RoutePriceEstimate {
+  base_price: number;
+  price_per_km: number;
+  total_price: number;
+  pflichtgebiet: boolean;
+  fixed_route: boolean;
+}
 
-    if (!vehicle_type || distance_km === undefined) {
-      res.status(400).json({ error: 'vehicle_type and distance_km required' });
-      return;
-    }
+// Shared one-way price estimate logic — used by the /calculate-price endpoint
+// (live booking flow) and by the public popular-routes teaser prices, so both
+// surfaces always agree with the actual tariff engine (fixed routes +
+// Pflichtfahrgebiet mandatory zone + min-price floor).
+export async function computeRoutePrice(
+  req: Request,
+  vehicle_type: string,
+  distance_km: number,
+  pickup_address?: string,
+  dropoff_address?: string,
+  pickup_lat?: number | string,
+  pickup_lng?: number | string,
+  dropoff_lat?: number | string,
+  dropoff_lng?: number | string
+): Promise<RoutePriceEstimate | null> {
+  const [priceRow] = await query<PriceRow>(
+    'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, min_price, min_price_km FROM prices WHERE vehicle_type = ?',
+    [vehicle_type]
+  );
+  if (!priceRow) return null;
 
-    const [priceRow] = await query<PriceRow>(
-      'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, min_price, min_price_km FROM prices WHERE vehicle_type = ?',
-      [vehicle_type]
-    );
-    if (!priceRow) {
-      res.status(404).json({ error: 'Vehicle type not found' });
-      return;
-    }
+  const km = distance_km;
+  const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
+  let price = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
+    ? Math.max(calculatedPrice, priceRow.min_price)
+    : calculatedPrice;
 
-    const km = parseFloat(distance_km);
-    const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
-    let price = (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15))
-      ? Math.max(calculatedPrice, priceRow.min_price)
-      : calculatedPrice;
-
-    // Fixed-price route override (highest priority)
-    let fixedRouteMatch = false;
-    if (pickup_address && dropoff_address) {
-      try {
-        const allRoutes = await query<any>('SELECT * FROM fixed_routes WHERE enabled = 1');
-        const match = findFixedRoute(pickup_address, dropoff_address, allRoutes);
-        if (match) {
-          const fp = getFixedPrice(match, vehicle_type);
-          if (fp > 0) { price = fp; fixedRouteMatch = true; }
-        }
-      } catch (e) { console.error('Fixed-route calc-price skipped:', e); }
-    }
-
-    // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
-    let pflichtgebiet = false;
+  // Fixed-price route override (highest priority)
+  let fixedRouteMatch = false;
+  if (pickup_address && dropoff_address) {
     try {
-      const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
-      if (pgCfg && pgCfg.enabled && !fixedRouteMatch) {
-        let pickupCoords: Coords | null =
-          (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
-        let dropoffCoords: Coords | null =
-          (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
-        if (!pickupCoords && pickup_address) pickupCoords = await geocodeAddress(pickup_address);
-        if (!dropoffCoords && dropoff_address) dropoffCoords = await geocodeAddress(dropoff_address);
+      const allRoutes = await query<any>('SELECT * FROM fixed_routes WHERE enabled = 1');
+      const match = findFixedRoute(pickup_address, dropoff_address, allRoutes);
+      if (match) {
+        const fp = getFixedPrice(match, vehicle_type);
+        if (fp > 0) { price = fp; fixedRouteMatch = true; }
+      }
+    } catch (e) { console.error('Fixed-route calc-price skipped:', e); }
+  }
 
-        let ipBypass2 = false;
-        if (pgCfg.ip_bypass_enabled) {
-          const vc = await getVisitorCoords(req);
-          if (vc.lat != null && vc.lng != null) {
-            ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
-          }
+  // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
+  let pflichtgebiet = false;
+  try {
+    const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+    if (pgCfg && pgCfg.enabled && !fixedRouteMatch) {
+      let pickupCoords: Coords | null =
+        (pickup_lat && pickup_lng) ? { lat: parseFloat(String(pickup_lat)), lng: parseFloat(String(pickup_lng)) } : null;
+      let dropoffCoords: Coords | null =
+        (dropoff_lat && dropoff_lng) ? { lat: parseFloat(String(dropoff_lat)), lng: parseFloat(String(dropoff_lng)) } : null;
+      if (!pickupCoords && pickup_address) pickupCoords = await geocodeAddress(pickup_address);
+      if (!dropoffCoords && dropoff_address) dropoffCoords = await geocodeAddress(dropoff_address);
+
+      let ipBypass2 = false;
+      if (pgCfg.ip_bypass_enabled) {
+        const vc = await getVisitorCoords(req);
+        if (vc.lat != null && vc.lng != null) {
+          ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
         }
+      }
 
-        if (!ipBypass2 && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
-          const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
-          const excludedSet = new Set(excludedRows.map(r => r.plz));
-          const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
-          const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
-          const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
+      if (!ipBypass2 && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
+        const excludedSet = new Set(excludedRows.map(r => r.plz));
+        const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
+        const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
+        const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
 
-          if (!isExcluded) {
+        if (!isExcluded) {
           const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
             'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
             [vehicle_type]
@@ -549,21 +559,47 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
             price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
             pflichtgebiet = true;
           }
-          }
         }
       }
-    } catch (e) {
-      console.error('Pflichtgebiet calc-price skipped:', e);
+    }
+  } catch (e) {
+    console.error('Pflichtgebiet calc-price skipped:', e);
+  }
+
+  return {
+    base_price: priceRow.base_price,
+    price_per_km: priceRow.price_per_km,
+    total_price: parseFloat(price.toFixed(2)),
+    pflichtgebiet,
+    fixed_route: fixedRouteMatch,
+  };
+}
+
+// POST /api/bookings/calculate-price - Calculate price
+router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address } = req.body;
+
+    if (!vehicle_type || distance_km === undefined) {
+      res.status(400).json({ error: 'vehicle_type and distance_km required' });
+      return;
+    }
+
+    const km = parseFloat(distance_km);
+    const estimate = await computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
+    if (!estimate) {
+      res.status(404).json({ error: 'Vehicle type not found' });
+      return;
     }
 
     res.json({
       vehicle_type,
       distance_km: km,
-      base_price: priceRow.base_price,
-      price_per_km: priceRow.price_per_km,
-      total_price: parseFloat(price.toFixed(2)),
-      pflichtgebiet,
-      fixed_route: fixedRouteMatch,
+      base_price: estimate.base_price,
+      price_per_km: estimate.price_per_km,
+      total_price: estimate.total_price,
+      pflichtgebiet: estimate.pflichtgebiet,
+      fixed_route: estimate.fixed_route,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to calculate price' });
