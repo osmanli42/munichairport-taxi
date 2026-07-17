@@ -287,7 +287,7 @@ export default function AboutPage() {
           </div>
           <div className="px-7 py-6">
             <p className="text-sm mb-5" style={{ color: '#4a6280' }}>
-              Wir fahren zu und von allen Adressen im Großraum München zum Flughafen München (MUC) und zurück – sowie nach Österreich und in alle angrenzenden Regionen.
+              {t('area_text')}
             </p>
             <div className="flex flex-wrap gap-2">
               {cities.map(city => (
