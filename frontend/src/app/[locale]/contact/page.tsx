@@ -89,7 +89,7 @@ export default function ContactPage() {
             className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
             style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
           >
-            Kontakt
+            {t('badge')}
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
             {t('title')}
@@ -147,8 +147,8 @@ export default function ContactPage() {
                   <ClipboardList size={20} style={{ color: '#c9a84c' }} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Direkt erreichen</span>
-                  <h2 className="text-lg font-bold text-white leading-tight">Kontaktinformationen</h2>
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('direct_label')}</span>
+                  <h2 className="text-lg font-bold text-white leading-tight">{t('contact_info_title')}</h2>
                 </div>
               </div>
             </div>
@@ -267,8 +267,8 @@ export default function ContactPage() {
                   <HelpCircle size={20} style={{ color: '#c9a84c' }} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Schnellantworten</span>
-                  <h3 className="text-lg font-bold text-white leading-tight">Häufige Fragen</h3>
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('quick_answers_label')}</span>
+                  <h3 className="text-lg font-bold text-white leading-tight">{t('faq_title')}</h3>
                 </div>
               </div>
               <div className="px-7 py-5 space-y-4 text-sm" style={{ color: '#4a6280' }}>
