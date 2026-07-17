@@ -55,7 +55,7 @@ export default function PopularRoutes() {
             {routes.map((route) => (
               <Link
                 key={route.slug}
-                href={`${prefix}/${route.slug}`}
+                href={`${prefix}/blog/${route.slug}`}
                 className="group rounded-2xl border border-gray-100 hover:border-gold-300 bg-white p-6 shadow-sm hover:shadow-lg transition-all flex flex-col"
               >
                 <div className="flex items-center gap-2 text-primary-600 mb-3">
