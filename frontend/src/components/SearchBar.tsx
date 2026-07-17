@@ -536,7 +536,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     en: {
       from: 'Pickup address...', to: 'Destination...', search: 'Search', searching: 'Searching...',
       errFrom: 'Please select a pickup address', errTo: 'Please select a destination',
-      errDate: 'Please select a date', errRoute: 'Could not calculate route.',
+      errDate: 'Please select a date', errRoute: 'Could not calculate route. Please pick an address from the suggestion list.',
       errAirport: 'We only offer airport transfers. Please select Munich Airport or a nearby address (Oberding, Hallbergmoos, Freising) as pickup or destination.',
       arrival: 'Flight arrival', addReturn: 'Add a return', returnFlight: 'Return flight',
       swap: 'Swap addresses', persons: 'Passengers', person: 'Passenger',
