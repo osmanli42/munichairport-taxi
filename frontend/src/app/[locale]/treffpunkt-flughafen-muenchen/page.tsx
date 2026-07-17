@@ -36,6 +36,8 @@ const FAQ_INDEXES = [0, 1, 2, 3] as const;
 
 export default function MeetingPointPage() {
   const t = useTranslations('meetingPoint');
+  const locale = useLocale();
+  const prefix = locale === 'de' ? '' : `/${locale}`;
 
   const faqSchema = {
     '@context': 'https://schema.org',
