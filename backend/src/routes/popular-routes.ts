@@ -26,7 +26,7 @@ const DROPOFF_LNG = 11.7861;
 
 export const POPULAR_ROUTES: PopularRoute[] = [
   {
-    slug: 'taxi-muenchen-flughafen',
+    slug: 'taxi-muenchen-flughafen-muenchen',
     city: 'München',
     distance_km: 38,
     duration_min: 40,
