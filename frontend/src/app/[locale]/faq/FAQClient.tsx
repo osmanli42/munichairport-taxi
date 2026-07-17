@@ -116,12 +116,22 @@ export default function FAQClient() {
 
           {/* Quick stats */}
           <div className="mt-10 flex flex-wrap justify-center gap-6">
-            {[
+            {(locale === 'en' ? [
+              { v: '24/7', l: 'Available' },
+              { v: '60 min', l: 'Airport wait time' },
+              { v: '3 hrs', l: 'Free cancellation' },
+              { v: '100%', l: 'Fixed prices' },
+            ] : locale === 'tr' ? [
+              { v: '7/24', l: 'Ulaşılabilir' },
+              { v: '60 dk', l: 'Havalimanı bekleme' },
+              { v: '3 saat', l: 'Ücretsiz iptal' },
+              { v: '100%', l: 'Sabit fiyat' },
+            ] : [
               { v: '24/7', l: 'Erreichbar' },
               { v: '60 Min', l: 'Wartezeit Flughafen' },
               { v: '3 Std', l: 'Kostenlos stornieren' },
               { v: '100%', l: 'Festpreise' },
-            ].map(s => (
+            ]).map(s => (
               <div key={s.l} className="text-center">
                 <div className="text-2xl font-extrabold" style={{ color: '#c9a84c' }}>{s.v}</div>
                 <div className="text-xs font-medium mt-0.5" style={{ color: '#5a7a99' }}>{s.l}</div>
