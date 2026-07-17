@@ -151,7 +151,7 @@ export default function CookieBanner() {
                     }`}
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <span className="text-lg mt-0.5">{icon}</span>
+                      <span className="mt-0.5">{icon}</span>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-800">{t(key)}</p>
                         <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{t(`${key}_desc`)}</p>
