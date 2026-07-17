@@ -35,7 +35,7 @@ export const POPULAR_ROUTES: PopularRoute[] = [
     pickup_lng: 11.5755,
   },
   {
-    slug: 'taxi-freising-flughafen',
+    slug: 'taxi-freising-flughafen-muenchen',
     city: 'Freising',
     distance_km: 7,
     duration_min: 10,
