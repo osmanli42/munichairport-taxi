@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
-import { Shield, Clock, Tag, Globe, Phone, Mail, MapPin, Star, Award, Users, CheckCircle } from 'lucide-react';
+import { Shield, Clock, Tag, Globe, Phone, Mail, MapPin, Star, Award, Users, CheckCircle, Trophy, MessageCircle } from 'lucide-react';
 
 export async function generateMetadata({
   params: { locale },
@@ -112,7 +112,7 @@ export default function AboutPage() {
                   className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
                   style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
                 >
-                  🏆
+                  <Trophy size={20} style={{ color: '#c9a84c' }} />
                 </div>
                 <div>
                   <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
@@ -261,7 +261,7 @@ export default function AboutPage() {
                       boxShadow: '0 4px 16px rgba(37,211,102,.25)',
                     }}
                   >
-                    <span>💬</span> WhatsApp
+                    <MessageCircle size={16} /> WhatsApp
                   </a>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export default function AboutPage() {
               className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
               style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
             >
-              📍
+              <MapPin size={20} style={{ color: '#c9a84c' }} />
             </div>
             <div>
               <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Einzugsgebiet</span>

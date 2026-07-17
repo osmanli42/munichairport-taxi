@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
+import { Building2, Phone, Briefcase, Car, Scale, FileText, Link2, Mail, User, MapPin } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Impressum - Flughafen-München.TAXI',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 const sections = [
   {
     num: '1',
-    icon: '🏢',
+    icon: <Building2 size={15} />,
     title: 'Angaben gemäß § 5 TMG',
     content: (
       <div style={{ borderLeft: '3px solid #c9a84c' }} className="pl-4 space-y-1">
@@ -23,7 +24,7 @@ const sections = [
   },
   {
     num: '2',
-    icon: '📞',
+    icon: <Phone size={15} />,
     title: 'Kontakt',
     content: (
       <div className="space-y-2">
@@ -46,7 +47,7 @@ const sections = [
   },
   {
     num: '3',
-    icon: '💼',
+    icon: <Briefcase size={15} />,
     title: 'Umsatzsteuer',
     content: (
       <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: Wird auf Anfrage mitgeteilt.</p>
@@ -54,7 +55,7 @@ const sections = [
   },
   {
     num: '4',
-    icon: '🚕',
+    icon: <Car size={15} />,
     title: 'Berufsbezeichnung und berufsrechtliche Regelungen',
     content: (
       <div className="space-y-1">
@@ -65,7 +66,7 @@ const sections = [
   },
   {
     num: '5',
-    icon: '⚖️',
+    icon: <Scale size={15} />,
     title: 'Streitschlichtung',
     content: (
       <div className="space-y-3">
@@ -87,7 +88,7 @@ const sections = [
   },
   {
     num: '6',
-    icon: '📄',
+    icon: <FileText size={15} />,
     title: 'Haftung für Inhalte',
     content: (
       <p>Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht unter der Verpflichtung, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.</p>
@@ -95,7 +96,7 @@ const sections = [
   },
   {
     num: '7',
-    icon: '🔗',
+    icon: <Link2 size={15} />,
     title: 'Haftung für Links',
     content: (
       <p>Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.</p>
@@ -193,7 +194,7 @@ export default function ImpressumPage() {
                 className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
                 style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
               >
-                ✉️
+                <Mail size={17} style={{ color: '#c9a84c' }} />
               </div>
               <div>
                 <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Kontakt</span>
@@ -202,14 +203,14 @@ export default function ImpressumPage() {
             </div>
             <div className="px-7 py-6 grid sm:grid-cols-2 gap-4">
               {[
-                { icon: '🏢', label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
-                { icon: '👤', label: 'Inhaber', value: CONTACT_INFO.owners },
-                { icon: '📍', label: 'Adresse', value: 'Eisvogelweg 2, 85356 Freising' },
-                { icon: '📞', label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
-                { icon: '✉️', label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
+                { icon: <Building2 size={15} />, label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
+                { icon: <User size={17} />, label: 'Inhaber', value: CONTACT_INFO.owners },
+                { icon: <MapPin size={17} />, label: 'Adresse', value: 'Eisvogelweg 2, 85356 Freising' },
+                { icon: <Phone size={15} />, label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
+                { icon: <Mail size={17} />, label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3">
-                  <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
+                  <span className="flex-shrink-0 mt-0.5" style={{ color: "#c9a84c" }}>{item.icon}</span>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#c9a84c' }}>
                       {item.label}

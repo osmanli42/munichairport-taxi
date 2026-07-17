@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { trackingApi, TrackingData } from '@/lib/api';
+import { Search, Phone } from 'lucide-react';
 
 type Lang = 'de' | 'en' | 'tr';
 
@@ -11,7 +12,7 @@ const T: Record<string, Record<Lang, string>> = {
   title:     { de: 'Ihre Fahrt', en: 'Your ride', tr: 'Yolculuğunuz' },
   assigned:  { de: 'Fahrer zugewiesen', en: 'Driver assigned', tr: 'Şoför atandı' },
   enroute:   { de: 'Fahrer ist unterwegs', en: 'Driver on the way', tr: 'Şoför yolda' },
-  arrived:   { de: 'Fahrer ist da! 🎉', en: 'Driver arrived! 🎉', tr: 'Şoför geldi! 🎉' },
+  arrived:   { de: 'Fahrer ist da!', en: 'Driver arrived!', tr: 'Şoför geldi!' },
   completed: { de: 'Fahrt abgeschlossen', en: 'Ride completed', tr: 'Yolculuk tamamlandı' },
   waiting:   { de: 'Warte auf Fahrer…', en: 'Waiting for driver…', tr: 'Şoför bekleniyor…' },
   eta:       { de: 'Ankunft in ca.', en: 'Arriving in approx.', tr: 'Yaklaşık varış' },
@@ -263,7 +264,7 @@ export default function TrackPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
         <div className="text-center text-gray-500 max-w-sm">
-          <div className="text-5xl mb-4">🔍</div>
+          <div className="flex justify-center mb-4"><Search size={44} className="text-gray-300" /></div>
           <p className="text-lg">{tr('notfound')}</p>
         </div>
       </div>
@@ -335,8 +336,8 @@ export default function TrackPage() {
             <div className="bg-white rounded-2xl shadow-sm p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">{tr('driver')}</div>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-3xl shadow-inner shrink-0">
-                  🧑‍✈️
+                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center shadow-inner shrink-0">
+                  <User size={26} className="text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-lg font-bold text-gray-900 truncate">{data.driver.name}</div>
@@ -353,7 +354,7 @@ export default function TrackPage() {
                   <div className="flex flex-col gap-2 shrink-0">
                     <a href={`tel:${data.driver.phone}`}
                       className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl px-4 py-2 text-center transition-colors">
-                      📞 {tr('call')}
+                      <span className="inline-flex items-center gap-1.5"><Phone size={14} /> {tr('call')}</span>
                     </a>
                     <a href={`https://wa.me/${data.driver.phone.replace(/\D/g, '')}`}
                       target="_blank" rel="noopener noreferrer"

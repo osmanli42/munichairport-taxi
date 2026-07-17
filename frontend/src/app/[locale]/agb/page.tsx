@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
+import { Building2, User, MapPin, Phone, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'AGB - Flughafen-München.TAXI',
@@ -200,14 +201,14 @@ export default function AGBPage() {
             </div>
             <div className="px-7 py-6 grid sm:grid-cols-2 gap-4">
               {[
-                { icon: '🏢', label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
-                { icon: '👤', label: 'Inhaber', value: CONTACT_INFO.owners },
-                { icon: '📍', label: 'Adresse', value: 'Eisvogelweg 2, 85356 Freising' },
-                { icon: '📞', label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
-                { icon: '✉️', label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
+                { icon: <Building2 size={17} />, label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
+                { icon: <User size={17} />, label: 'Inhaber', value: CONTACT_INFO.owners },
+                { icon: <MapPin size={17} />, label: 'Adresse', value: 'Eisvogelweg 2, 85356 Freising' },
+                { icon: <Phone size={17} />, label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
+                { icon: <Mail size={17} />, label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3">
-                  <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
+                  <span className="flex-shrink-0 mt-0.5" style={{ color: "#c9a84c" }}>{item.icon}</span>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#c9a84c' }}>
                       {item.label}

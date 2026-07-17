@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
+import { Lock, Monitor, ClipboardList, FileEdit, Cookie, Building2, User, Phone, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Datenschutzerklärung - Flughafen-München.TAXI',
@@ -10,7 +11,7 @@ const sections = [
   {
     num: '1',
     title: 'Datenschutz auf einen Blick',
-    icon: '🔒',
+    icon: <Lock size={15} />,
     subsections: [
       {
         subtitle: 'Allgemeine Hinweise',
@@ -29,7 +30,7 @@ const sections = [
   {
     num: '2',
     title: 'Hosting',
-    icon: '🖥️',
+    icon: <Monitor size={15} />,
     subsections: [
       {
         subtitle: null,
@@ -42,7 +43,7 @@ const sections = [
   {
     num: '3',
     title: 'Allgemeine Hinweise und Pflichtinformationen',
-    icon: '📋',
+    icon: <ClipboardList size={15} />,
     subsections: [
       {
         subtitle: 'Datenschutz',
@@ -76,7 +77,7 @@ const sections = [
   {
     num: '4',
     title: 'Datenerfassung auf dieser Website',
-    icon: '📝',
+    icon: <FileEdit size={15} />,
     subsections: [
       {
         subtitle: 'Buchungsformular',
@@ -103,7 +104,7 @@ const sections = [
   {
     num: '5',
     title: 'Cookies',
-    icon: '🍪',
+    icon: <Cookie size={15} />,
     subsections: [
       {
         subtitle: null,
@@ -211,7 +212,7 @@ export default function DatenschutzPage() {
                 className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
                 style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
               >
-                ✉️
+                <Mail size={17} style={{ color: '#c9a84c' }} />
               </div>
               <div>
                 <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>Kontakt</span>
@@ -224,13 +225,13 @@ export default function DatenschutzPage() {
               </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
-                  { icon: '🏢', label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
-                  { icon: '👤', label: 'Inhaber', value: CONTACT_INFO.owners },
-                  { icon: '📞', label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
-                  { icon: '✉️', label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
+                  { icon: <Building2 size={17} />, label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
+                  { icon: <User size={17} />, label: 'Inhaber', value: CONTACT_INFO.owners },
+                  { icon: <Phone size={17} />, label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
+                  { icon: <Mail size={17} />, label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
                 ].map(item => (
                   <div key={item.label} className="flex items-start gap-3">
-                    <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>
+                    <span className="flex-shrink-0 mt-0.5" style={{ color: "#c9a84c" }}>{item.icon}</span>
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#c9a84c' }}>
                         {item.label}
