@@ -188,7 +188,7 @@ export default function FAQClient() {
             </div>
             <div>
               <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
-                Kategorie {activeCategory + 1} / {data.categories.length}
+                {locale === 'en' ? 'Category' : locale === 'tr' ? 'Kategori' : 'Kategorie'} {activeCategory + 1} / {data.categories.length}
               </span>
               <h2 className="text-lg font-bold text-white leading-tight">
                 {data.categories[activeCategory].label.replace(/^[^\s]+\s/, '')}
