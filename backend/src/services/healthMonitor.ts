@@ -349,6 +349,13 @@ export async function getLatestStatus(): Promise<{ latest: HealthResult[]; trend
     bookings: 'Rezervasyon Sistemi',
     pricing: 'Fiyat Hesaplama',
     settings: 'Ayarlar API',
+    ...Object.fromEntries(
+      SECONDARY_SITES.flatMap((s) => [
+        [`${s.key}:site`, `${s.label} — Site (HTTPS)`],
+        [`${s.key}:api`, `${s.label} — API + DB`],
+        [`${s.key}:ssl`, `${s.label} — SSL Sertifikası`],
+      ])
+    ),
   };
   const latest: HealthResult[] = latestRows.map((r: any) => ({
     check_name: r.check_name,
