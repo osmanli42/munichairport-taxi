@@ -341,15 +341,19 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
   const random = Math.floor(1000 + Math.random() * 9000);
   const booking_number = `MAT${year}${month}${day}-${random}`;
 
+  // §12 Abs. 2 Nr. 10 UStG: Personenbeförderung per Taxi ist bis 50 km ermäßigt (7%), darüber regulär (19%).
+  const km = parseFloat(distance_km) || 0;
+  const steuersatz = km > 0 ? (km <= 50 ? 7 : 19) : null;
+
   const result = await run(`
     INSERT INTO bookings (
       booking_number, status, pickup_address, dropoff_address, pickup_datetime,
       vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
       child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
       language, trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-      promo_code, discount_amount
+      promo_code, discount_amount, steuersatz
     ) VALUES (
-      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
   `, [
     booking_number,
