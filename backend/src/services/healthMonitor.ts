@@ -294,6 +294,7 @@ export async function runAllChecks(): Promise<HealthResult[]> {
     checkBookingsSystem(),
     checkBookingFlow(),
     checkSettings(),
+    ...SECONDARY_SITES.flatMap((s) => [checkSiteGeneric(s), checkApiGeneric(s), checkSslGeneric(s)]),
   ]);
 
   // Save each result
