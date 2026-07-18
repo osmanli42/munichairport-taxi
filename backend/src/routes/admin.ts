@@ -1619,7 +1619,7 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
 
     const htmlBody = buildRechnungEmail({ booking, rechnungsnummer, mwst, lang, s, zahlungsart });
 
-    await resend.emails.send({
+    const { error: sendError } = await resend.emails.send({
       from: `Flughafen München Taxi <${fromEmail}>`,
       to: booking.email,
       subject,
@@ -1629,6 +1629,9 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
         content: pdfBuffer.toString('base64'),
       }],
     });
+    if (sendError) throw new Error(`Resend: ${sendError.message}`);
+
+    await run('UPDATE bookings SET rechnung_number = ? WHERE id = ?', [rechnungsnummer, req.params.id]);
 
     res.json({ success: true });
   } catch (error: any) {
