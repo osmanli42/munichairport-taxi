@@ -200,6 +200,89 @@ async function checkSettings(): Promise<HealthResult> {
   }
 }
 
+// ---------- Secondary sites (generic site/api+db/ssl checks) ----------
+interface SecondarySite {
+  key: string;
+  label: string;
+  host: string;
+}
+const SECONDARY_SITES: SecondarySite[] = [
+  { key: 'tf', label: 'Taxi Freising', host: 'taxifreising.de' },
+  { key: 'fmtde', label: 'Flughafen Taxi .de', host: 'flughafen-muenchen-taxi.de' },
+];
+
+function httpsGetJson(url: string, timeoutMs = 10_000): Promise<{ status: number; latency: number; body: any }> {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const req = https.get(url, { timeout: timeoutMs }, (res) => {
+      let raw = '';
+      res.on('data', (c) => { raw += c; });
+      res.on('end', () => {
+        let body: any = null;
+        try { body = JSON.parse(raw); } catch { /* non-JSON body */ }
+        resolve({ status: res.statusCode || 0, latency: Date.now() - start, body });
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(new Error('timeout')); });
+  });
+}
+
+async function checkSiteGeneric(site: SecondarySite): Promise<HealthResult> {
+  const start = Date.now();
+  const check_name = `${site.key}:site`;
+  const label = `${site.label} — Site (HTTPS)`;
+  try {
+    const r = await httpsGet(`https://${site.host}/`);
+    if (r.status !== 200) {
+      return { check_name, label, status: 'fail', latency_ms: r.latency, message: `HTTP ${r.status}` };
+    }
+    if (r.latency > 5000) {
+      return { check_name, label, status: 'warn', latency_ms: r.latency, message: `Site yavaş (${r.latency}ms)` };
+    }
+    return { check_name, label, status: 'ok', latency_ms: r.latency, message: `Site OK (${r.latency}ms)` };
+  } catch (e: any) {
+    return { check_name, label, status: 'fail', latency_ms: Date.now() - start, message: e.message || 'unreachable' };
+  }
+}
+
+async function checkApiGeneric(site: SecondarySite): Promise<HealthResult> {
+  const start = Date.now();
+  const check_name = `${site.key}:api`;
+  const label = `${site.label} — API + DB`;
+  try {
+    const r = await httpsGetJson(`https://${site.host}/api/health`);
+    if (r.status !== 200 || !r.body || r.body.db === false) {
+      return { check_name, label, status: 'fail', latency_ms: r.latency, message: r.body?.error ? `DB: ${r.body.error}` : `HTTP ${r.status}` };
+    }
+    const stuck = r.body.stuck_inquiries ?? 0;
+    if (stuck > 0) {
+      return { check_name, label, status: 'warn', latency_ms: r.latency, message: `${stuck} yanıtsız talep (2+ saat, mail gitmemiş olabilir)` };
+    }
+    return { check_name, label, status: 'ok', latency_ms: r.latency, message: `API+DB OK (${r.latency}ms)` };
+  } catch (e: any) {
+    return { check_name, label, status: 'fail', latency_ms: Date.now() - start, message: e.message };
+  }
+}
+
+async function checkSslGeneric(site: SecondarySite): Promise<HealthResult> {
+  const start = Date.now();
+  const check_name = `${site.key}:ssl`;
+  const label = `${site.label} — SSL Sertifikası`;
+  try {
+    const expiresAt = await getCertExpiry(site.host);
+    const latency = Date.now() - start;
+    const daysLeft = Math.floor((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    let status: HealthStatus = 'ok';
+    let msg = `${daysLeft} gün kaldı (${expiresAt.toLocaleDateString('de-DE')})`;
+    if (daysLeft < 0) { status = 'fail'; msg = `SÜRESI DOLDU! ${expiresAt.toLocaleDateString('de-DE')}`; }
+    else if (daysLeft < 14) { status = 'warn'; msg = `${daysLeft} gün kaldı — yenilemen lazım`; }
+    return { check_name, label, status, latency_ms: latency, message: msg };
+  } catch (e: any) {
+    return { check_name, label, status: 'fail', latency_ms: Date.now() - start, message: e.message };
+  }
+}
+
 // ---------- Run all checks ----------
 export async function runAllChecks(): Promise<HealthResult[]> {
   await ensureTable();
