@@ -331,9 +331,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
         promo_code, discount_amount, visitor_id, flight_validated, flight_info,
-        company_id, company_user_id, cost_center
+        company_id, company_user_id, cost_center, steuersatz
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
