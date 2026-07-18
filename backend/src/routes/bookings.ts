@@ -153,6 +153,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     const km = parseFloat(distance_km) || 0;
+    // §12 Abs. 2 Nr. 10 UStG: Personenbeförderung per Taxi ist bis 50 km ermäßigt (7%),
+    // darüber regulär (19%). Bezugsgröße ist die einfache Beförderungsstrecke, nicht Hin+Rück.
+    const steuersatz = km > 0 ? (km <= 50 ? 7 : 19) : null;
     const fahrradCount = priceRow.fahrrad_enabled ? (parseInt(fahrrad_count) || 0) : 0;
     const fahrradCost = fahrradCount * (priceRow.fahrrad_price || 0);
     const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
