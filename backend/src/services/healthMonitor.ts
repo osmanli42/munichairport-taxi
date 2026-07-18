@@ -205,10 +205,11 @@ interface SecondarySite {
   key: string;
   label: string;
   host: string;
+  apiHost?: string; // API served on a different (sub)domain than the site itself
 }
 const SECONDARY_SITES: SecondarySite[] = [
   { key: 'tf', label: 'Taxi Freising', host: 'taxifreising.de' },
-  { key: 'fmtde', label: 'Flughafen Taxi .de', host: 'flughafen-muenchen-taxi.de' },
+  { key: 'fmtde', label: 'Flughafen Taxi .de', host: 'flughafen-muenchen-taxi.de', apiHost: 'api.flughafen-muenchen-taxi.de' },
 ];
 
 function httpsGetJson(url: string, timeoutMs = 10_000): Promise<{ status: number; latency: number; body: any }> {
