@@ -3211,6 +3211,10 @@ export default function AdminPage() {
                     setRechnungSuccess(false);
                     setRechnungError('');
                     setShowRechnungModal(true);
+                    // Vorschlag für die nächste laufende Nummer — bleibt frei editierbar.
+                    adminApi.getNextRechnungsnummer()
+                      .then((r) => setRechnungsnummer(r.rechnungsnummer))
+                      .catch(() => {});
                   }}
                   className="flex-1 flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-xl text-sm font-medium transition-colors"
                 >
