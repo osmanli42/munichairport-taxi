@@ -1557,20 +1557,23 @@ router.put('/bank-settings', authenticateAdmin, async (req: AuthRequest, res: Re
 
 // ─── RECHNUNG (INVOICE) ───────────────────────────────────────────────────────
 
-// GET /api/admin/rechnung/next-number - Suggest next sequential invoice number (YYYY-NNN)
+// GET /api/admin/rechnung/next-number - Suggest next invoice number for today (WEB-YYYYMMDD-NNN).
+// Sequence resets each day and only advances once a Rechnung has actually been sent (gapless per GoBD).
 router.get('/rechnung/next-number', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const year = new Date().getFullYear();
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const prefix = `WEB-${datePart}-`;
     const rows = await query<{ rechnung_number: string }>(
       'SELECT rechnung_number FROM bookings WHERE rechnung_number LIKE ?',
-      [`${year}-%`]
+      [`${prefix}%`]
     );
     let maxN = 0;
     for (const r of rows) {
-      const m = r.rechnung_number?.match(/^(\d{4})-(\d+)$/);
-      if (m && Number(m[1]) === year) maxN = Math.max(maxN, Number(m[2]));
+      const m = r.rechnung_number?.slice(prefix.length).match(/^(\d+)$/);
+      if (m) maxN = Math.max(maxN, Number(m[1]));
     }
-    res.json({ rechnungsnummer: `${year}-${String(maxN + 1).padStart(3, '0')}` });
+    res.json({ rechnungsnummer: `${prefix}${String(maxN + 1).padStart(3, '0')}` });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
