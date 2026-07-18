@@ -1557,6 +1557,25 @@ router.put('/bank-settings', authenticateAdmin, async (req: AuthRequest, res: Re
 
 // ─── RECHNUNG (INVOICE) ───────────────────────────────────────────────────────
 
+// GET /api/admin/rechnung/next-number - Suggest next sequential invoice number (YYYY-NNN)
+router.get('/rechnung/next-number', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const year = new Date().getFullYear();
+    const rows = await query<{ rechnung_number: string }>(
+      'SELECT rechnung_number FROM bookings WHERE rechnung_number LIKE ?',
+      [`${year}-%`]
+    );
+    let maxN = 0;
+    for (const r of rows) {
+      const m = r.rechnung_number?.match(/^(\d{4})-(\d+)$/);
+      if (m && Number(m[1]) === year) maxN = Math.max(maxN, Number(m[2]));
+    }
+    res.json({ rechnungsnummer: `${year}-${String(maxN + 1).padStart(3, '0')}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/admin/bookings/:id/rechnung
 router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
