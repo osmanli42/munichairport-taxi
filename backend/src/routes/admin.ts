@@ -383,6 +383,7 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
     zwischenstopp_address || null,
     promo_code || null,
     discount_amount || null,
+    steuersatz,
   ]);
 
   const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
