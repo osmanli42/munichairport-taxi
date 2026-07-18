@@ -252,7 +252,7 @@ async function checkApiGeneric(site: SecondarySite): Promise<HealthResult> {
   const check_name = `${site.key}:api`;
   const label = `${site.label} — API + DB`;
   try {
-    const r = await httpsGetJson(`https://${site.host}/api/health`);
+    const r = await httpsGetJson(`https://${site.apiHost || site.host}/api/health`);
     if (r.status !== 200 || !r.body || r.body.db === false) {
       return { check_name, label, status: 'fail', latency_ms: r.latency, message: r.body?.error ? `DB: ${r.body.error}` : `HTTP ${r.status}` };
     }
