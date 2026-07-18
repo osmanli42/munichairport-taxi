@@ -424,6 +424,12 @@ export const adminApi = {
     return response.data;
   },
 
+  getNextRechnungsnummer: async (): Promise<{ rechnungsnummer: string }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.get('/admin/rechnung/next-number', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
   // ─── Marketing ───
   getMarketingCustomers: async (): Promise<Array<{ email: string; name: string; lastBooking: string; bookingCount: number }>> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
