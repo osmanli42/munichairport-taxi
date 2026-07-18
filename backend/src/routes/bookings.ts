@@ -373,6 +373,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       companyAuth?.companyId || null,
       companyAuth?.companyUserId || null,
       cost_center || null,
+      steuersatz,
     ]);
 
     // Increment used_count for applied promo
