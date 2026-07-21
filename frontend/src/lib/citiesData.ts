@@ -194,7 +194,7 @@ const cities: CityData[] = [
     description_en: 'Freising lies directly adjacent to Munich Airport and is one of Bavaria\'s oldest episcopal cities with over 1,300 years of history. It is home to the world\'s oldest brewery and a magnificent cathedral hill.',
     history_en: 'For centuries Freising was the spiritual and cultural centre of Bavaria, predating Munich itself. The cathedral hill with its Dom and Diocesan Museum is one of the most important medieval ensembles in southern Germany. The Weihenstephan Brewery (founded 1040) is considered the oldest brewery in the world. Pope Benedict XVI (Joseph Ratzinger) was ordained as a priest in Freising.',
     known_for_en: 'Cathedral hill, world\'s oldest brewery, proximity to Munich Airport',
-    ...calcPrice(7),
+    ...calcPrice(12),
   },
   {
     slug: 'taxi-landsberg-am-lech-flughafen-muenchen',
