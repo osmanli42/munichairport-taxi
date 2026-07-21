@@ -2879,7 +2879,7 @@ const cities: CityData[] = [
     ],
     known_for: 'Vilstal, ländliches Speckgürtel-Idyll, historischer Marktort',
     description_en: 'Taufkirchen (Vils) is a market town in Landkreis Erding on the Vils river, southeast of Dorfen in the rural Isen-Vils valley area.',
-    history_en: 'Taufkirchen was first documented as early as the 8th century, making it one of the oldest settlements in the region. Over the centuries the market town developed as an agriculturally shaped location on the Vils river. The suffix "(Vils)" distinguishes it from other Bavarian municipalities of the same name. Today Taufkirchen is a quiet residential and agricultural location in Munich's commuter belt.',
+    history_en: 'Taufkirchen was first documented as early as the 8th century, making it one of the oldest settlements in the region. Over the centuries the market town developed as an agriculturally shaped location on the Vils river. The suffix "(Vils)" distinguishes it from other Bavarian municipalities of the same name. Today Taufkirchen is a quiet residential and agricultural location in Munich\'s commuter belt.',
     known_for_en: 'Vils valley, rural commuter-belt setting, historic market town',
     ...calcPrice(34),
   },
