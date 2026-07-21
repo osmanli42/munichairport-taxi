@@ -47,10 +47,8 @@ export interface BookingFormData {
   trip_type?: string;
   return_datetime?: string;
   fahrrad_count?: number;
-  card_holder?: string;
-  card_number?: string;
-  card_expiry?: string;
-  card_cvv?: string;
+  stripe_customer_id?: string;
+  stripe_payment_method_id?: string;
   anfahrt_cost?: number;
 }
 
@@ -82,10 +80,16 @@ export interface Booking {
   trip_type?: string;
   return_datetime?: string;
   created_at: string;
-  card_holder?: string;
-  card_number?: string;
-  card_expiry?: string;
-  card_cvv?: string;
+  stripe_customer_id?: string | null;
+  stripe_payment_method_id?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  // Legacy raw-card fields — only present on bookings placed before the Stripe
+  // tokenization migration. New bookings never populate these.
+  card_holder?: string | null;
+  card_number?: string | null;
+  card_expiry?: string | null;
+  card_cvv?: string | null;
   steuersatz?: number | null;
   stripe_charge_id?: string | null;
   stripe_payment_date?: string | null;
@@ -372,7 +376,7 @@ export const adminApi = {
   },
 
   chargeSavedCard: async (bookingId: number): Promise<{ success: boolean; error?: string }> => {
-    const response = await api.post(`/admin/companies/bookings/${bookingId}/charge-saved-card`);
+    const response = await api.post(`/admin/bookings/${bookingId}/charge-card`);
     return response.data;
   },
 

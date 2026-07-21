@@ -19,6 +19,11 @@ export interface CompanyRow {
   charge_mode: 'manual' | 'on_confirm' | 'on_completion';
 }
 
+export interface ChargeableCard {
+  stripe_customer_id: string | null;
+  stripe_payment_method_id: string | null;
+}
+
 export async function getOrCreateStripeCustomer(company: CompanyRow): Promise<string> {
   if (company.stripe_customer_id) return company.stripe_customer_id;
   const s = requireStripe();
@@ -73,9 +78,9 @@ export async function detachPaymentMethod(company: CompanyRow) {
   );
 }
 
-export async function chargeSavedCard(bookingId: number, company: CompanyRow, amountEur: number): Promise<{ success: boolean; error?: string }> {
-  if (!company.stripe_customer_id || !company.stripe_payment_method_id) {
-    const err = 'No saved card on file for this company';
+export async function chargeSavedCard(bookingId: number, card: ChargeableCard, amountEur: number): Promise<{ success: boolean; error?: string }> {
+  if (!card.stripe_customer_id || !card.stripe_payment_method_id) {
+    const err = 'No saved card on file for this booking';
     await run('UPDATE bookings SET charge_status = ?, charge_error = ? WHERE id = ?', ['failed', err, bookingId]);
     return { success: false, error: err };
   }
@@ -85,13 +90,13 @@ export async function chargeSavedCard(bookingId: number, company: CompanyRow, am
 
   try {
     const intent = await s.paymentIntents.create({
-      customer: company.stripe_customer_id,
-      payment_method: company.stripe_payment_method_id,
+      customer: card.stripe_customer_id,
+      payment_method: card.stripe_payment_method_id,
       amount: Math.round(amountEur * 100),
       currency: 'eur',
       off_session: true,
       confirm: true,
-      metadata: { booking_id: String(bookingId), company_id: String(company.id) },
+      metadata: { booking_id: String(bookingId) },
     });
     await run(
       'UPDATE bookings SET stripe_charge_id = ?, stripe_payment_date = NOW(), charge_status = ?, charge_error = NULL WHERE id = ?',
@@ -111,4 +116,27 @@ export async function getCompanyForCharge(companyId: number): Promise<CompanyRow
     [companyId]
   );
   return company || null;
+}
+
+export async function createAnonymousSetupIntent(opts: { name?: string; email?: string }): Promise<{ client_secret: string; stripe_customer_id: string }> {
+  const s = requireStripe();
+  const customer = await s.customers.create({
+    name: opts.name || undefined,
+    email: opts.email || undefined,
+    metadata: { source: 'public_booking' },
+  });
+  const intent = await s.setupIntents.create({
+    customer: customer.id,
+    payment_method_types: ['card'],
+  });
+  if (!intent.client_secret) throw new Error('Stripe did not return a client_secret');
+  return { client_secret: intent.client_secret, stripe_customer_id: customer.id };
+}
+
+export async function getPaymentMethodCardInfo(paymentMethodId: string): Promise<{ brand: string; last4: string; exp_month: number; exp_year: number }> {
+  const s = requireStripe();
+  const pm = await s.paymentMethods.retrieve(paymentMethodId);
+  const card = pm.card;
+  if (!card) throw new Error('Payment method has no card details');
+  return { brand: card.brand, last4: card.last4, exp_month: card.exp_month, exp_year: card.exp_year };
 }

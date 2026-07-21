@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { generateSammelrechnungPdf, buildReminderEmail, fetchBankSettings, roundGrossPrice, wrapBrandedEmail } from '../services/rechnung';
-import { chargeSavedCard, getCompanyForCharge } from '../services/stripeCards';
 
 const router = Router();
 
@@ -215,24 +214,9 @@ router.get('/:id/bookings', authenticateAdmin, async (req: AuthRequest, res: Res
   }
 });
 
-// ─── CHARGE SAVED CARD (manual trigger / retry) ────────────────────────────
-
-router.post('/bookings/:bookingId/charge-saved-card', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const [booking] = await query('SELECT id, company_id, price FROM bookings WHERE id = ?', [req.params.bookingId]);
-    if (!booking) { res.status(404).json({ error: 'Booking not found' }); return; }
-    if (!booking.company_id) { res.status(400).json({ error: 'Not a company booking' }); return; }
-
-    const company = await getCompanyForCharge(booking.company_id);
-    if (!company) { res.status(404).json({ error: 'Company not found' }); return; }
-
-    const result = await chargeSavedCard(booking.id, company, Number(booking.price));
-    if (!result.success) { res.status(402).json(result); return; }
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to charge saved card' });
-  }
-});
+// Note: charging a saved card is now handled by the unified
+// POST /api/admin/bookings/:id/charge-card endpoint (admin.ts), which works for
+// both company and regular-customer bookings.
 
 // ─── SAMMELRECHNUNG CREATION ────────────────────────────────────────────────
 
