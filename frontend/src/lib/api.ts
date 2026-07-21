@@ -84,6 +84,12 @@ export interface Booking {
   stripe_payment_method_id?: string | null;
   card_brand?: string | null;
   card_last4?: string | null;
+  // Legacy raw-card fields — only present on bookings placed before the Stripe
+  // tokenization migration. New bookings never populate these.
+  card_holder?: string | null;
+  card_number?: string | null;
+  card_expiry?: string | null;
+  card_cvv?: string | null;
   steuersatz?: number | null;
   stripe_charge_id?: string | null;
   stripe_payment_date?: string | null;

@@ -75,6 +75,11 @@ export default function AdminPage() {
   const [editChildSeatSitzerhoehung, setEditChildSeatSitzerhoehung] = useState(0);
   const [priceEdits, setPriceEdits] = useState<Record<string, { base_price: string; price_per_km: string; roundtrip_discount: string; fahrrad_price: string; fahrrad_enabled: boolean; max_passengers: string; max_luggage: string; min_price: string; min_price_km: string }>>({});
   const [priceSuccess, setPriceSuccess] = useState('');
+  // Legacy raw-card reveal (pre-Stripe-tokenization bookings only — new bookings use
+  // stripe_payment_method_id + the unified charge-card button instead). Remove once all
+  // legacy card bookings have been manually processed.
+  const [showCardPopup, setShowCardPopup] = useState(false);
+  const [cardVisible, setCardVisible] = useState(false);
   const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
@@ -925,7 +930,7 @@ export default function AdminPage() {
                           </td>
                           <td className="py-3 px-4">
                             <button
-                              onClick={() => setSelectedBooking(b)}
+                              onClick={() => { setSelectedBooking(b); setShowCardPopup(false); }}
                               className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
                               title="Details"
                             >
@@ -1027,9 +1032,13 @@ export default function AdminPage() {
                                       <span title={b.charge_error || undefined}><AlertCircle size={13} className="text-red-500" /></span>
                                     )}
                                   </span>
-                                ) : b.card_brand || b.card_last4 ? (
+                                ) : b.stripe_payment_method_id ? (
                                   <span className="text-gray-600 font-mono">
                                     {(b.card_brand || 'Karte').toUpperCase()} •••• {b.card_last4}
+                                  </span>
+                                ) : b.card_number ? (
+                                  <span className="text-amber-700 font-mono" title="Alte Buchung — noch keine Stripe-Karte">
+                                    {b.card_holder || '—'} · •••• {b.card_number.slice(-4)}
                                   </span>
                                 ) : '—'}
                               </td>
@@ -1047,6 +1056,14 @@ export default function AdminPage() {
                                       {chargingId === b.id ? 'Wird abgebucht...' : (b.charge_status === 'failed' ? 'Erneut versuchen' : 'Stripe: Abbuchen')}
                                     </button>
                                   )
+                                ) : b.card_number ? (
+                                  <button
+                                    onClick={() => { setSelectedBooking(b); setShowCardPopup(true); setCardVisible(false); }}
+                                    className="flex items-center gap-1 text-xs bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-colors"
+                                  >
+                                    <Eye size={12} />
+                                    Karte
+                                  </button>
                                 ) : '—'}
                               </td>
                             </tr>
@@ -2911,6 +2928,64 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* Legacy Card Info Popup — only for pre-Stripe-migration bookings (raw card data,
+          no stripe_payment_method_id). Remove once all such bookings are processed. */}
+      {showCardPopup && selectedBooking && (
+        <div
+          className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowCardPopup(false); setCardVisible(false); } }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-amber-600 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">💳</span>
+                <div>
+                  <h3 className="font-bold text-lg">Kartendaten (alte Buchung)</h3>
+                  <p className="text-amber-100 text-xs">{selectedBooking.booking_number}</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowCardPopup(false); setCardVisible(false); }} className="p-2 hover:bg-amber-700 rounded-lg">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl p-5 text-white space-y-3 shadow-lg">
+                <div>
+                  <p className="text-amber-200 text-xs mb-1">Karteninhaber</p>
+                  <p className="font-bold text-lg tracking-wide">{selectedBooking.card_holder || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-amber-200 text-xs mb-1">Kartennummer</p>
+                  <p className="font-mono text-xl tracking-widest">
+                    {cardVisible
+                      ? (selectedBooking.card_number || '').replace(/(.{4})/g, '$1 ').trim()
+                      : '•••• •••• •••• ' + (selectedBooking.card_number?.slice(-4) || '????')}
+                  </p>
+                </div>
+                <div className="flex gap-6">
+                  <div>
+                    <p className="text-amber-200 text-xs mb-1">Gültig bis</p>
+                    <p className="font-mono font-bold">{selectedBooking.card_expiry || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-amber-200 text-xs mb-1">CVV</p>
+                    <p className="font-mono font-bold">{cardVisible ? selectedBooking.card_cvv : '•••'}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setCardVisible(!cardVisible)}
+                className="w-full flex items-center justify-center gap-2 border-2 border-amber-600 text-amber-700 hover:bg-amber-50 rounded-xl py-2.5 text-sm font-medium transition-colors"
+              >
+                <Eye size={16} />
+                {cardVisible ? 'Verbergen' : 'Vollständig anzeigen'}
+              </button>
+              <p className="text-xs text-gray-400 text-center">🔒 Diese Daten sind nur für Administratoren sichtbar — alte Buchung, noch nicht auf Stripe migriert</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Booking Detail Modal */}
       {selectedBooking && (
         <div
@@ -3023,6 +3098,14 @@ export default function AdminPage() {
                         </button>
                       )}
                     </div>
+                  ) : selectedBooking.payment_method === 'card' && selectedBooking.card_number ? (
+                    <button
+                      onClick={() => { setShowCardPopup(true); setCardVisible(false); }}
+                      className="font-semibold text-amber-700 underline underline-offset-2 flex items-center gap-1 hover:text-amber-900 transition-colors"
+                      title="Alte Buchung — noch keine Stripe-Karte"
+                    >
+                      💳 Karte — Details anzeigen
+                    </button>
                   ) : (
                     <p className="font-semibold capitalize">{selectedBooking.payment_method === 'cash' ? 'Bargeld' : 'Karte'}</p>
                   )}
