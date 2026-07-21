@@ -876,6 +876,38 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
   });
 }
 
+export async function sendAdminCancellationEmail(booking: BookingNotificationData): Promise<void> {
+  const resend = new Resend(RESEND_API_KEY);
+  const formattedDate = formatDateTime(booking.pickup_datetime);
+  const vehicleLabel = getVehicleLabel(booking.vehicle_type, 'de');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+  <div style="background: #ef4444; color: white; padding: 16px 24px;">
+    <h2 style="margin:0;">Kunde hat Buchung storniert (Selbstservice)</h2>
+  </div>
+  <div style="padding: 24px;">
+    <p><strong>Buchungsnummer:</strong> ${booking.booking_number}</p>
+    <p><strong>Kunde:</strong> ${booking.name} (${booking.email}${booking.phone ? ', ' + booking.phone : ''})</p>
+    <p><strong>Abholung:</strong> ${booking.pickup_address}</p>
+    <p><strong>Ziel:</strong> ${booking.dropoff_address}</p>
+    <p><strong>Datum & Uhrzeit:</strong> ${formattedDate}</p>
+    <p><strong>Fahrzeug:</strong> ${vehicleLabel}</p>
+    <p><strong>Preis:</strong> ${booking.price} €</p>
+  </div>
+</body>
+</html>`;
+
+  await resend.emails.send({
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
+    to: ADMIN_EMAIL,
+    subject: `Stornierung durch Kunden: ${booking.booking_number}`,
+    html,
+  });
+}
+
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {
   const resend = new Resend(RESEND_API_KEY);
   const lang = ['de', 'en', 'tr'].includes(booking.language) ? booking.language : 'de';
