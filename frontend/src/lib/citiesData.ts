@@ -29,10 +29,14 @@ export interface CityData {
   van_price: number;
 }
 
-// Prices from DB: Kombi = 8.00 + 2.10×km, Van = 10.00 + 2.20×km
+// Prices from DB (live tariff — /api/prices): Kombi = 8.00 + 2.15×km (min 37.50€
+// up to 15km), Van = 12.00 + 2.25×km (min 40.00€ up to 15km). Kept in sync with
+// the real tariff engine's base_price/price_per_km/min_price so blog prices never
+// drift from what customers actually see at checkout — re-check /api/prices if
+// prices are changed in the admin panel.
 const calcPrice = (km: number) => ({
-  kombi_price: Math.round((8 + 2.1 * km) * 10) / 10,
-  van_price: Math.round((10 + 2.2 * km) * 10) / 10,
+  kombi_price: Math.round(Math.max(8 + 2.15 * km, km <= 15 ? 37.5 : 0) * 10) / 10,
+  van_price: Math.round(Math.max(12 + 2.25 * km, km <= 15 ? 40 : 0) * 10) / 10,
 });
 
 const cities: CityData[] = [
