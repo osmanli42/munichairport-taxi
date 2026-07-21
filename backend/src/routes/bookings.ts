@@ -710,25 +710,27 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
 
     await run("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [booking.id]);
 
+    const { sendCancellationEmail, sendAdminCancellationEmail } = await import('../services/notifications');
+    const notificationData = {
+      booking_number: booking.booking_number,
+      name: booking.name,
+      email: booking.email,
+      phone: booking.phone,
+      pickup_address: booking.pickup_address,
+      dropoff_address: booking.dropoff_address,
+      pickup_datetime: booking.pickup_datetime,
+      vehicle_type: booking.vehicle_type,
+      passengers: booking.passengers,
+      price: booking.price,
+      payment_method: booking.payment_method,
+      language: booking.language || 'de',
+      child_seat: !!booking.child_seat,
+      luggage_count: booking.luggage_count || 0,
+    };
     if (booking.email) {
-      const { sendCancellationEmail } = await import('../services/notifications');
-      sendCancellationEmail({
-        booking_number: booking.booking_number,
-        name: booking.name,
-        email: booking.email,
-        phone: booking.phone,
-        pickup_address: booking.pickup_address,
-        dropoff_address: booking.dropoff_address,
-        pickup_datetime: booking.pickup_datetime,
-        vehicle_type: booking.vehicle_type,
-        passengers: booking.passengers,
-        price: booking.price,
-        payment_method: booking.payment_method,
-        language: booking.language || 'de',
-        child_seat: !!booking.child_seat,
-        luggage_count: booking.luggage_count || 0,
-      }).catch(err => console.error('Self-service cancellation email error:', err));
+      sendCancellationEmail(notificationData).catch(err => console.error('Self-service cancellation email error:', err));
     }
+    sendAdminCancellationEmail(notificationData).catch(err => console.error('Admin cancellation email error:', err));
 
     res.json({ success: true });
   } catch (error) {
