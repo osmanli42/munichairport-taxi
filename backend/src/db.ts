@@ -492,6 +492,22 @@ export async function initializeDatabase(): Promise<void> {
       try { await conn.execute(stmt); }
       catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
+
+    // Migration: regular-customer card-on-file (Stripe) columns on bookings — mirrors
+    // the companies Stripe columns above, but scoped per-booking since anonymous/walk-up
+    // customers have no persistent account to attach a reusable card to.
+    const bookingStripeCardCols = [
+      `ALTER TABLE bookings ADD COLUMN stripe_customer_id VARCHAR(100) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN stripe_payment_method_id VARCHAR(100) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN card_brand VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN card_last4 VARCHAR(4) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN card_exp_month INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN card_exp_year INT DEFAULT NULL`,
+    ];
+    for (const stmt of bookingStripeCardCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
     // ────────────────────────────────────────────────────────────────────
 
     // Migration: Google-Kalender-Import columns (Sammelrechnung für Telefon/E-Mail-Fahrten)

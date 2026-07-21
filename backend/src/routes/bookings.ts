@@ -8,7 +8,7 @@ import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords } from '../utils/ipGeo';
 import { getCompanyAuth } from '../middleware/companyAuth';
-import { chargeSavedCard } from '../services/stripeCards';
+import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo } from '../services/stripeCards';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -61,6 +61,34 @@ interface PriceRow {
   min_price_km: number;
 }
 
+// POST /api/bookings/card-setup-intent - creates an anonymous Stripe customer +
+// SetupIntent for a regular (non-company) customer to tokenize their card client-side
+// before the booking itself exists.
+router.post('/card-setup-intent', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email } = req.body;
+    const result = await createAnonymousSetupIntent({ name, email });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to create setup intent' });
+  }
+});
+
+// POST /api/bookings/card-setup-confirm - read-only lookup of a just-confirmed payment
+// method's non-sensitive display info (brand/last4), for the booking review screen.
+// No persistence — the booking-creation endpoint independently re-verifies this via
+// getPaymentMethodCardInfo before ever writing anything to the database.
+router.post('/card-setup-confirm', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { payment_method_id } = req.body;
+    if (!payment_method_id) { res.status(400).json({ error: 'payment_method_id required' }); return; }
+    const result = await getPaymentMethodCardInfo(payment_method_id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Invalid payment method' });
+  }
+});
+
 // POST /api/bookings - Create new booking
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -84,10 +112,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       duration_minutes,
       payment_method,
       language,
-      card_holder,
-      card_number,
-      card_expiry,
-      card_cvv,
+      stripe_customer_id,
+      stripe_payment_method_id,
       child_seat_details,
       trip_type,
       return_datetime,
@@ -318,22 +344,31 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const booking_number = generateBookingNumber();
 
-    // Encrypt card data if provided. Company bookings never accept raw card data —
-    // "card" payment for a company relies solely on their saved Stripe payment method.
-    const card_number_enc = (!companyData && card_number) ? encrypt(card_number) : null;
-    const card_cvv_enc = (!companyData && card_cvv) ? encrypt(card_cvv) : null;
+    // Regular (non-company) card bookings: the client already tokenized the card via
+    // Stripe SetupIntent — verify the payment method server-side and store only the
+    // Stripe references + non-sensitive card display info. No raw card data ever
+    // reaches this endpoint.
+    let cardInfo: { brand: string; last4: string; exp_month: number; exp_year: number } | null = null;
+    if (!companyData && (payment_method || 'cash') === 'card' && stripe_payment_method_id) {
+      try {
+        cardInfo = await getPaymentMethodCardInfo(stripe_payment_method_id);
+      } catch {
+        res.status(400).json({ error: 'Invalid or expired payment method' });
+        return;
+      }
+    }
 
     const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
         vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
-        card_holder, card_number_enc, card_expiry, card_cvv_enc, language,
+        stripe_customer_id, stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
         promo_code, discount_amount, visitor_id, flight_validated, flight_info,
         company_id, company_user_id, cost_center, steuersatz
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -355,10 +390,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       parseInt(duration_minutes) || null,
       price,
       payment_method || 'cash',
-      card_holder || null,
-      card_number_enc,
-      card_expiry || null,
-      card_cvv_enc,
+      cardInfo ? stripe_customer_id : null,
+      cardInfo ? stripe_payment_method_id : null,
+      cardInfo?.brand || null,
+      cardInfo?.last4 || null,
+      cardInfo?.exp_month || null,
+      cardInfo?.exp_year || null,
       language || 'de',
       trip_type || 'oneway',
       return_datetime || null,

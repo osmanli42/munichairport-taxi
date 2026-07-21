@@ -7,6 +7,7 @@ import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, Cre
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
+import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -183,13 +184,9 @@ function BuchenContent() {
   const effectiveDistanceKm = localZwischenstoppDistanceKm > 0 ? localZwischenstoppDistanceKm : distanceKm;
   const effectiveDuration = localZwischenstoppDuration > 0 ? localZwischenstoppDuration : duration;
 
-  const [cardHolder, setCardHolder] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const cardNumberRef = useRef<HTMLInputElement>(null);
-  const cardExpiryRef = useRef<HTMLInputElement>(null);
-  const cardCvvRef = useRef<HTMLInputElement>(null);
+  const cardFieldRef = useRef<CardPaymentFieldHandle>(null);
+  const [cardResult, setCardResult] = useState<CardPaymentResult | null>(null);
+  const [cardSubmitting, setCardSubmitting] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -274,46 +271,31 @@ function BuchenContent() {
     return [airline, origin && (arrivesMUC ? `${origin} → MUC` : origin), scheduledArrival && `${tx.flightArrival} ${scheduledArrival}`].filter(Boolean).join(' · ') || undefined;
   }
 
-  function luhnCheck(num: string): boolean {
-    const digits = num.replace(/\s/g, '');
-    if (!/^\d{13,19}$/.test(digits)) return false;
-    let sum = 0;
-    let alt = false;
-    for (let i = digits.length - 1; i >= 0; i--) {
-      let n = parseInt(digits[i], 10);
-      if (alt) { n *= 2; if (n > 9) n -= 9; }
-      sum += n;
-      alt = !alt;
-    }
-    return sum % 10 === 0;
-  }
-
-  function expiryValid(expiry: string): boolean {
-    const match = expiry.match(/^(\d{2})\/(\d{2})$/);
-    if (!match) return false;
-    const month = parseInt(match[1], 10);
-    const year = parseInt('20' + match[2], 10);
-    if (month < 1 || month > 12) return false;
-    const now = new Date();
-    const cardDate = new Date(year, month - 1, 1);
-    return cardDate >= new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-
   function validate() {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = tx.err_name;
     if (!phone.trim()) errs.phone = tx.err_phone;
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
-    if (payment === 'card') {
-      if (!cardHolder.trim()) errs.card = tx.err_card;
-      else if (!luhnCheck(cardNumber)) errs.card = locale === 'de' ? 'Ungültige Kartennummer' : locale === 'en' ? 'Invalid card number' : 'Geçersiz kart numarası';
-      else if (!expiryValid(cardExpiry)) errs.card = locale === 'de' ? 'Ungültiges oder abgelaufenes Ablaufdatum' : locale === 'en' ? 'Invalid or expired expiry date' : 'Geçersiz veya süresi dolmuş son kullanma tarihi';
-      else if (!/^\d{3,4}$/.test(cardCvv)) errs.card = locale === 'de' ? 'Ungültiger CVV' : locale === 'en' ? 'Invalid CVV' : 'Geçersiz CVV';
-    }
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
     if (flightNumberRequired && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  }
+
+  async function handleContinueToReview() {
+    if (!validate()) return;
+    if (payment === 'card') {
+      setCardSubmitting(true);
+      const result = await cardFieldRef.current?.confirmCard();
+      setCardSubmitting(false);
+      if (!result || !result.success) {
+        setErrors(prev => ({ ...prev, card: result?.error || tx.err_card }));
+        return;
+      }
+      setCardResult(result);
+    }
+    setSubmitState('review');
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   }
 
   function buildChildSeatDetails(): string {
@@ -401,11 +383,9 @@ function BuchenContent() {
         zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
         promo_code: appliedPromo?.code || undefined,
       };
-      if (payment === 'card') {
-        body.card_holder = cardHolder;
-        body.card_number = cardNumber.replace(/\s/g, '');
-        body.card_expiry = cardExpiry;
-        body.card_cvv = cardCvv;
+      if (payment === 'card' && cardResult) {
+        body.stripe_customer_id = cardResult.customerId;
+        body.stripe_payment_method_id = cardResult.paymentMethodId;
       }
 
       const res = await fetch(`${API_URL}/bookings`, {
@@ -739,7 +719,7 @@ function BuchenContent() {
                 {/* Payment */}
                 <div>
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_payment_label}</h3>
-                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardNumber ? ` ···· ${cardNumber.slice(-4)}` : ''}</p>
+                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
                 </div>
               </div>
 
@@ -1228,41 +1208,15 @@ function BuchenContent() {
               </div>
               {payment === 'card' && (
                 <div className="space-y-3 animate-fade-in">
-                  <input value={cardHolder} onChange={e => setCardHolder(e.target.value)} className={inputCls} placeholder={tx.cardHolder} />
-                  <input
-                    ref={cardNumberRef}
-                    value={cardNumber}
-                    onChange={e => {
-                      const formatted = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
-                      setCardNumber(formatted);
-                      if (cardNumberRef.current) cardNumberRef.current.value = formatted;
-                    }}
-                    maxLength={19} className={inputCls} placeholder="1234 5678 9012 3456" inputMode="numeric"
+                  <CardPaymentField
+                    ref={cardFieldRef}
+                    locale={locale}
+                    name={name.trim() || undefined}
+                    email={email.trim() || undefined}
+                    errorText={errors.card}
+                    notConfiguredText={locale === 'tr' ? 'Kart ödemesi henüz yapılandırılmadı.' : locale === 'en' ? 'Card payment is not configured yet.' : 'Kartenzahlung ist noch nicht konfiguriert.'}
+                    trustText={locale === 'tr' ? 'Kart bilgileriniz doğrudan Stripe\'a şifreli olarak iletilir — bize hiç ulaşmaz.' : locale === 'en' ? 'Your card data goes directly and encrypted to Stripe — it never reaches us.' : 'Ihre Kartendaten werden direkt und verschlüsselt an Stripe übertragen — sie erreichen uns nie.'}
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      ref={cardExpiryRef}
-                      value={cardExpiry}
-                      onChange={e => {
-                        const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
-                        const formatted = raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw;
-                        setCardExpiry(formatted);
-                        if (cardExpiryRef.current) cardExpiryRef.current.value = formatted;
-                      }}
-                      className={inputCls} placeholder="MM/YY" maxLength={5} inputMode="numeric"
-                    />
-                    <input
-                      ref={cardCvvRef}
-                      value={cardCvv}
-                      onChange={e => {
-                        const formatted = e.target.value.replace(/\D/g, '').slice(0, 4);
-                        setCardCvv(formatted);
-                        if (cardCvvRef.current) cardCvvRef.current.value = formatted;
-                      }}
-                      maxLength={4} className={inputCls} placeholder="CVV" inputMode="numeric"
-                    />
-                  </div>
-                  {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
                   {/* SSL trust box */}
                   <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
                     <div className="flex items-center gap-2">
@@ -1302,9 +1256,9 @@ function BuchenContent() {
                 <span className="inline-flex items-center gap-1"><Mail size={12} /> {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
               </div>
             </div>
-            <button onClick={() => { if (validate()) { setSubmitState('review'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50); } }}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg">
-              <CheckCircle size={20} /> {tx.submit}
+            <button onClick={handleContinueToReview} disabled={cardSubmitting}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg disabled:opacity-60">
+              {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><CheckCircle size={20} /> {tx.submit}</>}
             </button>
             <p className="text-center text-xs text-gray-400">
               {locale === 'tr' ? 'Henüz rezervasyon değil — sadece kontrol' : locale === 'en' ? 'Not a booking yet — review only' : 'Noch keine Buchung — nur Überprüfung Ihrer Angaben'}

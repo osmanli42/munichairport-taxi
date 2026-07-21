@@ -7,7 +7,7 @@ import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/aut
 import { decrypt } from './bookings';
 import { signToken } from '../utils/trackingToken';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
-import { chargeSavedCard, getCompanyForCharge } from '../services/stripeCards';
+import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
 
 const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
 
@@ -148,7 +148,8 @@ router.get('/bookings/today', authenticateAdmin, async (req: AuthRequest, res: R
     const bookings = await query(`
       SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
              pickup_datetime, vehicle_type, passengers, price, status, payment_method,
-             flight_number, notes, card_holder, card_number_enc, card_expiry, card_cvv_enc
+             flight_number, notes, card_holder, card_number_enc, card_expiry, card_cvv_enc,
+             stripe_customer_id, stripe_payment_method_id, card_brand, card_last4
       FROM bookings
       WHERE status != 'cancelled'
         AND DATE(pickup_datetime) = ?
@@ -172,6 +173,7 @@ router.get('/bookings/tomorrow-cards', authenticateAdmin, async (req: AuthReques
       SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
              pickup_datetime, vehicle_type, passengers, price, status,
              card_holder, card_number_enc, card_expiry, card_cvv_enc,
+             stripe_customer_id, stripe_payment_method_id, card_brand, card_last4,
              company_id, charge_status, charge_error
       FROM bookings
       WHERE payment_method = 'card'
@@ -195,6 +197,32 @@ router.get('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Res
     return;
   }
   res.json(decryptBooking(booking));
+});
+
+// POST /api/admin/bookings/:id/charge-card - Charge the saved Stripe card on a booking.
+// Works for both company (B2B) bookings, whose card lives on the companies row and can
+// be replaced between booking and charge, and regular-customer bookings, whose card is
+// frozen onto the booking row at creation time.
+router.post('/bookings/:id/charge-card', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [booking] = await query('SELECT id, company_id, price, stripe_customer_id, stripe_payment_method_id FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) { res.status(404).json({ error: 'Booking not found' }); return; }
+
+    let card: ChargeableCard;
+    if (booking.company_id) {
+      const company = await getCompanyForCharge(booking.company_id);
+      if (!company) { res.status(404).json({ error: 'Company not found' }); return; }
+      card = company;
+    } else {
+      if (!booking.stripe_payment_method_id) { res.status(400).json({ error: 'No saved card on file for this booking' }); return; }
+      card = { stripe_customer_id: booking.stripe_customer_id, stripe_payment_method_id: booking.stripe_payment_method_id };
+    }
+
+    const result = await chargeSavedCard(booking.id, card, Number(booking.price));
+    res.status(result.success ? 200 : 402).json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to charge saved card' });
+  }
 });
 
 // PATCH /api/admin/bookings/:id/status - Update booking status
