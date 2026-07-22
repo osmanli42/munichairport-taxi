@@ -287,7 +287,7 @@ router.get('/admin/heatmap-pages', authenticateAdmin, async (req: AuthRequest, r
   try {
     await ensureTables();
     const range = (req.query.range as string) || '7d';
-    const since = range === 'today' ? `CURDATE()` :
+    const since = range === 'today' ? `'${berlinMidnightUtcSql(0)}'` :
                   range === '30d' ? `NOW() - INTERVAL 30 DAY` :
                   `NOW() - INTERVAL 7 DAY`;
     const pages = await query<any>(
@@ -318,7 +318,7 @@ router.get('/admin/heatmap', authenticateAdmin, async (req: AuthRequest, res: Re
       res.status(400).json({ error: 'path required' });
       return;
     }
-    const since = range === 'today' ? `CURDATE()` :
+    const since = range === 'today' ? `'${berlinMidnightUtcSql(0)}'` :
                   range === '30d' ? `NOW() - INTERVAL 30 DAY` :
                   `NOW() - INTERVAL 7 DAY`;
     const params: any[] = [path];
