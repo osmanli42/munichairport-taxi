@@ -476,10 +476,9 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
 // GET /api/admin/stats - Dashboard statistics
 router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const berlinDayOfMonth = +new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', day: '2-digit' }).format(new Date());
     const today = berlinMidnightUtcSql(0);
     const weekStart = berlinMidnightUtcSql(-7);
-    const monthStart = berlinMidnightUtcSql(-(berlinDayOfMonth - 1));
+    const monthStart = berlinMidnightUtcSql(-(berlinDayOfMonth() - 1));
 
     const [todayStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
