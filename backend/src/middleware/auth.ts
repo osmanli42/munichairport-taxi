@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { getClientIp } from '../utils/ipGeo';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
