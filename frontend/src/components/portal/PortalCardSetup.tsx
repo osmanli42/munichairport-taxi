@@ -66,7 +66,7 @@ function CardForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => 
         <CardElement options={CARD_ELEMENT_OPTIONS} />
       </div>
       <p className="text-xs text-gray-400 flex items-center gap-1">
-        <Lock size={11} /> Ihre Kartendaten werden direkt und verschlüsselt an Stripe übertragen — sie erreichen nie unseren Server.
+        <Lock size={11} /> Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.
       </p>
       <div className="flex gap-2">
         <button type="submit" disabled={!stripe || loading}
