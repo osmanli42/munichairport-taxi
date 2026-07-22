@@ -43,12 +43,16 @@ const router = Router();
 })();
 
 function generateBookingNumber(): string {
-  const date = new Date();
-  const year = date.getFullYear().toString().slice(-2);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  // Server runs in UTC; use Berlin-local date parts so the number matches the
+  // calendar day customers/admin see (raw local getters would misdate bookings
+  // made 00:00–02:00 Berlin time, since UTC hasn't rolled over yet).
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin', year: '2-digit', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
   const random = Math.floor(1000 + Math.random() * 9000);
-  return `MAT${year}${month}${day}-${random}`;
+  return `MAT${map.year}${map.month}${map.day}-${random}`;
 }
 
 interface PriceRow {
