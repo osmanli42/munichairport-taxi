@@ -17,9 +17,17 @@ export function startReminderJob(): void {
       );
       const [targetH, targetM] = (timeRow?.setting_value || '18:00').split(':');
       const now = new Date();
-      if (now.getHours() !== +targetH || now.getMinutes() !== +targetM) return;
+      const berlinParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Berlin',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).formatToParts(now);
+      const berlinHour = +berlinParts.find(p => p.type === 'hour')!.value;
+      const berlinMinute = +berlinParts.find(p => p.type === 'minute')!.value;
+      if (berlinHour !== +targetH || berlinMinute !== +targetM) return;
 
-      const today = now.toDateString();
+      const today = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
       if (lastRunDate === today) return;
       lastRunDate = today;
 
