@@ -453,7 +453,7 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
     else if (range === '30d') intervalSql = '30 DAY';
 
     const since = range === 'today'
-      ? `CURDATE()`
+      ? `'${berlinMidnightUtcSql(0)}'`
       : `NOW() - INTERVAL ${intervalSql}`;
 
     const [totals] = await query<any>(
