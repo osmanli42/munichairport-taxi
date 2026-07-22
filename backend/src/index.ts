@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initializeDatabase, testConnection } from './db';
 import bookingsRouter from './routes/bookings';
