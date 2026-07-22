@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
+import { berlinMidnightUtcSql } from '../utils/berlinTime';
 
 const router = Router();
 
