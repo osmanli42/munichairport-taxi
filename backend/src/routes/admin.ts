@@ -61,6 +61,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const ip = getClientIp(req);
+  if (!checkAdminLoginRateLimit(ip)) {
+    res.status(429).json({ error: 'Zu viele Anmeldeversuche. Bitte versuchen Sie es in 15 Minuten erneut.' });
+    return;
+  }
+
   const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE username = ?', [username]);
   if (!admin) {
     res.status(401).json({ error: 'Invalid credentials' });
@@ -73,6 +79,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  resetAdminLoginAttempts(ip);
   const token = generateToken(admin.id, admin.username);
   res.json({ token, username: admin.username });
 });
