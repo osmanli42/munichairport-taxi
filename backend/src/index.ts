@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initializeDatabase, testConnection } from './db';
 import bookingsRouter from './routes/bookings';
@@ -32,6 +33,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
+app.use(helmet());
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',

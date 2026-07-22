@@ -555,10 +555,14 @@ export async function initializeDatabase(): Promise<void> {
     // Seed default admin user if not exists
     const [adminRows] = await conn.execute('SELECT COUNT(*) as count FROM admin_users') as any;
     if (adminRows[0].count === 0) {
-      const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
-      const passwordHash = bcrypt.hashSync(defaultPassword, 10);
-      await conn.execute('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)', ['admin', passwordHash]);
-      console.log(`Default admin user created. Username: admin, Password: ${defaultPassword}`);
+      const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+      if (!defaultPassword) {
+        console.warn('admin_users is empty and ADMIN_DEFAULT_PASSWORD is not set — skipping admin seed. Set ADMIN_DEFAULT_PASSWORD and restart to create the initial admin account.');
+      } else {
+        const passwordHash = bcrypt.hashSync(defaultPassword, 10);
+        await conn.execute('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)', ['admin', passwordHash]);
+        console.log('Default admin user created (password not logged).');
+      }
     }
 
     console.log('Database initialized successfully.');

@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs';
 import PDFDocument from 'pdfkit';
 import Stripe from 'stripe';
 import { query, run } from '../db';
-import { authenticateAdmin, generateToken, AuthRequest } from '../middleware/auth';
+import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest } from '../middleware/auth';
 import { decrypt } from './bookings';
 import { signToken } from '../utils/trackingToken';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
+import { getClientIp } from '../utils/ipGeo';
 
 const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
 
@@ -58,6 +59,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const ip = getClientIp(req);
+  if (!checkAdminLoginRateLimit(ip)) {
+    res.status(429).json({ error: 'Zu viele Anmeldeversuche. Bitte versuchen Sie es in 15 Minuten erneut.' });
+    return;
+  }
+
   const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE username = ?', [username]);
   if (!admin) {
     res.status(401).json({ error: 'Invalid credentials' });
@@ -70,6 +77,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  resetAdminLoginAttempts(ip);
   const token = generateToken(admin.id, admin.username);
   res.json({ token, username: admin.username });
 });
