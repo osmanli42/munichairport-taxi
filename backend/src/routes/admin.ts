@@ -491,23 +491,24 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
 // GET /api/admin/stats - Dashboard statistics
 router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const berlinDayOfMonth = +new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', day: '2-digit' }).format(new Date());
+    const today = berlinMidnightUtcSql(0);
+    const weekStart = berlinMidnightUtcSql(-7);
+    const monthStart = berlinMidnightUtcSql(-(berlinDayOfMonth - 1));
 
     const [todayStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
-      FROM bookings WHERE DATE(created_at) = ? AND status != 'cancelled'
+      FROM bookings WHERE created_at >= ? AND status != 'cancelled'
     `, [today]);
 
     const [weekStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
-      FROM bookings WHERE DATE(created_at) >= ? AND status != 'cancelled'
+      FROM bookings WHERE created_at >= ? AND status != 'cancelled'
     `, [weekStart]);
 
     const [monthStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
-      FROM bookings WHERE DATE(created_at) >= ? AND status != 'cancelled'
+      FROM bookings WHERE created_at >= ? AND status != 'cancelled'
     `, [monthStart]);
 
     const [totalStats] = await query<{ count: number; revenue: number }>(`
