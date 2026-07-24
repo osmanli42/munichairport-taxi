@@ -525,8 +525,22 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 const isReturning = (s.prev_visits || 0) > 0;
                 const funnel = getFunnelStage(s);
                 const status = getStatus(s);
-                const routeMatch = s.page_history?.match(/ergebnisse.*?(?:pickup|from|von)=([^&|]+).*?(?:dropoff|to|nach)=([^&|]+)/i)
-                  || s.landing_page?.match(/from=([^&]+).*?to=([^&]+)/i);
+                const confirmedBooking = s.past_bookings_count > 0 && s.last_booking_pickup_address && s.last_booking_dropoff_address
+                  ? {
+                      pickup: s.last_booking_pickup_address,
+                      dropoff: s.last_booking_dropoff_address,
+                      when: fmtPickupDateTime(s.last_booking_datetime),
+                      isRoundtrip: s.last_booking_trip_type === 'roundtrip',
+                      returnWhen: fmtPickupDateTime(s.last_booking_return_datetime),
+                    }
+                  : null;
+                const prospective = !confirmedBooking ? parseProspectiveRoute(s) : null;
+                const prospectiveWhen = prospective?.date
+                  ? fmtPickupDateTime(`${prospective.date}T${prospective.time || '00:00'}:00`)
+                  : null;
+                const prospectiveReturnWhen = prospective?.tripType === 'roundtrip' && prospective.returnDate
+                  ? fmtPickupDateTime(`${prospective.returnDate}T${prospective.returnTime || '00:00'}:00`)
+                  : null;
 
                 return (
                   <div key={s.session_id} className="px-5 py-4 hover:bg-gray-50 transition-colors">
