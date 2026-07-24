@@ -262,6 +262,27 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
     }
   }
 
+  // Customer requested an invoice: marking the ride done by hand sends it right away
+  // instead of waiting for autoRechnungJob's schedule (pickup + duration + 15 min),
+  // which stays the fallback when nobody touches the booking. Deliberately not wired
+  // into autoStatusJob — that cron can flip a booking to 'completed' before the ride
+  // has actually finished, which would invoice the customer too early.
+  if (status === 'completed' && booking?.rechnung_required && !booking.rechnung_number && booking.email) {
+    sendRechnungForBooking(booking)
+      .then(({ rechnungsnummer }) =>
+        console.log(`[Rechnung] ${rechnungsnummer} an ${booking.email} gesendet (manuell abgeschlossen, Buchung ${booking.booking_number})`))
+      .catch(async (err) => {
+        const msg = String(err?.message || err).slice(0, 500);
+        console.error(`[Rechnung] Fehler bei Buchung ${booking.booking_number}:`, msg);
+        // Mirror the cron's bookkeeping so a failure is visible in admin and the
+        // retry budget is shared rather than reset.
+        await run(
+          'UPDATE bookings SET rechnung_attempts = rechnung_attempts + 1, rechnung_error = ? WHERE id = ?',
+          [msg, booking.id]
+        ).catch(() => {});
+      });
+  }
+
   // Send cancellation email when booking is cancelled
   if (status === 'cancelled' && booking?.email) {
     const { sendCancellationEmail } = await import('../services/notifications');
