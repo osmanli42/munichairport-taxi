@@ -311,6 +311,7 @@ export default function ReplayTab({ token }: { token: string }) {
           {recordings.map((r, idx) => {
             const booked = (r.booking_count || 0) > 0;
             const isPlaying = playingIndex === idx;
+            const route = parseRouteFromPages(r.pages);
             return (
               <div key={r.session_id} className={`px-6 py-4 hover:bg-gray-50 transition-colors ${isPlaying ? 'bg-purple-50 border-l-4 border-purple-400' : ''}`}>
                 <div className="flex items-center gap-2 flex-wrap mb-2">
