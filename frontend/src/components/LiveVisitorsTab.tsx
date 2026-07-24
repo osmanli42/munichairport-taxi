@@ -833,9 +833,9 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
             </div>
             <Sparkline data={hourlyValues} width={600} height={56} color="#10b981" />
             <div className="flex justify-between text-xs text-gray-300 mt-1">
-              <span>{stats?.hourly[0]?.hour?.slice(11, 16) || ''}</span>
-              <span>{stats?.hourly[Math.floor(stats.hourly.length / 2)]?.hour?.slice(11, 16) || ''}</span>
-              <span>{stats?.hourly[stats.hourly.length - 1]?.hour?.slice(11, 16) || ''}</span>
+              <span>{fmtHourLabel(stats?.hourly[0]?.hour)}</span>
+              <span>{fmtHourLabel(stats?.hourly[Math.floor(stats.hourly.length / 2)]?.hour)}</span>
+              <span>{fmtHourLabel(stats?.hourly[stats.hourly.length - 1]?.hour)}</span>
             </div>
           </div>
         )}
