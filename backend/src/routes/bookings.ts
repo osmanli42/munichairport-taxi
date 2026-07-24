@@ -132,6 +132,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       dropoff_lat,
       dropoff_lng,
       cost_center,
+      rechnung_required,
+      rechnung_adresse,
     } = req.body;
 
     // Validation
