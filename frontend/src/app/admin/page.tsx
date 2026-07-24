@@ -3291,6 +3291,19 @@ export default function AdminPage() {
                   Rechnung senden
                 </button>
               </div>
+              {/* Re-open the invoice that was actually sent (rebuilt from the stored
+                  render params, so date and number match the customer's copy). */}
+              {selectedBooking.rechnung_number && (
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/rechnung.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <FileText size={15} />
+                  Gesendete Rechnung ansehen ({selectedBooking.rechnung_number})
+                </a>
+              )}
             </div>
           </div>
         </div>
