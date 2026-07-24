@@ -436,6 +436,11 @@
     "cancelError": "İptal başarısız oldu. Lütfen tekrar deneyin veya bizi arayın.",
     "alreadyCancelled": "Bu rezervasyon zaten iptal edilmiş.",
     "alreadyCompleted": "Bu yolculuk zaten gerçekleşti ve artık iptal edilemez.",
+    "invoiceSectionTitle": "Fatura",
+    "invoiceHint": "Faturanız e-posta adresinize gönderildi. Buradan istediğiniz zaman tekrar indirebilirsiniz.",
+    "invoiceDownload": "Faturayı indir",
+    "invoiceDownloading": "Hazırlanıyor...",
+    "invoiceError": "Fatura yüklenemedi. Lütfen daha sonra tekrar deneyin.",
     "newSearch": "Başka bir rezervasyon ara",
     "contactHint": "Rezervasyonunuzla ilgili sorularınız mı var? Bizi arayın veya WhatsApp'tan yazın – 7/24 hizmetinizdeyiz."
   },

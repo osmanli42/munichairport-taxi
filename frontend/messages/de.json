@@ -436,6 +436,11 @@
     "cancelError": "Stornierung fehlgeschlagen. Bitte versuchen Sie es erneut oder rufen Sie uns an.",
     "alreadyCancelled": "Diese Buchung wurde bereits storniert.",
     "alreadyCompleted": "Diese Fahrt wurde bereits durchgeführt und kann nicht mehr storniert werden.",
+    "invoiceSectionTitle": "Rechnung",
+    "invoiceHint": "Ihre Rechnung wurde an Ihre E-Mail-Adresse gesendet. Sie können sie hier jederzeit erneut herunterladen.",
+    "invoiceDownload": "Rechnung herunterladen",
+    "invoiceDownloading": "Wird vorbereitet...",
+    "invoiceError": "Rechnung konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
     "newSearch": "Andere Buchung suchen",
     "contactHint": "Fragen zu Ihrer Buchung? Rufen Sie uns an oder schreiben Sie per WhatsApp – wir sind rund um die Uhr erreichbar."
   },

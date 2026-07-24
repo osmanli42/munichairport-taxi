@@ -21,6 +21,8 @@ interface ManagedBooking {
   trip_type?: string;
   return_datetime?: string;
   can_cancel_free: boolean;
+  rechnung_number?: string | null;
+  rechnung_sent_at?: string | null;
 }
 
 type LookupState = 'idle' | 'loading' | 'error' | 'found';

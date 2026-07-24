@@ -436,6 +436,11 @@
     "cancelError": "Cancellation failed. Please try again or give us a call.",
     "alreadyCancelled": "This booking has already been cancelled.",
     "alreadyCompleted": "This trip has already taken place and can no longer be cancelled.",
+    "invoiceSectionTitle": "Invoice",
+    "invoiceHint": "Your invoice was sent to your email address. You can download it again here at any time.",
+    "invoiceDownload": "Download invoice",
+    "invoiceDownloading": "Preparing...",
+    "invoiceError": "The invoice could not be loaded. Please try again later.",
     "newSearch": "Look up another booking",
     "contactHint": "Questions about your booking? Call us or write on WhatsApp – we're available around the clock."
   },
