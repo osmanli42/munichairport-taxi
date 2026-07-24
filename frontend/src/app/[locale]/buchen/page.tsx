@@ -358,6 +358,7 @@ function BuchenContent() {
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
     if (flightNumberRequired && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
+    if (rechnungRequired && !rechnungAdresse.trim()) errs.rechnung = rx.error;
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
