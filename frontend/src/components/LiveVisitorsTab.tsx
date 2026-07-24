@@ -94,6 +94,52 @@ function fmtTime(d: Date): string {
   return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// Formats a `YYYY-MM-DDTHH:MM:00`-shaped datetime string — either a confirmed
+// booking's pickup_datetime/return_datetime column value, or a synthetic
+// `${date}T${time}:00` built from /ergebnisse|/buchen URL query params.
+function fmtPickupDateTime(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  const datePart = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timePart = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart}, ${timePart} Uhr`;
+}
+
+// Best-effort "in progress" pickup/dropoff + date/time, parsed from the
+// /ergebnisse or /buchen query string in current_path / page_history / landing_page.
+// Param names come from SearchBar.tsx. URLSearchParams (unlike the old regex +
+// decodeURIComponent) turns `+` into a space before %-decoding.
+function parseProspectiveRoute(s: LiveSession): {
+  pickup: string; dropoff: string; date: string; time: string;
+  tripType: string; returnDate: string; returnTime: string;
+} | null {
+  const candidates = [
+    s.current_path,
+    ...(s.page_history ? s.page_history.split('|||') : []),
+    s.landing_page,
+  ].filter((p): p is string => !!p);
+
+  for (const candidate of candidates) {
+    if (!/\/(ergebnisse|buchen)(\/|\?|$)/.test(candidate)) continue;
+    const qIndex = candidate.indexOf('?');
+    if (qIndex === -1) continue;
+    const params = new URLSearchParams(candidate.slice(qIndex + 1));
+    const pickup = params.get('pickup') || params.get('from') || '';
+    const dropoff = params.get('dropoff') || params.get('to') || '';
+    if (!pickup || !dropoff) continue;
+    return {
+      pickup, dropoff,
+      date: params.get('date') || '',
+      time: params.get('time') || '',
+      tripType: params.get('trip_type') || 'oneway',
+      returnDate: params.get('return_date') || '',
+      returnTime: params.get('return_time') || '',
+    };
+  }
+  return null;
+}
+
 function sourceLabel(s: LiveSession): { label: string; color: string } {
   if (s.gclid) return { label: '🎯 Google Ads', color: 'bg-yellow-100 text-yellow-800' };
   if (s.utm_source === 'google_ads') return { label: '🎯 Google Ads', color: 'bg-yellow-100 text-yellow-800' };
