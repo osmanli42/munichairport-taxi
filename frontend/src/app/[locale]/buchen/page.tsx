@@ -276,6 +276,11 @@ function BuchenContent() {
   // what the PDF's RECHNUNGSEMPFÄNGER block renders.
   const cleanRechnungAdresse = (v: string) =>
     v.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+  // Dismissing without saving must not leave the toggle on with an empty address.
+  const closeRechnungModal = () => {
+    setShowRechnungModal(false);
+    if (!rechnungAdresse) setRechnungRequired(false);
+  };
 
   const isAirportPickup = pickup.includes('München-Flughafen');
   const isAirportDropoff = dropoff.includes('München-Flughafen');
