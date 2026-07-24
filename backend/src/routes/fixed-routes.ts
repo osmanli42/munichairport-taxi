@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db';
+import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -80,7 +80,7 @@ router.post('/', authenticateAdmin, async (req: AuthRequest, res: Response): Pro
       res.status(400).json({ error: 'name, pickup_keywords, dropoff_keywords required' });
       return;
     }
-    const [result] = await query<any>(
+    const result = await run(
       `INSERT INTO fixed_routes (name, pickup_keywords, dropoff_keywords, price_kombi, price_van, price_grossraumtaxi, bidirectional)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [name, pickup_keywords, dropoff_keywords, price_kombi || 0, price_van || 0, price_grossraumtaxi || 0, bidirectional ?? 1]
