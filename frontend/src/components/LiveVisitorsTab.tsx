@@ -588,6 +588,40 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       <FunnelProgress step={funnel.step} />
                     </div>
 
+                    {/* Row 2b: Route detail — confirmed booking (emerald) or prospective (blue) */}
+                    {confirmedBooking && (
+                      <div className="mb-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800">
+                        <div className="flex items-center gap-1 font-semibold mb-1">
+                          <span>🗺 Rezervasyon Güzergahı</span>
+                          {confirmedBooking.when && (
+                            <span className="ml-auto font-normal text-emerald-700 flex items-center gap-1">
+                              <Clock size={11} /> {confirmedBooking.when}
+                            </span>
+                          )}
+                        </div>
+                        <div className="break-words">{confirmedBooking.pickup} → {confirmedBooking.dropoff}</div>
+                        {confirmedBooking.isRoundtrip && confirmedBooking.returnWhen && (
+                          <div className="mt-1 text-emerald-700">↩ Dönüş: {confirmedBooking.returnWhen}</div>
+                        )}
+                      </div>
+                    )}
+                    {!confirmedBooking && prospective && (
+                      <div className="mb-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800">
+                        <div className="flex items-center gap-1 font-semibold mb-1">
+                          <span>🗺 Muhtemel Güzergah</span>
+                          {prospectiveWhen && (
+                            <span className="ml-auto font-normal text-blue-700 flex items-center gap-1">
+                              <Clock size={11} /> {prospectiveWhen}
+                            </span>
+                          )}
+                        </div>
+                        <div className="break-words">{prospective.pickup} → {prospective.dropoff}</div>
+                        {prospectiveReturnWhen && (
+                          <div className="mt-1 text-blue-700">↩ Dönüş: {prospectiveReturnWhen}</div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Row 3: Current page */}
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="font-medium text-gray-800 text-sm truncate">📍 {s.current_path}</span>
