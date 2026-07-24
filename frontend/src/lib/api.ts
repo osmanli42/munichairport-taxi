@@ -102,6 +102,12 @@ export interface Booking {
   company_name?: string | null;
   charge_status?: 'pending' | 'succeeded' | 'failed' | null;
   charge_error?: string | null;
+  // Customer-requested invoice (see autoRechnungJob on the backend)
+  rechnung_required?: number | null;
+  rechnung_adresse?: string | null;
+  rechnung_number?: string | null;
+  rechnung_sent_at?: string | null;
+  rechnung_error?: string | null;
 }
 
 export interface Price {
