@@ -227,6 +227,56 @@ function BuchenContent() {
     tr: { title: 'Bilgileriniz', summary: 'Rezervasyon özeti', name: 'Ad Soyad *', phone: 'Cep numarası *', email: 'E-posta *', flight: 'Uçuş numarası (isteğe bağlı)', flightRequired: 'Uçuş numarası *', flightChecking: 'Uçuş kontrol ediliyor...', flightConfirmed: 'Uçuş doğrulandı', flightNotFound: 'Uçuş bulunamadı – lütfen uçuş numarasını kontrol edin', flightWrongAirport: 'Bu uçuş verilere göre Münih\'e (MUC) inmiyor – lütfen uçuş numarasını kontrol edin', flightArrival: 'Varış', luggage: 'Bagaj sayısı', notes: 'Notlar', payment: 'Ödeme yöntemi', cash: 'Nakit', card: 'Kredi kartı', cardHolder: 'Kart sahibi', cardNumber: 'Kart numarası', cardExpiry: 'Son kullanma tarihi', cardCvv: 'CVV', oneway: 'Tek yön', roundtrip: 'Gidiş-dönüş', returnDate: 'Dönüş tarihi', returnTime: 'Dönüş saati', submit: 'Kontrol et', submitting: 'Rezervasyon yapılıyor...', success_title: 'Rezervasyon onaylandı!', success_msg: 'Rezervasyonunuz onaylandı. Kısa süre içinde onay e-postası alacaksınız:', new_booking: 'Yeni rezervasyon', back: 'Araç seçimine dön', err_name: 'Ad gerekli', err_phone: 'Telefon gerekli', err_email: 'Geçerli e-posta gerekli', err_card: 'Kart bilgileri gerekli', err_submit: 'Gönderme hatası. Lütfen tekrar deneyin.', review_title: 'Rezervasyonu kontrol edin', review_subtitle: 'Lütfen rezervasyonu onaylamadan önce bilgilerinizi kontrol edin.', review_route: 'Güzergah', review_datetime: 'Tarih & Saat', review_vehicle: 'Araç', review_contact: 'İletişim bilgileri', review_payment_label: 'Ödeme', review_confirm: 'Rezervasyonu onayla', review_edit: 'Bilgileri düzenle', review_persons: 'Kişi', review_luggage_label: 'Bagaj', review_notes_label: 'Notlar', review_flight_label: 'Uçuş numarası' },
   };
   const tx = t[locale] || t.de;
+
+  // Company-invoice strings. Kept in their own dictionary rather than appended to the
+  // giant single-line `t` objects above so the block stays readable.
+  const rechnungT: Record<string, Record<string, string>> = {
+    de: {
+      toggle: 'Rechnung für Ihr Unternehmen?',
+      toggleHint: 'Mit Firmenname & Anschrift — für die Reisekostenabrechnung',
+      modalTitle: 'Rechnungsadresse',
+      modalSubtitle: 'Erscheint genau so auf Ihrer Rechnung',
+      warning: 'Bitte jede Angabe in eine eigene Zeile schreiben — keine Leerzeilen dazwischen.',
+      example: 'Beispiel anzeigen',
+      placeholder: 'Firmenname\nVor- und Nachname\nStraße und Hausnummer\nPLZ Ort\nLand',
+      save: 'Speichern', cancel: 'Abbrechen',
+      saved: 'Rechnungsadresse gespeichert', edit: 'Bearbeiten',
+      error: 'Bitte geben Sie Ihre Rechnungsadresse ein',
+      recipient: 'RECHNUNGSEMPFÄNGER', country: 'Deutschland',
+    },
+    en: {
+      toggle: 'Invoice for your company?',
+      toggleHint: 'With company name & address — for expense reports',
+      modalTitle: 'Billing address',
+      modalSubtitle: 'Appears exactly like this on your invoice',
+      warning: 'Please put each item on its own line — no blank lines in between.',
+      example: 'Show example',
+      placeholder: 'Company name\nFirst and last name\nStreet and number\nPostcode City\nCountry',
+      save: 'Save', cancel: 'Cancel',
+      saved: 'Billing address saved', edit: 'Edit',
+      error: 'Please enter your billing address',
+      recipient: 'BILL TO', country: 'Germany',
+    },
+    tr: {
+      toggle: 'Firmanız için fatura?',
+      toggleHint: 'Firma adı ve adresi ile — gider beyanı için',
+      modalTitle: 'Fatura adresi',
+      modalSubtitle: 'Faturanızda tam olarak böyle görünecek',
+      warning: 'Her bilgiyi ayrı satıra yazın — aralarda boş satır bırakmayın.',
+      example: 'Örnek göster',
+      placeholder: 'Firma adı\nAd Soyad\nSokak ve numara\nPosta kodu Şehir\nÜlke',
+      save: 'Kaydet', cancel: 'İptal',
+      saved: 'Fatura adresi kaydedildi', edit: 'Düzenle',
+      error: 'Lütfen fatura adresinizi girin',
+      recipient: 'FATURA ALICISI', country: 'Almanya',
+    },
+  };
+  const rx = rechnungT[locale] || rechnungT.de;
+  // Collapses blank lines and stray indentation, matching what the backend stores and
+  // what the PDF's RECHNUNGSEMPFÄNGER block renders.
+  const cleanRechnungAdresse = (v: string) =>
+    v.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+
   const isAirportPickup = pickup.includes('München-Flughafen');
   const isAirportDropoff = dropoff.includes('München-Flughafen');
   // Flight number is required whenever the driver needs it to track an arrival:
