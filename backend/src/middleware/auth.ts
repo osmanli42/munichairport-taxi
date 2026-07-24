@@ -18,6 +18,7 @@ export interface AuthRequest extends Request {
 const QUERY_TOKEN_ALLOWED = [
   /^\/api\/admin\/companies\/invoices\/\d+\/pdf(\?|$)/,
   /^\/api\/admin\/report\/finanzamt(\?|$)/,
+  /^\/api\/admin\/bookings\/\d+\/rechnung\.pdf(\?|$)/,
 ];
 
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
