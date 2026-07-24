@@ -94,6 +94,16 @@ function fmtTime(d: Date): string {
   return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+// stats.hourly[].hour is `YYYY-MM-DD HH:00` in UTC (DATE_FORMAT(first_seen, ...) —
+// first_seen is stored in UTC, see backend/src/utils/berlinTime.ts). Parse it as UTC
+// explicitly and display in Berlin local time so labels match Germany's actual clock.
+function fmtHourLabel(hour: string | undefined): string {
+  if (!hour) return '';
+  const d = new Date(hour.replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+}
+
 // Formats a `YYYY-MM-DDTHH:MM:00`-shaped datetime string — either a confirmed
 // booking's pickup_datetime/return_datetime column value, or a synthetic
 // `${date}T${time}:00` built from /ergebnisse|/buchen URL query params.
