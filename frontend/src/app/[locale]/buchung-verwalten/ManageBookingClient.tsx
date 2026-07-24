@@ -109,11 +109,39 @@ export default function ManageBookingClient() {
     }
   }
 
+  // Fetched as a blob rather than linked directly, so the email stays out of the URL
+  // (and therefore out of access logs, history and Referer headers).
+  async function handleDownloadInvoice() {
+    if (!booking) return;
+    setInvoiceState('loading');
+    try {
+      const res = await fetch(`${API_URL}/bookings/manage/rechnung`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_number: booking.booking_number, email: email.trim() }),
+      });
+      if (!res.ok) { setInvoiceState('error'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Rechnung_${booking.rechnung_number || booking.booking_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setInvoiceState('idle');
+    } catch {
+      setInvoiceState('error');
+    }
+  }
+
   function resetSearch() {
     setState('idle');
     setBooking(null);
     setCancelResult('idle');
     setConfirming(false);
+    setInvoiceState('idle');
   }
 
   const vehicleName = booking ? tVehicles(`${booking.vehicle_type}.name`) : '';
