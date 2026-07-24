@@ -426,6 +426,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       companyAuth?.companyUserId || null,
       cost_center || null,
       steuersatz,
+      rechnungRequired,
+      rechnungAdresseClean,
     ]);
 
     // Increment used_count for applied promo
