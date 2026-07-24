@@ -667,11 +667,6 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                           📝 {s.form_fields_touched} alan{s.form_submit_clicks > 0 ? ' ✓' : ''}
                         </span>
                       )}
-                      {routeMatch && (
-                        <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
-                          🗺 {decodeURIComponent(routeMatch[1])} → {decodeURIComponent(routeMatch[2])}
-                        </span>
-                      )}
                       {s.screen_w && (
                         <span className="text-xs text-gray-300">🖥 {s.screen_w}×{s.screen_h}</span>
                       )}
