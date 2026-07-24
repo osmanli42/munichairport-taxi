@@ -63,6 +63,33 @@ function fmtDuration(s: number): string {
   return `${m}m ${r}s`;
 }
 
+function countryFlag(code: string | null): string {
+  if (!code || code.length !== 2) return '🌍';
+  const upper = code.toUpperCase();
+  const cp1 = 0x1F1E6 - 65 + upper.charCodeAt(0);
+  const cp2 = 0x1F1E6 - 65 + upper.charCodeAt(1);
+  return String.fromCodePoint(cp1, cp2);
+}
+
+// `pages` is a GROUP_CONCAT of every path (with query string) the visitor hit,
+// joined by ' → ' (see recording.ts). Find the first /ergebnisse or /buchen leg and
+// parse its pickup/dropoff params with URLSearchParams so the address decodes
+// correctly (handles both %XX escapes and '+' as space) instead of showing the raw,
+// truncated query string.
+function parseRouteFromPages(pages: string | null): { pickup: string; dropoff: string } | null {
+  if (!pages) return null;
+  for (const leg of pages.split(' → ')) {
+    if (!/\/(ergebnisse|buchen)(\/|\?|$)/.test(leg)) continue;
+    const qIndex = leg.indexOf('?');
+    if (qIndex === -1) continue;
+    const params = new URLSearchParams(leg.slice(qIndex + 1));
+    const pickup = params.get('pickup') || params.get('from');
+    const dropoff = params.get('dropoff') || params.get('to');
+    if (pickup && dropoff) return { pickup, dropoff };
+  }
+  return null;
+}
+
 function devIcon(d: string | null) {
   if (d === 'mobile') return <Smartphone size={14} />;
   if (d === 'tablet') return <Tablet size={14} />;
