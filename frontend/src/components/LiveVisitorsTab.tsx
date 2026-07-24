@@ -815,7 +815,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           ))}
         </div>
 
-        {/* Hourly sparkline */}
+        {/* Hourly bar chart */}
         {hourlyValues.length > 1 && (
           <div className="border rounded-xl p-4 mb-5">
             <div className="flex items-center justify-between mb-2">
@@ -824,20 +824,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 Tepe: {Math.max(...hourlyValues)} · Toplam: {hourlyValues.reduce((a, b) => a + b, 0)}
               </div>
             </div>
-            <Sparkline
-              data={hourlyValues}
-              labels={(stats?.hourly || []).map(h => fmtHourLabel(h.hour))}
-              width={600} height={56} color="#10b981"
-            />
-            {/* Every hour's count, not just the chart's start/middle/end — hover a point above for the same info */}
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 pt-2 border-t">
-              {(stats?.hourly || []).map((h, i) => (
-                <span key={h.hour} className="whitespace-nowrap">
-                  <span className="text-gray-400">{fmtHourLabel(h.hour)}</span>
-                  <span className="font-semibold text-gray-700"> · {hourlyValues[i]}</span>
-                </span>
-              ))}
-            </div>
+            <HourlyBarChart data={stats?.hourly || []} />
           </div>
         )}
 
