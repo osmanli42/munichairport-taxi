@@ -463,6 +463,8 @@ function BuchenContent() {
         toll_amount: tollAmount > 0 ? tollAmount : undefined,
         zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
         promo_code: appliedPromo?.code || undefined,
+        rechnung_required: rechnungRequired && rechnungAdresse.trim() ? 1 : 0,
+        rechnung_adresse: rechnungRequired && rechnungAdresse.trim() ? rechnungAdresse : undefined,
       };
       if (payment === 'card' && cardResult) {
         body.stripe_customer_id = cardResult.customerId;
