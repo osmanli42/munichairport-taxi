@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { query, run } from '../db';
+import { roundGrossPrice } from './rechnung';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-03-25.dahlia' as any })
@@ -88,11 +89,17 @@ export async function chargeSavedCard(bookingId: number, card: ChargeableCard, a
   const s = requireStripe();
   await run('UPDATE bookings SET charge_status = ? WHERE id = ?', ['pending', bookingId]);
 
+  // Round up to the nearest 0.50 — matches formatPrice()/roundGrossPrice() used
+  // everywhere the price is DISPLAYED (admin lists, invoices). bookings.price stores
+  // the raw calculated value, so charging it as-is silently undercharges by up to 0.49€
+  // relative to what the admin actually sees on screen.
+  const chargeAmount = roundGrossPrice(amountEur);
+
   try {
     const intent = await s.paymentIntents.create({
       customer: card.stripe_customer_id,
       payment_method: card.stripe_payment_method_id,
-      amount: Math.round(amountEur * 100),
+      amount: Math.round(chargeAmount * 100),
       currency: 'eur',
       off_session: true,
       confirm: true,
