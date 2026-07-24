@@ -1250,6 +1250,59 @@ function BuchenContent() {
                 </div>
               </div>
               )}
+
+              {/* Rechnung für Firma */}
+              <div className="flex items-center justify-between py-3 border-t border-gray-100">
+                <div className="flex items-center gap-3">
+                  <FileText size={22} className="text-gray-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{rx.toggle}</p>
+                    <p className="text-xs text-gray-500">{rx.toggleHint}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newVal = !rechnungRequired;
+                    setRechnungRequired(newVal);
+                    if (newVal) {
+                      setRechnungDraft(rechnungAdresse);
+                      setShowRechnungBeispiel(false);
+                      setShowRechnungModal(true);
+                    } else {
+                      setRechnungAdresse('');
+                      setErrors(e => { const { rechnung, ...rest } = e; return rest; });
+                    }
+                  }}
+                  className={cn(
+                    'w-12 h-7 rounded-full transition-colors relative',
+                    rechnungRequired ? 'bg-green-500' : 'bg-gray-300'
+                  )}
+                >
+                  <span className={cn(
+                    'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                    rechnungRequired ? 'translate-x-5' : 'translate-x-0.5'
+                  )} />
+                </button>
+              </div>
+              {rechnungRequired && rechnungAdresse && (
+                <div className="mb-3 bg-green-50 rounded-xl p-4 border border-green-100 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-green-700 flex items-center gap-1">
+                      <Check size={12} /> {rx.saved}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-words">{rechnungAdresse}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setRechnungDraft(rechnungAdresse); setShowRechnungBeispiel(false); setShowRechnungModal(true); }}
+                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 shrink-0"
+                  >
+                    {rx.edit}
+                  </button>
+                </div>
+              )}
+              {errors.rechnung && <p className="text-red-500 text-xs mb-3">{errors.rechnung}</p>}
             </div>
 
             {/* Payment */}
