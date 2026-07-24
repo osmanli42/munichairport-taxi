@@ -468,6 +468,31 @@ export async function initializeDatabase(): Promise<void> {
     }
     // ────────────────────────────────────────────────────────────────────
 
+    // Migration: customer-requested invoice (Rechnung). The customer opts in on
+    // /buchen and supplies their own billing address; autoRechnungJob mails the
+    // invoice once the ride is over. The rechnung_* render params are stored so the
+    // exact same PDF can be reproduced later (Datum/Zahlungsziel would otherwise be
+    // recomputed from "now" — see generateRechnungPdf's invoice_date).
+    const bookingRechnungCols = [
+      `ALTER TABLE bookings ADD COLUMN rechnung_required TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_adresse TEXT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_sent_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_mwst INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_sprache VARCHAR(5) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_zahlungsart VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_attempts INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE bookings ADD COLUMN rechnung_error TEXT DEFAULT NULL`,
+    ];
+    for (const stmt of bookingRechnungCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+    // Index for the auto-invoice cron's candidate scan (runs every minute).
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD INDEX idx_rechnung_pending (rechnung_required, rechnung_number)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+    // ────────────────────────────────────────────────────────────────────
+
     // Migration: company card-on-file (Stripe) columns
     const companyCardCols = [
       `ALTER TABLE companies ADD COLUMN stripe_customer_id VARCHAR(100) DEFAULT NULL`,
