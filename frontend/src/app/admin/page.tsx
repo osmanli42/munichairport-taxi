@@ -3212,6 +3212,28 @@ export default function AdminPage() {
                   <span className="font-medium text-right max-w-xs">{value}</span>
                 </div>
               ))}
+              {selectedBooking.rechnung_adresse && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Rechnungsadresse:</span>
+                  {/* Multi-line, customer-supplied — needs pre-line inside this flex row */}
+                  <span className="font-medium text-right max-w-xs whitespace-pre-line">{selectedBooking.rechnung_adresse}</span>
+                </div>
+              )}
+              {selectedBooking.rechnung_number && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Rechnung:</span>
+                  <span className="font-medium text-right max-w-xs text-emerald-700">
+                    {selectedBooking.rechnung_number}
+                    {selectedBooking.rechnung_sent_at && ` · ${formatDateTime(selectedBooking.rechnung_sent_at)}`}
+                  </span>
+                </div>
+              )}
+              {!selectedBooking.rechnung_number && selectedBooking.rechnung_error && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Rechnung-Fehler:</span>
+                  <span className="font-medium text-right max-w-xs text-red-600">{selectedBooking.rechnung_error}</span>
+                </div>
+              )}
               {selectedBooking.flight_number && (
                 <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
                   <span className="text-gray-500">Flugstatus:</span>
