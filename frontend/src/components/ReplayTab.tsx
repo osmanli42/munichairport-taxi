@@ -338,7 +338,12 @@ export default function ReplayTab({ token }: { token: string }) {
                   </span>
                 </div>
 
-                {r.pages && (
+                {route ? (
+                  <div className="text-xs text-gray-700 mb-2 flex items-start gap-1">
+                    <MapPin size={11} className="mt-0.5 shrink-0 text-gray-400" />
+                    <span className="break-words">{route.pickup} → {route.dropoff}</span>
+                  </div>
+                ) : r.pages && (
                   <div className="text-xs text-gray-600 truncate mb-2 flex items-start gap-1">
                     <MapPin size={11} className="mt-0.5 shrink-0 text-gray-400" />
                     <span className="truncate">{r.pages}</span>
