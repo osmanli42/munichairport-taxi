@@ -21,3 +21,15 @@ export function berlinMidnightUtcSql(offsetDays = 0): string {
 export function berlinDayOfMonth(): number {
   return +new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', day: '2-digit' }).format(new Date());
 }
+
+// Berlin-local wall-clock time as 'YYYY-MM-DD HH:mm:ss'. Needed to compare against
+// `pickup_datetime`, which is a plain VARCHAR of Berlin-local wall-clock time (see
+// buchen/page.tsx `${date}T${time}:00`), not a real DATETIME — so NOW() can't be used
+// directly. Space-separated (not 'T') so MySQL coerces it to DATETIME reliably.
+export function berlinNowSql(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).format(date);
+}
