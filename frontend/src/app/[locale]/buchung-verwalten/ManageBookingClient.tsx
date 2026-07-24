@@ -336,8 +336,9 @@ export default function ManageBookingClient() {
               </div>
             )}
 
-            {/* Invoice download — only once it has actually been sent */}
-            {booking.rechnung_number && (
+            {/* Invoice download — only once it has actually been sent, and never for a
+                cancelled ride (the backend rejects those too; see /manage/rechnung) */}
+            {booking.rechnung_number && booking.status !== 'cancelled' && (
               <div className="mt-6 border-t border-gray-100 pt-6">
                 <h3 className="font-bold text-gray-900 mb-2">{t('invoiceSectionTitle')}</h3>
                 <p className="text-sm text-gray-500 mb-4">{t('invoiceHint')}</p>
