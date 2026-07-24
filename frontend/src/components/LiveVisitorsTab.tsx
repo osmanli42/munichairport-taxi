@@ -196,17 +196,19 @@ function getStatus(s: LiveSession): { label: string; dot: string; text: string }
   return { label: `Pasif ${fmtDuration(s.idle_seconds)}`, dot: 'bg-red-400', text: 'text-red-600' };
 }
 
-// SVG Sparkline
-function Sparkline({ data, width = 120, height = 36, color = '#10b981' }: {
-  data: number[]; width?: number; height?: number; color?: string;
+// SVG Sparkline. `labels[i]`, if given, becomes a native hover tooltip ("HH:00 · N ziyaretçi")
+// on each point via <title> — lets you read every hour's count, not just the endpoints.
+function Sparkline({ data, labels, width = 120, height = 36, color = '#10b981' }: {
+  data: number[]; labels?: string[]; width?: number; height?: number; color?: string;
 }) {
   if (!data || data.length < 2) return <div className="text-xs text-gray-400">Veri yok</div>;
   const max = Math.max(...data, 1);
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - (v / max) * height;
-    return `${x},${y}`;
-  }).join(' ');
+  const coords = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * width,
+    y: height - (v / max) * height,
+    v,
+  }));
+  const points = coords.map(c => `${c.x},${c.y}`).join(' ');
   const area = `0,${height} ${points} ${width},${height}`;
   return (
     <svg width={width} height={height} className="overflow-visible">
@@ -218,12 +220,15 @@ function Sparkline({ data, width = 120, height = 36, color = '#10b981' }: {
       </defs>
       <polygon points={area} fill="url(#sg)" />
       <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {/* last point dot */}
-      {data.length > 0 && (() => {
-        const lastX = width;
-        const lastY = height - (data[data.length - 1] / max) * height;
-        return <circle cx={lastX} cy={lastY} r="3" fill={color} />;
-      })()}
+      {/* hover targets — one per hour, wider invisible circle for an easy hit area + a visible dot */}
+      {coords.map((c, i) => (
+        <g key={i}>
+          <circle cx={c.x} cy={c.y} r="8" fill="transparent">
+            <title>{labels?.[i] ? `${labels[i]} · ${c.v} ziyaretçi` : `${c.v} ziyaretçi`}</title>
+          </circle>
+          <circle cx={c.x} cy={c.y} r={i === coords.length - 1 ? 3 : 2} fill={color} className={i === coords.length - 1 ? '' : 'opacity-60'} />
+        </g>
+      ))}
     </svg>
   );
 }
