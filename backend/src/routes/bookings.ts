@@ -364,6 +364,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // Billing address is free-form multi-line text typed by the customer. Normalise
+    // here too (not just client-side): drop blank lines and stray indentation so the
+    // RECHNUNGSEMPFÄNGER block on the PDF stays tight. /api/bookings is public.
+    const rechnungAdresseClean = typeof rechnung_adresse === 'string' && rechnung_adresse.trim()
+      ? rechnung_adresse.replace(/\r/g, '').split('\n').map((l: string) => l.trim()).filter(Boolean).join('\n').slice(0, 500)
+      : null;
+    const rechnungRequired = rechnung_required && rechnungAdresseClean ? 1 : 0;
+
     const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
