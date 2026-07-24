@@ -700,6 +700,9 @@ function sanitizeBookingForCustomer(booking: any) {
   const {
     card_number_enc, card_cvv_enc, card_holder, card_expiry,
     visitor_id, company_id, company_user_id, cost_center,
+    // Internal invoice bookkeeping — a Resend/API failure message is nothing the
+    // customer should see. rechnung_number/_sent_at stay: the download button needs them.
+    rechnung_error, rechnung_attempts,
     ...safe
   } = booking;
   const hoursUntilPickup = (new Date(booking.pickup_datetime).getTime() - Date.now()) / 3600000;
