@@ -743,14 +743,22 @@ router.post('/manage/lookup', async (req: Request, res: Response): Promise<void>
       res.status(400).json({ error: 'booking_number and email required' });
       return;
     }
+    const rateKeys = manageRateKeys(req, email);
+    if (rateKeys.some(k => isRateLimited(k, MANAGE_MAX_FAILURES))) {
+      res.status(429).json({ error: 'too_many_attempts' });
+      return;
+    }
+
     const [booking] = await query<any>(
       'SELECT * FROM bookings WHERE booking_number = ? AND LOWER(email) = LOWER(?)',
       [String(booking_number).trim(), String(email).trim()]
     );
     if (!booking) {
+      rateKeys.forEach(k => registerFailure(k, MANAGE_WINDOW_MS));
       res.status(404).json({ error: 'not_found' });
       return;
     }
+    rateKeys.forEach(clearRateLimit);
     res.json(sanitizeBookingForCustomer(booking));
   } catch (error) {
     console.error('Booking manage lookup error:', error);
