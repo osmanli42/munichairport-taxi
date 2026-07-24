@@ -41,6 +41,7 @@ export default function ManageBookingClient() {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelResult, setCancelResult] = useState<'idle' | 'success' | 'error'>('idle');
+  const [invoiceState, setInvoiceState] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const dateLocale = locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE';
 
