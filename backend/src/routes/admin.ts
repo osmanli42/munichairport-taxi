@@ -236,6 +236,23 @@ router.post('/bookings/:id/charge-card', authenticateAdmin, async (req: AuthRequ
   }
 });
 
+// Has the ride actually taken place? Guards the invoice-on-"abschließen" hook below.
+// Marking a *future* booking as completed (a slip, or clearing a backlog) would
+// otherwise mail a numbered invoice for a ride that hasn't happened — and since the
+// customer can still self-cancel up to 3h before pickup, they would be left holding a
+// valid-looking invoice for a trip nobody drove. When this returns false the invoice
+// isn't skipped, just deferred: autoRechnungJob picks it up once the ride is over.
+//
+// pickup_datetime is Berlin-local wall clock, so both sides are parsed as if UTC —
+// the offsets cancel out and the comparison stays DST-safe.
+function rideIsOver(booking: any): boolean {
+  const raw = String(booking?.pickup_datetime || '').replace(' ', 'T');
+  const pickup = new Date(`${raw}Z`);
+  if (isNaN(pickup.getTime())) return true; // unparseable — don't block on it
+  const endMs = pickup.getTime() + ((Number(booking.duration_minutes) || 0) + 15) * 60000;
+  return endMs <= new Date(`${berlinNowSql().replace(' ', 'T')}Z`).getTime();
+}
+
 // PATCH /api/admin/bookings/:id/status - Update booking status
 router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const { status } = req.body;
