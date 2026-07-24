@@ -543,6 +543,12 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE company_invoices ADD COLUMN manual_sent_at DATETIME DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Migration: Standard-Zahlungsziel für NEU angelegte Firmen auf 7 Tage (statt 14).
+    // Bestehende Firmen behalten ihr aktuelles payment_term_days — wird hier NICHT rückwirkend geändert.
+    try {
+      await conn.execute(`ALTER TABLE companies MODIFY COLUMN payment_term_days INT NOT NULL DEFAULT 7`);
+    } catch (e: any) { console.error('payment_term_days default migration failed:', e.message); }
+
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
     if (priceRows[0].count === 0) {
