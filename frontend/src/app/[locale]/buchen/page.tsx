@@ -282,6 +282,24 @@ function BuchenContent() {
     if (!rechnungAdresse) setRechnungRequired(false);
   };
 
+  // Esc to dismiss + lock background scroll while the modal is open.
+  useEffect(() => {
+    if (!showRechnungModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowRechnungModal(false);
+        setRechnungAdresse(prev => { if (!prev) setRechnungRequired(false); return prev; });
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showRechnungModal]);
+
   const isAirportPickup = pickup.includes('München-Flughafen');
   const isAirportDropoff = dropoff.includes('München-Flughafen');
   // Flight number is required whenever the driver needs it to track an arrival:
