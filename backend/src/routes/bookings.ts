@@ -696,6 +696,28 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
 
 const CANCEL_FREE_HOURS = 3;
 
+// Brute-force protection for the self-service endpoints. booking_number is
+// MAT{YYMMDD}-{4 digits}, i.e. only 9000 values per booking day, so someone who knows
+// a customer's email could otherwise walk the keyspace and read their booking, cancel
+// their ride, or pull their invoice.
+//
+// Two independent budgets, whichever runs out first:
+//   • per IP    — stops a plain single-host sweep
+//   • per email — stops the same victim being targeted from rotating IPs, which is the
+//                 shape this attack actually takes
+// Only misses count, and any successful match clears both, so genuine customers (incl.
+// several sharing a hotel/office IP) are unaffected. 20 is far below the ~9000 needed
+// to brute-force, yet way above normal human retyping.
+const MANAGE_MAX_FAILURES = 20;
+const MANAGE_WINDOW_MS = 15 * 60 * 1000;
+
+function manageRateKeys(req: Request, email: unknown): string[] {
+  return [
+    `manage:ip:${getClientIp(req) || 'unknown'}`,
+    `manage:mail:${String(email ?? '').trim().toLowerCase()}`,
+  ];
+}
+
 function sanitizeBookingForCustomer(booking: any) {
   if (!booking) return booking;
   const {
