@@ -797,6 +797,16 @@ function BuchenContent() {
                   </>
                 )}
 
+                {rechnungRequired && rechnungAdresse && (
+                  <>
+                    <hr className="border-gray-100" />
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{rx.modalTitle}</h3>
+                      <p className="text-gray-700 text-sm whitespace-pre-line">{rechnungAdresse}</p>
+                    </div>
+                  </>
+                )}
+
                 <hr className="border-gray-100" />
 
                 {/* Payment */}
