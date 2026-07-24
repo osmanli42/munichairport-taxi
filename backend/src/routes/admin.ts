@@ -324,6 +324,7 @@ router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Res
     'child_seat', 'child_seat_details', 'luggage_count', 'notes', 'price',
     'payment_method', 'language', 'trip_type', 'fahrrad_count',
     'anfahrt_cost', 'zwischenstopp_address', 'promo_code', 'discount_amount',
+    'rechnung_adresse',
   ];
 
   const updates: string[] = [];
