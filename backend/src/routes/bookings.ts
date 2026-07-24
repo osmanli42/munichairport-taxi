@@ -372,9 +372,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         stripe_customer_id, stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
         promo_code, discount_amount, visitor_id, flight_validated, flight_info,
-        company_id, company_user_id, cost_center, steuersatz
+        company_id, company_user_id, cost_center, steuersatz,
+        rechnung_required, rechnung_adresse
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
