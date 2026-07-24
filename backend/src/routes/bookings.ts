@@ -793,6 +793,55 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
   }
 });
 
+// POST /api/bookings/manage/rechnung - Download the invoice that was already sent.
+// Public, so it re-checks booking_number + email exactly like /manage/lookup. POST
+// rather than a GET link on purpose: the email would otherwise sit in the URL and
+// leak into access logs, browser history and Referer headers.
+// Rebuilt from the stored render params (rechnung_sent_at keeps Datum identical), so
+// the customer gets the same document that was mailed to them.
+router.post('/manage/rechnung', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { booking_number, email } = req.body;
+    if (!booking_number || !email) {
+      res.status(400).json({ error: 'booking_number and email required' });
+      return;
+    }
+    const [booking] = await query<any>(
+      'SELECT * FROM bookings WHERE booking_number = ? AND LOWER(email) = LOWER(?)',
+      [String(booking_number).trim(), String(email).trim()]
+    );
+    if (!booking) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    if (!booking.rechnung_number) {
+      res.status(404).json({ error: 'no_invoice' });
+      return;
+    }
+
+    const { fetchBankSettings, generateRechnungPdf } = await import('../services/rechnung');
+    const s = await fetchBankSettings();
+    const steuersatz = Number(booking.rechnung_mwst);
+    const pdfBuffer = await generateRechnungPdf({
+      booking,
+      rechnungsnummer: booking.rechnung_number,
+      mwst: [0, 7, 19].includes(steuersatz) ? (steuersatz as 0 | 7 | 19) : 19,
+      lang: booking.rechnung_sprache === 'en' ? 'en' : 'de',
+      s,
+      empfaenger_adresse: booking.rechnung_adresse || undefined,
+      zahlungsart: booking.rechnung_zahlungsart || (booking.payment_method === 'card' ? 'kreditkarte' : 'bar'),
+      invoice_date: booking.rechnung_sent_at || undefined,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Rechnung_${booking.rechnung_number}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Booking manage rechnung error:', error);
+    res.status(500).json({ error: 'Failed to render invoice' });
+  }
+});
+
 // GET /api/bookings/:booking_number - Get booking by number (public)
 router.get('/:booking_number', async (req: Request, res: Response): Promise<void> => {
   try {
