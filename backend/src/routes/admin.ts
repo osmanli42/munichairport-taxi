@@ -267,7 +267,7 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
   // which stays the fallback when nobody touches the booking. Deliberately not wired
   // into autoStatusJob — that cron can flip a booking to 'completed' before the ride
   // has actually finished, which would invoice the customer too early.
-  if (status === 'completed' && booking?.rechnung_required && !booking.rechnung_number && booking.email) {
+  if (status === 'completed' && booking?.rechnung_required && !booking.rechnung_number && booking.email && rideIsOver(booking)) {
     sendRechnungForBooking(booking)
       .then(({ rechnungsnummer }) =>
         console.log(`[Rechnung] ${rechnungsnummer} an ${booking.email} gesendet (manuell abgeschlossen, Buchung ${booking.booking_number})`))
