@@ -310,6 +310,11 @@ export default function B2BTab({ token }: { token: string }) {
                       <div><span className="text-gray-500">Rabatt:</span> <span className="font-medium">{c.discount_percent}%</span></div>
                       <div><span className="text-gray-500">Zahlungsziel:</span> <span className="font-medium">{c.payment_term_days || 14} Tage</span></div>
                       <div><span className="text-gray-500">Zahlung:</span> <span className="font-medium">{c.allowed_payment_methods || 'cash,card'}</span></div>
+                      {(c.allowed_payment_methods || 'cash,card').includes('card') && (
+                        <div><span className="text-gray-500">Abrechnung:</span> <span className="font-medium">
+                          {c.charge_mode === 'on_confirm' ? 'Bei Buchung' : c.charge_mode === 'on_completion' ? 'Bei Fahrtende' : 'Manuell'}
+                        </span></div>
+                      )}
                       <div><span className="text-gray-500">Mitglied seit:</span> <span className="font-medium">{fmtDate(c.created_at)}</span></div>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
