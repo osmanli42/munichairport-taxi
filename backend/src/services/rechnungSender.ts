@@ -53,6 +53,12 @@ export function defaultsFromBooking(booking: any): {
   };
 }
 
+// Bookings currently being invoiced. The cron and the manual "abschließen" path run
+// in the same process and can target the same booking within the same minute;
+// rechnung_number is only written after a successful send, so without this claim both
+// could mail the customer. Cleared in the finally block below.
+const inFlight = new Set<number>();
+
 export async function sendRechnungForBooking(
   booking: any,
   opts: {
@@ -64,7 +70,25 @@ export async function sendRechnungForBooking(
   } = {}
 ): Promise<{ rechnungsnummer: string }> {
   if (!booking?.email) throw new Error('Buchung hat keine E-Mail-Adresse');
+  if (inFlight.has(booking.id)) throw new Error('Rechnung wird für diese Buchung bereits versendet');
+  inFlight.add(booking.id);
+  try {
+    return await doSendRechnung(booking, opts);
+  } finally {
+    inFlight.delete(booking.id);
+  }
+}
 
+async function doSendRechnung(
+  booking: any,
+  opts: {
+    rechnungsnummer?: string;
+    mwst?: 0 | 7 | 19;
+    lang?: 'de' | 'en';
+    zahlungsart?: Zahlungsart;
+    empfaenger_adresse?: string;
+  }
+): Promise<{ rechnungsnummer: string }> {
   const d = defaultsFromBooking(booking);
   const rechnungsnummer = opts.rechnungsnummer?.trim() || (await nextRechnungsnummer());
   const mwst = opts.mwst ?? d.mwst;
