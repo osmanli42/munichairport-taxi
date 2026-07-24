@@ -1296,6 +1296,29 @@ export default function AdminPage() {
                                   🏢 {booking.company_name || 'Kurumsal'}
                                 </span>
                               )}
+                              {/* Customer-requested invoice: sent / still pending / failed */}
+                              {booking.rechnung_number ? (
+                                <span
+                                  className="inline-flex items-center gap-1 mt-1 ml-1 bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  title={`${booking.rechnung_number}${booking.rechnung_sent_at ? ` · ${formatDateTime(booking.rechnung_sent_at)}` : ''}`}
+                                >
+                                  🧾 Rechnung
+                                </span>
+                              ) : booking.rechnung_error ? (
+                                <span
+                                  className="inline-flex items-center gap-1 mt-1 ml-1 bg-red-100 text-red-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  title={booking.rechnung_error}
+                                >
+                                  🧾 Fehler
+                                </span>
+                              ) : booking.rechnung_required ? (
+                                <span
+                                  className="inline-flex items-center gap-1 mt-1 ml-1 bg-gray-100 text-gray-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  title="Kunde hat eine Rechnung angefordert — wird nach der Fahrt automatisch versendet"
+                                >
+                                  🧾 ausstehend
+                                </span>
+                              ) : null}
                             </td>
                             <td className="py-3 px-4 capitalize">{booking.vehicle_type}</td>
                             <td className="py-3 px-4">
