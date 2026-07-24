@@ -196,40 +196,28 @@ function getStatus(s: LiveSession): { label: string; dot: string; text: string }
   return { label: `Pasif ${fmtDuration(s.idle_seconds)}`, dot: 'bg-red-400', text: 'text-red-600' };
 }
 
-// SVG Sparkline. `labels[i]`, if given, becomes a native hover tooltip ("HH:00 · N ziyaretçi")
-// on each point via <title> — lets you read every hour's count, not just the endpoints.
-function Sparkline({ data, labels, width = 120, height = 36, color = '#10b981' }: {
-  data: number[]; labels?: string[]; width?: number; height?: number; color?: string;
+// Hourly bar chart — each bar's count + hour label live in the same flex item, so
+// they're guaranteed to line up (a separately-wrapped label row, tried before, drifted
+// out of sync with the bars once labels wrapped to a new line).
+function HourlyBarChart({ data, barAreaHeight = 64 }: {
+  data: { hour: string; sessions: number }[]; barAreaHeight?: number;
 }) {
-  if (!data || data.length < 2) return <div className="text-xs text-gray-400">Veri yok</div>;
-  const max = Math.max(...data, 1);
-  const coords = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * width,
-    y: height - (v / max) * height,
-    v,
-  }));
-  const points = coords.map(c => `${c.x},${c.y}`).join(' ');
-  const area = `0,${height} ${points} ${width},${height}`;
+  if (!data || data.length === 0) return <div className="text-xs text-gray-400">Veri yok</div>;
+  const max = Math.max(...data.map(d => Number(d.sessions)), 1);
   return (
-    <svg width={width} height={height} className="overflow-visible">
-      <defs>
-        <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill="url(#sg)" />
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {/* hover targets — one per hour, wider invisible circle for an easy hit area + a visible dot */}
-      {coords.map((c, i) => (
-        <g key={i}>
-          <circle cx={c.x} cy={c.y} r="8" fill="transparent">
-            <title>{labels?.[i] ? `${labels[i]} · ${c.v} ziyaretçi` : `${c.v} ziyaretçi`}</title>
-          </circle>
-          <circle cx={c.x} cy={c.y} r={i === coords.length - 1 ? 3 : 2} fill={color} className={i === coords.length - 1 ? '' : 'opacity-60'} />
-        </g>
-      ))}
-    </svg>
+    <div className="flex items-end gap-1 overflow-x-auto pb-1">
+      {data.map(d => {
+        const v = Number(d.sessions);
+        const barH = Math.max((v / max) * barAreaHeight, 3);
+        return (
+          <div key={d.hour} className="flex flex-col items-center shrink-0 w-9" title={`${fmtHourLabel(d.hour)} · ${v} ziyaretçi`}>
+            <div className="text-[10px] font-semibold text-gray-700">{v}</div>
+            <div className="w-4 bg-emerald-500 rounded-t hover:bg-emerald-600 transition-colors" style={{ height: barH }} />
+            <div className="text-[9px] text-gray-400 mt-1 whitespace-nowrap">{fmtHourLabel(d.hour)}</div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
