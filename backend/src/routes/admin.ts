@@ -1635,38 +1635,51 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
       return;
     }
 
-    const s = await fetchBankSettings();
-
-    const pdfBuffer = await generateRechnungPdf({ booking, rechnungsnummer, mwst, lang, s, empfaenger_adresse, zahlungsart });
-
-    // ── Send email via Resend ───────────────────────────────────────────────
-    const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
-    const fromEmail = 'info@flughafen-muenchen.taxi';
-
-    const subject = lang === 'en'
-      ? `Your Invoice ${rechnungsnummer} – Munich Airport Taxi`
-      : `Ihre Rechnung ${rechnungsnummer} – Flughafen München Taxi`;
-
-    const htmlBody = buildRechnungEmail({ booking, rechnungsnummer, mwst, lang, s, zahlungsart });
-
-    const { error: sendError } = await resend.emails.send({
-      from: `Flughafen München Taxi <${fromEmail}>`,
-      to: booking.email,
-      subject,
-      html: htmlBody,
-      attachments: [{
-        filename: `Rechnung_${rechnungsnummer}.pdf`,
-        content: pdfBuffer.toString('base64'),
-      }],
-    });
-    if (sendError) throw new Error(`Resend: ${sendError.message}`);
-
-    await run('UPDATE bookings SET rechnung_number = ? WHERE id = ?', [rechnungsnummer, req.params.id]);
+    // Shared with autoRechnungJob: builds + mails the PDF and persists the render
+    // params, so this invoice can be reproduced later via .../rechnung.pdf.
+    await sendRechnungForBooking(booking, { rechnungsnummer, mwst, lang, empfaenger_adresse, zahlungsart });
 
     res.json({ success: true });
   } catch (error: any) {
     console.error('Rechnung error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate invoice' });
+  }
+});
+
+// GET /api/admin/bookings/:id/rechnung.pdf — re-render the invoice that was sent.
+// Nothing is archived, so the PDF is rebuilt from the stored render params; the
+// persisted rechnung_sent_at keeps Datum/Zahlungsziel identical to the customer's copy.
+router.get('/bookings/:id/rechnung.pdf', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    if (!booking.rechnung_number) {
+      res.status(404).json({ error: 'Für diese Buchung wurde noch keine Rechnung versendet' });
+      return;
+    }
+
+    const d = defaultsFromBooking(booking);
+    const s = await fetchBankSettings();
+    const pdfBuffer = await generateRechnungPdf({
+      booking,
+      rechnungsnummer: booking.rechnung_number,
+      mwst: [0, 7, 19].includes(Number(booking.rechnung_mwst)) ? Number(booking.rechnung_mwst) as 0 | 7 | 19 : d.mwst,
+      lang: booking.rechnung_sprache === 'en' ? 'en' : 'de',
+      s,
+      empfaenger_adresse: booking.rechnung_adresse || undefined,
+      zahlungsart: (booking.rechnung_zahlungsart as any) || d.zahlungsart,
+      invoice_date: booking.rechnung_sent_at || undefined,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Rechnung_${booking.rechnung_number}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Rechnung PDF error:', error);
+    res.status(500).json({ error: error.message || 'Failed to render invoice' });
   }
 });
 
