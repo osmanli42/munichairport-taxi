@@ -150,6 +150,13 @@ function BuchenContent() {
   const [fahrradCount, setFahrradCount] = useState(0);
   const [fahrradEnabled, setFahrradEnabled] = useState(false);
   const [fahrradPrice, setFahrradPrice] = useState(0);
+  // Optional company invoice: customer supplies their own billing address, which the
+  // backend mails as a PDF once the ride is over (see autoRechnungJob).
+  const [rechnungRequired, setRechnungRequired] = useState(false);
+  const [rechnungAdresse, setRechnungAdresse] = useState('');
+  const [showRechnungModal, setShowRechnungModal] = useState(false);
+  const [rechnungDraft, setRechnungDraft] = useState('');
+  const [showRechnungBeispiel, setShowRechnungBeispiel] = useState(false);
   const [maxLuggage, setMaxLuggage] = useState(10);
   const [roundtripDiscount, setRoundtripDiscount] = useState(5);
   const [vehiclePriceConfig, setVehiclePriceConfig] = useState<{ base_price: number; price_per_km: number; min_price: number; min_price_km: number } | null>(null);
