@@ -248,7 +248,7 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
 
     const invoiceNumber = `SR-${month.replace('-', '')}-${companyId}`;
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + (Number(company.payment_term_days) || 14));
+    dueDate.setDate(dueDate.getDate() + (Number(company.payment_term_days) || 7));
     const dueDateStr = dueDate.toISOString().slice(0, 10);
 
     await run(
