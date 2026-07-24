@@ -336,6 +336,34 @@ export default function ManageBookingClient() {
               </div>
             )}
 
+            {/* Invoice download — only once it has actually been sent */}
+            {booking.rechnung_number && (
+              <div className="mt-6 border-t border-gray-100 pt-6">
+                <h3 className="font-bold text-gray-900 mb-2">{t('invoiceSectionTitle')}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t('invoiceHint')}</p>
+                {invoiceState === 'error' && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">
+                    {t('invoiceError')}
+                  </div>
+                )}
+                <button
+                  onClick={handleDownloadInvoice}
+                  disabled={invoiceState === 'loading'}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-6 py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+                >
+                  {invoiceState === 'loading' ? (
+                    <><Loader2 size={16} className="animate-spin" /> {t('invoiceDownloading')}</>
+                  ) : (
+                    <><FileDown size={16} /> {t('invoiceDownload')}</>
+                  )}
+                </button>
+                <p className="mt-2 text-xs text-gray-400 text-center">
+                  {booking.rechnung_number}
+                  {booking.rechnung_sent_at ? ` · ${formatDateTime(booking.rechnung_sent_at)}` : ''}
+                </p>
+              </div>
+            )}
+
             <button
               onClick={resetSearch}
               className="mt-6 text-sm font-semibold text-primary-600 hover:text-primary-700"
