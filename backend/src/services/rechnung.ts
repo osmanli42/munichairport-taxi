@@ -147,7 +147,8 @@ export function generateRechnungPdf(opts: {
     doc.fontSize(17).font('WorkSans-Bold').fillColor(BRAND)
       .text(isEn ? 'INVOICE' : 'RECHNUNG', titleX, 50, { width: 250, align: 'right' });
 
-    const today = new Date();
+    const parsedInvoiceDate = opts.invoice_date ? new Date(opts.invoice_date) : null;
+    const today = parsedInvoiceDate && !isNaN(parsedInvoiceDate.getTime()) ? parsedInvoiceDate : new Date();
     const todayStr = fmtDate(today.toISOString(), lang);
     const dueDate = new Date(today);
     dueDate.setDate(dueDate.getDate() + 7);
