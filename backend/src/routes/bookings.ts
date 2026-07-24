@@ -6,7 +6,8 @@ import { sendAllNotifications, BookingNotificationData } from '../services/notif
 import { tripInZone, haversineKm, PgConfig, Coords } from '../utils/geo';
 import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
-import { getVisitorCoords } from '../utils/ipGeo';
+import { getVisitorCoords, getClientIp } from '../utils/ipGeo';
+import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLimit';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo } from '../services/stripeCards';
 
