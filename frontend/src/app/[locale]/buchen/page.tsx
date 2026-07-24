@@ -1487,6 +1487,110 @@ function BuchenContent() {
         </div>
       </div>
       <SocialProofToast locale={locale} />
+
+      {/* Rechnungsadresse modal */}
+      {showRechnungModal && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[998] transition-opacity duration-300" />
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center p-4 animate-cookie-in"
+            onClick={(e) => { if (e.target === e.currentTarget) closeRechnungModal(); }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="rechnung-modal-title"
+              className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                    <FileText size={24} className="text-gold-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 id="rechnung-modal-title" className="text-lg font-bold text-white">{rx.modalTitle}</h3>
+                    <p className="text-primary-200 text-xs mt-0.5">{rx.modalSubtitle}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeRechnungModal}
+                    aria-label={rx.cancel}
+                    className="ml-auto text-white/70 hover:text-white transition-colors shrink-0"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4">
+                {/* Warning + example toggle */}
+                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 mb-3">
+                  <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-800 flex-1">{rx.warning}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowRechnungBeispiel(v => !v)}
+                    title={rx.example}
+                    aria-expanded={showRechnungBeispiel}
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold shrink-0 hover:bg-amber-300 transition-colors"
+                  >
+                    ?
+                  </button>
+                </div>
+
+                {/* Example — mirrors the RECHNUNGSEMPFÄNGER block on the real PDF */}
+                {showRechnungBeispiel && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 mb-3 animate-fade-in">
+                    <p className="text-[10px] tracking-wide text-gray-400 mb-1">{rx.recipient}</p>
+                    <p className="text-sm font-semibold text-gray-900">Muster GmbH</p>
+                    <p className="text-xs text-gray-600 leading-5">
+                      Max Mustermann<br />
+                      Musterstraße 12<br />
+                      80331 München<br />
+                      {rx.country}
+                    </p>
+                  </div>
+                )}
+
+                <textarea
+                  autoFocus
+                  rows={6}
+                  value={rechnungDraft}
+                  onChange={(e) => setRechnungDraft(e.target.value)}
+                  placeholder={rx.placeholder}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none transition placeholder:text-gray-400"
+                />
+
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                  <button
+                    type="button"
+                    disabled={cleanRechnungAdresse(rechnungDraft).split('\n').length < 2}
+                    onClick={() => {
+                      const cleaned = cleanRechnungAdresse(rechnungDraft);
+                      setRechnungAdresse(cleaned);
+                      setRechnungRequired(true);
+                      setErrors(e => { const { rechnung, ...rest } = e; return rest; });
+                      setShowRechnungModal(false);
+                    }}
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:shadow-lg disabled:hover:shadow-none text-sm"
+                  >
+                    {rx.save}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeRechnungModal}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all duration-200 text-sm"
+                  >
+                    {rx.cancel}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
