@@ -398,7 +398,7 @@ export async function initializeDatabase(): Promise<void> {
         allowed_payment_methods VARCHAR(50) NOT NULL DEFAULT 'cash,card',
         pg_discount_override TINYINT(1) NOT NULL DEFAULT 0,
         discount_kombinierbar TINYINT(1) NOT NULL DEFAULT 0,
-        payment_term_days INT NOT NULL DEFAULT 14,
+        payment_term_days INT NOT NULL DEFAULT 7,
         status VARCHAR(20) NOT NULL DEFAULT 'pending',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id)
