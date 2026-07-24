@@ -89,6 +89,19 @@ async function doSendRechnung(
     empfaenger_adresse?: string;
   }
 ): Promise<{ rechnungsnummer: string }> {
+  // The caller's row may be stale: the cron reads its whole batch up front, so a
+  // booking invoiced manually mid-batch would still look unsent. Re-check before
+  // spending an invoice number. Explicit opts.rechnungsnummer means the admin is
+  // deliberately (re)issuing, so it bypasses this.
+  if (!opts.rechnungsnummer) {
+    const [fresh] = await query<{ rechnung_number: string | null }>(
+      'SELECT rechnung_number FROM bookings WHERE id = ?', [booking.id]
+    );
+    if (fresh?.rechnung_number) {
+      return { rechnungsnummer: fresh.rechnung_number };
+    }
+  }
+
   const d = defaultsFromBooking(booking);
   const rechnungsnummer = opts.rechnungsnummer?.trim() || (await nextRechnungsnummer());
   const mwst = opts.mwst ?? d.mwst;
