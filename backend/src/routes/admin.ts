@@ -9,7 +9,7 @@ import { signToken } from '../utils/trackingToken';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
 import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking } from '../services/rechnungSender';
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
-import { berlinMidnightUtcSql, berlinDayOfMonth } from '../utils/berlinTime';
+import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
 
 const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
