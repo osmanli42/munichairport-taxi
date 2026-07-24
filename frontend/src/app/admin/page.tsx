@@ -3269,7 +3269,12 @@ export default function AdminPage() {
                         : 19
                     );
                     setRechnungSprache('de');
-                    setRechnungEmpfaenger(selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : ''));
+                    // Prefer the billing address the customer supplied when booking;
+                    // fall back to name + email for older bookings.
+                    setRechnungEmpfaenger(
+                      selectedBooking.rechnung_adresse
+                        || selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : '')
+                    );
                     setEditingEmpfaenger(false);
                     setRechnungZahlungsart(selectedBooking.payment_method === 'card' ? 'kreditkarte' : 'bar');
                     setRechnungSuccess(false);
