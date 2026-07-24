@@ -836,11 +836,19 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 Tepe: {Math.max(...hourlyValues)} · Toplam: {hourlyValues.reduce((a, b) => a + b, 0)}
               </div>
             </div>
-            <Sparkline data={hourlyValues} width={600} height={56} color="#10b981" />
-            <div className="flex justify-between text-xs text-gray-300 mt-1">
-              <span>{fmtHourLabel(stats?.hourly[0]?.hour)}</span>
-              <span>{fmtHourLabel(stats?.hourly[Math.floor(stats.hourly.length / 2)]?.hour)}</span>
-              <span>{fmtHourLabel(stats?.hourly[stats.hourly.length - 1]?.hour)}</span>
+            <Sparkline
+              data={hourlyValues}
+              labels={(stats?.hourly || []).map(h => fmtHourLabel(h.hour))}
+              width={600} height={56} color="#10b981"
+            />
+            {/* Every hour's count, not just the chart's start/middle/end — hover a point above for the same info */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 pt-2 border-t">
+              {(stats?.hourly || []).map((h, i) => (
+                <span key={h.hour} className="whitespace-nowrap">
+                  <span className="text-gray-400">{fmtHourLabel(h.hour)}</span>
+                  <span className="font-semibold text-gray-700"> · {hourlyValues[i]}</span>
+                </span>
+              ))}
             </div>
           </div>
         )}
