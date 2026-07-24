@@ -14,7 +14,7 @@ const AIRPORT_TERMINALS = [
   { id: 'muc-t1d', label: '✈️ Terminal 1 · Modul D', address: 'Flughafen München, Terminal 1 Modul D, 85356 München-Flughafen' },
   { id: 'muc-t1e', label: '✈️ Terminal 1 · Modul E', address: 'Flughafen München, Terminal 1 Modul E, 85356 München-Flughafen' },
   { id: 'muc-t1f', label: '✈️ Terminal 1 · Modul F', address: 'Flughafen München, Terminal 1 Modul F, 85356 München-Flughafen' },
-  { id: 'muc-t2',  label: '✈️ Terminal 2', address: 'Flughafen München, Terminal 2, Terminalstraße Mitte 18, 85356 München-Flughafen' },
+  { id: 'muc-t2',  label: '✈️ Terminal 2', address: 'Flughafen München, Terminal 2 E03, 85356 München-Flughafen' },
   { id: 'muc-mac', label: '✈️ München Airport Center (MAC)', address: 'München Airport Center, Terminalstraße Mitte, 85356 München-Flughafen' },
 ];
 
