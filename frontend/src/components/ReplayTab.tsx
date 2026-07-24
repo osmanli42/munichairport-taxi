@@ -327,6 +327,11 @@ export default function ReplayTab({ token }: { token: string }) {
                   <span className="flex items-center gap-1 text-xs text-gray-600">
                     {devIcon(r.ua_device)} {r.ua_browser || '—'} · {r.ua_os || '—'}
                   </span>
+                  {(r.country || r.city) && (
+                    <span className="text-xs text-gray-600">
+                      {countryFlag(r.country)} {r.city || r.country}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1 text-xs text-gray-500 ml-auto">
                     <Clock size={11} /> {fmtDuration(r.session_seconds)} · {r.pageview_count || 0} sayfa
                   </span>
