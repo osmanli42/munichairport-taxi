@@ -102,6 +102,10 @@ export function generateRechnungPdf(opts: {
   s: Record<string, string>;
   empfaenger_adresse?: string;
   zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
+  // Issue date of the invoice. Defaults to now for a fresh invoice; pass the stored
+  // rechnung_sent_at when re-rendering an already-sent invoice so the reproduced PDF
+  // carries the same Datum/Zahlungsziel the customer received.
+  invoice_date?: string | Date;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const { booking, rechnungsnummer, lang, s, empfaenger_adresse, zahlungsart } = opts;
