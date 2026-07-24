@@ -143,6 +143,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         COUNT(*) AS chunk_count,
         vs.ua_browser, vs.ua_os, vs.ua_device,
         vs.referrer, vs.utm_source, vs.utm_campaign, vs.gclid,
+        vs.country, vs.city,
         vs.landing_page, vs.first_seen, vs.last_seen, vs.pageview_count,
         TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) AS session_seconds,
         (SELECT GROUP_CONCAT(DISTINCT path SEPARATOR ' → ')
