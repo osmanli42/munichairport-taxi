@@ -29,6 +29,8 @@ interface RecordingRow {
   utm_source: string | null;
   utm_campaign: string | null;
   gclid: string | null;
+  country: string | null;
+  city: string | null;
   landing_page: string | null;
   first_seen: string | null;
   last_seen: string | null;
