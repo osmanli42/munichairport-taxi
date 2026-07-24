@@ -46,6 +46,11 @@ interface LiveSession {
   form_submit_clicks: number;
   past_bookings_count: number;
   last_booking_date: string | null;
+  last_booking_pickup_address: string | null;
+  last_booking_dropoff_address: string | null;
+  last_booking_datetime: string | null;
+  last_booking_trip_type: string | null;
+  last_booking_return_datetime: string | null;
   avg_load_ms: number | null;
   lat: number | null;
   lng: number | null;
