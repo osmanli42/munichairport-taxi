@@ -524,6 +524,12 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`CREATE UNIQUE INDEX idx_bookings_cal_uid ON bookings (calendar_event_uid)`);
     } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
 
+    // Live-visitors dashboard now runs several correlated subqueries against
+    // bookings.visitor_id per request (tracking.ts) — this column had no index.
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD INDEX idx_visitor_id (visitor_id)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+
     // Alias-Zuordnung: Kalender-Eventtext → Firma (z.B. "BMW" → company 3)
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS company_aliases (
