@@ -26,6 +26,7 @@ import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
 import { startAutoStatusJob } from './services/autoStatusJob';
+import { startAutoRechnungJob } from './services/autoRechnungJob';
 
 dotenv.config();
 
