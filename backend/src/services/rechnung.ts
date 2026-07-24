@@ -146,7 +146,7 @@ export function generateRechnungPdf(opts: {
     const today = new Date();
     const todayStr = fmtDate(today.toISOString(), lang);
     const dueDate = new Date(today);
-    dueDate.setDate(dueDate.getDate() + 14);
+    dueDate.setDate(dueDate.getDate() + 7);
     const dueDateStr = fmtDate(dueDate.toISOString(), lang);
 
     const zahlungsartLabel = isPaid
