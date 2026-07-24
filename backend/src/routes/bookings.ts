@@ -821,6 +821,15 @@ router.post('/manage/rechnung', async (req: Request, res: Response): Promise<voi
       res.status(404).json({ error: 'no_invoice' });
       return;
     }
+    // A cancelled ride's invoice must not stay downloadable: the customer was never
+    // driven, so handing them a numbered invoice invites expense-report fraud. The
+    // record itself is kept (rechnung_number/_sent_at stay set) — it remains visible
+    // in admin and the number is not reused, which is what GoBD requires. Correcting
+    // an already-issued invoice is an admin job (Storno-/Gutschrift), not a delete.
+    if (booking.status === 'cancelled') {
+      res.status(403).json({ error: 'cancelled' });
+      return;
+    }
 
     const { fetchBankSettings, generateRechnungPdf } = await import('../services/rechnung');
     const s = await fetchBankSettings();
