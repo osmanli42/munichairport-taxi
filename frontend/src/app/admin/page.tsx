@@ -81,7 +81,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1528,6 +1528,47 @@ export default function AdminPage() {
                           const updated = await adminApi.updateSettings({ min_advance_hours: settings.min_advance_hours });
                           setSettings(updated);
                           setPriceSuccess('Vorlaufzeit aktualisiert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      disabled={settingsSaving}
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      {settingsSaving ? '...' : 'Speichern'}
+                    </button>
+                  </div>
+                </div>
+                {/* Checkout A/B test (variant B: mobile sticky price bar on /buchen) */}
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Checkout-Test (Mobile Preis-Leiste)</label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Prozentsatz der Besucher, die auf /buchen die neue mobile Preis-Leiste (Variante B) statt der
+                    normalen Ansicht sehen. "off" = niemand (0 %). Zuteilung ist pro Besucher dauerhaft (gleiche
+                    Person sieht immer dieselbe Variante).
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="10"
+                      min="0"
+                      max="100"
+                      value={settings.experiment_checkout_v2 === 'off' ? '0' : (settings.experiment_checkout_v2 || '0')}
+                      onChange={(e) => {
+                        const n = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+                        setSettings(prev => ({ ...prev, experiment_checkout_v2: String(n) }));
+                      }}
+                      className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    <span className="text-gray-500 text-sm">% der Besucher</span>
+                    <button
+                      onClick={async () => {
+                        setSettingsSaving(true);
+                        try {
+                          const value = settings.experiment_checkout_v2 === '0' ? 'off' : settings.experiment_checkout_v2;
+                          const updated = await adminApi.updateSettings({ experiment_checkout_v2: value });
+                          setSettings(updated);
+                          setPriceSuccess('Checkout-Test aktualisiert');
                           setTimeout(() => setPriceSuccess(''), 3000);
                         } catch { }
                         setSettingsSaving(false);
