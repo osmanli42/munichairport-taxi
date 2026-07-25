@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import { query } from '../db';
+import { formatPhoneDisplay } from '../utils/phone';
 
 // Standard-PDF-Fonts (Helvetica) unterstützen kein Türkisch (ı, ğ, ş, İ fehlen in WinAnsi).
 // Work Sans (SIL OFL) deckt alle Türkisch-Zeichen ab — für Rechnungen mit türkischen Namen registriert.
