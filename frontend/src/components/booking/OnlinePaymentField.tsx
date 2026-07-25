@@ -30,22 +30,15 @@ interface Props {
   notConfiguredText?: string;
 }
 
-const OnlinePaymentFieldInner = forwardRef<OnlinePaymentFieldHandle, Props>(
-  function OnlinePaymentFieldInner({ price, name, email }, ref) {
+interface InnerProps extends Props {
+  paymentIntentId: string;
+}
+
+const OnlinePaymentFieldInner = forwardRef<OnlinePaymentFieldHandle, InnerProps>(
+  function OnlinePaymentFieldInner({ name, email, paymentIntentId }, ref) {
     const stripe = useStripe();
     const elements = useElements();
-    const paymentIntentIdRef = useRef<string | null>(null);
     const [ready, setReady] = useState(false);
-
-    // Store intent id from the client secret supplied to <Elements>
-    useEffect(() => {
-      // The client secret is embedded in the Elements context; parse the PI id from it.
-      // Format: pi_xxx_secret_yyy
-      const secret = (elements as any)?._commonOptions?.clientSecret as string | undefined;
-      if (secret) {
-        paymentIntentIdRef.current = secret.split('_secret_')[0];
-      }
-    }, [elements, ready]);
 
     useImperativeHandle(ref, () => ({
       async confirmPayment(): Promise<OnlinePaymentOutcome> {
@@ -67,10 +60,7 @@ const OnlinePaymentFieldInner = forwardRef<OnlinePaymentFieldHandle, Props>(
         if (error) {
           return { success: false, error: error.message || 'Zahlung fehlgeschlagen' };
         }
-        // Retrieve confirmed PaymentIntent id
-        const piId = paymentIntentIdRef.current;
-        if (!piId) return { success: false, error: 'Unerwartete Antwort' };
-        return { success: true, paymentIntentId: piId };
+        return { success: true, paymentIntentId: paymentIntentId };
       },
     }));
 
@@ -148,7 +138,7 @@ const OnlinePaymentField = forwardRef<OnlinePaymentFieldHandle, Props>(
           appearance: { theme: 'stripe', variables: { borderRadius: '12px', colorPrimary: '#1e3a5f' } },
         }}
       >
-        <OnlinePaymentFieldInner ref={ref} {...props} />
+        <OnlinePaymentFieldInner ref={ref} {...props} paymentIntentId={intentIdRef.current!} />
       </Elements>
     );
   }
