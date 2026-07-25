@@ -28,17 +28,33 @@ export default function SocialProofToast({ locale }: { locale: string }) {
       }
     } catch {}
 
-    fetch(`${API_BASE}/bookings/recent-social`)
+    fetch(`${API_BASE}/settings`)
       .then(r => r.json())
-      .then((real: SocialItem[]) => {
-        const realMapped = (Array.isArray(real) ? real : []).map(r => ({
-          name: r.name, dest: r.dest, minsAgo: r.minsAgo,
-        }));
-        if (own) realMapped.unshift(own);
-        setItems(realMapped.slice(0, 20));
+      .then(s => {
+        if (s?.social_proof_enabled === '0') return; // disabled in admin
+        fetch(`${API_BASE}/bookings/recent-social`)
+          .then(r => r.json())
+          .then((real: SocialItem[]) => {
+            const realMapped = (Array.isArray(real) ? real : []).map(r => ({
+              name: r.name, dest: r.dest, minsAgo: r.minsAgo,
+            }));
+            if (own) realMapped.unshift(own);
+            setItems(realMapped.slice(0, 20));
+          })
+          .catch(() => { setItems(own ? [own] : []); });
       })
       .catch(() => {
-        setItems(own ? [own] : []);
+        // settings unreachable — show toast anyway
+        fetch(`${API_BASE}/bookings/recent-social`)
+          .then(r => r.json())
+          .then((real: SocialItem[]) => {
+            const realMapped = (Array.isArray(real) ? real : []).map(r => ({
+              name: r.name, dest: r.dest, minsAgo: r.minsAgo,
+            }));
+            if (own) realMapped.unshift(own);
+            setItems(realMapped.slice(0, 20));
+          })
+          .catch(() => { setItems(own ? [own] : []); });
       });
   }, []);
 
