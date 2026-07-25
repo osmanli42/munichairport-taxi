@@ -12,7 +12,7 @@ import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
-import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo } from '../services/stripeCards';
+import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -97,6 +97,31 @@ router.post('/card-setup-confirm', async (req: Request, res: Response): Promise<
   }
 });
 
+// POST /api/bookings/payment-intent — create a PaymentIntent for online payment
+// (Apple Pay, Link, Klarna etc. via PaymentElement).
+router.post('/payment-intent', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { amount_eur, name, email } = req.body;
+    if (!amount_eur || amount_eur <= 0) { res.status(400).json({ error: 'amount_eur required' }); return; }
+    const result = await createBookingPaymentIntent({ amountEur: amount_eur, name, email });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to create payment intent' });
+  }
+});
+
+// PUT /api/bookings/payment-intent/:id — update amount when extras change
+router.put('/payment-intent/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { amount_eur } = req.body;
+    if (!amount_eur || amount_eur <= 0) { res.status(400).json({ error: 'amount_eur required' }); return; }
+    await updateBookingPaymentIntentAmount(req.params.id, amount_eur);
+    res.json({ updated: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update payment intent' });
+  }
+});
+
 // POST /api/bookings - Create new booking
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -139,6 +164,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       cost_center,
       rechnung_required,
       rechnung_adresse,
+      payment_intent_id,
     } = req.body;
 
     // Validation
@@ -369,6 +395,23 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // Online payment (Apple Pay / Link / Klarna etc.) via PaymentElement — verify
+    // the PaymentIntent succeeded before accepting the booking.
+    let onlinePaymentVerified = false;
+    if (!companyData && payment_intent_id) {
+      try {
+        const pi = await verifyBookingPaymentIntent(payment_intent_id);
+        if (!pi.succeeded) {
+          res.status(400).json({ error: 'Payment has not been completed' });
+          return;
+        }
+        onlinePaymentVerified = true;
+      } catch {
+        res.status(400).json({ error: 'Invalid payment intent' });
+        return;
+      }
+    }
+
     // Billing address is free-form multi-line text typed by the customer. Normalise
     // here too (not just client-side): drop blank lines and stray indentation so the
     // RECHNUNGSEMPFÄNGER block on the PDF stays tight. /api/bookings is public.
@@ -460,6 +503,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       rechnungAdresseClean,
       phoneE164,
     ]);
+
+    // Record the confirmed PaymentIntent for online payments
+    if (onlinePaymentVerified && payment_intent_id) {
+      await run(
+        'UPDATE bookings SET stripe_charge_id = ?, charge_status = ?, stripe_payment_date = NOW() WHERE id = ?',
+        [payment_intent_id, 'succeeded', result.insertId]
+      );
+    }
 
     // Increment used_count for applied promo
     if (validatedPromoCode) {

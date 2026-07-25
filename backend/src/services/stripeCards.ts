@@ -140,6 +140,41 @@ export async function createAnonymousSetupIntent(opts: { name?: string; email?: 
   return { client_secret: intent.client_secret, stripe_customer_id: customer.id };
 }
 
+export async function createBookingPaymentIntent(opts: {
+  amountEur: number;
+  name?: string;
+  email?: string;
+}): Promise<{ client_secret: string; payment_intent_id: string }> {
+  const s = requireStripe();
+  const amountCents = Math.round(roundGrossPrice(opts.amountEur) * 100);
+  const intent = await s.paymentIntents.create({
+    amount: amountCents,
+    currency: 'eur',
+    automatic_payment_methods: { enabled: true },
+    metadata: { source: 'public_booking' },
+    ...(opts.email || opts.name ? {
+      receipt_email: opts.email || undefined,
+    } : {}),
+  });
+  if (!intent.client_secret) throw new Error('Stripe did not return a client_secret');
+  return { client_secret: intent.client_secret, payment_intent_id: intent.id };
+}
+
+export async function updateBookingPaymentIntentAmount(paymentIntentId: string, amountEur: number): Promise<void> {
+  const s = requireStripe();
+  const amountCents = Math.round(roundGrossPrice(amountEur) * 100);
+  await s.paymentIntents.update(paymentIntentId, { amount: amountCents });
+}
+
+export async function verifyBookingPaymentIntent(paymentIntentId: string): Promise<{ succeeded: boolean; amountEur: number }> {
+  const s = requireStripe();
+  const intent = await s.paymentIntents.retrieve(paymentIntentId);
+  return {
+    succeeded: intent.status === 'succeeded',
+    amountEur: intent.amount / 100,
+  };
+}
+
 export async function getPaymentMethodCardInfo(paymentMethodId: string): Promise<{ brand: string; last4: string; exp_month: number; exp_year: number }> {
   const s = requireStripe();
   const pm = await s.paymentMethods.retrieve(paymentMethodId);

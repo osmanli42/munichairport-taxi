@@ -8,6 +8,7 @@ import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
+import OnlinePaymentField, { OnlinePaymentFieldHandle } from '@/components/booking/OnlinePaymentField';
 import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
@@ -152,7 +153,7 @@ function BuchenContent() {
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
-  const [payment, setPayment] = useState<'cash' | 'card'>('cash');
+  const [payment, setPayment] = useState<'cash' | 'card' | 'online'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
   const paramReturnTime = params.get('return_time') || '10:00';
@@ -211,7 +212,9 @@ function BuchenContent() {
   const effectiveDuration = localZwischenstoppDuration > 0 ? localZwischenstoppDuration : duration;
 
   const cardFieldRef = useRef<CardPaymentFieldHandle>(null);
+  const onlinePaymentFieldRef = useRef<OnlinePaymentFieldHandle>(null);
   const [cardResult, setCardResult] = useState<CardPaymentResult | null>(null);
+  const [onlinePaymentResult, setOnlinePaymentResult] = useState<{ paymentIntentId: string } | null>(null);
   const [cardSubmitting, setCardSubmitting] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
@@ -404,6 +407,16 @@ function BuchenContent() {
       }
       setCardResult(result);
     }
+    if (payment === 'online') {
+      setCardSubmitting(true);
+      const result = await onlinePaymentFieldRef.current?.confirmPayment();
+      setCardSubmitting(false);
+      if (!result || !result.success) {
+        setErrors(prev => ({ ...prev, card: result?.error || tx.err_card }));
+        return;
+      }
+      setOnlinePaymentResult(result);
+    }
     setSubmitState('review');
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   }
@@ -502,6 +515,9 @@ function BuchenContent() {
       if (payment === 'card' && cardResult) {
         body.stripe_customer_id = cardResult.customerId;
         body.stripe_payment_method_id = cardResult.paymentMethodId;
+      }
+      if (payment === 'online' && onlinePaymentResult) {
+        body.payment_intent_id = onlinePaymentResult.paymentIntentId;
       }
 
       const res = await fetch(`${API_URL}/bookings`, {
@@ -659,7 +675,7 @@ function BuchenContent() {
                   <div className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {luggageCount} {locale === 'de' ? 'Gepäckstück(e)' : locale === 'en' ? 'Luggage' : 'Bagaj'}</div>
                   {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> {flightNumber}</div>}
                   {pickupSign && <div className="flex items-center gap-2"><Signpost size={14} className="text-gray-400" /> <span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> {pickupSign}</div>}
-                  <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
+                  <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : payment === 'online' ? (locale === 'de' ? 'Online bezahlt' : locale === 'en' ? 'Paid online' : 'Online ödendi') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
                   {childSeat && <div className="flex items-center gap-2 col-span-2"><Baby size={14} className="text-gray-400 inline mr-1" /> {buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')}</div>}
                   {fahrradCount > 0 && <div className="flex items-center gap-2"><Bike size={14} className="text-gray-400 inline mr-1" /> {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</div>}
                   {notes && <div className="flex items-start gap-2 col-span-2"><StickyNote size={14} className="text-gray-400" /> {notes}</div>}
@@ -851,7 +867,7 @@ function BuchenContent() {
                 {/* Payment */}
                 <div>
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_payment_label}</h3>
-                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
+                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : payment === 'online' ? (locale === 'de' ? 'Online bezahlt ✓' : locale === 'en' ? 'Paid online ✓' : 'Online ödendi ✓') : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
                 </div>
               </div>
 
@@ -1416,45 +1432,29 @@ function BuchenContent() {
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><CreditCard size={16} /> {tx.payment}</h3>
               <div className="flex gap-2 mb-4">
-                {(['cash', 'card'] as const).map(m => (
-                  <button key={m} onClick={() => setPayment(m)}
-                    className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === m ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
-                    {m === 'cash' ? <><Banknote size={16} /> {tx.cash}</> : <><CreditCard size={16} /> {tx.card}</>}
-                  </button>
-                ))}
+                <button onClick={() => setPayment('cash')}
+                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'cash' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
+                  <Banknote size={16} /> {tx.cash}
+                </button>
+                <button onClick={() => setPayment('online')}
+                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'online' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
+                  <CreditCard size={16} /> {locale === 'de' ? 'Online bezahlen' : locale === 'en' ? 'Pay online' : 'Online öde'}
+                </button>
               </div>
-              {payment === 'card' && (
-                <div className="space-y-3 animate-fade-in">
-                  <CardPaymentField
-                    ref={cardFieldRef}
+              {payment === 'online' && (
+                <div className="space-y-3">
+                  <OnlinePaymentField
+                    ref={onlinePaymentFieldRef}
                     locale={locale}
+                    price={price}
                     name={name.trim() || undefined}
                     email={email.trim() || undefined}
-                    errorText={errors.card}
-                    notConfiguredText={locale === 'tr' ? 'Kart ödemesi henüz yapılandırılmadı.' : locale === 'en' ? 'Card payment is not configured yet.' : 'Kartenzahlung ist noch nicht konfiguriert.'}
-                    trustText={locale === 'tr' ? 'Kart bilgileriniz şifrelenerek doğrudan ödeme sağlayıcımız Stripe\'a iletilir ve sunucularımızda asla saklanmaz.' : locale === 'en' ? 'Your card details are encrypted and transmitted directly to our payment provider Stripe — they are never stored on our servers.' : 'Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.'}
                   />
-                  {/* SSL trust box */}
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <Lock size={15} />
-                      <p className="font-semibold">
-                        {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={15} />
-                      <p className="text-blue-600">
-                        {locale === 'tr' ? 'Ödeme yolculuktan 1 gün önce — iptal halinde tam iade' : locale === 'en' ? 'Payment 1 day before the trip — full refund if cancelled' : 'Keine Abbuchung bis 1 Tag vor der Fahrt — vollständige Rückerstattung bei Storno'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BadgeCheck size={15} />
-                      <p className="font-semibold text-blue-800">
-                        {locale === 'tr' ? '%100 Risk Yok — Güvenle Rezervasyon Yap' : locale === 'en' ? '100% No Risk — Book with Confidence' : '100% Kein Risiko — Einfach & sicher buchen'}
-                      </p>
-                    </div>
-                  </div>
+                  {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    <Lock size={11} />
+                    {locale === 'de' ? 'SSL-verschlüsselt · Zahlung über Stripe' : locale === 'en' ? 'SSL encrypted · Payment via Stripe' : 'SSL şifreli · Stripe ile ödeme'}
+                  </p>
                 </div>
               )}
             </div>
