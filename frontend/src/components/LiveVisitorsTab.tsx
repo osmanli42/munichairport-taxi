@@ -74,11 +74,26 @@ interface TodayKpi {
 interface ActivityEvent {
   id: string;
   time: Date;
-  type: 'new_visitor' | 'booking_completed' | 'visitor_left' | 'price_viewed' | 'booking_started';
+  type: 'new_visitor' | 'booking_completed' | 'visitor_left' | 'price_viewed' | 'booking_started' | 'form_submit' | 'milestone';
   message: string;
   detail?: string;
   icon: string;
   color: string;
+}
+
+// Raw row shape returned by GET /admin/activity-events — one derived event, sourced
+// straight from the underlying tables' own timestamps (see that endpoint's comment).
+interface RawActivityRow {
+  type: ActivityEvent['type'];
+  ts: string;
+  city?: string | null;
+  country?: string | null;
+  referrer?: string | null;
+  utm_source?: string | null;
+  gclid?: string | null;
+  session_seconds?: number;
+  milestone?: number;
+  revenue?: number;
 }
 
 function fmtDuration(sec: number): string {
