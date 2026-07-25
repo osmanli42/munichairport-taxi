@@ -458,6 +458,109 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
   }
 });
 
+// GET /api/admin/activity-events — the "Canlı Olay Akışı" panel's history, for the
+// current Berlin day. Deliberately NOT a write-time log (no cron writing rows as
+// things happen): every event type here already has a natural timestamp on an
+// existing table (first_seen, viewed_at, occurred_at, created_at), so the whole
+// day's timeline is derived fresh on each read. That means it can't miss events
+// from periods when no admin had the tab open, and there's nothing to keep running
+// or to reset at midnight — "today" is just the WHERE clause.
+router.get('/admin/activity-events', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTables();
+    const today = berlinMidnightUtcSql(0);
+
+    const newVisitors = await query<any>(
+      `SELECT session_id, first_seen AS ts, city, country, referrer, utm_source, gclid
+       FROM visitor_sessions
+       WHERE is_bot = 0 AND first_seen >= ?`,
+      [today]
+    );
+
+    // First time this session hit /ergebnisse or /buchen today — one row per
+    // session (not one per pageview), matching what the live diff used to show.
+    const priceViewed = await query<any>(
+      `SELECT pv.session_id, MIN(pv.viewed_at) AS ts, s.city, s.country, s.referrer, s.utm_source, s.gclid
+       FROM visitor_pageviews pv
+       JOIN visitor_sessions s ON s.session_id = pv.session_id
+       WHERE s.is_bot = 0 AND pv.viewed_at >= ? AND pv.path LIKE '%/ergebnisse%'
+       GROUP BY pv.session_id`,
+      [today]
+    );
+
+    const bookingStarted = await query<any>(
+      `SELECT pv.session_id, MIN(pv.viewed_at) AS ts, s.city, s.country, s.referrer, s.utm_source, s.gclid
+       FROM visitor_pageviews pv
+       JOIN visitor_sessions s ON s.session_id = pv.session_id
+       WHERE s.is_bot = 0 AND pv.viewed_at >= ? AND pv.path LIKE '%/buchen%'
+       GROUP BY pv.session_id`,
+      [today]
+    );
+
+    // Same click-target patterns as booking_clicks/form_submit_clicks in
+    // /admin/live-visitors above — first submit-attempt click per session.
+    const formSubmit = await query<any>(
+      `SELECT ve.session_id, MIN(ve.occurred_at) AS ts, s.city, s.country, s.referrer, s.utm_source, s.gclid
+       FROM visitor_events ve
+       JOIN visitor_sessions s ON s.session_id = ve.session_id
+       WHERE s.is_bot = 0 AND ve.occurred_at >= ? AND ve.type = 'click'
+         AND (ve.target LIKE '%Jetzt buchen%' OR ve.target LIKE '%Weiter%' OR ve.target LIKE '%submit%' OR ve.target LIKE '%Anfrage%')
+       GROUP BY ve.session_id`,
+      [today]
+    );
+
+    // No table records "session ended" — a session only counts as left once it has
+    // dropped out of the live 60s window, so a currently-active session (however
+    // long it's been open) never shows here yet.
+    const visitorLeft = await query<any>(
+      `SELECT session_id, last_seen AS ts, city, country, referrer, utm_source, gclid,
+         TIMESTAMPDIFF(SECOND, first_seen, last_seen) AS session_seconds
+       FROM visitor_sessions
+       WHERE is_bot = 0 AND last_seen >= ? AND TIMESTAMPDIFF(SECOND, last_seen, NOW()) > 60`,
+      [today]
+    );
+
+    // City/country for a booking comes from the visitor's most recent tracked
+    // session — bookings.visitor_id has no direct session_id of its own.
+    const bookingsToday = await query<any>(
+      `SELECT b.id, b.created_at AS ts, b.price,
+         (SELECT s.city FROM visitor_sessions s WHERE s.visitor_id = b.visitor_id ORDER BY s.first_seen DESC LIMIT 1) AS city,
+         (SELECT s.country FROM visitor_sessions s WHERE s.visitor_id = b.visitor_id ORDER BY s.first_seen DESC LIMIT 1) AS country
+       FROM bookings b
+       WHERE b.created_at >= ? AND b.status != 'cancelled' AND b.visitor_id IS NOT NULL AND b.visitor_id != ''
+       ORDER BY b.created_at ASC`,
+      [today]
+    );
+
+    const events: any[] = [];
+    newVisitors.forEach((r: any) => events.push({ type: 'new_visitor', ...r }));
+    priceViewed.forEach((r: any) => events.push({ type: 'price_viewed', ...r }));
+    bookingStarted.forEach((r: any) => events.push({ type: 'booking_started', ...r }));
+    formSubmit.forEach((r: any) => events.push({ type: 'form_submit', ...r }));
+    visitorLeft.forEach((r: any) => events.push({ type: 'visitor_left', ...r }));
+
+    // Milestone crossings (1st, 2nd, 5th, ... booking of the day) fall out of the
+    // same chronological pass — same numbers the KPI-strip celebration uses.
+    const MILESTONES = [1, 2, 5, 10, 15, 20, 25, 30, 50];
+    let runningRevenue = 0;
+    bookingsToday.forEach((b: any, idx: number) => {
+      const position = idx + 1;
+      runningRevenue += Number(b.price) || 0;
+      events.push({ type: 'booking_completed', ts: b.ts, city: b.city, country: b.country });
+      if (MILESTONES.includes(position)) {
+        events.push({ type: 'milestone', ts: b.ts, milestone: position, revenue: runningRevenue });
+      }
+    });
+
+    events.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+
+    res.json({ events: events.slice(0, 500) });
+  } catch (err: any) {
+    console.error('activity-events error:', err.message);
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
 // GET /api/admin/visitor-stats?range=today|7d|30d
 router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
