@@ -874,7 +874,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
             <ArrowRight size={14} className="text-gray-300" />
             <FunnelStep label="Rezervasyon" value={funnel.bookings} color="bg-emerald-500" />
           </div>
-          <div className="flex items-center gap-4 mt-3">
+          <div className="flex items-center gap-4 mt-3 flex-wrap">
             <div className="text-xs text-gray-500">
               Toplam dönüşüm: <span className="font-semibold text-gray-700">{conv}%</span>
             </div>
@@ -883,6 +883,11 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 Fiyat → Buchen: <span className="font-semibold text-gray-700">
                   {funnel.started_booking > 0 ? ((funnel.started_booking / funnel.saw_prices) * 100).toFixed(0) : 0}%
                 </span>
+              </div>
+            )}
+            {funnel.all_bookings !== funnel.bookings && (
+              <div className="text-xs text-gray-400">
+                (Rezervasyon = sadece site üzerinden gelen ziyaretçiler. Telefon/admin/B2B/takvim dahil toplam: {funnel.all_bookings})
               </div>
             )}
           </div>
