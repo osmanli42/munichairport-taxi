@@ -63,7 +63,7 @@ interface Stats {
   sources: Array<{ source: string; sessions: number }>;
   devices: Array<{ device: string; sessions: number }>;
   hourly: Array<{ hour: string; sessions: number }>;
-  funnel: { visited: number; saw_prices: number; started_booking: number; bookings: number };
+  funnel: { visited: number; saw_prices: number; started_booking: number; bookings: number; all_bookings: number };
 }
 
 interface TodayKpi {
