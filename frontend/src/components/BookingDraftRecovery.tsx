@@ -49,7 +49,11 @@ export default function BookingDraftRecovery() {
   const [draft, setDraft] = useState<Draft | null>(null);
 
   useEffect(() => {
-    // Save the draft when on a results/booking page.
+    const currentFull = typeof window !== 'undefined'
+      ? window.location.pathname + window.location.search
+      : pathname;
+
+    // On booking/results pages: save current route as draft first.
     if (isBookingPage(pathname)) {
       try {
         const sp = new URLSearchParams(window.location.search);
@@ -58,7 +62,7 @@ export default function BookingDraftRecovery() {
         if (pickup && dropoff) {
           const priceRaw = Number(sp.get('price'));
           const d: Draft = {
-            path: window.location.pathname + window.location.search,
+            path: currentFull,
             pickup,
             dropoff,
             price: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
@@ -69,11 +73,12 @@ export default function BookingDraftRecovery() {
       } catch {
         /* localStorage unavailable — skip silently */
       }
-      return;
+      // Fall through — still try to show a *previous* draft if it differs from current page.
     }
 
-    // Show the resume card only on the home page.
-    if (!isHome(pathname)) {
+    // Show the resume card on the home page and on booking/results pages
+    // (only when the saved draft is for a different URL than the one currently open).
+    if (!isHome(pathname) && !isBookingPage(pathname)) {
       setDraft(null);
       return;
     }
@@ -84,6 +89,11 @@ export default function BookingDraftRecovery() {
       const d = JSON.parse(raw) as Draft;
       if (!d?.savedAt || Date.now() - d.savedAt > MAX_AGE_MS) {
         localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      // On booking pages: don't show the card for the page the user is already on.
+      if (isBookingPage(pathname) && d.path === currentFull) {
+        setDraft(null);
         return;
       }
       // Hide if a booking was completed after this draft was saved.
