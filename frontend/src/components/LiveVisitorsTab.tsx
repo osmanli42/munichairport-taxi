@@ -444,8 +444,11 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     if (!autoRefresh) return;
     const t1 = setInterval(loadLive, 5000);
     const t2 = setInterval(loadTodayKpi, 30000);
-    return () => { clearInterval(t1); clearInterval(t2); };
-  }, [autoRefresh, loadLive, loadTodayKpi]);
+    // Slightly slower than loadLive — it re-derives the whole day from several
+    // tables per call, which doesn't need 5s freshness on a dashboard.
+    const t3 = setInterval(loadActivityFeed, 10000);
+    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3); };
+  }, [autoRefresh, loadLive, loadTodayKpi, loadActivityFeed]);
 
   const totals = stats?.totals || { total_sessions: 0, unique_visitors: 0, total_pageviews: 0, bounces: 0 };
   const bounceRate = totals.total_sessions > 0 ? Math.round((Number(totals.bounces) / Number(totals.total_sessions)) * 100) : 0;
