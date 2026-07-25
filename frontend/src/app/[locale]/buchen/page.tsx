@@ -1432,12 +1432,24 @@ function BuchenContent() {
                     locale={locale}
                     name={name.trim() || undefined}
                     email={email.trim() || undefined}
+                    errorText={errors.card}
+                    notConfiguredText={locale === 'tr' ? 'Kart ödemesi henüz yapılandırılmadı.' : locale === 'en' ? 'Card payment is not configured yet.' : 'Kartenzahlung ist noch nicht konfiguriert.'}
+                    trustText={locale === 'tr' ? 'Kart bilgileriniz şifrelenerek doğrudan ödeme sağlayıcımız Stripe\'a iletilir ve sunucularımızda asla saklanmaz.' : locale === 'en' ? 'Your card details are encrypted and transmitted directly to our payment provider Stripe — they are never stored on our servers.' : 'Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.'}
                   />
-                  {errors.card && <p className="text-red-500 text-xs">{errors.card}</p>}
-                  <p className="text-xs text-gray-400 flex items-center gap-1">
-                    <Lock size={11} />
-                    {locale === 'de' ? 'SSL-verschlüsselt · Zahlung über Stripe' : locale === 'en' ? 'SSL encrypted · Payment via Stripe' : 'SSL şifreli · Stripe ile ödeme'}
-                  </p>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Lock size={15} />
+                      <p className="font-semibold">
+                        {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BadgeCheck size={15} />
+                      <p className="font-semibold text-blue-800">
+                        {locale === 'tr' ? '%100 Risk Yok — Güvenle Rezervasyon Yap' : locale === 'en' ? '100% No Risk — Book with Confidence' : '100% Kein Risiko — Einfach & sicher buchen'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
