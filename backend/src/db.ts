@@ -131,6 +131,7 @@ export async function initializeDatabase(): Promise<void> {
       ['reminder_enabled', 'true'],
       ['reminder_time', '18:00'],
       ['flight_validation_enabled', '1'],
+      ['phone_validation_enabled', '1'],
       ['portal_tracking_enabled', '1'],
       ['b2b_applications_enabled', '1'],
     ];
@@ -181,6 +182,16 @@ export async function initializeDatabase(): Promise<void> {
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN flight_info TEXT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
+    // Migration: add phone validation columns to bookings.
+    // `phone` keeps whatever the customer typed; these hold the derived values, so
+    // existing rows stay untouched and simply carry NULL.
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN phone_e164 VARCHAR(20) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN phone_line_type VARCHAR(24) DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     // Migration: add kombinierbar to promotions

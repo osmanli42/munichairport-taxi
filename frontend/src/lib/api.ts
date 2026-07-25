@@ -63,6 +63,10 @@ export interface Booking {
   passengers: number;
   name: string;
   phone: string;
+  /** Canonical E.164, derived on booking creation. NULL on rows created before this existed. */
+  phone_e164?: string | null;
+  /** Twilio line type ('mobile' | 'landline' | 'nonFixedVoip' | …). NULL unless Twilio Lookup is configured. */
+  phone_line_type?: string | null;
   email: string;
   flight_number?: string;
   flight_validated?: string;
