@@ -1626,7 +1626,6 @@ function BuchenContent() {
         </button>
       </div>
       <SocialProofToast locale={locale} />
-      {submitState === 'idle' && <ExitIntentBar locale={locale} />}
 
       {/* Rechnungsadresse modal */}
       {showRechnungModal && (
