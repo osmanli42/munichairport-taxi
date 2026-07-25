@@ -429,9 +429,9 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
       vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
       child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
       language, trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-      promo_code, discount_amount, steuersatz
+      promo_code, discount_amount, steuersatz, source
     ) VALUES (
-      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin'
     )
   `, [
     booking_number,
