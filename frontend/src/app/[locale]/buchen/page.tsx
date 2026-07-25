@@ -8,7 +8,6 @@ import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
-import OnlinePaymentField, { OnlinePaymentFieldHandle } from '@/components/booking/OnlinePaymentField';
 import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
@@ -153,7 +152,7 @@ function BuchenContent() {
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
-  const [payment, setPayment] = useState<'cash' | 'card' | 'online'>('cash');
+  const [payment, setPayment] = useState<'cash' | 'card'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
   const paramReturnTime = params.get('return_time') || '10:00';
@@ -212,9 +211,7 @@ function BuchenContent() {
   const effectiveDuration = localZwischenstoppDuration > 0 ? localZwischenstoppDuration : duration;
 
   const cardFieldRef = useRef<CardPaymentFieldHandle>(null);
-  const onlinePaymentFieldRef = useRef<OnlinePaymentFieldHandle>(null);
   const [cardResult, setCardResult] = useState<CardPaymentResult | null>(null);
-  const [onlinePaymentResult, setOnlinePaymentResult] = useState<{ paymentIntentId: string } | null>(null);
   const [cardSubmitting, setCardSubmitting] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
@@ -407,16 +404,6 @@ function BuchenContent() {
       }
       setCardResult(result);
     }
-    if (payment === 'online') {
-      setCardSubmitting(true);
-      const result = await onlinePaymentFieldRef.current?.confirmPayment();
-      setCardSubmitting(false);
-      if (!result || !result.success) {
-        setErrors(prev => ({ ...prev, card: result?.error || tx.err_card }));
-        return;
-      }
-      setOnlinePaymentResult(result);
-    }
     setSubmitState('review');
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   }
@@ -515,9 +502,6 @@ function BuchenContent() {
       if (payment === 'card' && cardResult) {
         body.stripe_customer_id = cardResult.customerId;
         body.stripe_payment_method_id = cardResult.paymentMethodId;
-      }
-      if (payment === 'online' && onlinePaymentResult) {
-        body.payment_intent_id = onlinePaymentResult.paymentIntentId;
       }
 
       const res = await fetch(`${API_URL}/bookings`, {
@@ -675,7 +659,7 @@ function BuchenContent() {
                   <div className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {luggageCount} {locale === 'de' ? 'Gepäckstück(e)' : locale === 'en' ? 'Luggage' : 'Bagaj'}</div>
                   {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> {flightNumber}</div>}
                   {pickupSign && <div className="flex items-center gap-2"><Signpost size={14} className="text-gray-400" /> <span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> {pickupSign}</div>}
-                  <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : payment === 'online' ? (locale === 'de' ? 'Online bezahlt' : locale === 'en' ? 'Paid online' : 'Online ödendi') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
+                  <div className="flex items-center gap-2">{payment === 'cash' ? <Banknote size={14} className="text-gray-400" /> : <CreditCard size={14} className="text-gray-400" />} {payment === 'cash' ? (locale === 'de' ? 'Barzahlung' : locale === 'en' ? 'Cash' : 'Nakit') : (locale === 'de' ? 'Kreditkarte' : locale === 'en' ? 'Credit card' : 'Kredi kartı')}</div>
                   {childSeat && <div className="flex items-center gap-2 col-span-2"><Baby size={14} className="text-gray-400 inline mr-1" /> {buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')}</div>}
                   {fahrradCount > 0 && <div className="flex items-center gap-2"><Bike size={14} className="text-gray-400 inline mr-1" /> {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</div>}
                   {notes && <div className="flex items-start gap-2 col-span-2"><StickyNote size={14} className="text-gray-400" /> {notes}</div>}
@@ -867,7 +851,7 @@ function BuchenContent() {
                 {/* Payment */}
                 <div>
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_payment_label}</h3>
-                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : payment === 'online' ? (locale === 'de' ? 'Online bezahlt ✓' : locale === 'en' ? 'Paid online ✓' : 'Online ödendi ✓') : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
+                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
                 </div>
               </div>
 
@@ -1436,17 +1420,16 @@ function BuchenContent() {
                   className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'cash' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
                   <Banknote size={16} /> {tx.cash}
                 </button>
-                <button onClick={() => setPayment('online')}
-                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'online' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
-                  <CreditCard size={16} /> {locale === 'de' ? 'Online bezahlen' : locale === 'en' ? 'Pay online' : 'Online öde'}
+                <button onClick={() => setPayment('card')}
+                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'card' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
+                  <CreditCard size={16} /> {tx.card}
                 </button>
               </div>
-              {payment === 'online' && (
+              {payment === 'card' && (
                 <div className="space-y-3">
-                  <OnlinePaymentField
-                    ref={onlinePaymentFieldRef}
+                  <CardPaymentField
+                    ref={cardFieldRef}
                     locale={locale}
-                    price={price}
                     name={name.trim() || undefined}
                     email={email.trim() || undefined}
                   />
