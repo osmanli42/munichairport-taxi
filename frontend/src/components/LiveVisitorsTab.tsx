@@ -432,14 +432,13 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
             : `🏆 Bugün ${m}. rezervasyon tamamlandı!`;
           showMilestone(msg);
           sendNotification(msg, `Toplam bugünkü gelir: ${revenue.toFixed(0)}€`);
-          addEvent({ type: 'booking_completed', icon: '🏆', color: 'text-yellow-600', message: msg, detail: `Toplam gelir: ${revenue.toFixed(0)}€` });
         }
       }
       prevBookingCountRef.current = count;
     } catch {}
-  }, [token, showMilestone, sendNotification, addEvent]);
+  }, [token, showMilestone, sendNotification]);
 
-  useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); }, [loadLive, loadStats, loadTodayKpi]);
+  useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); loadActivityFeed(); }, [loadLive, loadStats, loadTodayKpi, loadActivityFeed]);
 
   useEffect(() => {
     if (!autoRefresh) return;
