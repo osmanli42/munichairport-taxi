@@ -334,34 +334,16 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       setLastUpdated(new Date());
       setError('');
 
-      // Diff against previous for activity feed
+      // Diff against previous poll — purely to trigger the toast/notification/banner,
+      // which need the tab open anyway. The persisted history panel on the right is
+      // no longer built from this; see loadActivityFeed.
       const prev = prevSessionsRef.current;
       const currMap = new Map(sessions.map(s => [s.session_id, s]));
 
       sessions.forEach(s => {
         const old = prev.get(s.session_id);
-        if (!old) {
-          const loc = s.city ? `${countryFlag(s.country || '')} ${s.city}` : '';
-          const src = sourceLabel(s);
-          addEvent({ type: 'new_visitor', icon: '🟢', color: 'text-green-600', message: `Yeni ziyaretçi geldi`, detail: `${loc} · ${src.label}` });
-        } else {
-          if (s.past_bookings_count > old.past_bookings_count) {
-            addEvent({ type: 'booking_completed', icon: '✅', color: 'text-emerald-700', message: `Rezervasyon tamamlandı!`, detail: s.city || '' });
-            sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
-          } else if (s.form_submit_clicks > old.form_submit_clicks) {
-            addEvent({ type: 'booking_started', icon: '📤', color: 'text-orange-600', message: `Rezervasyon gönderimi denendi`, detail: s.city || '' });
-          } else if (s.booking_clicks > old.booking_clicks && old.booking_clicks === 0) {
-            addEvent({ type: 'booking_started', icon: '🛒', color: 'text-orange-600', message: `Buchen sayfasına geçti`, detail: s.city || '' });
-          } else if (s.price_clicks > old.price_clicks && old.price_clicks === 0) {
-            addEvent({ type: 'price_viewed', icon: '💰', color: 'text-yellow-600', message: `Fiyatları görüntüledi`, detail: s.city || '' });
-          }
-        }
-      });
-
-      prev.forEach((oldSess, id) => {
-        if (!currMap.has(id)) {
-          const loc = oldSess.city || oldSess.country || '';
-          addEvent({ type: 'visitor_left', icon: '🔴', color: 'text-gray-500', message: `Ziyaretçi ayrıldı`, detail: `${loc} · ${fmtDuration(oldSess.session_seconds)}` });
+        if (old && s.past_bookings_count > old.past_bookings_count) {
+          sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
         }
       });
 
@@ -369,7 +351,48 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     } catch {
       setError('Veri alınamadı');
     }
-  }, [token, showBots, addEvent, sendNotification]);
+  }, [token, showBots, sendNotification]);
+
+  // The "Canlı Olay Akışı" history — derived server-side from source tables' own
+  // timestamps (see GET /admin/activity-events), so it survives reloads and covers
+  // the whole Berlin day even if this tab was closed while something happened.
+  const loadActivityFeed = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/admin/activity-events`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error('failed');
+      const d = await r.json();
+      const rows: RawActivityRow[] = d.events || [];
+      const mapped: ActivityEvent[] = rows.map((row, i) => {
+        const loc = row.city ? `${countryFlag(row.country || '')} ${row.city}` : '';
+        const src = sourceLabel(row);
+        const time = new Date(row.ts.includes('T') ? row.ts : row.ts.replace(' ', 'T'));
+        const id = `${row.type}-${row.ts}-${i}`;
+        switch (row.type) {
+          case 'new_visitor':
+            return { id, time, type: row.type, icon: '🟢', color: 'text-green-600', message: 'Yeni ziyaretçi geldi', detail: `${loc} · ${src.label}` };
+          case 'booking_completed':
+            return { id, time, type: row.type, icon: '✅', color: 'text-emerald-700', message: 'Rezervasyon tamamlandı!', detail: loc };
+          case 'form_submit':
+            return { id, time, type: row.type, icon: '📤', color: 'text-orange-600', message: 'Rezervasyon gönderimi denendi', detail: loc };
+          case 'booking_started':
+            return { id, time, type: row.type, icon: '🛒', color: 'text-orange-600', message: 'Buchen sayfasına geçti', detail: loc };
+          case 'price_viewed':
+            return { id, time, type: row.type, icon: '💰', color: 'text-yellow-600', message: 'Fiyatları görüntüledi', detail: loc };
+          case 'visitor_left':
+            return { id, time, type: row.type, icon: '🔴', color: 'text-gray-500', message: 'Ziyaretçi ayrıldı', detail: `${loc} · ${fmtDuration(row.session_seconds || 0)}` };
+          case 'milestone': {
+            const msg = row.milestone === 1 ? '🎉 Bugünün ilk rezervasyonu geldi!' : `🏆 Bugün ${row.milestone}. rezervasyon tamamlandı!`;
+            return { id, time, type: row.type, icon: '🏆', color: 'text-yellow-600', message: msg, detail: `Toplam gelir: ${Number(row.revenue || 0).toFixed(0)}€` };
+          }
+        }
+      });
+      setActivityFeed(mapped);
+    } catch {
+      // Keep whatever was last loaded rather than blanking the panel on a transient error.
+    }
+  }, [token]);
 
   const loadStats = useCallback(async () => {
     try {
