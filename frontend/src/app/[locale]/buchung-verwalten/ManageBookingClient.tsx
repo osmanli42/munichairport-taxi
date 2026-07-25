@@ -72,7 +72,7 @@ export default function ManageBookingClient() {
         body: JSON.stringify({ booking_number: bookingNumber.trim(), email: email.trim() }),
       });
       if (!res.ok) {
-        setErrorKey(res.status === 404 ? 'errorNotFound' : 'errorGeneric');
+        setErrorKey(res.status === 404 ? 'errorNotFound' : res.status === 429 ? 'errorTooMany' : 'errorGeneric');
         setState('error');
         return;
       }
