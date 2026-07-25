@@ -730,7 +730,10 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col">
           <div className="px-5 py-4 border-b flex items-center gap-2">
             <Activity size={16} className="text-gray-500" />
-            <h3 className="font-semibold text-sm">Canlı Olay Akışı</h3>
+            <div>
+              <h3 className="font-semibold text-sm leading-tight">Canlı Olay Akışı</h3>
+              <p className="text-[11px] text-gray-400 leading-tight">Bugün, 00:00&apos;dan itibaren</p>
+            </div>
             {activityFeed.length > 0 && (
               <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{activityFeed.length}</span>
             )}
