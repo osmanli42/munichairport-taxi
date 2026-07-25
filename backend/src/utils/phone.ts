@@ -73,3 +73,14 @@ export function toE164(raw: string | null | undefined, country: CountryCode = DE
   const result = parsePhone(raw, country);
   return result.ok ? result.e164 : null;
 }
+
+/**
+ * Human-readable grouping for emails and PDFs: '+4915141620000' -> '+49 1514 1620000'.
+ * Bookings now store E.164, which is unambiguous but reads as one long digit run.
+ * Falls back to the input unchanged so an unparseable number is still shown as given.
+ * Use this for visible text only — `tel:` and `wa.me` hrefs need the compact form.
+ */
+export function formatPhoneDisplay(raw: string | null | undefined, country: CountryCode = DEFAULT_COUNTRY): string {
+  const result = parsePhone(raw, country);
+  return result.ok ? result.formatted : (raw ?? '').trim();
+}
