@@ -8,6 +8,7 @@ import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
+import ExitIntentBar from '@/components/booking/ExitIntentBar';
 import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
@@ -1626,6 +1627,7 @@ function BuchenContent() {
         </button>
       </div>
       <SocialProofToast locale={locale} />
+      {submitState === 'idle' && <ExitIntentBar locale={locale} />}
 
       {/* Rechnungsadresse modal */}
       {showRechnungModal && (
