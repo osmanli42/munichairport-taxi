@@ -452,7 +452,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
 
   const totals = stats?.totals || { total_sessions: 0, unique_visitors: 0, total_pageviews: 0, bounces: 0 };
   const bounceRate = totals.total_sessions > 0 ? Math.round((Number(totals.bounces) / Number(totals.total_sessions)) * 100) : 0;
-  const funnel = stats?.funnel || { visited: 0, saw_prices: 0, started_booking: 0, bookings: 0 };
+  const funnel = stats?.funnel || { visited: 0, saw_prices: 0, started_booking: 0, bookings: 0, all_bookings: 0 };
   const conv = funnel.visited > 0 ? ((funnel.bookings / funnel.visited) * 100).toFixed(2) : '0.00';
   const hourlyValues = (stats?.hourly || []).map(h => Number(h.sessions));
 
