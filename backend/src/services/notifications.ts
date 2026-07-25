@@ -447,7 +447,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
     <div class="section">
       <h3>${lang === 'de' ? 'Ihre Daten' : lang === 'tr' ? 'Bilgileriniz' : 'Your Details'}</h3>
       <div class="row"><span class="label">${lang === 'de' ? 'Name' : lang === 'tr' ? 'Ad Soyad' : 'Name'}:</span><span class="value">${booking.name}</span></div>
-      <div class="row"><span class="label">${lang === 'de' ? 'Telefon' : lang === 'tr' ? 'Telefon' : 'Phone'}:</span><span class="value"><a href="tel:${booking.phone}" style="color:#1a365d;text-decoration:none;">${booking.phone}</a></span></div>
+      <div class="row"><span class="label">${lang === 'de' ? 'Telefon' : lang === 'tr' ? 'Telefon' : 'Phone'}:</span><span class="value"><a href="tel:${booking.phone}" style="color:#1a365d;text-decoration:none;">${formatPhoneDisplay(booking.phone)}</a></span></div>
       <div class="row"><span class="label">${lang === 'de' ? 'E-Mail' : lang === 'tr' ? 'E-Posta' : 'Email'}:</span><span class="value">${booking.email}</span></div>
       ${booking.flight_number ? `<div class="row"><span class="label">${t.flightNumber}:</span><span class="value">${booking.flight_number}</span></div>` : ''}
       ${booking.pickup_sign ? `<div class="row"><span class="label">🪧 ${t.pickupSign}:</span><span class="value" style="color:#b45309;font-weight:bold;">${booking.pickup_sign}</span></div>` : ''}
