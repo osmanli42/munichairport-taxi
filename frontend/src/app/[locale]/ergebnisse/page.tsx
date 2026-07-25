@@ -667,6 +667,9 @@ function ResultsContent() {
                           </div>
                         )}
                         <div className="text-xs text-green-600 font-semibold mt-0.5">{t.fixed}</div>
+                        <div className="text-xs text-green-700 font-semibold mt-0.5">
+                          💳 {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}
+                        </div>
                       </div>
                     </div>
 

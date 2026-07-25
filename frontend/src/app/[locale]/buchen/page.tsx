@@ -586,7 +586,12 @@ function BuchenContent() {
                     </div>
                     <span className="font-semibold text-gray-800">{vehicleLabel}</span>
                   </div>
-                  <span className="text-xl font-bold text-primary-600">{formatPrice(finalPrice)}</span>
+                  <div className="text-right">
+                    <span className="text-xl font-bold text-primary-600">{formatPrice(finalPrice)}</span>
+                    <p className="text-[11px] text-green-600 font-medium mt-0.5">
+                      {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Route */}
@@ -1560,6 +1565,7 @@ function BuchenContent() {
                     <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><Car size={12} /> {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
                   )}
                   <p className="text-xs text-green-600 font-medium mt-1">✅ {locale === 'de' ? 'Inkl. Maut & Gepäck' : locale === 'en' ? 'Incl. tolls & luggage' : 'Otoyol & bagaj dahil'}</p>
+                  <p className="text-xs text-green-700 font-semibold mt-1">💳 {locale === 'de' ? 'Keine Vorauszahlung — Zahlung beim Fahrer' : locale === 'en' ? 'No prepayment — pay the driver' : 'Ön ödeme yok — sürücüye ödeme'}</p>
                 </div>
               </div>
             </div>
