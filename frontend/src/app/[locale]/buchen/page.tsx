@@ -441,6 +441,10 @@ function BuchenContent() {
 
       const body: Record<string, unknown> = {
         visitor_id: typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') || undefined : undefined,
+        // Ties this booking back to the exact visitor_sessions row it came from, so the
+        // admin funnel (tracking.ts) can count real web conversions instead of every
+        // booking regardless of source. Dies with the tab, unlike mt_visitor_id.
+        session_id: typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mt_session_id') || undefined : undefined,
         pickup_address: pickup,
         dropoff_address: dropoff,
         pickup_datetime: pickupDatetime,
