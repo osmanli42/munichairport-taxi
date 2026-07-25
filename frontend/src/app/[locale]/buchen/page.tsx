@@ -232,7 +232,7 @@ function BuchenContent() {
       .catch(() => {});
     fetch(`${API_URL}/promotions/has-active`)
       .then(r => r.json())
-      .then(d => { if (d?.hasActive) setHasAnyActivePromo(true); })
+      .then(d => { if (d?.hasCodePromo) setHasAnyActivePromo(true); })
       .catch(() => {});
   }, []);
 

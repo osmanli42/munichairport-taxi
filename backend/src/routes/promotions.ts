@@ -30,9 +30,17 @@ router.get('/has-active', async (_req: Request, res: Response): Promise<void> =>
        LIMIT 1`,
       [today, today]
     );
-    res.json({ hasActive: !!promo });
+    const [codePromo] = await query<any>(
+      `SELECT id FROM promotions
+       WHERE active = 1 AND start_date <= ? AND end_date >= ?
+         AND (max_uses IS NULL OR used_count < max_uses)
+         AND (apply_mode IS NULL OR apply_mode = 'code')
+       LIMIT 1`,
+      [today, today]
+    );
+    res.json({ hasActive: !!promo, hasCodePromo: !!codePromo });
   } catch {
-    res.json({ hasActive: false });
+    res.json({ hasActive: false, hasCodePromo: false });
   }
 });
 
