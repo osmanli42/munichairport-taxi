@@ -4,11 +4,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 function getDbConfig(): mysql.ConnectionOptions {
+  const { DB_HOST, DB_USER, DB_PASS, DB_NAME } = process.env;
+  if (!DB_HOST || !DB_USER || !DB_PASS || !DB_NAME) {
+    throw new Error('Missing required DB env vars: DB_HOST, DB_USER, DB_PASS, DB_NAME must all be set.');
+  }
   return {
-    host: process.env.DB_HOST || 'srv1699.hstgr.io',
-    user: process.env.DB_USER || 'u609144885_FMT',
-    password: process.env.DB_PASS || 'Osman-1977',
-    database: process.env.DB_NAME || 'u609144885_FMT',
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASS,
+    database: DB_NAME,
     connectTimeout: 10000,
     ssl: { rejectUnauthorized: false },
   };
