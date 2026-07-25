@@ -758,13 +758,6 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
               </div>
             )}
           </div>
-          {activityFeed.length > 0 && (
-            <div className="px-5 py-3 border-t">
-              <button onClick={() => setActivityFeed([])} className="text-xs text-gray-400 hover:text-gray-600 transition">
-                Akışı temizle
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
