@@ -495,7 +495,7 @@ async function sendWhatsAppNotification(booking: BookingNotificationData): Promi
     `${booking.passengers} Pax - ${booking.vehicle_type}`,
     booking.flight_number ? `Flug: ${booking.flight_number}` : '',
     `Kunde: ${booking.name}`,
-    `Tel: ${booking.phone}`,
+    `Tel: ${formatPhoneDisplay(booking.phone)}`,
   ].filter(Boolean).join('%0A');
 
   await fetch(
