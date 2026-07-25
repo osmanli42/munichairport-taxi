@@ -539,9 +539,12 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
        WHERE s.is_bot = 0 AND s.first_seen >= ${since}`
     );
 
-    // Bookings in same range (from existing bookings table)
+    // Bookings in same range (from existing bookings table). Excludes cancelled ones
+    // to match the Dashboard's "Heute"/"Diese Woche" counters (admin.ts /stats) —
+    // without this filter a booking made and then cancelled the same day still
+    // counted as a funnel conversion.
     const [bookings] = await query<any>(
-      `SELECT COUNT(*) AS count FROM bookings WHERE created_at >= ${since}`
+      `SELECT COUNT(*) AS count FROM bookings WHERE created_at >= ${since} AND status != 'cancelled'`
     );
 
     res.json({
