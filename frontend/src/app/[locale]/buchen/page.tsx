@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Briefcase, Lock, BadgeCheck, FileText, Check, X } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, ChevronDown, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Briefcase, Lock, BadgeCheck, FileText, Check, X } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -149,6 +149,7 @@ function BuchenContent() {
   const flightCheckAbort = useRef<AbortController | null>(null);
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
@@ -1486,9 +1487,18 @@ function BuchenContent() {
           {/* RIGHT: Booking summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
-              <div className="bg-primary-600 px-5 py-4">
+              <button
+                type="button"
+                className="w-full bg-primary-600 px-5 py-4 flex items-center justify-between lg:cursor-default"
+                onClick={() => setSidebarOpen(o => !o)}
+              >
                 <h3 className="text-white font-bold">{tx.summary}</h3>
-              </div>
+                <span className="lg:hidden text-white/80 flex items-center gap-1 text-xs">
+                  {sidebarOpen ? (locale === 'de' ? 'Schließen' : locale === 'en' ? 'Close' : 'Kapat') : (locale === 'de' ? 'Details' : locale === 'en' ? 'Details' : 'Detaylar')}
+                  <ChevronDown size={15} className={`transition-transform ${sidebarOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              <div className={`lg:block ${sidebarOpen ? 'block' : 'hidden'}`}>
               {/* Payment trust badge */}
               <div className="mx-4 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-center">
                 <p className="font-bold text-amber-800 text-sm">
@@ -1591,6 +1601,7 @@ function BuchenContent() {
                   <p className="text-xs text-green-700 font-semibold mt-1">💳 {locale === 'de' ? 'Keine Vorauszahlung — Zahlung beim Fahrer' : locale === 'en' ? 'No prepayment — pay the driver' : 'Ön ödeme yok — sürücüye ödeme'}</p>
                 </div>
               </div>
+              </div>{/* end collapsible */}
             </div>
           </div>
         </div>
@@ -1601,21 +1612,19 @@ function BuchenContent() {
           Replaces (not stacks with) the global MobileStickyCTA on this page — see the
           matching suppression in SiteChrome.tsx. Reuses the site-wide pb-[88px] bottom
           reservation on <main>, so no separate spacer is needed here. */}
-      {checkoutV2 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] text-gray-400 leading-none">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</p>
-            <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(price)}</p>
-          </div>
-          <button
-            onClick={handleContinueToReview}
-            disabled={cardSubmitting}
-            className="flex-1 max-w-[220px] bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
-          >
-            {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{locale === 'de' ? 'Weiter' : locale === 'en' ? 'Continue' : 'Devam'} <ArrowRight size={16} /></>}
-          </button>
+      <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] text-gray-400 leading-none">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</p>
+          <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(price)}</p>
         </div>
-      )}
+        <button
+          onClick={handleContinueToReview}
+          disabled={cardSubmitting}
+          className="flex-1 max-w-[220px] bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
+        >
+          {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{locale === 'de' ? 'Weiter' : locale === 'en' ? 'Continue' : 'Devam'} <ArrowRight size={16} /></>}
+        </button>
+      </div>
       <SocialProofToast locale={locale} />
 
       {/* Rechnungsadresse modal */}
