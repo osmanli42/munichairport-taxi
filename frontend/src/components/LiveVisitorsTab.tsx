@@ -165,7 +165,9 @@ function parseProspectiveRoute(s: LiveSession): {
   return null;
 }
 
-function sourceLabel(s: LiveSession): { label: string; color: string } {
+// Narrowed to just the fields it reads, so it also works on the activity-events rows
+// (which carry the same three attribution fields but aren't full LiveSession objects).
+function sourceLabel(s: Pick<LiveSession, 'gclid' | 'utm_source' | 'referrer'>): { label: string; color: string } {
   if (s.gclid) return { label: '🎯 Google Ads', color: 'bg-yellow-100 text-yellow-800' };
   if (s.utm_source === 'google_ads') return { label: '🎯 Google Ads', color: 'bg-yellow-100 text-yellow-800' };
   if (s.utm_source) return { label: `🔗 ${s.utm_source}`, color: 'bg-purple-100 text-purple-800' };
