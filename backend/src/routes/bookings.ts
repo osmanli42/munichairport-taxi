@@ -130,6 +130,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       zwischenstopp_address,
       promo_code,
       visitor_id,
+      session_id,
       pickup_lat,
       pickup_lng,
       dropoff_lat,
