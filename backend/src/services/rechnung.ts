@@ -202,7 +202,7 @@ export function generateRechnungPdf(opts: {
       addrY += 16;
       doc.fontSize(9).font('WorkSans').fillColor('#374151');
       if (booking.email) { doc.text(booking.email, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-      if (booking.phone) { doc.text(booking.phone, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+      if (booking.phone) { doc.text(formatPhoneDisplay(booking.phone), marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
       doc.text('', marginL, addrY - 4);
     }
 
