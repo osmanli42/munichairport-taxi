@@ -151,6 +151,7 @@ function BuchenContent() {
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
   const [payment, setPayment] = useState<'cash' | 'card'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
@@ -1255,7 +1256,17 @@ function BuchenContent() {
               </div>
             </div>
 
-            {/* Extras */}
+            {/* Extras — collapsed by default, auto-open if something is already selected */}
+            {!showExtras && !childSeat && !rechnungRequired && fahrradCount === 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowExtras(true)}
+                className="flex items-center gap-1.5 text-primary-600 hover:text-primary-700 text-sm font-medium"
+              >
+                <Briefcase size={14} />
+                {locale === 'de' ? '+ Extras (Kindersitz, Fahrrad, Firmenrechnung)' : locale === 'en' ? '+ Extras (child seat, bicycle, invoice)' : '+ Ekstralar (çocuk koltuğu, bisiklet, fatura)'}
+              </button>
+            ) : (
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={16} /> Extras</h3>
 
@@ -1399,6 +1410,7 @@ function BuchenContent() {
               )}
               {errors.rechnung && <p className="text-red-500 text-xs mb-3">{errors.rechnung}</p>}
             </div>
+            )}
 
             {/* Payment */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
