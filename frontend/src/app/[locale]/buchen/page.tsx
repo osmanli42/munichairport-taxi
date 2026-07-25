@@ -1473,6 +1473,12 @@ function BuchenContent() {
                 <span className="inline-flex items-center gap-1"><Mail size={12} /> {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
               </div>
             </div>
+            {/* Trust row above CTA — key signals at decision moment */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium mb-3">
+              <span className="inline-flex items-center gap-1"><Ban size={12} /> {locale === 'de' ? 'Kostenloser Storno bis 3 Std.' : locale === 'en' ? 'Free cancellation up to 3 hrs' : '3 saate kadar ücretsiz iptal'}</span>
+              <span className="inline-flex items-center gap-1"><BadgeEuro size={12} /> {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}</span>
+              <span className="inline-flex items-center gap-1"><CheckCircle size={12} /> {locale === 'de' ? 'Festpreis garantiert' : locale === 'en' ? 'Fixed price guaranteed' : 'Sabit fiyat garantili'}</span>
+            </div>
             <button onClick={handleContinueToReview} disabled={cardSubmitting}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg disabled:opacity-60">
               {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><CheckCircle size={20} /> {tx.submit}</>}
