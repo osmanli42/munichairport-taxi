@@ -382,6 +382,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const phoneParsed = parsePhone(phone);
     const phoneE164 = phoneParsed.ok ? phoneParsed.e164 : null;
 
+    // Funnel attribution: a company-authenticated request is the B2B portal, never a
+    // public web visitor. Never trust a client-supplied `source` — this is why it isn't
+    // destructured out of req.body above. See db.ts idx_source_created for how the
+    // admin funnel (tracking.ts) uses this to exclude non-web bookings from conversion.
+    const bookingSource = companyAuth ? 'portal' : 'web';
+
     const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
@@ -389,11 +395,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         stripe_customer_id, stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-        promo_code, discount_amount, visitor_id, flight_validated, flight_info,
+        promo_code, discount_amount, visitor_id, session_id, source, flight_validated, flight_info,
         company_id, company_user_id, cost_center, steuersatz,
         rechnung_required, rechnung_adresse, phone_e164
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
