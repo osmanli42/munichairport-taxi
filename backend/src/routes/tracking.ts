@@ -642,12 +642,27 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
        WHERE s.is_bot = 0 AND s.first_seen >= ${since}`
     );
 
-    // Bookings in same range (from existing bookings table). Excludes cancelled ones
-    // to match the Dashboard's "Heute"/"Diese Woche" counters (admin.ts /stats) —
-    // without this filter a booking made and then cancelled the same day still
-    // counted as a funnel conversion.
-    const [bookings] = await query<any>(
-      `SELECT COUNT(*) AS count FROM bookings WHERE created_at >= ${since} AND status != 'cancelled'`
+    // Last funnel step, done as an EXISTS correlated subquery rather than joining
+    // bookings onto the pageview LEFT JOIN above — that join would multiply pageview
+    // rows per session and inflate saw_prices/started_booking too.
+    //
+    // `web_bookings` counts only bookings created through the public site with a
+    // session_id that matches a session in this range (source='web') — this is the
+    // real funnel conversion. `all_bookings` is the previous plain COUNT(*), kept
+    // alongside it so the admin can see how much of the old number was inflated by
+    // admin-created, B2B-portal and calendar-imported bookings. Both exclude
+    // cancelled bookings to match the Dashboard's "Heute"/"Diese Woche" counters.
+    const [bookingCounts] = await query<any>(
+      `SELECT
+         SUM(CASE WHEN b.status != 'cancelled' THEN 1 ELSE 0 END) AS all_bookings,
+         SUM(CASE WHEN b.status != 'cancelled' AND b.source = 'web'
+                    AND EXISTS (
+                      SELECT 1 FROM visitor_sessions s
+                      WHERE s.session_id = b.session_id AND s.is_bot = 0 AND s.first_seen >= ${since}
+                    )
+                  THEN 1 ELSE 0 END) AS web_bookings
+       FROM bookings b
+       WHERE b.created_at >= ${since}`
     );
 
     res.json({
@@ -657,7 +672,11 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
       sources,
       devices,
       hourly,
-      funnel: { ...(funnel || {}), bookings: bookings?.count || 0 },
+      funnel: {
+        ...(funnel || {}),
+        bookings: bookingCounts?.web_bookings || 0,
+        all_bookings: bookingCounts?.all_bookings || 0,
+      },
     });
   } catch (err: any) {
     console.error('visitor-stats error:', err.message);
