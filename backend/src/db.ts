@@ -566,6 +566,21 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE bookings ADD INDEX idx_visitor_id (visitor_id)`);
     } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
 
+    // Migration: session_id ties a booking back to the exact visitor_sessions row
+    // it was created from (tracking.ts). Together with the pre-existing `source`
+    // column (currently only written by the calendar importer — 'calendar'), this
+    // lets the admin funnel count real web conversions instead of every booking
+    // regardless of where it came from (admin panel, B2B portal, calendar import).
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN session_id VARCHAR(64) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD INDEX idx_session_id (session_id)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD INDEX idx_source_created (source, created_at)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+
     // Alias-Zuordnung: Kalender-Eventtext → Firma (z.B. "BMW" → company 3)
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS company_aliases (
