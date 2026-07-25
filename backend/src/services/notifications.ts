@@ -890,7 +890,7 @@ export async function sendAdminCancellationEmail(booking: BookingNotificationDat
   </div>
   <div style="padding: 24px;">
     <p><strong>Buchungsnummer:</strong> ${booking.booking_number}</p>
-    <p><strong>Kunde:</strong> ${booking.name} (${booking.email}${booking.phone ? ', ' + booking.phone : ''})</p>
+    <p><strong>Kunde:</strong> ${booking.name} (${booking.email}${booking.phone ? ', ' + formatPhoneDisplay(booking.phone) : ''})</p>
     <p><strong>Abholung:</strong> ${booking.pickup_address}</p>
     <p><strong>Ziel:</strong> ${booking.dropoff_address}</p>
     <p><strong>Datum & Uhrzeit:</strong> ${formattedDate}</p>
