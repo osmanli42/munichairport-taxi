@@ -369,6 +369,16 @@ function BuchenContent() {
     return [airline, origin && (arrivesMUC ? `${origin} → MUC` : origin), scheduledArrival && `${tx.flightArrival} ${scheduledArrival}`].filter(Boolean).join(' · ') || undefined;
   }
 
+  function validateField(field: string, value: string) {
+    let err = '';
+    if (field === 'name' && !value.trim()) err = tx.err_name;
+    if (field === 'phone' && !value.trim()) err = tx.err_phone;
+    if (field === 'email' && (!value.trim() || !value.includes('@'))) err = tx.err_email;
+    if (field === 'flightNumber' && flightNumberRequired && !value.trim()) err = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
+    if (field === 'pickupSign' && flightNumberRequired && !value.trim()) err = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
+    setErrors(prev => err ? { ...prev, [field]: err } : (({ [field]: _, ...rest }) => rest)(prev));
+  }
+
   function validate() {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = tx.err_name;
@@ -1108,7 +1118,7 @@ function BuchenContent() {
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
               <div>
                 <label className={labelCls}><span className="flex items-center gap-1"><User size={14} /> {tx.name}</span></label>
-                <input value={name} onChange={e => setName(e.target.value)} autoComplete="name" enterKeyHint="next" className={cn(inputCls, errors.name && 'border-red-400')} placeholder="Max Mustermann" />
+                <input value={name} onChange={e => setName(e.target.value)} onBlur={e => validateField('name', e.target.value)} autoComplete="name" enterKeyHint="next" className={cn(inputCls, errors.name && 'border-red-400')} placeholder="Max Mustermann" />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1147,7 +1157,7 @@ function BuchenContent() {
                       </span>
                     </span>
                   </label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="off" enterKeyHint="next" className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} onBlur={e => validateField('email', e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="off" enterKeyHint="next" className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
                   {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
               </div>
@@ -1164,7 +1174,7 @@ function BuchenContent() {
                       </span>
                     </span>
                   </label>
-                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} className={cn(inputCls, (errors as any).flightNumber && 'border-red-400')} placeholder="LH 1234" />
+                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} onBlur={e => validateField('flightNumber', e.target.value)} className={cn(inputCls, (errors as any).flightNumber && 'border-red-400')} placeholder="LH 1234" />
                   {(errors as any).flightNumber && <p className="text-red-500 text-xs mt-1">{(errors as any).flightNumber}</p>}
                   {flightCheckStatus === 'checking' && (
                     <p className="text-gray-400 text-xs mt-1.5 flex items-center gap-1">
@@ -1212,7 +1222,7 @@ function BuchenContent() {
                       </span>
                     </span>
                   </label>
-                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} className={`${inputCls}${errors.pickupSign ? ' border-red-400' : ''}`} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
+                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} onBlur={e => validateField('pickupSign', e.target.value)} className={`${inputCls}${errors.pickupSign ? ' border-red-400' : ''}`} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
                   {errors.pickupSign ? <p className="text-red-500 text-xs mt-1">{errors.pickupSign}</p> : <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>}
                 </div>
               )}
