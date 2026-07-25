@@ -8,6 +8,8 @@ import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords, getClientIp } from '../utils/ipGeo';
 import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLimit';
+import { parsePhone } from '../utils/phone';
+import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo } from '../services/stripeCards';
 
@@ -373,6 +375,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       : null;
     const rechnungRequired = rechnung_required && rechnungAdresseClean ? 1 : 0;
 
+    // Derive the canonical form of the phone number. Advisory only: an unparseable
+    // number leaves phone_e164 NULL and the booking is still accepted, because losing
+    // a real customer to a false negative costs more than a bad number in the admin.
+    const phoneParsed = parsePhone(phone);
+    const phoneE164 = phoneParsed.ok ? phoneParsed.e164 : null;
+
     const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
@@ -382,9 +390,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
         promo_code, discount_amount, visitor_id, flight_validated, flight_info,
         company_id, company_user_id, cost_center, steuersatz,
-        rechnung_required, rechnung_adresse
+        rechnung_required, rechnung_adresse, phone_e164
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -429,6 +437,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       steuersatz,
       rechnungRequired,
       rechnungAdresseClean,
+      phoneE164,
     ]);
 
     // Increment used_count for applied promo
@@ -517,6 +526,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
+
+    // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not
+    // awaited: the customer's confirmation must not wait on an external lookup.
+    enrichBookingLineType(result.insertId, phoneE164).catch(err => console.error('Phone lookup error:', err));
 
     res.status(201).json({
       success: true,

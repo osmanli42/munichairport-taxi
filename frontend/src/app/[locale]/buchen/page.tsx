@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Briefcase, Lock, BadgeCheck, FileText, Check, X } from 'lucide-react';
@@ -8,6 +8,9 @@ import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
+import PhoneInput from '@/components/booking/PhoneInput';
+import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
+import type { CountryCode } from 'libphonenumber-js/max';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -67,6 +70,7 @@ function BuchenContent() {
   const [nightStart, setNightStart] = useState(22);
   const [nightEnd, setNightEnd] = useState(7);
   const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
+  const [phoneValidationEnabled, setPhoneValidationEnabled] = useState(true);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
@@ -75,6 +79,7 @@ function BuchenContent() {
       if (s.night_confirm_start) setNightStart(parseInt(s.night_confirm_start, 10));
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
+      if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
@@ -123,7 +128,11 @@ function BuchenContent() {
 
   // Form state
   const [name, setName] = useState('');
+  // `phone` holds only the national part — the dial code lives in `phoneCountry`,
+  // shown in its own control inside PhoneInput.
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
+  const phoneResult = useMemo(() => parsePhone(phone, phoneCountry), [phone, phoneCountry]);
   const [email, setEmail] = useState('');
   const [flightNumber, setFlightNumber] = useState('');
   const [flightCheckStatus, setFlightCheckStatus] = useState<'idle' | 'checking' | 'found' | 'wrongairport' | 'notfound'>('idle');
@@ -438,7 +447,7 @@ function BuchenContent() {
         vehicle_type: vehicle,
         passengers,
         name: name.trim(),
-        phone: phone.trim(),
+        phone: toSubmitValue(phone, phoneCountry),
         email: email.trim(),
         flight_number: flightNumber || undefined,
         flight_validated: flightNumber.trim() ? (flightCheckStatus === 'found' ? '1' : '0') : undefined,
@@ -493,7 +502,8 @@ function BuchenContent() {
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('set', 'user_data', {
           email: email.trim(),
-          phone_number: phone.trim(),
+          // Enhanced Conversions matches on E.164 — a raw '0151…' silently fails to match.
+          phone_number: toSubmitValue(phone, phoneCountry),
         });
         (window as any).gtag('event', 'conversion', {
           send_to: 'AW-829027982/VhRbCJL0oXgQju2niwM',
@@ -1091,13 +1101,21 @@ function BuchenContent() {
                       <span className="relative group ml-0.5">
                         <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          {locale === 'tr' ? 'WhatsApp ile rezervasyon onayı için gereklidir.' : locale === 'en' ? 'Required for WhatsApp booking confirmation.' : 'Für die WhatsApp-Buchungsbestätigung erforderlich.'}
+                          {locale === 'tr' ? 'Şoförünüz gerektiğinde size bu numaradan ulaşır.' : locale === 'en' ? 'Your driver uses this number to reach you if needed.' : 'Ihr Fahrer erreicht Sie unter dieser Nummer, falls nötig.'}
                         </span>
                       </span>
                     </span>
                   </label>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className={cn(inputCls, errors.phone && 'border-red-400')} placeholder="+49 151 ..." />
-                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                  <PhoneInput
+                    value={phone}
+                    onChange={setPhone}
+                    country={phoneCountry}
+                    onCountryChange={setPhoneCountry}
+                    result={phoneResult}
+                    locale={locale}
+                    errorText={errors.phone}
+                    statusEnabled={phoneValidationEnabled}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>

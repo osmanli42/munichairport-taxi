@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { trackingApi, TrackingData } from '@/lib/api';
 import { Search, Phone, User } from 'lucide-react';
+import { waNumber } from '@/lib/phone';
 
 type Lang = 'de' | 'en' | 'tr';
 
@@ -356,7 +357,7 @@ export default function TrackPage() {
                       className="bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl px-4 py-2 text-center transition-colors">
                       <span className="inline-flex items-center gap-1.5"><Phone size={14} /> {tr('call')}</span>
                     </a>
-                    <a href={`https://wa.me/${data.driver.phone.replace(/\D/g, '')}`}
+                    <a href={`https://wa.me/${waNumber(data.driver.phone)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="bg-[#25D366] hover:bg-[#1ebe57] text-white text-sm font-semibold rounded-xl px-4 py-2 text-center transition-colors">
                       WhatsApp

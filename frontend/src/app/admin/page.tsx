@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi, pricesApi, settingsApi, plzSurchargesApi, fixedRoutesApi, Booking, Price, PlzSurcharge, FixedRoute } from '@/lib/api';
 import { formatPrice, formatDateTime, cn } from '@/lib/utils';
+import { waNumber, parsePhone } from '@/lib/phone';
 import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
@@ -80,7 +81,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1637,6 +1638,38 @@ export default function AdminPage() {
                       <div className={cn(
                         'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
                         settings.flight_validation_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                </div>
+                {/* Phone number validation toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="font-semibold text-gray-700">📱 Telefonnummer-Prüfung</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Prüft eingegebene Handynummern beim Tippen auf fehlende Ziffern und falsche Ländervorwahl und weist auf Festnetznummern hin. Blockiert die Buchung nie — der Kunde kann immer absenden.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.phone_validation_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ phone_validation_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Telefonnummer-Prüfung aktiviert' : 'Telefonnummer-Prüfung deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.phone_validation_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.phone_validation_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
                       )} />
                     </button>
                   </div>
@@ -3212,6 +3245,25 @@ export default function AdminPage() {
                   <span className="font-medium text-right max-w-xs">{value}</span>
                 </div>
               ))}
+              {/* Phone warnings. Derived from the number itself rather than from a NULL
+                  phone_e164, so bookings made before that column existed don't all get
+                  flagged as unverified. */}
+              {!parsePhone(selectedBooking.phone_e164 || selectedBooking.phone).ok && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Nummer:</span>
+                  <span className="font-medium text-right max-w-xs text-amber-600">
+                    ⚠️ Nicht verifizierbar — vor Fahrtantritt bestätigen
+                  </span>
+                </div>
+              )}
+              {selectedBooking.phone_line_type && selectedBooking.phone_line_type !== 'mobile' && (
+                <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
+                  <span className="text-gray-500">Anschlussart:</span>
+                  <span className="font-medium text-right max-w-xs text-amber-600">
+                    {selectedBooking.phone_line_type} — WhatsApp/SMS evtl. nicht zustellbar
+                  </span>
+                </div>
+              )}
               {selectedBooking.rechnung_adresse && (
                 <div className="flex justify-between border-b border-gray-100 py-2 last:border-0">
                   <span className="text-gray-500">Rechnungsadresse:</span>
@@ -3253,7 +3305,7 @@ export default function AdminPage() {
                   Anrufen
                 </a>
                 <a
-                  href={`https://wa.me/${selectedBooking.phone.replace(/\D/g, '')}`}
+                  href={`https://wa.me/${waNumber(selectedBooking.phone_e164 || selectedBooking.phone)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl text-sm font-medium transition-colors"
