@@ -4,6 +4,7 @@ import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
 import { berlinMidnightUtcSql } from '../utils/berlinTime';
+import { variantString } from '../utils/experiments';
 
 const router = Router();
 
@@ -83,6 +84,9 @@ async function ensureTables(): Promise<void> {
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN lat DECIMAL(9,6) DEFAULT NULL`); } catch {}
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN lng DECIMAL(9,6) DEFAULT NULL`); } catch {}
   try { await run(`ALTER TABLE visitor_pageviews ADD COLUMN load_time_ms INT DEFAULT NULL`); } catch {}
+  // A/B variant assignment, frozen at session creation (INSERT-only, see /track/pageview
+  // below) so a later change to the rollout percentage doesn't reshuffle an in-progress visit.
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN exp_variants VARCHAR(80) DEFAULT NULL`); } catch {}
   tablesReady = true;
 }
 
@@ -169,12 +173,24 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
       // Accept-Language header fallback if client didn't send
       const acceptLang = (req.headers['accept-language'] as string || '').split(',')[0].trim().slice(0, 20);
       const clientLang = lang ? trunc(lang, 20) : (acceptLang || null);
+
+      // A/B variant, assigned once at session creation and frozen for the visit's
+      // lifetime — never recomputed on later pageviews, so a mid-visit rollout change
+      // can't reshuffle someone already in variant B. Server-computed only: trusting a
+      // client-sent variant would let a visitor pick which checkout they see.
+      const expRows = await query<{ setting_key: string; setting_value: string }>(
+        "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'experiment_%'"
+      );
+      const expSettings: Record<string, string> = {};
+      for (const row of expRows) expSettings[row.setting_key] = row.setting_value;
+      const expVariants = variantString(visitor_id, expSettings) || null;
+
       await run(
         `INSERT INTO visitor_sessions
           (session_id, visitor_id, ip_hash, country, city, lat, lng, ua_browser, ua_os, ua_device,
            screen_w, screen_h, lang, is_bot,
-           referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+           referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count, exp_variants)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
           geo.country, geo.city, geo.lat ?? null, geo.lng ?? null,
@@ -185,6 +201,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
           isBot,
           trunc(referrer, 500), trunc(utm_source, 100), trunc(utm_medium, 100),
           trunc(utm_campaign, 255), trunc(gclid, 255), trunc(path, 500),
+          expVariants,
         ]
       );
     } else {

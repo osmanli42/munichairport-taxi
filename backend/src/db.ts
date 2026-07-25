@@ -138,6 +138,8 @@ export async function initializeDatabase(): Promise<void> {
       ['phone_validation_enabled', '1'],
       ['portal_tracking_enabled', '1'],
       ['b2b_applications_enabled', '1'],
+      // A/B rollout percentage for the /buchen checkout redesign — 'off' until Adım 3 ships.
+      ['experiment_checkout_v2', 'off'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
@@ -584,6 +586,14 @@ export async function initializeDatabase(): Promise<void> {
     try {
       await conn.execute(`ALTER TABLE bookings ADD INDEX idx_source_created (source, created_at)`);
     } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+
+    // Migration: A/B attribution. Recomputed server-side from visitor_id at booking time
+    // (backend/src/utils/experiments.ts) — never trusted from the client. Lets uplift be
+    // measured per variant by joining bookings to this column instead of visitor_sessions,
+    // which can be pruned independently.
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN experiment_variant VARCHAR(80) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
     // Alias-Zuordnung: Kalender-Eventtext → Firma (z.B. "BMW" → company 3)
     await conn.execute(`

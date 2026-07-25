@@ -10,6 +10,7 @@ import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
 import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
+import { assignVariant } from '@/lib/experiment';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -71,6 +72,11 @@ function BuchenContent() {
   const [nightEnd, setNightEnd] = useState(7);
   const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
   const [phoneValidationEnabled, setPhoneValidationEnabled] = useState(true);
+  // checkout_v2 A/B variant — computed client-side (synchronous, same hash as the
+  // server) so there's no flash of variant A before a network round trip resolves.
+  // The server independently recomputes and persists the authoritative variant from
+  // visitor_id at booking time (backend/src/routes/bookings.ts) — this is display-only.
+  const [checkoutV2, setCheckoutV2] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
@@ -80,6 +86,8 @@ function BuchenContent() {
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
+      const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
+      setCheckoutV2(assignVariant(visitorId, 'checkout_v2', s.experiment_checkout_v2) === 'b');
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
@@ -142,6 +150,7 @@ function BuchenContent() {
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
   const [payment, setPayment] = useState<'cash' | 'card'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
@@ -1094,7 +1103,7 @@ function BuchenContent() {
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
               <div>
                 <label className={labelCls}><span className="flex items-center gap-1"><User size={14} /> {tx.name}</span></label>
-                <input value={name} onChange={e => setName(e.target.value)} className={cn(inputCls, errors.name && 'border-red-400')} placeholder="Max Mustermann" />
+                <input value={name} onChange={e => setName(e.target.value)} autoComplete="name" enterKeyHint="next" className={cn(inputCls, errors.name && 'border-red-400')} placeholder="Max Mustermann" />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1133,7 +1142,7 @@ function BuchenContent() {
                       </span>
                     </span>
                   </label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="off" enterKeyHint="next" className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
                   {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
               </div>
@@ -1203,18 +1212,31 @@ function BuchenContent() {
                 </div>
               )}
               <div>
-                <label className={labelCls}>
-                  <span className="flex items-center gap-1">
-                    {tx.notes}
-                    <span className="relative group ml-0.5">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                      <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                        {locale === 'tr' ? 'Özel isteklerinizi buraya yazın: bebek koltuğu, ekstra bagaj, karşılama tercihleri vb.' : locale === 'en' ? 'Special requests: child seat details, extra luggage, meeting preferences, etc.' : 'Besondere Wünsche: Kindersitz-Details, extra Gepäck, Treffpunkt-Präferenzen usw.'}
+                {showNotes || notes ? (
+                  <>
+                    <label className={labelCls}>
+                      <span className="flex items-center gap-1">
+                        {tx.notes}
+                        <span className="relative group ml-0.5">
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
+                          <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                            {locale === 'tr' ? 'Özel isteklerinizi buraya yazın: bebek koltuğu, ekstra bagaj, karşılama tercihleri vb.' : locale === 'en' ? 'Special requests: child seat details, extra luggage, meeting preferences, etc.' : 'Besondere Wünsche: Kindersitz-Details, extra Gepäck, Treffpunkt-Präferenzen usw.'}
+                          </span>
+                        </span>
                       </span>
-                    </span>
-                  </span>
-                </label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
+                    </label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} autoFocus={showNotes && !notes} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNotes(true)}
+                    className="flex items-center gap-1.5 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                  >
+                    <StickyNote size={14} />
+                    {locale === 'de' ? '+ Anmerkung hinzufügen' : locale === 'en' ? '+ Add a note' : '+ Not ekle'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1544,6 +1566,27 @@ function BuchenContent() {
           </div>
         </div>
       </div>
+
+      {/* Mobile sticky price + CTA — checkout_v2 variant B only, so uplift is measurable
+          via bookings.experiment_variant before rolling out past the rollout percentage.
+          Replaces (not stacks with) the global MobileStickyCTA on this page — see the
+          matching suppression in SiteChrome.tsx. Reuses the site-wide pb-[88px] bottom
+          reservation on <main>, so no separate spacer is needed here. */}
+      {checkoutV2 && (
+        <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] text-gray-400 leading-none">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</p>
+            <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(price)}</p>
+          </div>
+          <button
+            onClick={handleContinueToReview}
+            disabled={cardSubmitting}
+            className="flex-1 max-w-[220px] bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
+          >
+            {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{locale === 'de' ? 'Weiter' : locale === 'en' ? 'Continue' : 'Devam'} <ArrowRight size={16} /></>}
+          </button>
+        </div>
+      )}
       <SocialProofToast locale={locale} />
 
       {/* Rechnungsadresse modal */}

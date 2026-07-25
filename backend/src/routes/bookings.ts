@@ -11,6 +11,7 @@ import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLim
 import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
+import { variantString } from '../utils/experiments';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo } from '../services/stripeCards';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
@@ -388,6 +389,16 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // admin funnel (tracking.ts) uses this to exclude non-web bookings from conversion.
     const bookingSource = companyAuth ? 'portal' : 'web';
 
+    // A/B attribution: recomputed server-side from visitor_id, never trusted from the
+    // client — a tampered variant would let a visitor cherry-pick the checkout they see
+    // while still being counted under a rollout percentage they don't belong to.
+    const expRows = await query<{ setting_key: string; setting_value: string }>(
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'experiment_%'"
+    );
+    const expSettings: Record<string, string> = {};
+    for (const row of expRows) expSettings[row.setting_key] = row.setting_value;
+    const experimentVariant = variantString(visitor_id, expSettings) || null;
+
     const result = await run(`
       INSERT INTO bookings (
         booking_number, status, pickup_address, dropoff_address, pickup_datetime,
@@ -395,11 +406,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
         stripe_customer_id, stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year, language,
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-        promo_code, discount_amount, visitor_id, session_id, source, flight_validated, flight_info,
+        promo_code, discount_amount, visitor_id, session_id, source, experiment_variant, flight_validated, flight_info,
         company_id, company_user_id, cost_center, steuersatz,
         rechnung_required, rechnung_adresse, phone_e164
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -438,6 +449,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       visitor_id || null,
       session_id || null,
       bookingSource,
+      experimentVariant,
       flight_validated || null,
       flight_info || null,
       companyAuth?.companyId || null,
