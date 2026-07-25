@@ -407,6 +407,7 @@
     "lookupLoading": "Wird gesucht…",
     "errorNotFound": "Keine Buchung mit dieser Nummer und E-Mail-Adresse gefunden. Bitte überprüfen Sie Ihre Eingaben.",
     "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut oder rufen Sie uns an.",
+    "errorTooMany": "Zu viele Versuche. Bitte warten Sie 15 Minuten und versuchen Sie es erneut.",
     "resultTitle": "Ihre Buchung",
     "statusLabel": "Status",
     "status": {

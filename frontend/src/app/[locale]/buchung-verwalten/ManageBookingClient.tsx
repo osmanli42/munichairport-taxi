@@ -35,7 +35,7 @@ export default function ManageBookingClient() {
   const [bookingNumber, setBookingNumber] = useState('');
   const [email, setEmail] = useState('');
   const [state, setState] = useState<LookupState>('idle');
-  const [errorKey, setErrorKey] = useState<'errorNotFound' | 'errorGeneric'>('errorGeneric');
+  const [errorKey, setErrorKey] = useState<'errorNotFound' | 'errorGeneric' | 'errorTooMany'>('errorGeneric');
   const [booking, setBooking] = useState<ManagedBooking | null>(null);
 
   const [confirming, setConfirming] = useState(false);

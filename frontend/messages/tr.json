@@ -407,6 +407,7 @@
     "lookupLoading": "Aranıyor…",
     "errorNotFound": "Bu numara ve e-posta adresiyle bir rezervasyon bulunamadı. Lütfen bilgilerinizi kontrol edin.",
     "errorGeneric": "Bir şeyler ters gitti. Lütfen daha sonra tekrar deneyin veya bizi arayın.",
+    "errorTooMany": "Çok fazla deneme. Lütfen 15 dakika bekleyip tekrar deneyin.",
     "resultTitle": "Rezervasyonunuz",
     "statusLabel": "Durum",
     "status": {

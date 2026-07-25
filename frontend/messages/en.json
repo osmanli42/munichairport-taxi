@@ -407,6 +407,7 @@
     "lookupLoading": "Searching…",
     "errorNotFound": "No booking found with this number and email address. Please check your details.",
     "errorGeneric": "Something went wrong. Please try again later or give us a call.",
+    "errorTooMany": "Too many attempts. Please wait 15 minutes and try again.",
     "resultTitle": "Your booking",
     "statusLabel": "Status",
     "status": {
