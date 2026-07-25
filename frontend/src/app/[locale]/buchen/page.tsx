@@ -1419,11 +1419,11 @@ function BuchenContent() {
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><CreditCard size={16} /> {tx.payment}</h3>
               <div className="flex gap-2 mb-4">
                 <button onClick={() => setPayment('cash')}
-                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'cash' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
+                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'cash' ? 'bg-primary-50 text-primary-700 border-primary-600' : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-gray-700')}>
                   <Banknote size={16} /> {tx.cash}
                 </button>
                 <button onClick={() => setPayment('card')}
-                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'card' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300')}>
+                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'card' ? 'bg-primary-50 text-primary-700 border-primary-600' : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-gray-700')}>
                   <CreditCard size={16} /> {tx.card}
                 </button>
               </div>
