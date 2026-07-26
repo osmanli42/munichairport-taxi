@@ -685,6 +685,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       company_discount: companyDiscount > 0 ? companyDiscount : undefined,
       auto_discount_name: autoDiscountName || undefined,
       auto_discount_amount: autoDiscountAmount > 0 ? autoDiscountAmount : undefined,
+      auto_discount_show_in_email: showAutoDiscountInEmail,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
