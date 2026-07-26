@@ -620,6 +620,49 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE companies MODIFY COLUMN payment_term_days INT NOT NULL DEFAULT 7`);
     } catch (e: any) { console.error('payment_term_days default migration failed:', e.message); }
 
+    // ─── Automatische Rabatte (Rabatte-Tab) ─────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS auto_discounts (
+          id INT NOT NULL AUTO_INCREMENT,
+          name VARCHAR(100) NOT NULL,
+          discount_percent DECIMAL(5,2) NOT NULL,
+          zone_scope ENUM('inside','outside','any') NOT NULL DEFAULT 'outside',
+          min_km DECIMAL(6,1) DEFAULT NULL,
+          max_km DECIMAL(6,1) DEFAULT NULL,
+          hour_from TINYINT DEFAULT NULL,
+          hour_to TINYINT DEFAULT NULL,
+          weekday_mask VARCHAR(20) DEFAULT NULL,
+          booking_index_max INT DEFAULT NULL,
+          max_uses INT DEFAULT NULL,
+          used_count INT NOT NULL DEFAULT 0,
+          max_discount_amount DECIMAL(10,2) DEFAULT NULL,
+          vehicle_types VARCHAR(50) DEFAULT NULL,
+          trip_types VARCHAR(20) DEFAULT NULL,
+          start_date DATE DEFAULT NULL,
+          end_date DATE DEFAULT NULL,
+          active TINYINT(1) NOT NULL DEFAULT 1,
+          priority INT NOT NULL DEFAULT 0,
+          stackable_with_promo TINYINT(1) NOT NULL DEFAULT 0,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id)
+        )
+      `);
+    } catch (e: any) { console.error('auto_discounts table migration failed:', e.message); }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_id INT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_id migration failed:', e.message); }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_amount DOUBLE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_amount migration failed:', e.message); }
+    try {
+      await conn.execute(`ALTER TABLE bookings ADD INDEX idx_phone_e164 (phone_e164)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) console.error('idx_phone_e164 migration failed:', e.message); }
+    try {
+      await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discounts_enabled', '1')`);
+    } catch (e: any) { console.error('auto_discounts_enabled seed failed:', e.message); }
+    // ────────────────────────────────────────────────────────────────────
+
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
     if (priceRows[0].count === 0) {
