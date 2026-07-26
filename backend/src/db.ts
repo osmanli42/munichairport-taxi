@@ -626,7 +626,8 @@ export async function initializeDatabase(): Promise<void> {
         CREATE TABLE IF NOT EXISTS auto_discounts (
           id INT NOT NULL AUTO_INCREMENT,
           name VARCHAR(100) NOT NULL,
-          discount_percent DECIMAL(5,2) NOT NULL,
+          discount_type ENUM('percent','fixed') NOT NULL DEFAULT 'percent',
+          discount_value DECIMAL(10,2) NOT NULL,
           zone_scope ENUM('inside','outside','any') NOT NULL DEFAULT 'outside',
           min_km DECIMAL(6,1) DEFAULT NULL,
           max_km DECIMAL(6,1) DEFAULT NULL,
