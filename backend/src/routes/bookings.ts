@@ -575,6 +575,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     if (validatedPromoCode) {
       await run('UPDATE promotions SET used_count = used_count + 1 WHERE code = ?', [validatedPromoCode]);
     }
+    // Increment used_count for applied auto discount rule (koşullu — max_uses aşımını önler)
+    if (autoDiscountId) {
+      await run(
+        'UPDATE auto_discounts SET used_count = used_count + 1 WHERE id = ? AND (max_uses IS NULL OR used_count < max_uses)',
+        [autoDiscountId]
+      );
+    }
 
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
