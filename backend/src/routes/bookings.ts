@@ -743,9 +743,10 @@ export async function computeRoutePrice(
 
   // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
   let pflichtgebiet = false;
+  let zoneInside = false; // geometrie — auto-discount motoru için, `pgCfg.enabled`'dan bağımsız
   try {
     const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
-    if (pgCfg && pgCfg.enabled && !fixedRouteMatch) {
+    if (pgCfg && !fixedRouteMatch) {
       let pickupCoords: Coords | null =
         (pickup_lat && pickup_lng) ? { lat: parseFloat(String(pickup_lat)), lng: parseFloat(String(pickup_lng)) } : null;
       let dropoffCoords: Coords | null =
@@ -753,33 +754,39 @@ export async function computeRoutePrice(
       if (!pickupCoords && pickup_address) pickupCoords = await geocodeAddress(pickup_address);
       if (!dropoffCoords && dropoff_address) dropoffCoords = await geocodeAddress(dropoff_address);
 
-      let ipBypass2 = false;
-      if (pgCfg.ip_bypass_enabled) {
-        const vc = await getVisitorCoords(req);
-        if (vc.lat != null && vc.lng != null) {
-          ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
-        }
+      if (km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        zoneInside = true;
       }
 
-      if (!ipBypass2 && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
-        const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
-        const excludedSet = new Set(excludedRows.map(r => r.plz));
-        const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
-        const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
-        const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
+      if (pgCfg.enabled) {
+        let ipBypass2 = false;
+        if (pgCfg.ip_bypass_enabled) {
+          const vc = await getVisitorCoords(req);
+          if (vc.lat != null && vc.lng != null) {
+            ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
+          }
+        }
 
-        if (!isExcluded) {
-          const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
-            'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
-            [vehicle_type]
-          );
-          if (tar) {
-            let mandatory = tar.grundgebuehr + km * tar.min_per_km;
-            if (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15)) {
-              mandatory = Math.max(mandatory, priceRow.min_price);
+        if (!ipBypass2 && zoneInside) {
+          const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
+          const excludedSet = new Set(excludedRows.map(r => r.plz));
+          const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
+          const dPlz = dropoff_address?.match(/\b(\d{5})\b/)?.[1];
+          const isExcluded = (pPlz && excludedSet.has(pPlz)) || (dPlz && excludedSet.has(dPlz));
+
+          if (!isExcluded) {
+            const [tar] = await query<{ grundgebuehr: number; min_per_km: number }>(
+              'SELECT grundgebuehr, min_per_km FROM pflichtgebiet_tarife WHERE vehicle_type = ?',
+              [vehicle_type]
+            );
+            if (tar) {
+              let mandatory = tar.grundgebuehr + km * tar.min_per_km;
+              if (priceRow.min_price > 0 && km <= (priceRow.min_price_km || 15)) {
+                mandatory = Math.max(mandatory, priceRow.min_price);
+              }
+              price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
+              pflichtgebiet = true;
             }
-            price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
-            pflichtgebiet = true;
           }
         }
       }
@@ -788,12 +795,36 @@ export async function computeRoutePrice(
     console.error('Pflichtgebiet calc-price skipped:', e);
   }
 
+  // Automatische Rabatte — Vorschau (calculate-price). Identisch mit POST /
+  // Nur Anwendungsfall unterscheidet: Kundenzahl fehlt evtl. (visitorId/email optional übergeben).
+  let autoDiscount: { name: string; percent: number; amount: number } | null = null;
+  try {
+    const customerCount = (options?.visitorId || options?.email)
+      ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
+      : null;
+    const result = await resolveAutoDiscount({
+      km,
+      zone: zoneInside ? 'inside' : 'outside',
+      vehicleType: vehicle_type,
+      isRoundtrip: options?.tripType === 'roundtrip',
+      pickupDateTime: options?.pickupDatetime ? new Date(options.pickupDatetime) : null,
+      customerBookingCount: customerCount,
+      baseTotal: price,
+    });
+    if (result) {
+      autoDiscount = { name: result.rule.name, percent: Number(result.rule.discount_percent), amount: result.amount };
+    }
+  } catch (e) {
+    console.error('Auto discount preview skipped:', e);
+  }
+
   return {
     base_price: priceRow.base_price,
     price_per_km: priceRow.price_per_km,
     total_price: parseFloat(price.toFixed(2)),
     pflichtgebiet,
     fixed_route: fixedRouteMatch,
+    auto_discount: autoDiscount,
   };
 }
 
