@@ -650,6 +650,17 @@ export async function initializeDatabase(): Promise<void> {
         )
       `);
     } catch (e: any) { console.error('auto_discounts table migration failed:', e.message); }
+    // Migration: tables created before discount_type/discount_value existed (CREATE TABLE
+    // IF NOT EXISTS above is a no-op on an already-deployed table) still have discount_percent.
+    try {
+      await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN discount_type ENUM('percent','fixed') NOT NULL DEFAULT 'percent'`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.discount_type migration failed:', e.message); }
+    try {
+      await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN discount_value DECIMAL(10,2) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.discount_value migration failed:', e.message); }
+    try {
+      await conn.execute(`UPDATE auto_discounts SET discount_value = discount_percent WHERE discount_value IS NULL AND discount_percent IS NOT NULL`);
+    } catch (e: any) { if (!e.message?.includes("Unknown column")) console.error('auto_discounts discount_value backfill failed:', e.message); }
     try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_id INT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_id migration failed:', e.message); }
