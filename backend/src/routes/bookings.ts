@@ -371,7 +371,63 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       companyDiscount = Math.round(preTotalForDiscount * (corpPct / 100) * 100) / 100;
     }
 
-    let price = Math.max(0, Math.round((baseTotal - promoDiscount - companyDiscount) * 100) / 100);
+    // --- Automatische Rabatte (Rabatte-Tab): kural bazlı, kod gerektirmez ---
+    let autoDiscountAmount = 0;
+    let autoDiscountId: number | null = null;
+    let autoDiscountName: string | null = null;
+    try {
+      // Bölge tespiti: PG bloğundan bağımsız (enabled=0 olsa da) geometri hesaplanır.
+      let adZone: 'inside' | 'outside' = 'outside';
+      const [pgCfgAd] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+      if (pgCfgAd) {
+        let pCoords: Coords | null =
+          (pickup_lat && pickup_lng) ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) } : null;
+        let dCoords: Coords | null =
+          (dropoff_lat && dropoff_lng) ? { lat: parseFloat(dropoff_lat), lng: parseFloat(dropoff_lng) } : null;
+        if (!pCoords) pCoords = await geocodeAddress(pickup_address);
+        if (!dCoords) dCoords = await geocodeAddress(dropoff_address);
+        if (km <= (pgCfgAd.radius_km || 50) && tripInZone(pCoords, dCoords, pgCfgAd)) {
+          adZone = 'inside';
+        }
+      }
+
+      const customerBookingCount = await countCustomerBookings({
+        visitorId: visitor_id || null,
+        email: email || null,
+      });
+
+      const adResult = await resolveAutoDiscount({
+        km,
+        zone: adZone,
+        vehicleType: vehicle_type,
+        isRoundtrip,
+        pickupDateTime: pickup_datetime ? new Date(pickup_datetime) : null,
+        customerBookingCount,
+        baseTotal,
+      });
+
+      if (adResult) {
+        // Promo koduyla birleşmiyorsa büyük olan kazanır
+        if (validatedPromoCode && promoDiscount > 0 && !adResult.rule.stackable_with_promo) {
+          if (adResult.amount > promoDiscount) {
+            promoDiscount = 0;
+            validatedPromoCode = null;
+            autoDiscountAmount = adResult.amount;
+            autoDiscountId = adResult.rule.id;
+            autoDiscountName = adResult.rule.name;
+          }
+          // aksi halde promo kalır, otomatik indirim uygulanmaz
+        } else {
+          autoDiscountAmount = adResult.amount;
+          autoDiscountId = adResult.rule.id;
+          autoDiscountName = adResult.rule.name;
+        }
+      }
+    } catch (e) {
+      console.error('Auto discount skipped:', e);
+    }
+
+    let price = Math.max(0, Math.round((baseTotal - autoDiscountAmount - promoDiscount - companyDiscount) * 100) / 100);
 
     if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
