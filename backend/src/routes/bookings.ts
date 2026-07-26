@@ -749,6 +749,7 @@ export async function computeRoutePrice(
   // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
   let pflichtgebiet = false;
   let zoneInside = false; // geometrie — auto-discount motoru için, `pgCfg.enabled`'dan bağımsız
+  let pgFloorValue: number | null = null; // mandatory tarife tabanı — auto-discount bunun altına inemez
   try {
     const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
     if (pgCfg && !fixedRouteMatch) {
