@@ -157,10 +157,10 @@ export default function AboutPage() {
               style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
             >
               {/* Card header */}
-              <div className="px-7 py-8 text-center" style={{ background: '#eef3f9', borderBottom: '1px solid #dce8f5' }}>
+              <div className="px-7 py-8 text-center" style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}>
                 <div
                   className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl font-extrabold"
-                  style={{ background: '#fff', color: '#1e3a5f', border: '2px solid #c8d8ec' }}
+                  style={{ background: '#fff', color: '#a07820', border: '2px solid #f0d890' }}
                 >
                   F
                 </div>
@@ -172,7 +172,7 @@ export default function AboutPage() {
                     <span
                       key={lang}
                       className="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style={{ background: '#fff', border: '1px solid #c8d8ec', color: '#1e3a5f' }}
+                      style={{ background: '#fff', border: '1px solid #f0d890', color: '#a07820' }}
                     >
                       {lang}
                     </span>
