@@ -241,6 +241,39 @@ function BuchenContent() {
   const promoBase = appliedPromo?.promoBase ?? price;
   const finalPrice = Math.max(0, promoBase - discountAmount);
 
+  // Automatische Rabatte (Rabatte-Tab, kein Code nötig) — Vorschau vom Server,
+  // damit Anzeige und tatsächliche Abrechnung immer übereinstimmen.
+  const [autoDiscount, setAutoDiscount] = useState<{ name: string; percent: number; amount: number } | null>(null);
+  useEffect(() => {
+    if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
+    const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`${API_URL}/bookings/calculate-price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          vehicle_type: vehicle,
+          distance_km: effectiveDistanceKm,
+          pickup_lat: pickupLat, pickup_lng: pickupLng,
+          dropoff_lat: dropoffLat, dropoff_lng: dropoffLng,
+          pickup_address: pickup, dropoff_address: dropoff,
+          visitor_id: visitorId,
+          pickup_datetime: date && time ? `${date}T${time}` : undefined,
+          trip_type: tripType,
+        }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setAutoDiscount(d?.auto_discount || null))
+        .catch(() => {});
+    }, 250);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType]);
+
+  const autoDiscountAmount = autoDiscount?.amount ?? 0;
+  const finalPriceWithAutoDiscount = Math.max(0, finalPrice - autoDiscountAmount);
+
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: 'Barzahlung', card: 'Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: 'Einfache Fahrt', roundtrip: 'Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich!', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: 'Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: 'Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
     en: { title: 'Your details', summary: 'Booking summary', name: 'Name *', phone: 'Mobile number *', email: 'Email *', flight: 'Flight number (optional)', flightRequired: 'Flight number *', flightChecking: 'Checking flight...', flightConfirmed: 'Flight confirmed', flightNotFound: 'Flight not found – please check the flight number', flightWrongAirport: 'This flight does not appear to land in Munich (MUC) – please check the flight number', flightArrival: 'Arrival', luggage: 'Pieces of luggage', notes: 'Notes', payment: 'Payment method', cash: 'Cash', card: 'Credit card', cardHolder: 'Card holder', cardNumber: 'Card number', cardExpiry: 'Expiry date', cardCvv: 'CVV', oneway: 'One way', roundtrip: 'Round trip', returnDate: 'Return date', returnTime: 'Return time', submit: 'Continue to review', submitting: 'Booking...', success_title: 'Booking confirmed!', success_msg: 'Your booking has been confirmed. You will receive a confirmation email at', new_booking: 'New booking', back: 'Back to vehicle selection', err_name: 'Name required', err_phone: 'Phone required', err_email: 'Valid email required', err_card: 'Card details required', err_submit: 'Error submitting. Please try again.', review_title: 'Review your booking', review_subtitle: 'Please review your details before confirming the booking.', review_route: 'Route', review_datetime: 'Date & Time', review_vehicle: 'Vehicle', review_contact: 'Contact details', review_payment_label: 'Payment', review_confirm: 'Confirm booking', review_edit: 'Edit details', review_persons: 'Passengers', review_luggage_label: 'Luggage', review_notes_label: 'Notes', review_flight_label: 'Flight number' },
