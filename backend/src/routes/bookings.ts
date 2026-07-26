@@ -713,7 +713,8 @@ export async function computeRoutePrice(
   pickup_lat?: number | string,
   pickup_lng?: number | string,
   dropoff_lat?: number | string,
-  dropoff_lng?: number | string
+  dropoff_lng?: number | string,
+  options?: RoutePriceOptions
 ): Promise<RoutePriceEstimate | null> {
   const [priceRow] = await query<PriceRow>(
     'SELECT base_price, price_per_km, roundtrip_discount, fahrrad_price, fahrrad_enabled, min_price, min_price_km FROM prices WHERE vehicle_type = ?',
