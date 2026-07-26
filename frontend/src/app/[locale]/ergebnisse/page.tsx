@@ -682,8 +682,17 @@ function ResultsContent() {
                         ) : (
                           <>
                             <div className="text-xs text-gray-400 mb-0.5">{t.total}</div>
+                            {autoDiscount && (
+                              <div className="text-sm text-gray-400 line-through">{formatPrice(preAutoDiscountPrice)}</div>
+                            )}
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                           </>
+                        )}
+                        {autoDiscount && (
+                          <div className="flex items-center gap-1 justify-end mt-0.5">
+                            <Tag size={11} className="text-green-600" />
+                            <span className="text-xs text-green-600 font-bold">%{autoDiscount.percent} {autoDiscount.name}</span>
+                          </div>
                         )}
                         {anfahrtCost > 0 && (
                           <div className="text-xs text-amber-600 font-medium mt-0.5">
