@@ -254,17 +254,17 @@ export default function ContactPage() {
             >
               <div
                 className="flex items-center gap-4 px-7 py-5"
-                style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
+                style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}
               >
                 <div
                   className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
+                  style={{ background: '#fff', border: '1px solid #f0d890' }}
                 >
-                  <HelpCircle size={20} style={{ color: '#c9a84c' }} />
+                  <HelpCircle size={20} style={{ color: '#a07820' }} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('quick_answers_label')}</span>
-                  <h3 className="text-lg font-bold text-white leading-tight">{t('faq_title')}</h3>
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#a07820' }}>{t('quick_answers_label')}</span>
+                  <h3 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('faq_title')}</h3>
                 </div>
               </div>
               <div className="px-7 py-5 space-y-4 text-sm" style={{ color: '#4a6280' }}>
