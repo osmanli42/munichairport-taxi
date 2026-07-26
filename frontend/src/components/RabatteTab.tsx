@@ -55,6 +55,7 @@ export default function RabatteTab({ token }: { token: string }) {
       const [list, settings] = await Promise.all([autoDiscountsApi.getAll(), settingsApi.getAll()]);
       setRules(list);
       setMasterEnabled((settings.auto_discounts_enabled ?? '1') === '1');
+      setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
       setErr('');
     } catch {
       setErr('Regeln konnten nicht geladen werden');
