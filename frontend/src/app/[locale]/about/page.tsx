@@ -58,18 +58,21 @@ export default function AboutPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       {/* Hero */}
-      <section className="py-16 text-center" style={{ background: '#fff', borderBottom: '1px solid #e5edf5' }}>
+      <section
+        className="py-16 text-white text-center"
+        style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)' }}
+      >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
-            style={{ background: '#eef3f9', border: '1px solid #c8d8ec', color: '#1e3a5f' }}
+            style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
           >
             {t('badge')}
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4" style={{ color: '#0f1b2d' }}>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
             {t('title')}
           </h1>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#6b7c93' }}>
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#7a9ab8' }}>
             {t('subtitle')}
           </p>
 
@@ -77,8 +80,8 @@ export default function AboutPage() {
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto">
             {stats.map(s => (
               <div key={s.label} className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: '#1e3a5f' }}>{s.value}</div>
-                <div className="text-xs font-medium mt-0.5" style={{ color: '#6b7c93' }}>{s.label}</div>
+                <div className="text-2xl font-extrabold" style={{ color: '#c9a84c' }}>{s.value}</div>
+                <div className="text-xs font-medium mt-0.5" style={{ color: '#5a7a99' }}>{s.label}</div>
               </div>
             ))}
           </div>
