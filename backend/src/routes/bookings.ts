@@ -797,7 +797,7 @@ export async function computeRoutePrice(
 
   // Automatische Rabatte — Vorschau (calculate-price). Identisch mit POST /
   // Nur Anwendungsfall unterscheidet: Kundenzahl fehlt evtl. (visitorId/email optional übergeben).
-  let autoDiscount: { name: string; percent: number; amount: number } | null = null;
+  let autoDiscount: { name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null = null;
   try {
     const customerCount = (options?.visitorId || options?.email)
       ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
