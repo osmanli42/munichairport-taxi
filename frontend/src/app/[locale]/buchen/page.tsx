@@ -759,7 +759,7 @@ function BuchenContent() {
                   {appliedPromo && (
                     <p className="text-white/70 text-xs line-through">{formatPrice(price)}</p>
                   )}
-                  {autoDiscount && (
+                  {autoDiscount && !appliedPromo && (
                     <p className="text-green-200 text-xs font-medium">−{formatPrice(autoDiscountAmount)} {autoDiscount.name}</p>
                   )}
                 </div>
