@@ -57,6 +57,7 @@ export default function RabatteTab({ token }: { token: string }) {
       setRules(list);
       setMasterEnabled((settings.auto_discounts_enabled ?? '1') === '1');
       setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
+      setShowInEmail((settings.auto_discount_show_in_email ?? '0') === '1');
       setErr('');
     } catch {
       setErr('Regeln konnten nicht geladen werden');
