@@ -417,7 +417,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif (pgFareFloor) nicht unterschreiten.
         // Wird hier gekappt statt erst am Ende über den Gesamtpreis-Floor — sonst würde
         // die Buchungsbestätigung einen Rabatt zeigen, der den Preis gar nicht verändert hat.
-        const cappedAmount = pgFareFloor > 0 ? Math.min(adResult.amount, Math.max(0, baseTotal - pgFareFloor)) : adResult.amount;
+        const cappedAmount = (pgFareFloor > 0 && !ignorePgFloor)
+          ? Math.min(adResult.amount, Math.max(0, baseTotal - pgFareFloor))
+          : adResult.amount;
         if (cappedAmount > 0) {
           // Promo koduyla birleşmiyorsa büyük olan kazanır
           if (validatedPromoCode && promoDiscount > 0 && !adResult.rule.stackable_with_promo) {
