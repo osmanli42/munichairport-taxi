@@ -1698,7 +1698,9 @@ function BuchenContent() {
       <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] text-gray-400 leading-none">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</p>
-          <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(finalPriceWithAutoDiscount)}</p>
+          {autoDiscountReady
+            ? <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(finalPriceWithAutoDiscount)}</p>
+            : <span className="h-5 w-16 bg-gray-100 rounded animate-pulse inline-block" />}
         </div>
         <button
           onClick={handleContinueToReview}
