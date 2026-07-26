@@ -670,6 +670,12 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE auto_discounts MODIFY COLUMN discount_percent DECIMAL(5,2) NULL DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes("Unknown column")) console.error('auto_discounts.discount_percent relax migration failed:', e.message); }
     try {
+      await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN booking_start_date DATE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.booking_start_date migration failed:', e.message); }
+    try {
+      await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN booking_end_date DATE DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.booking_end_date migration failed:', e.message); }
+    try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_id INT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_id migration failed:', e.message); }
     try {
