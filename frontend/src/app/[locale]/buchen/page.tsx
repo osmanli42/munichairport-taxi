@@ -216,6 +216,7 @@ function BuchenContent() {
   const [cardSubmitting, setCardSubmitting] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
+  const [confirmedPrice, setConfirmedPrice] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Promo code state
