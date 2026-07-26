@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, X, AlertTriangle } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
