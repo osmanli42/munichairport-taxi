@@ -276,7 +276,8 @@ export const pflichtgebietApi = {
 export interface AutoDiscount {
   id: number;
   name: string;
-  discount_percent: number;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
   zone_scope: 'inside' | 'outside' | 'any';
   min_km: number | null;
   max_km: number | null;
