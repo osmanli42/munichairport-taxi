@@ -122,6 +122,8 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       if (r.start_date && String(r.start_date).slice(0, 10) > tripDateStr) return false;
       if (r.end_date && String(r.end_date).slice(0, 10) < tripDateStr) return false;
     }
+    if (r.booking_start_date && String(r.booking_start_date).slice(0, 10) > bookingDateStr) return false;
+    if (r.booking_end_date && String(r.booking_end_date).slice(0, 10) < bookingDateStr) return false;
     return true;
   });
 
