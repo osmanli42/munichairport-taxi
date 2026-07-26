@@ -550,6 +550,8 @@ function BuchenContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
+      const serverPrice = data.booking?.price;
+      setConfirmedPrice(serverPrice != null ? Number(serverPrice) : null);
       setSubmitState('success');
       try {
         const parts = name.trim().split(/\s+/);
