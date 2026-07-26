@@ -245,8 +245,13 @@ function BuchenContent() {
   // Automatische Rabatte (Rabatte-Tab, kein Code nötig) — Vorschau vom Server,
   // damit Anzeige und tatsächliche Abrechnung immer übereinstimmen.
   const [autoDiscount, setAutoDiscount] = useState<{ name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null>(null);
+  // Solange die erste Prüfung für diese Route noch läuft, wird der Preis nicht gezeigt —
+  // sonst blitzt kurz der (falsche) Preis ohne Rabatt auf, bevor der Rabatt nachträglich
+  // abgezogen wird ("92€ → 87€"-Flackern).
+  const [autoDiscountReady, setAutoDiscountReady] = useState(false);
   useEffect(() => {
-    if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
+    if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); setAutoDiscountReady(true); return; }
+    setAutoDiscountReady(false);
     const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
     const controller = new AbortController();
     const t = setTimeout(() => {
@@ -268,8 +273,9 @@ function BuchenContent() {
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => setAutoDiscount(d?.auto_discount || null))
-        .catch(() => {});
-    }, 250);
+        .catch(() => {})
+        .finally(() => setAutoDiscountReady(true));
+    }, 0);
     return () => { clearTimeout(t); controller.abort(); };
   }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType, email]);
 
