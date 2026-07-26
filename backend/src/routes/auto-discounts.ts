@@ -105,7 +105,8 @@ router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response):
       `UPDATE auto_discounts SET
         name=?, discount_type=?, discount_value=?, zone_scope=?, min_km=?, max_km=?, hour_from=?, hour_to=?,
         weekday_mask=?, booking_index_max=?, max_uses=?, max_discount_amount=?,
-        vehicle_types=?, trip_types=?, start_date=?, end_date=?, priority=?, stackable_with_promo=?,
+        vehicle_types=?, trip_types=?, start_date=?, end_date=?, booking_start_date=?, booking_end_date=?,
+        priority=?, stackable_with_promo=?,
         active=?
        WHERE id=?`,
       [...parsed.values!, req.body.active === false ? 0 : 1, req.params.id]
