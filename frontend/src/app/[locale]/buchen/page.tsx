@@ -1646,12 +1646,24 @@ function BuchenContent() {
                       <span className="line-through">{formatPrice(oneWayPrice * 2)}</span>
                     </div>
                   )}
+                  {(appliedPromo || (autoDiscount && !appliedPromo)) && (
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                      <span>{locale === 'de' ? 'ohne Rabatt' : locale === 'en' ? 'without discount' : 'indirimsiz'}</span>
+                      <span className="line-through">{formatPrice(price)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-700">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</span>
-                    <span className="text-2xl font-bold text-primary-600">{formatPrice(price)}</span>
+                    <span className="text-2xl font-bold text-primary-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
                   </div>
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
+                  )}
+                  {autoDiscount && !appliedPromo && (
+                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {autoDiscount.name}: −{formatPrice(autoDiscountAmount)}</p>
+                  )}
+                  {appliedPromo && (
+                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>
                   )}
                   {anfahrtCost > 0 && (
                     <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><Car size={12} /> {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
