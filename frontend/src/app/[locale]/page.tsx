@@ -181,7 +181,8 @@ export default function HomePage() {
                 {/* Big number + icon side */}
                 <div className="flex-shrink-0 flex flex-col items-center justify-center rounded-2xl w-full md:w-72"
                   style={{
-                    background: 'linear-gradient(135deg, #1e3a5f 0%, #2a5080 100%)',
+                    background: '#fff',
+                    border: '1.5px solid #e5edf5',
                     minHeight: '200px',
                     padding: '36px 32px',
                     position: 'relative',
@@ -192,7 +193,7 @@ export default function HomePage() {
                     position: 'absolute',
                     fontSize: '120px',
                     fontWeight: 900,
-                    color: 'rgba(255,255,255,.04)',
+                    color: 'rgba(30,58,95,.04)',
                     lineHeight: 1,
                     bottom: '-10px',
                     right: '16px',
@@ -201,10 +202,10 @@ export default function HomePage() {
                   }}>{step}</span>
                   {/* Step pill */}
                   <div className="mb-4 text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full"
-                    style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}>
+                    style={{ background: '#eef3f9', border: '1px solid #c8d8ec', color: '#1e3a5f' }}>
                     {locale === 'en' ? 'Step' : locale === 'tr' ? 'Adım' : 'Schritt'} {step}
                   </div>
-                  <StepIcon size={52} strokeWidth={1.5} style={{ color: '#c9a84c' }} />
+                  <StepIcon size={52} strokeWidth={1.5} style={{ color: '#1e3a5f' }} />
                 </div>
 
                 {/* Text side */}
