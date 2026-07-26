@@ -826,6 +826,10 @@ export async function computeRoutePrice(
     const customerCount = (options?.visitorId || options?.email)
       ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
       : null;
+    const [ignoreFloorSetting] = await query<{ setting_value: string }>(
+      "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_ignore_pg_floor'"
+    );
+    const ignorePgFloor = ignoreFloorSetting?.setting_value === '1';
     const result = await resolveAutoDiscount({
       km,
       zone: zoneInside ? 'inside' : 'outside',
@@ -838,7 +842,8 @@ export async function computeRoutePrice(
     if (result) {
       // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst
       // zeigt die Vorschau einen Rabatt, den POST /api/bookings hinterher wieder kippt.
-      const cappedAmount = pgFloorValue != null ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
+      // ignorePgFloor (Rabatte-Tab) schaltet diesen Schutz bewusst ab.
+      const cappedAmount = (pgFloorValue != null && !ignorePgFloor) ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
       if (cappedAmount > 0) {
         autoDiscount = { name: result.rule.name, type: result.rule.discount_type, value: Number(result.rule.discount_value), amount: cappedAmount };
       }
