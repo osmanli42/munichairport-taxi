@@ -46,6 +46,8 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       strOrNull(trip_types),
       dateOnly(start_date),
       dateOnly(end_date),
+      dateOnly(booking_start_date),
+      dateOnly(booking_end_date),
       intOrNull(priority) ?? 0,
       stackable_with_promo ? 1 : 0,
     ],
