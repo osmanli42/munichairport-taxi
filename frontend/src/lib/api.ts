@@ -285,6 +285,7 @@ export interface AutoDiscount {
   hour_to: number | null;
   weekday_mask: string | null;
   booking_index_max: number | null;
+  daily_max_uses: number | null;
   max_uses: number | null;
   used_count: number;
   max_discount_amount: number | null;
