@@ -179,7 +179,9 @@ export default function RabatteTab({ token }: { token: string }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900">{r.name}</span>
-                    <span className="text-sm font-bold text-green-700">%{r.discount_percent}</span>
+                    <span className="text-sm font-bold text-green-700">
+                      {r.discount_type === 'fixed' ? `−${r.discount_value}€` : `%${r.discount_value}`}
+                    </span>
                     <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border', zoneColor(r.zone_scope))}>{zoneLabel(r.zone_scope)}</span>
                     {r.zone_scope === 'inside' && <AlertTriangle size={14} className="text-amber-500" />}
                   </div>
