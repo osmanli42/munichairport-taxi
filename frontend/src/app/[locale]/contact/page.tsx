@@ -197,29 +197,26 @@ export default function ContactPage() {
             {/* Booking CTA card */}
             <div
               className="rounded-2xl overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)',
-                border: '1px solid rgba(201,168,76,.3)',
-              }}
+              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
             >
-              <div className="px-7 py-6 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+              <div className="px-7 py-6 text-center" style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}>
                 <div
                   className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-3"
-                  style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
+                  style={{ background: '#fff', border: '1px solid #f0d890', color: '#a07820' }}
                 >
                   {t('booking_badge')}
                 </div>
-                <h2 className="text-xl font-extrabold text-white mb-1">{t('booking_title')}</h2>
-                <p className="text-sm" style={{ color: '#7a9ab8' }}>{t('booking_text')}</p>
+                <h2 className="text-xl font-extrabold mb-1" style={{ color: '#0f1b2d' }}>{t('booking_title')}</h2>
+                <p className="text-sm" style={{ color: '#6b7c93' }}>{t('booking_text')}</p>
               </div>
               <div className="px-7 py-6 space-y-3">
                 <a
                   href="/"
                   className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
                   style={{
-                    background: 'rgba(255,255,255,.08)',
-                    border: '1px solid rgba(255,255,255,.15)',
-                    color: '#fff',
+                    background: '#eef3f9',
+                    border: '1px solid #c8d8ec',
+                    color: '#1e3a5f',
                   }}
                 >
                   {t('book_online')}
@@ -228,9 +225,8 @@ export default function ContactPage() {
                   href={CONTACT_INFO.phoneHref}
                   className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
                   style={{
-                    background: 'linear-gradient(135deg, #c9a84c, #d4af6a)',
-                    color: '#0f1b2d',
-                    boxShadow: '0 4px 16px rgba(201,168,76,.3)',
+                    background: '#1e3a5f',
+                    color: '#fff',
                   }}
                 >
                   <Phone size={15} /> {t('call')}
