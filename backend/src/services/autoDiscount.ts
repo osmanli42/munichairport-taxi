@@ -110,13 +110,16 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
 
   if (matching.length === 0) return null;
 
-  // Tek kural uygulanır: en yüksek priority, eşitse en yüksek yüzde.
+  // Tek kural uygulanır: en yüksek priority, eşitse en yüksek indirim tutarı (€ karşılığı).
+  const amountFor = (r: AutoDiscountRule) =>
+    r.discount_type === 'fixed' ? Number(r.discount_value) : input.baseTotal * (Number(r.discount_value) / 100);
   matching.sort((a, b) =>
-    (Number(b.priority) - Number(a.priority)) || (Number(b.discount_percent) - Number(a.discount_percent))
+    (Number(b.priority) - Number(a.priority)) || (amountFor(b) - amountFor(a))
   );
   const rule = matching[0];
 
-  let amount = input.baseTotal * (Number(rule.discount_percent) / 100);
+  let amount = amountFor(rule);
+  amount = Math.min(amount, input.baseTotal); // Rabatt kann den Fahrpreis nicht überschreiten
   if (rule.max_discount_amount != null) {
     amount = Math.min(amount, Number(rule.max_discount_amount));
   }
