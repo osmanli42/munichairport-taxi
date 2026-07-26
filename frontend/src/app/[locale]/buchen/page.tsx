@@ -243,7 +243,7 @@ function BuchenContent() {
 
   // Automatische Rabatte (Rabatte-Tab, kein Code nötig) — Vorschau vom Server,
   // damit Anzeige und tatsächliche Abrechnung immer übereinstimmen.
-  const [autoDiscount, setAutoDiscount] = useState<{ name: string; percent: number; amount: number } | null>(null);
+  const [autoDiscount, setAutoDiscount] = useState<{ name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null>(null);
   useEffect(() => {
     if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
     const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
