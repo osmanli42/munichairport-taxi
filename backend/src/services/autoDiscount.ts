@@ -150,6 +150,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (r.booking_index_max != null && input.customerBookingCount != null
         && input.customerBookingCount >= Number(r.booking_index_max)) return false;
     if (r.max_uses != null && r.used_count >= Number(r.max_uses)) return false;
+    if (r.daily_max_uses != null && (dailyUsage[r.id] || 0) >= Number(r.daily_max_uses)) return false;
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
