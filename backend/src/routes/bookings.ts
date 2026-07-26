@@ -644,6 +644,16 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       console.error('Night-confirm check failed:', e);
     }
 
+    let showAutoDiscountInEmail = false;
+    try {
+      const [showRow] = await query<{ setting_value: string }>(
+        "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_show_in_email'"
+      );
+      showAutoDiscountInEmail = showRow?.setting_value === '1';
+    } catch (e) {
+      console.error('auto_discount_show_in_email lookup failed:', e);
+    }
+
     // Send notifications asynchronously
     const notificationData: BookingNotificationData = {
       booking_number,
