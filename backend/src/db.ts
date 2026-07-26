@@ -677,6 +677,11 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN booking_end_date DATE DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.booking_end_date migration failed:', e.message); }
     try {
+      // Tägliches Kontingent (z.B. "erste 3 Buchungen pro Tag") — kein Reset-Feld nötig,
+      // der Verbrauch wird immer live gegen den heutigen Kalendertag gezählt.
+      await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN daily_max_uses INT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discounts.daily_max_uses migration failed:', e.message); }
+    try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_id INT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_id migration failed:', e.message); }
     try {
