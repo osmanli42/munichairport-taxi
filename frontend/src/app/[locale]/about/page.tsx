@@ -130,9 +130,9 @@ export default function AboutPage() {
                   <div className="flex items-start gap-4 px-6 py-4">
                     <div
                       className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: '#eef3f9', border: '1px solid #c8d8ec' }}
+                      style={{ background: '#fffbf0', border: '1px solid #f0d890' }}
                     >
-                      <Icon size={18} style={{ color: '#1e3a5f' }} />
+                      <Icon size={18} style={{ color: '#a07820' }} />
                     </div>
                     <div>
                       <h3 className="font-bold text-sm mb-0.5" style={{ color: '#0f1b2d' }}>{title}</h3>
