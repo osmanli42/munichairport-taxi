@@ -819,7 +819,12 @@ export async function computeRoutePrice(
       baseTotal: price,
     });
     if (result) {
-      autoDiscount = { name: result.rule.name, type: result.rule.discount_type, value: Number(result.rule.discount_value), amount: result.amount };
+      // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst
+      // zeigt die Vorschau einen Rabatt, den POST /api/bookings hinterher wieder kippt.
+      const cappedAmount = pgFloorValue != null ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
+      if (cappedAmount > 0) {
+        autoDiscount = { name: result.rule.name, type: result.rule.discount_type, value: Number(result.rule.discount_value), amount: cappedAmount };
+      }
     }
   } catch (e) {
     console.error('Auto discount preview skipped:', e);
