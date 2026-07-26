@@ -40,6 +40,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       intOrNull(hour_to),
       strOrNull(weekday_mask),
       intOrNull(booking_index_max),
+      intOrNull(daily_max_uses),
       intOrNull(max_uses),
       numOrNull(max_discount_amount),
       strOrNull(vehicle_types),
