@@ -426,6 +426,17 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Max. Buchungen pro Tag</label>
+                <p className="text-xs text-gray-400 mb-1">
+                  Für "erste 2-3 Bestellungen am Morgen": setzt sich automatisch jede Nacht um 00:00 zurück — kein Reset-Knopf nötig.
+                </p>
+                <input type="number" min={1} value={editing.daily_max_uses ?? ''}
+                  onChange={e => patch({ daily_max_uses: e.target.value === '' ? null : parseInt(e.target.value) })}
+                  placeholder="unbegrenzt"
+                  className="mt-1 w-full max-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Trip-Typ</label>
