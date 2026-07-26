@@ -831,7 +831,10 @@ export async function computeRoutePrice(
 // POST /api/bookings/calculate-price - Calculate price
 router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, pickup_address, dropoff_address } = req.body;
+    const {
+      vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
+      pickup_address, dropoff_address, visitor_id, email, pickup_datetime, trip_type,
+    } = req.body;
 
     if (!vehicle_type || distance_km === undefined) {
       res.status(400).json({ error: 'vehicle_type and distance_km required' });
@@ -839,7 +842,12 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     }
 
     const km = parseFloat(distance_km);
-    const estimate = await computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
+    const estimate = await computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, {
+      visitorId: visitor_id || null,
+      email: email || null,
+      pickupDatetime: pickup_datetime || null,
+      tripType: trip_type || null,
+    });
     if (!estimate) {
       res.status(404).json({ error: 'Vehicle type not found' });
       return;
@@ -853,6 +861,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
       total_price: estimate.total_price,
       pflichtgebiet: estimate.pflichtgebiet,
       fixed_route: estimate.fixed_route,
+      auto_discount: estimate.auto_discount || null,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to calculate price' });
