@@ -755,9 +755,12 @@ function BuchenContent() {
                 </div>
                 <div className="text-right">
                   <p className="text-white/70 text-xs">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total' : 'Toplam'}</p>
-                  <p className="text-white font-bold text-2xl">{formatPrice(finalPrice)}</p>
+                  <p className="text-white font-bold text-2xl">{formatPrice(finalPriceWithAutoDiscount)}</p>
                   {appliedPromo && (
                     <p className="text-white/70 text-xs line-through">{formatPrice(price)}</p>
+                  )}
+                  {autoDiscount && (
+                    <p className="text-green-200 text-xs font-medium">−{formatPrice(autoDiscountAmount)} {autoDiscount.name}</p>
                   )}
                 </div>
               </div>
