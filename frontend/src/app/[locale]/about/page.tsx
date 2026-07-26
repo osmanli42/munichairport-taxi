@@ -140,7 +140,7 @@ export default function AboutPage() {
                     </div>
                     <span
                       className="ml-auto flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full self-start"
-                      style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
+                      style={{ background: '#fdf8ec', color: '#a07820', border: '1px solid #f0d890' }}
                     >
                       ✓
                     </span>
