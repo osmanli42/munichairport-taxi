@@ -190,8 +190,8 @@ export default function RabatteTab({ token }: { token: string }) {
                     {r.min_km != null || r.max_km != null ? `${r.min_km ?? 0}–${r.max_km ?? '∞'} km · ` : ''}
                     {r.hour_from != null && r.hour_to != null ? `${r.hour_from}:00–${r.hour_to}:00 Uhr · ` : ''}
                     {r.booking_index_max != null ? `erste ${r.booking_index_max} Buchungen · ` : ''}
-                    {(r.start_date || r.end_date) ? `Fahrt: ${r.start_date ?? '…'}–${r.end_date ?? '…'} · ` : ''}
-                    {(r.booking_start_date || r.booking_end_date) ? `Buchung: ${r.booking_start_date ?? '…'}–${r.booking_end_date ?? '…'} · ` : ''}
+                    {(r.start_date || r.end_date) ? `Fahrt: ${(r.start_date ?? '…').slice(0, 10)}–${(r.end_date ?? '…').slice(0, 10)} · ` : ''}
+                    {(r.booking_start_date || r.booking_end_date) ? `Buchung: ${(r.booking_start_date ?? '…').slice(0, 10)}–${(r.booking_end_date ?? '…').slice(0, 10)} · ` : ''}
                     Genutzt: {r.used_count}{r.max_uses != null ? `/${r.max_uses}` : ''}
                   </p>
                 </div>
