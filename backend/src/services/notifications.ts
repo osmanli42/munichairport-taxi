@@ -67,7 +67,9 @@ function paymentLabel(method: string, lang: string): string {
 }
 
 function buildPriceBlock(booking: BookingNotificationData, lang: string): string {
-  if (!booking.promo_code || !booking.discount_amount || !booking.base_total) {
+  const hasPromo = !!(booking.promo_code && booking.discount_amount && booking.base_total);
+  const hasAuto = !!(booking.auto_discount_name && booking.auto_discount_amount && booking.base_total);
+  if (!hasPromo && !hasAuto) {
     return `<div class="price">€${formatPrice(booking.price)}</div>`;
   }
   const labels: Record<string, Record<string, string>> = {
@@ -76,15 +78,22 @@ function buildPriceBlock(booking: BookingNotificationData, lang: string): string
     tr: { base: 'Temel fiyat', code: 'Promosyon kodu', total: 'Toplam' },
   };
   const l = labels[lang] ?? labels['de'];
+  const promoLine = hasPromo ? `
+      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
+        <span>🎉 ${l.code} ${booking.promo_code}:</span><span>−€${formatPrice(booking.discount_amount!)}</span>
+      </div>` : '';
+  const autoLine = hasAuto ? `
+      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
+        <span>${booking.auto_discount_name}:</span><span>−€${formatPrice(booking.auto_discount_amount!)}</span>
+      </div>` : '';
   return `
     <div class="price">€${formatPrice(booking.price)}</div>
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:0 0 16px;font-size:13px;color:#374151;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
         <span>${l.base}:</span><span>€${formatPrice(booking.base_total)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
-        <span>🎉 ${l.code} ${booking.promo_code}:</span><span>−€${formatPrice(booking.discount_amount)}</span>
-      </div>
+      ${autoLine}
+      ${promoLine}
       <div style="border-top:1px solid #e5e7eb;margin:8px 0;"></div>
       <div style="display:flex;justify-content:space-between;font-weight:bold;">
         <span>${l.total}:</span><span>€${formatPrice(booking.price)}</span>
