@@ -236,7 +236,7 @@ function ResultsContent() {
 
   // Fetch prices from API
   // Automatische Rabatte (Rabatte-Tab) — Vorschau vom Server; gleiche % für alle Fahrzeuge (bewusst einfach gehalten)
-  const [autoDiscount, setAutoDiscount] = useState<{ name: string; percent: number } | null>(null);
+  const [autoDiscount, setAutoDiscount] = useState<{ name: string; type: 'percent' | 'fixed'; value: number } | null>(null);
   useEffect(() => {
     if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
     const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
