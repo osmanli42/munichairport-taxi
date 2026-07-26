@@ -661,6 +661,12 @@ export async function initializeDatabase(): Promise<void> {
     try {
       await conn.execute(`UPDATE auto_discounts SET discount_value = discount_percent WHERE discount_value IS NULL AND discount_percent IS NOT NULL`);
     } catch (e: any) { if (!e.message?.includes("Unknown column")) console.error('auto_discounts discount_value backfill failed:', e.message); }
+    // discount_percent is fully superseded by discount_type/discount_value (values already
+    // backfilled above) — its lingering NOT NULL constraint blocks new INSERTs that no
+    // longer populate it, so relax it rather than requiring every future write to set it.
+    try {
+      await conn.execute(`ALTER TABLE auto_discounts MODIFY COLUMN discount_percent DECIMAL(5,2) NULL DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes("Unknown column")) console.error('auto_discounts.discount_percent relax migration failed:', e.message); }
     try {
       await conn.execute(`ALTER TABLE bookings ADD COLUMN auto_discount_id INT DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error('auto_discount_id migration failed:', e.message); }
