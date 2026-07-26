@@ -100,9 +100,32 @@ function toDateOnlyStr(v: unknown): string | null {
   return String(v).slice(0, 10);
 }
 
+// Tägliches Kontingent — läuft immer gegen den heutigen Kalendertag, braucht also
+// keinen manuellen Reset-Knopf: um 00:00 zählt "heute" automatisch neu ab null.
+async function getDailyUsageCounts(ruleIds: number[]): Promise<Record<number, number>> {
+  if (ruleIds.length === 0) return {};
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+  const rows = await query<{ auto_discount_id: number; cnt: number }>(
+    `SELECT auto_discount_id, COUNT(*) as cnt FROM bookings
+     WHERE auto_discount_id IN (${ruleIds.map(() => '?').join(',')})
+       AND status != 'cancelled'
+       AND created_at >= ? AND created_at < ?
+     GROUP BY auto_discount_id`,
+    [...ruleIds, startOfDay, startOfTomorrow]
+  );
+  const map: Record<number, number> = {};
+  for (const r of rows) map[Number(r.auto_discount_id)] = Number(r.cnt);
+  return map;
+}
+
 export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<AutoDiscountResult | null> {
   const { rules, enabled } = await loadRules();
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
+
+  const dailyCapRuleIds = rules.filter(r => r.daily_max_uses != null).map(r => r.id);
+  const dailyUsage = await getDailyUsageCounts(dailyCapRuleIds);
 
   // Tarih aralığı, rezervasyonun YAPILDIĞI güne değil, YOLCULUĞUN gerçekleşeceği güne
   // (pickupDateTime) göre kontrol edilir — "30.07'de az sipariş var, o güne indirim"
