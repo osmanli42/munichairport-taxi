@@ -204,7 +204,7 @@ export default function AboutPage() {
                         <item.icon size={15} style={{ color: '#a07820' }} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#185FA5' }}>
+                        <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#a07820' }}>
                           {item.label}
                         </p>
                         {item.href ? (
