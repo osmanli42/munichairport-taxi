@@ -692,6 +692,11 @@ export async function initializeDatabase(): Promise<void> {
       // auf '1' umschaltbar — dann dürfen Rabatte den Pflichttarif unterschreiten.
       await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discount_ignore_pg_floor', '0')`);
     } catch (e: any) { console.error('auto_discount_ignore_pg_floor seed failed:', e.message); }
+    try {
+      // Standard: Rabatte-Zeile wird der Kundin/dem Kunden per E-Mail NICHT einzeln
+      // ausgewiesen — nur der Endpreis. Admin kann das im Rabatte-Tab umschalten.
+      await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discount_show_in_email', '0')`);
+    } catch (e: any) { console.error('auto_discount_show_in_email seed failed:', e.message); }
     // ────────────────────────────────────────────────────────────────────
 
     // Seed default prices if not exists
