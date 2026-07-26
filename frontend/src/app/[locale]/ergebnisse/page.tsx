@@ -693,7 +693,9 @@ function ResultsContent() {
                         {autoDiscount && (
                           <div className="flex items-center gap-1 justify-end mt-0.5">
                             <Tag size={11} className="text-green-600" />
-                            <span className="text-xs text-green-600 font-bold">%{autoDiscount.percent} {autoDiscount.name}</span>
+                            <span className="text-xs text-green-600 font-bold">
+                              {autoDiscount.type === 'fixed' ? `−${autoDiscount.value}€` : `%${autoDiscount.value}`} {autoDiscount.name}
+                            </span>
                           </div>
                         )}
                         {anfahrtCost > 0 && (
