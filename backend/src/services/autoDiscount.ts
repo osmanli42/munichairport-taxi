@@ -131,11 +131,15 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
     if (r.start_date || r.end_date) {
       if (!tripDateStr) return false;
-      if (r.start_date && String(r.start_date).slice(0, 10) > tripDateStr) return false;
-      if (r.end_date && String(r.end_date).slice(0, 10) < tripDateStr) return false;
+      const s = toDateOnlyStr(r.start_date);
+      const e = toDateOnlyStr(r.end_date);
+      if (s && s > tripDateStr) return false;
+      if (e && e < tripDateStr) return false;
     }
-    if (r.booking_start_date && String(r.booking_start_date).slice(0, 10) > bookingDateStr) return false;
-    if (r.booking_end_date && String(r.booking_end_date).slice(0, 10) < bookingDateStr) return false;
+    const bs = toDateOnlyStr(r.booking_start_date);
+    const be = toDateOnlyStr(r.booking_end_date);
+    if (bs && bs > bookingDateStr) return false;
+    if (be && be < bookingDateStr) return false;
     return true;
   });
 
