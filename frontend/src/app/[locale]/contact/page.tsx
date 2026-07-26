@@ -164,12 +164,12 @@ export default function ContactPage() {
                   <div className="flex items-start gap-4 px-6 py-5">
                     <div
                       className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-xl"
-                      style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
+                      style={{ background: '#fffbf0', border: '1px solid #f0d890' }}
                     >
-                      <item.icon size={18} style={{ color: '#c9a84c' }} />
+                      <item.icon size={18} style={{ color: '#a07820' }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#c9a84c' }}>
+                      <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#a07820' }}>
                         {item.label}
                       </p>
                       {item.href ? (
