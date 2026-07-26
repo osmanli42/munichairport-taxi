@@ -58,21 +58,18 @@ export default function AboutPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       {/* Hero */}
-      <section
-        className="py-16 text-white text-center"
-        style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)' }}
-      >
+      <section className="py-16 text-center" style={{ background: '#fff', borderBottom: '1px solid #e5edf5' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
-            style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
+            style={{ background: '#eef3f9', border: '1px solid #c8d8ec', color: '#1e3a5f' }}
           >
             {t('badge')}
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4" style={{ color: '#0f1b2d' }}>
             {t('title')}
           </h1>
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#7a9ab8' }}>
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#6b7c93' }}>
             {t('subtitle')}
           </p>
 
@@ -80,8 +77,8 @@ export default function AboutPage() {
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto">
             {stats.map(s => (
               <div key={s.label} className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: '#c9a84c' }}>{s.value}</div>
-                <div className="text-xs font-medium mt-0.5" style={{ color: '#5a7a99' }}>{s.label}</div>
+                <div className="text-2xl font-extrabold" style={{ color: '#1e3a5f' }}>{s.value}</div>
+                <div className="text-xs font-medium mt-0.5" style={{ color: '#6b7c93' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -98,23 +95,20 @@ export default function AboutPage() {
             {/* Header card */}
             <div
               className="rounded-2xl overflow-hidden mb-4"
-              style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
             >
-              <div
-                className="flex items-center gap-4 px-7 py-5"
-                style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
-              >
+              <div className="flex items-center gap-4 px-7 py-5" style={{ background: '#eef3f9', borderBottom: '1px solid #dce8f5' }}>
                 <div
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: '#fff', border: '1px solid #c8d8ec' }}
                 >
-                  <Trophy size={20} style={{ color: '#c9a84c' }} />
+                  <Trophy size={20} style={{ color: '#1e3a5f' }} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#185FA5' }}>
                     {t('section_company')}
                   </span>
-                  <h2 className="text-lg font-bold text-white leading-tight">{t('why_us')}</h2>
+                  <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('why_us')}</h2>
                 </div>
               </div>
               <div className="px-7 py-5 text-sm leading-relaxed" style={{ color: '#4a6280' }}>
@@ -124,18 +118,18 @@ export default function AboutPage() {
 
             {/* Reasons */}
             <div className="space-y-3">
-              {reasons.map(({ icon: Icon, title, text }, idx) => (
+              {reasons.map(({ icon: Icon, title, text }) => (
                 <div
                   key={title}
                   className="rounded-2xl overflow-hidden"
-                  style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+                  style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
                 >
                   <div className="flex items-start gap-4 px-6 py-4">
                     <div
                       className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
+                      style={{ background: '#eef3f9', border: '1px solid #c8d8ec' }}
                     >
-                      <Icon size={18} style={{ color: '#c9a84c' }} />
+                      <Icon size={18} style={{ color: '#1e3a5f' }} />
                     </div>
                     <div>
                       <h3 className="font-bold text-sm mb-0.5" style={{ color: '#0f1b2d' }}>{title}</h3>
@@ -143,7 +137,7 @@ export default function AboutPage() {
                     </div>
                     <span
                       className="ml-auto flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full self-start"
-                      style={{ background: '#fdf8ec', color: '#c9a84c', border: '1px solid #f0d890' }}
+                      style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
                     >
                       ✓
                     </span>
@@ -157,32 +151,25 @@ export default function AboutPage() {
           <div>
             <div
               className="rounded-2xl overflow-hidden h-full"
-              style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
             >
               {/* Card header */}
-              <div
-                className="px-7 py-8 text-center"
-                style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)' }}
-              >
+              <div className="px-7 py-8 text-center" style={{ background: '#eef3f9', borderBottom: '1px solid #dce8f5' }}>
                 <div
                   className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl font-extrabold"
-                  style={{
-                    background: 'linear-gradient(135deg, #c9a84c, #d4af6a)',
-                    color: '#0f1b2d',
-                    boxShadow: '0 8px 24px rgba(201,168,76,.3)',
-                  }}
+                  style={{ background: '#fff', color: '#1e3a5f', border: '2px solid #c8d8ec' }}
                 >
                   F
                 </div>
-                <h3 className="text-xl font-extrabold text-white mb-1">Flughafen-München.TAXI</h3>
-                <p style={{ color: '#7a9ab8' }} className="text-sm">{t('owner_subtitle')}</p>
+                <h3 className="text-xl font-extrabold mb-1" style={{ color: '#0f1b2d' }}>Flughafen-München.TAXI</h3>
+                <p style={{ color: '#6b7c93' }} className="text-sm">{t('owner_subtitle')}</p>
 
                 <div className="flex justify-center gap-3 mt-4">
                   {['DE', 'EN', 'TR'].map(lang => (
                     <span
                       key={lang}
                       className="text-xs font-bold px-2.5 py-1 rounded-full"
-                      style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)', color: '#c9a84c' }}
+                      style={{ background: '#fff', border: '1px solid #c8d8ec', color: '#1e3a5f' }}
                     >
                       {lang}
                     </span>
@@ -193,7 +180,7 @@ export default function AboutPage() {
               {/* Contact details */}
               <div className="px-7 py-6 space-y-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#c9a84c' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#185FA5' }}>
                     {t('owner')}
                   </p>
                   <p className="font-bold text-lg" style={{ color: '#0f1b2d' }}>{CONTACT_INFO.owners}</p>
@@ -209,20 +196,16 @@ export default function AboutPage() {
                     <div key={item.label} className="flex items-start gap-3">
                       <div
                         className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ background: '#f4f7fb', border: '1px solid #e5edf5' }}
+                        style={{ background: '#eef3f9', border: '1px solid #c8d8ec' }}
                       >
-                        <item.icon size={15} style={{ color: '#3a5070' }} />
+                        <item.icon size={15} style={{ color: '#1e3a5f' }} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#c9a84c' }}>
+                        <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#185FA5' }}>
                           {item.label}
                         </p>
                         {item.href ? (
-                          <a
-                            href={item.href}
-                            className="text-sm font-medium hover:underline"
-                            style={{ color: '#0f1b2d' }}
-                          >
+                          <a href={item.href} className="text-sm font-medium hover:underline" style={{ color: '#0f1b2d' }}>
                             {item.value}
                           </a>
                         ) : (
@@ -238,11 +221,7 @@ export default function AboutPage() {
                   <a
                     href={CONTACT_INFO.phoneHref}
                     className="flex items-center justify-center gap-2 font-bold text-sm px-5 py-3 rounded-xl flex-1 transition-all hover:-translate-y-0.5"
-                    style={{
-                      background: 'linear-gradient(135deg, #c9a84c, #d4af6a)',
-                      color: '#0f1b2d',
-                      boxShadow: '0 4px 16px rgba(201,168,76,.3)',
-                    }}
+                    style={{ background: '#1e3a5f', color: '#fff' }}
                   >
                     <Phone size={15} /> {CONTACT_INFO.phone}
                   </a>
@@ -251,11 +230,7 @@ export default function AboutPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 font-bold text-sm px-5 py-3 rounded-xl flex-1 transition-all hover:-translate-y-0.5"
-                    style={{
-                      background: '#25d366',
-                      color: '#fff',
-                      boxShadow: '0 4px 16px rgba(37,211,102,.25)',
-                    }}
+                    style={{ background: '#25d366', color: '#fff' }}
                   >
                     <MessageCircle size={16} /> WhatsApp
                   </a>
@@ -268,21 +243,18 @@ export default function AboutPage() {
         {/* Service area */}
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
         >
-          <div
-            className="flex items-center gap-4 px-7 py-5"
-            style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
-          >
+          <div className="flex items-center gap-4 px-7 py-5" style={{ background: '#eef3f9', borderBottom: '1px solid #dce8f5' }}>
             <div
-              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-              style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
+              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: '#fff', border: '1px solid #c8d8ec' }}
             >
-              <MapPin size={20} style={{ color: '#c9a84c' }} />
+              <MapPin size={20} style={{ color: '#1e3a5f' }} />
             </div>
             <div>
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('section_area')}</span>
-              <h2 className="text-lg font-bold text-white leading-tight">{t('area_title')}</h2>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#185FA5' }}>{t('section_area')}</span>
+              <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('area_title')}</h2>
             </div>
           </div>
           <div className="px-7 py-6">
@@ -294,7 +266,7 @@ export default function AboutPage() {
                 <span
                   key={city}
                   className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                  style={{ background: '#fdf8ec', color: '#a07820', border: '1px solid #f0d890' }}
+                  style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
                 >
                   {city}
                 </span>
