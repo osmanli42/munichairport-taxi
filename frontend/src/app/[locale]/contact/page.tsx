@@ -275,7 +275,7 @@ export default function ContactPage() {
                     style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : {}}
                   >
                     <div className="flex items-start gap-2 mb-1">
-                      <span className="flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full" style={{ background: '#c9a84c', marginTop: '6px' }} />
+                      <span className="flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full" style={{ background: '#a07820', marginTop: '6px' }} />
                       <p className="font-bold text-sm" style={{ color: '#0f1b2d' }}>{q}</p>
                     </div>
                     <p className="pl-3.5 text-sm" style={{ color: '#6b7c93' }}>{a}</p>
