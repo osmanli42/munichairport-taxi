@@ -842,6 +842,9 @@ export default function AdminPage() {
         {/* Kalender-Import (Sammelrechnung für Telefon/E-Mail-Fahrten) */}
         {activeTab === 'kalender' && <KalenderTab token={token} />}
 
+        {/* Automatische Rabatte */}
+        {activeTab === 'rabatte' && <RabatteTab token={token} />}
+
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
           <div className="space-y-6">
