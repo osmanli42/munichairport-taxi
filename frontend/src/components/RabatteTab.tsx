@@ -212,6 +212,23 @@ export default function RabatteTab({ token }: { token: string }) {
         <Toggle on={!ignorePgFloor} onClick={toggleIgnorePgFloor} disabled={saving} />
       </div>
 
+      {/* Rabatt-Zeile in Kunden-E-Mail */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
+            <Mail size={18} className="text-gray-500" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900">Rabatt-Zeile in Kunden-E-Mail zeigen</p>
+            <p className="text-sm text-gray-500 max-w-xl">
+              Standard: aus — die Bestätigungs-E-Mail zeigt nur den Endpreis, keine Rabatt-Zeile.
+              Aktionscodes (Rabattcode) werden davon unabhängig immer angezeigt.
+            </p>
+          </div>
+        </div>
+        <Toggle on={showInEmail} onClick={toggleShowInEmail} disabled={saving} />
+      </div>
+
       {/* Kural listesi */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
