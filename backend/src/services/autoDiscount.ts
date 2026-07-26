@@ -89,7 +89,11 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   const { rules, enabled } = await loadRules();
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Tarih aralığı, rezervasyonun YAPILDIĞI güne değil, YOLCULUĞUN gerçekleşeceği güne
+  // (pickupDateTime) göre kontrol edilir — "30.07'de az sipariş var, o güne indirim"
+  // gibi kurallar ancak böyle çalışır. pickupDateTime yoksa (olmamalı, zorunlu alan)
+  // tarihli bir kural güvenli tarafta kalıp eşleşmez.
+  const tripDateStr = input.pickupDateTime ? input.pickupDateTime.toISOString().slice(0, 10) : null;
 
   const matching = rules.filter(r => {
     if (r.zone_scope !== 'any' && r.zone_scope !== input.zone) return false;
@@ -103,8 +107,11 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
-    if (r.start_date && String(r.start_date).slice(0, 10) > today) return false;
-    if (r.end_date && String(r.end_date).slice(0, 10) < today) return false;
+    if (r.start_date || r.end_date) {
+      if (!tripDateStr) return false;
+      if (r.start_date && String(r.start_date).slice(0, 10) > tripDateStr) return false;
+      if (r.end_date && String(r.end_date).slice(0, 10) < tripDateStr) return false;
+    }
     return true;
   });
 
