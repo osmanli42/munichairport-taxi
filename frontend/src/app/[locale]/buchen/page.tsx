@@ -1664,7 +1664,9 @@ function BuchenContent() {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-700">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</span>
-                    <span className="text-2xl font-bold text-primary-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
+                    {autoDiscountReady
+                      ? <span className="text-2xl font-bold text-primary-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
+                      : <span className="h-7 w-20 bg-gray-100 rounded animate-pulse inline-block" />}
                   </div>
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
