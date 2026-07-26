@@ -404,23 +404,37 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
       <a href="tel:+4915141620000" style="display:inline-block;background:#1a365d;color:#f6c644;text-decoration:none;font-weight:bold;padding:10px 18px;border-radius:8px;font-size:15px;">📞 +49 151 41620000</a>
     </div>` : ''}
 
-    ${booking.promo_code && booking.discount_amount && booking.base_total ? `
+    ${(() => {
+      const showAuto = !!(booking.auto_discount_show_in_email && booking.auto_discount_name && booking.auto_discount_amount && booking.base_total);
+      const showPromo = !!(booking.promo_code && booking.discount_amount && booking.base_total);
+      if (!showAuto && !showPromo) return `<div class="price-box">€${formatPrice(booking.price)}</div>`;
+      const baseForDisplay = booking.base_total! - (showAuto ? 0 : (booking.auto_discount_amount || 0));
+      const autoLine = showAuto ? `
+      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
+        <span>${booking.auto_discount_name}:</span>
+        <span>−€${formatPrice(booking.auto_discount_amount!)}</span>
+      </div>` : '';
+      const promoLine = showPromo ? `
+      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
+        <span>🎉 ${lang === 'tr' ? 'Promosyon kodu' : lang === 'en' ? 'Promo code' : 'Rabattcode'} ${booking.promo_code}:</span>
+        <span>−€${formatPrice(booking.discount_amount!)}</span>
+      </div>` : '';
+      return `
     <div class="price-box">€${formatPrice(booking.price)}</div>
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:-12px 0 16px;font-size:13px;color:#374151;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
         <span>${lang === 'tr' ? 'Temel fiyat' : lang === 'en' ? 'Base price' : 'Grundpreis'}:</span>
-        <span>€${formatPrice(booking.base_total - (booking.auto_discount_amount || 0))}</span>
+        <span>€${formatPrice(baseForDisplay)}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;color:#16a34a;margin-bottom:6px;">
-        <span>🎉 ${lang === 'tr' ? 'Promosyon kodu' : lang === 'en' ? 'Promo code' : 'Rabattcode'} ${booking.promo_code}:</span>
-        <span>−€${formatPrice(booking.discount_amount)}</span>
-      </div>
+      ${autoLine}
+      ${promoLine}
       <div style="border-top:1px solid #e5e7eb;margin:8px 0;"></div>
       <div style="display:flex;justify-content:space-between;font-weight:bold;">
         <span>${lang === 'tr' ? 'Toplam' : lang === 'en' ? 'Total price' : 'Gesamtpreis'}:</span>
         <span>€${formatPrice(booking.price)}</span>
       </div>
-    </div>` : `<div class="price-box">€${formatPrice(booking.price)}</div>`}
+    </div>`;
+    })()}
     ${booking.trip_type === 'roundtrip' && booking.oneway_price !== undefined ? `
     <div style="text-align:center;margin:-12px 0 16px;font-size:13px;color:#666;">
       <span style="text-decoration:line-through;color:#999;">€${formatPrice(booking.oneway_price * 2)}</span>
