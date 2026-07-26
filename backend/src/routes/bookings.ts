@@ -812,7 +812,7 @@ export async function computeRoutePrice(
       baseTotal: price,
     });
     if (result) {
-      autoDiscount = { name: result.rule.name, percent: Number(result.rule.discount_percent), amount: result.amount };
+      autoDiscount = { name: result.rule.name, type: result.rule.discount_type, value: Number(result.rule.discount_value), amount: result.amount };
     }
   } catch (e) {
     console.error('Auto discount preview skipped:', e);
