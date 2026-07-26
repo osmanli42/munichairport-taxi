@@ -7,14 +7,16 @@ const router = Router();
 
 function parseRuleBody(body: any): { error?: string; values?: any[] } {
   const {
-    name, discount_percent, zone_scope, min_km, max_km, hour_from, hour_to,
+    name, discount_type, discount_value, zone_scope, min_km, max_km, hour_from, hour_to,
     weekday_mask, booking_index_max, max_uses, max_discount_amount,
     vehicle_types, trip_types, start_date, end_date, priority, stackable_with_promo,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
-  const pct = parseFloat(discount_percent);
-  if (isNaN(pct) || pct <= 0 || pct > 100) return { error: 'discount_percent muss zwischen 0 und 100 liegen' };
+  if (!['percent', 'fixed'].includes(discount_type)) return { error: 'discount_type muss "percent" oder "fixed" sein' };
+  const val = parseFloat(discount_value);
+  if (isNaN(val) || val <= 0) return { error: 'discount_value muss größer als 0 sein' };
+  if (discount_type === 'percent' && val > 100) return { error: 'discount_value (percent) darf maximal 100 sein' };
   if (!['inside', 'outside', 'any'].includes(zone_scope)) return { error: 'zone_scope ungültig' };
   const hourOk = (h: any) => h === null || h === undefined || h === '' ||
     (Number.isInteger(parseInt(h)) && parseInt(h) >= 0 && parseInt(h) <= 23);
@@ -28,7 +30,8 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   return {
     values: [
       String(name).trim(),
-      pct,
+      discount_type,
+      val,
       zone_scope,
       numOrNull(min_km),
       numOrNull(max_km),
