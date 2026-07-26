@@ -100,6 +100,10 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   const tripDateStr = input.pickupDateTime
     ? `${input.pickupDateTime.getFullYear()}-${String(input.pickupDateTime.getMonth() + 1).padStart(2, '0')}-${String(input.pickupDateTime.getDate()).padStart(2, '0')}`
     : null;
+  // Buchungsdatum — der Tag, an dem JETZT gebucht wird (unabhängig vom Fahrtdatum oben).
+  // Beide Datumsbereiche sind unabhängig voneinander nutzbar (auch gleichzeitig).
+  const now = new Date();
+  const bookingDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const matching = rules.filter(r => {
     if (r.zone_scope !== 'any' && r.zone_scope !== input.zone) return false;
