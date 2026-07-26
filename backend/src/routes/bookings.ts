@@ -689,6 +689,15 @@ export interface RoutePriceEstimate {
   total_price: number;
   pflichtgebiet: boolean;
   fixed_route: boolean;
+  auto_discount?: { name: string; percent: number; amount: number } | null;
+}
+
+export interface RoutePriceOptions {
+  visitorId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  pickupDatetime?: string | null;
+  tripType?: string | null;
 }
 
 // Shared one-way price estimate logic — used by the /calculate-price endpoint
