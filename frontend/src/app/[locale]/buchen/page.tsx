@@ -270,7 +270,7 @@ function BuchenContent() {
         .catch(() => {});
     }, 250);
     return () => { clearTimeout(t); controller.abort(); };
-  }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType]);
+  }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType, email]);
 
   // Backend wendet serverseitig nur den größeren von Promo-Code und Auto-Rabatt an —
   // Anzeige spiegelt das, indem der Auto-Rabatt nur ohne aktiven Promo-Code gezeigt wird.
