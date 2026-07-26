@@ -46,6 +46,8 @@ export interface BookingNotificationData {
   night_confirm?: boolean;
   company_name?: string;
   company_discount?: number;
+  auto_discount_name?: string;
+  auto_discount_amount?: number;
 }
 
 function paymentLabel(method: string, lang: string): string {
