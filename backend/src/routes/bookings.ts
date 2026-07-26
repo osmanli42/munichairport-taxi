@@ -657,10 +657,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       zwischenstopp_address: zwischenstopp_address || undefined,
       promo_code: validatedPromoCode || undefined,
       discount_amount: promoDiscount > 0 ? promoDiscount : undefined,
-      base_total: promoDiscount > 0 ? baseTotal : undefined,
+      base_total: (promoDiscount > 0 || autoDiscountAmount > 0) ? baseTotal : undefined,
       night_confirm: nightConfirm,
       company_name: companyData?.company_name || undefined,
       company_discount: companyDiscount > 0 ? companyDiscount : undefined,
+      auto_discount_name: autoDiscountName || undefined,
+      auto_discount_amount: autoDiscountAmount > 0 ? autoDiscountAmount : undefined,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
