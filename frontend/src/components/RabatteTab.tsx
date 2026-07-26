@@ -40,6 +40,7 @@ export default function RabatteTab({ token }: { token: string }) {
   void token;
   const [rules, setRules] = useState<AutoDiscount[]>([]);
   const [masterEnabled, setMasterEnabled] = useState(true);
+  const [ignorePgFloor, setIgnorePgFloor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
