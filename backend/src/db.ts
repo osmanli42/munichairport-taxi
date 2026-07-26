@@ -635,6 +635,7 @@ export async function initializeDatabase(): Promise<void> {
           hour_to TINYINT DEFAULT NULL,
           weekday_mask VARCHAR(20) DEFAULT NULL,
           booking_index_max INT DEFAULT NULL,
+          daily_max_uses INT DEFAULT NULL,
           max_uses INT DEFAULT NULL,
           used_count INT NOT NULL DEFAULT 0,
           max_discount_amount DECIMAL(10,2) DEFAULT NULL,
