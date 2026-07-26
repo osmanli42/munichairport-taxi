@@ -80,6 +80,21 @@ export default function RabatteTab({ token }: { token: string }) {
     setSaving(false);
   };
 
+  const toggleIgnorePgFloor = async () => {
+    const next = !ignorePgFloor;
+    if (next && !confirm('§51 Abs. 5 PBefG: Der Pflichttarif darf nicht unterschritten werden. Rabatte, die nicht jedermann unter gleichen Bedingungen zugutekommen, sind verboten und nichtig (LG/OLG Frankfurt). Wenn du fortfährst, können Rabatte im Pflichtfahrgebiet den Tarif unterschreiten — rechtliches Risiko liegt bei dir. Fortfahren?')) return;
+    setIgnorePgFloor(next);
+    setSaving(true);
+    try {
+      await adminApi.updateSettings({ auto_discount_ignore_pg_floor: next ? '1' : '0' });
+      flash(next ? 'Tarif-Untergrenze deaktiviert ⚠️' : 'Tarif-Untergrenze wieder aktiv ✓');
+    } catch {
+      setIgnorePgFloor(!next);
+      setErr('Konnte nicht gespeichert werden');
+    }
+    setSaving(false);
+  };
+
   const toggleRule = async (r: AutoDiscount) => {
     setRules(arr => arr.map(x => x.id === r.id ? { ...x, active: r.active ? 0 : 1 } : x));
     try {
