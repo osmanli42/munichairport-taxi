@@ -97,6 +97,20 @@ export default function RabatteTab({ token }: { token: string }) {
     setSaving(false);
   };
 
+  const toggleShowInEmail = async () => {
+    const next = !showInEmail;
+    setShowInEmail(next);
+    setSaving(true);
+    try {
+      await adminApi.updateSettings({ auto_discount_show_in_email: next ? '1' : '0' });
+      flash(next ? 'Rabatt-Zeile wird in der Kunden-E-Mail angezeigt ✓' : 'Rabatt-Zeile in der Kunden-E-Mail ausgeblendet ✓');
+    } catch {
+      setShowInEmail(!next);
+      setErr('Konnte nicht gespeichert werden');
+    }
+    setSaving(false);
+  };
+
   const toggleRule = async (r: AutoDiscount) => {
     setRules(arr => arr.map(x => x.id === r.id ? { ...x, active: r.active ? 0 : 1 } : x));
     try {
