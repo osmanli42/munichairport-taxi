@@ -14,6 +14,7 @@ export interface AutoDiscountRule {
   hour_to: number | null;
   weekday_mask: string | null; // '1,2,3' — 1=Montag … 7=Sonntag (ISO)
   booking_index_max: number | null;
+  daily_max_uses: number | null;
   max_uses: number | null;
   used_count: number;
   max_discount_amount: number | null;
