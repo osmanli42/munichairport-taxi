@@ -260,6 +260,7 @@ function BuchenContent() {
           dropoff_lat: dropoffLat, dropoff_lng: dropoffLng,
           pickup_address: pickup, dropoff_address: dropoff,
           visitor_id: visitorId,
+          email: email || undefined,
           pickup_datetime: date && time ? `${date}T${time}` : undefined,
           trip_type: tripType,
         }),
