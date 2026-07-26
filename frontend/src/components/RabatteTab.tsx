@@ -104,7 +104,7 @@ export default function RabatteTab({ token }: { token: string }) {
 
   const saveForm = async () => {
     if (!editing) return;
-    if (!editing.name || !editing.discount_percent) { setErr('Name und Rabatt-% sind erforderlich'); return; }
+    if (!editing.name || !editing.discount_value) { setErr('Name und Rabattwert sind erforderlich'); return; }
     setSaving(true);
     try {
       if (editingId) {
