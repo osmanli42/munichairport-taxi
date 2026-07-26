@@ -892,8 +892,10 @@ function BuchenContent() {
                 </div>
               </div>
 
-              {/* Automatischer Rabatt — kein Code, wird bei Zutreffen direkt abgezogen */}
-              {autoDiscount && (
+              {/* Automatischer Rabatt — kein Code, wird bei Zutreffen direkt abgezogen.
+                  Wird nur angezeigt, wenn kein Promo-Code aktiv ist: das Backend wendet
+                  serverseitig ohnehin nur den größeren der beiden Rabatte an (stackable_with_promo). */}
+              {autoDiscount && !appliedPromo && (
                 <div className="px-6 pb-2">
                   <hr className="border-gray-100 mb-4" />
                   <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
