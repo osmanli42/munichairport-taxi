@@ -892,6 +892,30 @@ function BuchenContent() {
                 </div>
               </div>
 
+              {/* Automatischer Rabatt — kein Code, wird bei Zutreffen direkt abgezogen */}
+              {autoDiscount && (
+                <div className="px-6 pb-2">
+                  <hr className="border-gray-100 mb-4" />
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
+                    <span className="text-green-700 font-medium">
+                      <PartyPopper size={13} className="inline mr-1" /> {autoDiscount.name}: −{formatPrice(autoDiscountAmount)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm px-1 mt-2">
+                    <span className="text-gray-500">
+                      {locale === 'tr' ? 'Grundpreis' : locale === 'en' ? 'Base price' : 'Grundpreis'}:
+                    </span>
+                    <span className="text-gray-500 line-through">{formatPrice(finalPrice)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-base font-bold px-1">
+                    <span className="text-gray-800">
+                      {locale === 'tr' ? 'Toplam' : locale === 'en' ? 'Total' : 'Gesamtpreis'}:
+                    </span>
+                    <span className="text-green-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Promo code — shown when any active promo exists (with or without banner) */}
               {hasAnyActivePromo && (
                 <div className="px-6 pb-2">
