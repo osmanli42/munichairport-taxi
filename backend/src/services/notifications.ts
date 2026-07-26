@@ -90,7 +90,7 @@ function buildPriceBlock(booking: BookingNotificationData, lang: string): string
     <div class="price">€${formatPrice(booking.price)}</div>
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin:0 0 16px;font-size:13px;color:#374151;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span>${l.base}:</span><span>€${formatPrice(booking.base_total)}</span>
+        <span>${l.base}:</span><span>€${formatPrice(booking.base_total!)}</span>
       </div>
       ${autoLine}
       ${promoLine}
