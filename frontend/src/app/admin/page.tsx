@@ -20,8 +20,9 @@ import PflichtgebietTab from '@/components/PflichtgebietTab';
 import B2BTab from '@/components/B2BTab';
 import KalenderTab from '@/components/KalenderTab';
 import AdminAddressField from '@/components/AdminAddressField';
+import RabatteTab from '@/components/RabatteTab';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b' | 'kalender';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'rabatte' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b' | 'kalender';
 
 interface MarketingCustomer {
   email: string;
