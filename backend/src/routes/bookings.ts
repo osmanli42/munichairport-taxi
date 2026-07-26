@@ -792,6 +792,7 @@ export async function computeRoutePrice(
               }
               price = pgCfg.mode === 'replace' ? mandatory : Math.max(price, mandatory);
               pflichtgebiet = true;
+              pgFloorValue = mandatory;
             }
           }
         }
