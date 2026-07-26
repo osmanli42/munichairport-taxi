@@ -292,6 +292,8 @@ export interface AutoDiscount {
   trip_types: string | null;
   start_date: string | null;
   end_date: string | null;
+  booking_start_date: string | null;
+  booking_end_date: string | null;
   active: number;
   priority: number;
   stackable_with_promo: number;
