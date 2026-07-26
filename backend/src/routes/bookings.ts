@@ -13,6 +13,7 @@ import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
 import { resolveAutoDiscount, countCustomerBookings } from '../services/autoDiscount';
+import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
