@@ -19,8 +19,10 @@ export interface AutoDiscountRule {
   max_discount_amount: number | null;
   vehicle_types: string | null; // '1,2,3'
   trip_types: string | null; // 'oneway,roundtrip'
-  start_date: string | null;
-  end_date: string | null;
+  start_date: string | null; // Fahrtdatum von
+  end_date: string | null; // Fahrtdatum bis
+  booking_start_date: string | null; // Buchungsdatum von
+  booking_end_date: string | null; // Buchungsdatum bis
   active: number;
   priority: number;
   stackable_with_promo: number;
