@@ -444,9 +444,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     let price = Math.max(0, Math.round((baseTotal - autoDiscountAmount - promoDiscount - companyDiscount) * 100) / 100);
 
-    if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override) {
+    // ignorePgFloor (Rabatte-Tab, bewusst aktiviert) schaltet den §51-Tarifboden für
+    // diese Buchung komplett ab — sonst würde dieser generische Sicherheitsnetz-Clamp
+    // den oben bereits erlaubten Rabatt gleich wieder rückgängig machen.
+    if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override && !ignorePgFloor) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
-    } else if (pgFareFloor > 0 && !companyData) {
+    } else if (pgFareFloor > 0 && !companyData && !ignorePgFloor) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
     }
 
