@@ -642,6 +642,8 @@ export async function initializeDatabase(): Promise<void> {
           trip_types VARCHAR(20) DEFAULT NULL,
           start_date DATE DEFAULT NULL,
           end_date DATE DEFAULT NULL,
+          booking_start_date DATE DEFAULT NULL,
+          booking_end_date DATE DEFAULT NULL,
           active TINYINT(1) NOT NULL DEFAULT 1,
           priority INT NOT NULL DEFAULT 0,
           stackable_with_promo TINYINT(1) NOT NULL DEFAULT 0,
