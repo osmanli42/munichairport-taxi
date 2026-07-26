@@ -689,7 +689,7 @@ export interface RoutePriceEstimate {
   total_price: number;
   pflichtgebiet: boolean;
   fixed_route: boolean;
-  auto_discount?: { name: string; percent: number; amount: number } | null;
+  auto_discount?: { name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null;
 }
 
 export interface RoutePriceOptions {
