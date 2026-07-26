@@ -271,7 +271,9 @@ function BuchenContent() {
     return () => { clearTimeout(t); controller.abort(); };
   }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType]);
 
-  const autoDiscountAmount = autoDiscount?.amount ?? 0;
+  // Backend wendet serverseitig nur den größeren von Promo-Code und Auto-Rabatt an —
+  // Anzeige spiegelt das, indem der Auto-Rabatt nur ohne aktiven Promo-Code gezeigt wird.
+  const autoDiscountAmount = (autoDiscount && !appliedPromo) ? autoDiscount.amount : 0;
   const finalPriceWithAutoDiscount = Math.max(0, finalPrice - autoDiscountAmount);
 
   const t: Record<string, Record<string, string>> = {
