@@ -85,6 +85,7 @@ app.use('/api/prices', pricesRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/promotions', promotionsRouter);
+app.use('/api/auto-discounts', autoDiscountsRouter);
 app.use('/api/plz-surcharges', plzSurchargesRouter);
 app.use('/api/pflichtgebiet', pflichtgebietRouter);
 app.use('/api/fixed-routes', fixedRoutesRouter);
