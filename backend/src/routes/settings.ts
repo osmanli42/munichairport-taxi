@@ -47,7 +47,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
-      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled' || key === 'phone_validation_enabled' || key === 'portal_tracking_enabled' || key === 'b2b_applications_enabled' || key === 'auto_status_enabled' || key === 'auto_complete_include_company_charge' || key === 'auto_discounts_enabled' || key === 'auto_discount_ignore_pg_floor') && !['0', '1'].includes(String(value))) {
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled' || key === 'phone_validation_enabled' || key === 'portal_tracking_enabled' || key === 'b2b_applications_enabled' || key === 'auto_status_enabled' || key === 'auto_complete_include_company_charge' || key === 'auto_discounts_enabled' || key === 'auto_discount_ignore_pg_floor' || key === 'auto_discount_show_in_email') && !['0', '1'].includes(String(value))) {
         res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }
