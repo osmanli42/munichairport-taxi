@@ -248,15 +248,15 @@ export default function AboutPage() {
           className="rounded-2xl overflow-hidden"
           style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
         >
-          <div className="flex items-center gap-4 px-7 py-5" style={{ background: '#eef3f9', borderBottom: '1px solid #dce8f5' }}>
+          <div className="flex items-center gap-4 px-7 py-5" style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}>
             <div
               className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: '#fff', border: '1px solid #c8d8ec' }}
+              style={{ background: '#fff', border: '1px solid #f0d890' }}
             >
-              <MapPin size={20} style={{ color: '#1e3a5f' }} />
+              <MapPin size={20} style={{ color: '#a07820' }} />
             </div>
             <div>
-              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#185FA5' }}>{t('section_area')}</span>
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#a07820' }}>{t('section_area')}</span>
               <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('area_title')}</h2>
             </div>
           </div>
