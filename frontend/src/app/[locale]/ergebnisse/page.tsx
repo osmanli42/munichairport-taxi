@@ -235,6 +235,28 @@ function ResultsContent() {
   }
 
   // Fetch prices from API
+  // Automatische Rabatte (Rabatte-Tab) — Vorschau vom Server; gleiche % für alle Fahrzeuge (bewusst einfach gehalten)
+  const [autoDiscount, setAutoDiscount] = useState<{ name: string; percent: number } | null>(null);
+  useEffect(() => {
+    if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
+    const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
+    fetch(`${API_URL}/bookings/calculate-price`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vehicle_type: 'kombi',
+        distance_km: distanceKm,
+        pickup_address: pickup, dropoff_address: dropoff,
+        visitor_id: visitorId,
+        pickup_datetime: date && time ? `${date}T${time}` : undefined,
+        trip_type: tripType,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setAutoDiscount(d?.auto_discount ? { name: d.auto_discount.name, percent: d.auto_discount.percent } : null))
+      .catch(() => {});
+  }, [distanceKm, pickup, dropoff, date, time, tripType]);
+
   const [apiPrices, setApiPrices] = useState<Record<string, PriceData> | null>(null);
   useEffect(() => {
     fetch(`${API_URL}/prices`)
