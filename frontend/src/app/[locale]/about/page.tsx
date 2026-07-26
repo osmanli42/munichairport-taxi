@@ -199,9 +199,9 @@ export default function AboutPage() {
                     <div key={item.label} className="flex items-start gap-3">
                       <div
                         className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ background: '#eef3f9', border: '1px solid #c8d8ec' }}
+                        style={{ background: '#fffbf0', border: '1px solid #f0d890' }}
                       >
-                        <item.icon size={15} style={{ color: '#1e3a5f' }} />
+                        <item.icon size={15} style={{ color: '#a07820' }} />
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#185FA5' }}>
