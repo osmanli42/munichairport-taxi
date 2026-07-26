@@ -826,7 +826,7 @@ export async function computeRoutePrice(
   return {
     base_price: priceRow.base_price,
     price_per_km: priceRow.price_per_km,
-    total_price: parseFloat(price.toFixed(2)),
+    total_price: roundPriceUp(price),
     pflichtgebiet,
     fixed_route: fixedRouteMatch,
     auto_discount: autoDiscount,
