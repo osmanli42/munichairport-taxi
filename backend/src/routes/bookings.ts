@@ -398,6 +398,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         email: email || null,
       });
 
+      const [ignoreFloorSetting] = await query<{ setting_value: string }>(
+        "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_ignore_pg_floor'"
+      );
+      const ignorePgFloor = ignoreFloorSetting?.setting_value === '1';
+
       const adResult = await resolveAutoDiscount({
         km,
         zone: adZone,
