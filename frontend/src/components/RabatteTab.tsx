@@ -179,6 +179,23 @@ export default function RabatteTab({ token }: { token: string }) {
         <Toggle on={masterEnabled} onClick={toggleMaster} disabled={saving} />
       </div>
 
+      {/* Tarif-Untergrenze — §51 PBefG */}
+      <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>
+        <div className="flex items-center gap-3">
+          <div className={cn('w-10 h-10 rounded-xl border flex items-center justify-center', ignorePgFloor ? 'bg-amber-100 border-amber-300' : 'bg-gray-50 border-gray-200')}>
+            <AlertTriangle size={18} className={ignorePgFloor ? 'text-amber-600' : 'text-gray-400'} />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900">Tarif-Untergrenze im Pflichtfahrgebiet</p>
+            <p className="text-sm text-gray-500 max-w-xl">
+              Standard: Rabatte dürfen den Pflichttarif (§51 Abs. 5 PBefG) nicht unterschreiten.
+              {ignorePgFloor && <span className="text-amber-700 font-semibold"> Deaktiviert — Rabatte können den Pflichttarif unterschreiten. Rechtliches Risiko.</span>}
+            </p>
+          </div>
+        </div>
+        <Toggle on={!ignorePgFloor} onClick={toggleIgnorePgFloor} disabled={saving} />
+      </div>
+
       {/* Kural listesi */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
