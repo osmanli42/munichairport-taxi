@@ -87,6 +87,18 @@ function listMatches(list: string | null, value: number | string | null): boolea
   return list.split(',').map(s => s.trim()).includes(String(value));
 }
 
+// DB'den gelen DATE kolonları mysql2 tarafından JS Date nesnesi olarak dönebilir —
+// Date.toString() ISO değildir ("Fri Jul 31 2026 …"), String(v).slice(0,10) o zaman
+// çöp üretip karşılaştırmayı hep yanlış sonuçlandırır. Hem Date hem string/ISO girdiyi
+// güvenle "YYYY-MM-DD"ye çevirir.
+function toDateOnlyStr(v: unknown): string | null {
+  if (v == null) return null;
+  if (v instanceof Date) {
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
+  }
+  return String(v).slice(0, 10);
+}
+
 export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<AutoDiscountResult | null> {
   const { rules, enabled } = await loadRules();
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
