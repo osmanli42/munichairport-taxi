@@ -272,6 +272,52 @@ export const pflichtgebietApi = {
   },
 };
 
+// Automatische Rabatte (Rabatte-Tab) — kod gerektirmeyen, kural bazlı indirimler
+export interface AutoDiscount {
+  id: number;
+  name: string;
+  discount_percent: number;
+  zone_scope: 'inside' | 'outside' | 'any';
+  min_km: number | null;
+  max_km: number | null;
+  hour_from: number | null;
+  hour_to: number | null;
+  weekday_mask: string | null;
+  booking_index_max: number | null;
+  max_uses: number | null;
+  used_count: number;
+  max_discount_amount: number | null;
+  vehicle_types: string | null;
+  trip_types: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  active: number;
+  priority: number;
+  stackable_with_promo: number;
+}
+export const autoDiscountsApi = {
+  getAll: async (): Promise<AutoDiscount[]> => {
+    const response = await api.get('/auto-discounts/admin/list');
+    return response.data;
+  },
+  create: async (data: Partial<AutoDiscount>) => {
+    const response = await api.post('/auto-discounts/admin', data);
+    return response.data;
+  },
+  update: async (id: number, data: Partial<AutoDiscount>) => {
+    const response = await api.put(`/auto-discounts/admin/${id}`, data);
+    return response.data;
+  },
+  toggle: async (id: number, active: boolean) => {
+    const response = await api.put(`/auto-discounts/admin/${id}`, { active });
+    return response.data;
+  },
+  remove: async (id: number) => {
+    const response = await api.delete(`/auto-discounts/admin/${id}`);
+    return response.data;
+  },
+};
+
 // Fixed-price routes (Festpreisrouten) API
 export interface FixedRoute {
   id: number; name: string; pickup_keywords: string; dropoff_keywords: string;
