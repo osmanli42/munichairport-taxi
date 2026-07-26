@@ -9,7 +9,8 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   const {
     name, discount_type, discount_value, zone_scope, min_km, max_km, hour_from, hour_to,
     weekday_mask, booking_index_max, max_uses, max_discount_amount,
-    vehicle_types, trip_types, start_date, end_date, priority, stackable_with_promo,
+    vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
+    priority, stackable_with_promo,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
