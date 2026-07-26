@@ -253,7 +253,7 @@ function ResultsContent() {
       }),
     })
       .then(r => r.ok ? r.json() : null)
-      .then(d => setAutoDiscount(d?.auto_discount ? { name: d.auto_discount.name, percent: d.auto_discount.percent } : null))
+      .then(d => setAutoDiscount(d?.auto_discount ? { name: d.auto_discount.name, type: d.auto_discount.type, value: d.auto_discount.value } : null))
       .catch(() => {});
   }, [distanceKm, pickup, dropoff, date, time, tripType]);
 
