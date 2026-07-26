@@ -376,8 +376,8 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtdatum (nicht Buchungsdatum)</label>
-                <p className="text-xs text-gray-400 mb-1">Für einen einzelnen Tag (z.B. 30.07.2026) beide Felder auf dasselbe Datum setzen.</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtdatum</label>
+                <p className="text-xs text-gray-400 mb-1">Datum der Fahrt selbst. Für einen einzelnen Tag (z.B. 30.07.2026) beide Felder auf dasselbe Datum setzen.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400">Gültig ab</label>
@@ -387,6 +387,23 @@ export default function RabatteTab({ token }: { token: string }) {
                   <div>
                     <label className="text-xs text-gray-400">Gültig bis</label>
                     <input type="date" value={editing.end_date || ''} onChange={e => patch({ end_date: e.target.value || null })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Buchungsdatum</label>
+                <p className="text-xs text-gray-400 mb-1">Datum, an dem gebucht wird (unabhängig vom Fahrtdatum oben — beide Bereiche können gleichzeitig aktiv sein).</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">Gültig ab</label>
+                    <input type="date" value={editing.booking_start_date || ''} onChange={e => patch({ booking_start_date: e.target.value || null })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Gültig bis</label>
+                    <input type="date" value={editing.booking_end_date || ''} onChange={e => patch({ booking_end_date: e.target.value || null })}
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                 </div>
