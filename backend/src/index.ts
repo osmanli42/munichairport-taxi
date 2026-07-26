@@ -9,6 +9,7 @@ import pricesRouter from './routes/prices';
 import mapsRouter from './routes/maps';
 import settingsRouter from './routes/settings';
 import promotionsRouter from './routes/promotions';
+import autoDiscountsRouter from './routes/auto-discounts';
 import trackingRouter from './routes/tracking';
 import driverTrackingRouter from './routes/driver-tracking';
 import recordingRouter from './routes/recording';
