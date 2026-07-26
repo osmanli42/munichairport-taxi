@@ -559,6 +559,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       rechnungRequired,
       rechnungAdresseClean,
       phoneE164,
+      autoDiscountId,
+      autoDiscountAmount > 0 ? autoDiscountAmount : null,
     ]);
 
     // Record the confirmed PaymentIntent for online payments
