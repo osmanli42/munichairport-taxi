@@ -437,6 +437,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
     }
 
+    // Letzter Schritt: auf 0,50 € aufrunden — identisch mit formatPrice() im Frontend,
+    // damit der angezeigte und der abgerechnete/in Rechnung gestellte Betrag immer übereinstimmen.
+    price = roundPriceUp(price);
+
     const booking_number = generateBookingNumber();
 
     // Regular (non-company) card bookings: the client already tokenized the card via
