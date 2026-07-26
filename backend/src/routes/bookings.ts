@@ -377,6 +377,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     let autoDiscountAmount = 0;
     let autoDiscountId: number | null = null;
     let autoDiscountName: string | null = null;
+    let ignorePgFloor = false;
     try {
       // Bölge tespiti: PG bloğundan bağımsız (enabled=0 olsa da) geometri hesaplanır.
       let adZone: 'inside' | 'outside' = 'outside';
