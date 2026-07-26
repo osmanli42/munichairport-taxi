@@ -409,20 +409,26 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       });
 
       if (adResult) {
-        // Promo koduyla birleşmiyorsa büyük olan kazanır
-        if (validatedPromoCode && promoDiscount > 0 && !adResult.rule.stackable_with_promo) {
-          if (adResult.amount > promoDiscount) {
-            promoDiscount = 0;
-            validatedPromoCode = null;
-            autoDiscountAmount = adResult.amount;
+        // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif (pgFareFloor) nicht unterschreiten.
+        // Wird hier gekappt statt erst am Ende über den Gesamtpreis-Floor — sonst würde
+        // die Buchungsbestätigung einen Rabatt zeigen, der den Preis gar nicht verändert hat.
+        const cappedAmount = pgFareFloor > 0 ? Math.min(adResult.amount, Math.max(0, baseTotal - pgFareFloor)) : adResult.amount;
+        if (cappedAmount > 0) {
+          // Promo koduyla birleşmiyorsa büyük olan kazanır
+          if (validatedPromoCode && promoDiscount > 0 && !adResult.rule.stackable_with_promo) {
+            if (cappedAmount > promoDiscount) {
+              promoDiscount = 0;
+              validatedPromoCode = null;
+              autoDiscountAmount = cappedAmount;
+              autoDiscountId = adResult.rule.id;
+              autoDiscountName = adResult.rule.name;
+            }
+            // aksi halde promo kalır, otomatik indirim uygulanmaz
+          } else {
+            autoDiscountAmount = cappedAmount;
             autoDiscountId = adResult.rule.id;
             autoDiscountName = adResult.rule.name;
           }
-          // aksi halde promo kalır, otomatik indirim uygulanmaz
-        } else {
-          autoDiscountAmount = adResult.amount;
-          autoDiscountId = adResult.rule.id;
-          autoDiscountName = adResult.rule.name;
         }
       }
     } catch (e) {
