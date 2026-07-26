@@ -93,7 +93,11 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   // (pickupDateTime) göre kontrol edilir — "30.07'de az sipariş var, o güne indirim"
   // gibi kurallar ancak böyle çalışır. pickupDateTime yoksa (olmamalı, zorunlu alan)
   // tarihli bir kural güvenli tarafta kalıp eşleşmez.
-  const tripDateStr = input.pickupDateTime ? input.pickupDateTime.toISOString().slice(0, 10) : null;
+  // Lokale Datumsteile (nicht toISOString/UTC) — konsistent mit hourMatches/weekdayMatches,
+  // die ebenfalls getHours()/getDay() (lokale Serverzeit) verwenden.
+  const tripDateStr = input.pickupDateTime
+    ? `${input.pickupDateTime.getFullYear()}-${String(input.pickupDateTime.getMonth() + 1).padStart(2, '0')}-${String(input.pickupDateTime.getDate()).padStart(2, '0')}`
+    : null;
 
   const matching = rules.filter(r => {
     if (r.zone_scope !== 'any' && r.zone_scope !== input.zone) return false;
