@@ -28,7 +28,7 @@ export interface AutoDiscountRule {
 export interface AutoDiscountInput {
   km: number;
   zone: 'inside' | 'outside';
-  vehicleType: number | null;
+  vehicleType: string | null;
   isRoundtrip: boolean;
   pickupDateTime: Date | null; // transfer zamanı (rezervasyon anı değil)
   customerBookingCount: number | null; // null = bilinmiyor (önizleme) → booking_index koşulu geçer sayılır
