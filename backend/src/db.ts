@@ -687,6 +687,11 @@ export async function initializeDatabase(): Promise<void> {
     try {
       await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discounts_enabled', '1')`);
     } catch (e: any) { console.error('auto_discounts_enabled seed failed:', e.message); }
+    try {
+      // Default '0' = §51 PBefG floor bleibt geschützt. Nur bewusst über den Rabatte-Tab
+      // auf '1' umschaltbar — dann dürfen Rabatte den Pflichttarif unterschreiten.
+      await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discount_ignore_pg_floor', '0')`);
+    } catch (e: any) { console.error('auto_discount_ignore_pg_floor seed failed:', e.message); }
     // ────────────────────────────────────────────────────────────────────
 
     // Seed default prices if not exists
