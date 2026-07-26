@@ -30,7 +30,7 @@ type FormState = Partial<AutoDiscount>;
 
 const emptyForm = (): FormState => ({
   name: '', discount_type: 'percent', discount_value: 10, zone_scope: 'outside', min_km: null, max_km: null,
-  hour_from: null, hour_to: null, weekday_mask: null, booking_index_max: null,
+  hour_from: null, hour_to: null, weekday_mask: null, booking_index_max: null, daily_max_uses: null,
   max_uses: null, max_discount_amount: null, vehicle_types: null, trip_types: null,
   start_date: null, end_date: null, booking_start_date: null, booking_end_date: null,
   priority: 0, stackable_with_promo: 0,
