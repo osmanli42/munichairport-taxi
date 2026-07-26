@@ -638,7 +638,7 @@ function BuchenContent() {
                     <span className="font-semibold text-gray-800">{vehicleLabel}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xl font-bold text-primary-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
+                    <span className="text-xl font-bold text-primary-600">{formatPrice(confirmedPrice ?? finalPriceWithAutoDiscount)}</span>
                     <p className="text-[11px] text-green-600 font-medium mt-0.5">
                       {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}
                     </p>
