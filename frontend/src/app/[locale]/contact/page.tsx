@@ -134,21 +134,21 @@ export default function ContactPage() {
             {/* Header card */}
             <div
               className="rounded-2xl overflow-hidden mb-4"
-              style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
             >
               <div
                 className="flex items-center gap-4 px-7 py-5"
-                style={{ background: 'linear-gradient(135deg, #0f1b2d, #1e3a5f)' }}
+                style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}
               >
                 <div
                   className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.3)' }}
+                  style={{ background: '#fff', border: '1px solid #f0d890' }}
                 >
-                  <ClipboardList size={20} style={{ color: '#c9a84c' }} />
+                  <ClipboardList size={20} style={{ color: '#a07820' }} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('direct_label')}</span>
-                  <h2 className="text-lg font-bold text-white leading-tight">{t('contact_info_title')}</h2>
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#a07820' }}>{t('direct_label')}</span>
+                  <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('contact_info_title')}</h2>
                 </div>
               </div>
             </div>
