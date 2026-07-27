@@ -374,7 +374,7 @@ router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthR
     const bookings = bookingIds.length > 0
       ? await query(`SELECT id, pickup_datetime, pickup_address, dropoff_address, name, price, steuersatz, source FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')}) ORDER BY pickup_datetime`, bookingIds)
       : [];
-    res.json({ due_date: invoice.due_date, bookings });
+    res.json({ due_date: invoice.due_date, project_name: invoice.project_name, bookings });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch invoice bookings' });
   }
