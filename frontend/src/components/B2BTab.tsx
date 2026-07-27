@@ -587,10 +587,18 @@ export default function B2BTab({ token }: { token: string }) {
               <div className="py-12 text-center text-gray-400 text-sm">Lädt…</div>
             ) : (
               <>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Fällig bis</label>
-                  <input type="date" value={invoiceEditDueDate} onChange={e => setInvoiceEditDueDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 max-w-xs" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Fällig bis</label>
+                    <input type="date" value={invoiceEditDueDate} onChange={e => setInvoiceEditDueDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Projekt (optional)</label>
+                    <input value={invoiceEditProjectName} onChange={e => setInvoiceEditProjectName(e.target.value)}
+                      placeholder="z.B. Herzklang 2"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
