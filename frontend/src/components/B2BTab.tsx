@@ -131,7 +131,7 @@ export default function B2BTab({ token }: { token: string }) {
     try {
       const res = await api(`/invoices/${invoiceEditModal.id}/details`, token, {
         method: 'PUT',
-        body: JSON.stringify({ due_date: invoiceEditDueDate, bookings: invoiceEditRows }),
+        body: JSON.stringify({ due_date: invoiceEditDueDate, project_name: invoiceEditProjectName, bookings: invoiceEditRows }),
       });
       const d = await res.json();
       if (res.ok) {
