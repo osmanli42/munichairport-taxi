@@ -465,9 +465,10 @@ export function generateSammelrechnungPdf(opts: {
   mahngebuehr: number;
   reminderLevel: number;
   s: Record<string, string>;
+  projectName?: string | null;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { company, invoiceNumber, periodMonth, mwst, bookings, total, dueDate, mahngebuehr, reminderLevel, s } = opts;
+    const { company, invoiceNumber, periodMonth, mwst, bookings, total, dueDate, mahngebuehr, reminderLevel, s, projectName } = opts;
 
     const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
     registerUnicodeFonts(doc);
