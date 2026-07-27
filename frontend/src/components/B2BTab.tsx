@@ -65,6 +65,7 @@ export default function B2BTab({ token }: { token: string }) {
   const [invoiceEditModal, setInvoiceEditModal] = useState<Invoice | null>(null);
   const [invoiceEditRows, setInvoiceEditRows] = useState<InvoiceBookingRow[]>([]);
   const [invoiceEditDueDate, setInvoiceEditDueDate] = useState('');
+  const [invoiceEditProjectName, setInvoiceEditProjectName] = useState('');
   const [invoiceEditLoading, setInvoiceEditLoading] = useState(false);
   const [invoiceEditSaving, setInvoiceEditSaving] = useState(false);
   const [sendEmailAddr, setSendEmailAddr] = useState('');
