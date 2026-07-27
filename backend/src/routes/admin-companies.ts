@@ -266,6 +266,7 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
           company: { company_name: company.company_name, contact_name: company.contact_name, address: company.address, ust_idnr: company.ust_idnr },
           invoiceNumber, periodMonth: month, mwst: mwst as 0 | 7 | 19,
           bookings, total, dueDate: dueDateStr, mahngebuehr: 0, reminderLevel: 0, s,
+          projectName: invoice.project_name,
         });
 
         const { Resend } = await import('resend');
