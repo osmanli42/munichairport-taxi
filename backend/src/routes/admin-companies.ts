@@ -252,9 +252,9 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
     const dueDateStr = dueDate.toISOString().slice(0, 10);
 
     await run(
-      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'sent')`,
-      [companyId, invoiceNumber, month, mwst, JSON.stringify(bookingIds), total, dueDateStr]
+      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status, project_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?)`,
+      [companyId, invoiceNumber, month, mwst, JSON.stringify(bookingIds), total, dueDateStr, project_name?.trim() || null]
     );
 
     const [invoice] = await query('SELECT * FROM company_invoices WHERE invoice_number = ?', [invoiceNumber]);
