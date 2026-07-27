@@ -341,6 +341,7 @@ router.get('/invoices/:invoiceId/pdf', authenticateAdmin, async (req: AuthReques
       mwst: Number(invoice.mwst_satz) as 0 | 7 | 19,
       bookings, total: Number(invoice.total), dueDate: invoice.due_date,
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
+      projectName: invoice.project_name,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -539,6 +540,7 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
       mwst: Number(invoice.mwst_satz) as 0 | 7 | 19,
       bookings, total: Number(invoice.total), dueDate: invoice.due_date,
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
+      projectName: invoice.project_name,
     });
 
     const bodyHtml = `
