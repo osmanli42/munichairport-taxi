@@ -416,6 +416,7 @@ router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRe
     const updates: string[] = ['total = ?', 'booking_ids = ?'];
     const params: any[] = [newTotal, JSON.stringify(bookingIds)];
     if (due_date) { updates.push('due_date = ?'); params.push(due_date); }
+    if (project_name !== undefined) { updates.push('project_name = ?'); params.push(project_name?.trim() || null); }
     params.push(req.params.invoiceId);
     await run(`UPDATE company_invoices SET ${updates.join(', ')} WHERE id = ?`, params);
 
