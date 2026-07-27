@@ -620,6 +620,11 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE companies MODIFY COLUMN payment_term_days INT NOT NULL DEFAULT 7`);
     } catch (e: any) { console.error('payment_term_days default migration failed:', e.message); }
 
+    // Migration: Projektname pro Rechnung (z.B. "Projekt: Herzklang 2" bei JewelLabs) — optional, unter der Adresse auf der Rechnung
+    try {
+      await conn.execute(`ALTER TABLE company_invoices ADD COLUMN project_name VARCHAR(255) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // ─── Automatische Rabatte (Rabatte-Tab) ─────────────────────────────
     try {
       await conn.execute(`
