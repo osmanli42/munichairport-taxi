@@ -22,6 +22,11 @@ interface Invoice {
   company_name?: string; created_at: string; manual_sent_at?: string | null;
 }
 
+interface InvoiceBookingRow {
+  id: number; pickup_datetime: string; pickup_address: string; dropoff_address: string;
+  name: string; price: number; steuersatz: number; source: string | null;
+}
+
 async function api(path: string, token: string, opts?: RequestInit) {
   const res = await fetch(`${API}/admin/companies${path}`, {
     ...opts,
