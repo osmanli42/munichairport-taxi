@@ -894,7 +894,7 @@ function EditModal({ company, onSave, onClose }: { company: Company; onSave: (c:
 
 function SammelrechnungModal({ companyId, companyName, onCreate, onClose }: {
   companyId: number; companyName: string;
-  onCreate: (id: number, month: string, mwst: number, email: boolean) => void;
+  onCreate: (id: number, month: string, mwst: number, email: boolean, projectName: string) => void;
   onClose: () => void;
 }) {
   const now = new Date();
@@ -903,6 +903,7 @@ function SammelrechnungModal({ companyId, companyName, onCreate, onClose }: {
     : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
   const [month, setMonth] = useState(lastMonth);
   const [sendEmail, setSendEmail] = useState(true);
+  const [projectName, setProjectName] = useState('');
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -916,6 +917,13 @@ function SammelrechnungModal({ companyId, companyName, onCreate, onClose }: {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" />
         </div>
 
+        <div>
+          <label className="text-xs font-medium text-gray-500">Projekt (optional)</label>
+          <input value={projectName} onChange={e => setProjectName(e.target.value)}
+            placeholder="z.B. Herzklang 2"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" />
+        </div>
+
         <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
           Die MwSt. wird automatisch pro Fahrt berechnet (je nach hinterlegtem Steuersatz). Bei gemischten Sätzen zeigt die Rechnung getrennte Summen für 7% und 19%.
         </p>
@@ -926,7 +934,7 @@ function SammelrechnungModal({ companyId, companyName, onCreate, onClose }: {
         </label>
 
         <div className="flex gap-2">
-          <button onClick={() => onCreate(companyId, month, 19, sendEmail)}
+          <button onClick={() => onCreate(companyId, month, 19, sendEmail, projectName)}
             className="flex-1 bg-amber-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-amber-700">
             Erstellen
           </button>
