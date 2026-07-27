@@ -223,7 +223,7 @@ router.get('/:id/bookings', authenticateAdmin, async (req: AuthRequest, res: Res
 router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const companyId = req.params.id;
-    const { month, mwst_satz, send_email } = req.body;
+    const { month, mwst_satz, send_email, project_name } = req.body;
     if (!month) { res.status(400).json({ error: 'month required (YYYY-MM)' }); return; }
     const mwst = [0, 7, 19].includes(Number(mwst_satz)) ? Number(mwst_satz) : 19;
 
