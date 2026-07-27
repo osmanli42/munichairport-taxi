@@ -477,6 +477,7 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
       mwst: Number(invoice.mwst_satz) as 0 | 7 | 19,
       bookings, total: updatedTotal, dueDate: invoice.due_date,
       mahngebuehr: newLevel >= 3 ? mahngebuehr : 0, reminderLevel: newLevel, s,
+      projectName: invoice.project_name,
     });
 
     const emailHtml = buildReminderEmail({
