@@ -98,6 +98,51 @@ export default function B2BTab({ token }: { token: string }) {
     } catch (e) { console.error(e); }
   }, [token]);
 
+  async function openInvoiceEdit(inv: Invoice) {
+    setInvoiceEditModal(inv);
+    setInvoiceEditLoading(true);
+    try {
+      const res = await api(`/invoices/${inv.id}/bookings`, token);
+      if (res.ok) {
+        const d = await res.json();
+        setInvoiceEditRows(d.bookings.map((b: InvoiceBookingRow) => ({ ...b, pickup_datetime: b.pickup_datetime?.slice(0, 16) || '' })));
+        setInvoiceEditDueDate(d.due_date ? String(d.due_date).slice(0, 10) : '');
+      } else {
+        alert('Positionen konnten nicht geladen werden');
+        setInvoiceEditModal(null);
+      }
+    } catch (e) { alert('Netzwerkfehler'); setInvoiceEditModal(null); }
+    setInvoiceEditLoading(false);
+  }
+
+  function updateInvoiceEditRow(id: number, patch: Partial<InvoiceBookingRow>) {
+    setInvoiceEditRows(rows => rows.map(r => r.id === id ? { ...r, ...patch } : r));
+  }
+
+  function removeInvoiceEditRow(id: number) {
+    setInvoiceEditRows(rows => rows.filter(r => r.id !== id));
+  }
+
+  async function saveInvoiceEdit() {
+    if (!invoiceEditModal) return;
+    setInvoiceEditSaving(true);
+    try {
+      const res = await api(`/invoices/${invoiceEditModal.id}/details`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ due_date: invoiceEditDueDate, bookings: invoiceEditRows }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setInvoices(list => list.map(i => i.id === invoiceEditModal.id ? { ...i, total: d.total, due_date: invoiceEditDueDate } : i));
+        setInvoiceEditModal(null);
+        flash('Rechnung aktualisiert');
+      } else {
+        alert(d.error || 'Fehler beim Speichern');
+      }
+    } catch (e) { alert('Netzwerkfehler'); }
+    setInvoiceEditSaving(false);
+  }
+
   async function handleSendInvoice() {
     if (!sendModal || !sendEmailAddr.trim()) return;
     setSendLoading(true);
