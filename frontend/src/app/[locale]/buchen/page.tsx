@@ -149,7 +149,6 @@ function BuchenContent() {
   const flightCheckAbort = useRef<AbortController | null>(null);
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
