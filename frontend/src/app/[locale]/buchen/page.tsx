@@ -1556,18 +1556,10 @@ function BuchenContent() {
           {/* RIGHT: Booking summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
-              <button
-                type="button"
-                className="w-full bg-primary-600 px-5 py-4 flex items-center justify-between lg:cursor-default"
-                onClick={() => setSidebarOpen(o => !o)}
-              >
+              <div className="w-full bg-primary-600 px-5 py-4 flex items-center justify-between">
                 <h3 className="text-white font-bold">{tx.summary}</h3>
-                <span className="lg:hidden text-white/80 flex items-center gap-1 text-xs">
-                  {sidebarOpen ? (locale === 'de' ? 'Schließen' : locale === 'en' ? 'Close' : 'Kapat') : (locale === 'de' ? 'Details' : locale === 'en' ? 'Details' : 'Detaylar')}
-                  <ChevronDown size={15} className={`transition-transform ${sidebarOpen ? 'rotate-180' : ''}`} />
-                </span>
-              </button>
-              <div className={`lg:block ${sidebarOpen ? 'block' : 'hidden'}`}>
+              </div>
+              <div>
               {/* Payment trust badge */}
               <div className="mx-4 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-center">
                 <p className="font-bold text-amber-800 text-sm">
