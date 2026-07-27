@@ -62,6 +62,11 @@ export default function B2BTab({ token }: { token: string }) {
   const [newFirma, setNewFirma] = useState({ company_name: '', contact_name: '', email: '', phone: '', address: '', city: '', zip: '' });
   const [newFirmaLoading, setNewFirmaLoading] = useState(false);
   const [sendModal, setSendModal] = useState<Invoice | null>(null);
+  const [invoiceEditModal, setInvoiceEditModal] = useState<Invoice | null>(null);
+  const [invoiceEditRows, setInvoiceEditRows] = useState<InvoiceBookingRow[]>([]);
+  const [invoiceEditDueDate, setInvoiceEditDueDate] = useState('');
+  const [invoiceEditLoading, setInvoiceEditLoading] = useState(false);
+  const [invoiceEditSaving, setInvoiceEditSaving] = useState(false);
   const [sendEmailAddr, setSendEmailAddr] = useState('');
   const [sendLoading, setSendLoading] = useState(false);
 
