@@ -389,11 +389,16 @@ router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRe
 
     const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
     if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
-    const bookingIds: number[] = JSON.parse(invoice.booking_ids || '[]');
+    const originalBookingIds: number[] = JSON.parse(invoice.booking_ids || '[]');
+
+    // Positionen, die im Request fehlen, wurden vom Admin aus der Rechnung entfernt
+    // (die Buchung selbst bleibt bestehen, wird nur von dieser Rechnung gelöst).
+    const keptIds = Array.isArray(bookings) ? bookings.map((b) => Number(b.id)) : originalBookingIds;
+    const bookingIds = originalBookingIds.filter((id) => keptIds.includes(id));
 
     if (Array.isArray(bookings)) {
       for (const b of bookings) {
-        if (!bookingIds.includes(Number(b.id))) continue; // nur Positionen dieser Rechnung
+        if (!originalBookingIds.includes(Number(b.id))) continue; // nur Positionen dieser Rechnung
         const steuersatz = [0, 7, 19].includes(Number(b.steuersatz)) ? Number(b.steuersatz) : 7;
         await run(
           `UPDATE bookings SET pickup_datetime = ?, pickup_address = ?, dropoff_address = ?, name = ?, price = ?, steuersatz = ? WHERE id = ?`,
@@ -407,8 +412,8 @@ router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRe
       : [];
     const newTotal = updatedBookings.reduce((sum: number, b: any) => sum + roundGrossPrice(Number(b.price) || 0, b.source === 'calendar'), 0);
 
-    const updates: string[] = ['total = ?'];
-    const params: any[] = [newTotal];
+    const updates: string[] = ['total = ?', 'booking_ids = ?'];
+    const params: any[] = [newTotal, JSON.stringify(bookingIds)];
     if (due_date) { updates.push('due_date = ?'); params.push(due_date); }
     params.push(req.params.invoiceId);
     await run(`UPDATE company_invoices SET ${updates.join(', ')} WHERE id = ?`, params);
