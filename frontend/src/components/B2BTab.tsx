@@ -210,9 +210,9 @@ export default function B2BTab({ token }: { token: string }) {
     if (res.ok) { flash('Gespeichert'); setEditModal(null); loadCompanies(); }
   };
 
-  const handleCreateSR = async (companyId: number, month: string, mwst: number, sendEmail: boolean) => {
+  const handleCreateSR = async (companyId: number, month: string, mwst: number, sendEmail: boolean, projectName: string) => {
     const res = await api(`/${companyId}/sammelrechnung`, token, {
-      method: 'POST', body: JSON.stringify({ month, mwst_satz: mwst, send_email: sendEmail }),
+      method: 'POST', body: JSON.stringify({ month, mwst_satz: mwst, send_email: sendEmail, project_name: projectName }),
     });
     if (res.ok) { flash('Sammelrechnung erstellt'); setSrModal(null); loadInvoices(); }
     else { const d = await res.json(); flash(d.error || 'Fehler'); }
