@@ -382,8 +382,9 @@ router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthR
 
 router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { due_date, bookings } = req.body as {
+    const { due_date, project_name, bookings } = req.body as {
       due_date?: string;
+      project_name?: string;
       bookings?: { id: number; pickup_datetime: string; pickup_address: string; dropoff_address: string; name: string; price: number; steuersatz: number }[];
     };
 
