@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, FileText, Settings, Check, X, Send, Download, ChevronDown, ChevronUp, Users, RefreshCw, AlertTriangle, Clock, CreditCard, Banknote, Receipt, Mail } from 'lucide-react';
+import { Building2, FileText, Settings, Check, X, Send, Download, ChevronDown, ChevronUp, Users, RefreshCw, AlertTriangle, Clock, CreditCard, Banknote, Receipt, Mail, Pencil, Plus, Trash2 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
