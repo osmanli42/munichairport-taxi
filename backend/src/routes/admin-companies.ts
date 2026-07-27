@@ -364,6 +364,61 @@ router.put('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest, r
   }
 });
 
+// ─── RECHNUNG BEARBEITEN (Positionen + Fälligkeit) ──────────────────────────
+
+router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
+    if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
+    const bookingIds = JSON.parse(invoice.booking_ids || '[]');
+    const bookings = bookingIds.length > 0
+      ? await query(`SELECT id, pickup_datetime, pickup_address, dropoff_address, name, price, steuersatz, source FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')}) ORDER BY pickup_datetime`, bookingIds)
+      : [];
+    res.json({ due_date: invoice.due_date, bookings });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch invoice bookings' });
+  }
+});
+
+router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { due_date, bookings } = req.body as {
+      due_date?: string;
+      bookings?: { id: number; pickup_datetime: string; pickup_address: string; dropoff_address: string; name: string; price: number; steuersatz: number }[];
+    };
+
+    const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
+    if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
+    const bookingIds: number[] = JSON.parse(invoice.booking_ids || '[]');
+
+    if (Array.isArray(bookings)) {
+      for (const b of bookings) {
+        if (!bookingIds.includes(Number(b.id))) continue; // nur Positionen dieser Rechnung
+        const steuersatz = [0, 7, 19].includes(Number(b.steuersatz)) ? Number(b.steuersatz) : 7;
+        await run(
+          `UPDATE bookings SET pickup_datetime = ?, pickup_address = ?, dropoff_address = ?, name = ?, price = ?, steuersatz = ? WHERE id = ?`,
+          [b.pickup_datetime, b.pickup_address, b.dropoff_address, b.name, Math.round(Number(b.price) * 100) / 100, steuersatz, b.id]
+        );
+      }
+    }
+
+    const updatedBookings = bookingIds.length > 0
+      ? await query<any>(`SELECT price, source FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')})`, bookingIds)
+      : [];
+    const newTotal = updatedBookings.reduce((sum: number, b: any) => sum + roundGrossPrice(Number(b.price) || 0, b.source === 'calendar'), 0);
+
+    const updates: string[] = ['total = ?'];
+    const params: any[] = [newTotal];
+    if (due_date) { updates.push('due_date = ?'); params.push(due_date); }
+    params.push(req.params.invoiceId);
+    await run(`UPDATE company_invoices SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    res.json({ success: true, total: newTotal });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update invoice' });
+  }
+});
+
 router.delete('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await run('DELETE FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
