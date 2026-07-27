@@ -535,6 +535,7 @@ export function generateSammelrechnungPdf(opts: {
     doc.fontSize(9).font('WorkSans').fillColor('#374151');
     if (company.contact_name) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.address) { doc.text(company.address, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+    if (projectName) { doc.text('Projekt: ' + projectName, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.ust_idnr) { doc.text('USt-IdNr.: ' + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     doc.text('', marginL, addrY - 4);
 
