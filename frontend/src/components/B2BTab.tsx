@@ -108,6 +108,7 @@ export default function B2BTab({ token }: { token: string }) {
         const d = await res.json();
         setInvoiceEditRows(d.bookings.map((b: InvoiceBookingRow) => ({ ...b, pickup_datetime: b.pickup_datetime?.slice(0, 16) || '' })));
         setInvoiceEditDueDate(d.due_date ? String(d.due_date).slice(0, 10) : '');
+        setInvoiceEditProjectName(d.project_name || '');
       } else {
         alert('Positionen konnten nicht geladen werden');
         setInvoiceEditModal(null);
