@@ -571,6 +571,102 @@ export default function B2BTab({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Rechnung bearbeiten Modal */}
+      {invoiceEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInvoiceEditModal(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900">Rechnung bearbeiten — {invoiceEditModal.invoice_number}</h3>
+              <button onClick={() => setInvoiceEditModal(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-600">{invoiceEditModal.company_name}</p>
+
+            {invoiceEditLoading ? (
+              <div className="py-12 text-center text-gray-400 text-sm">Lädt…</div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Fällig bis</label>
+                  <input type="date" value={invoiceEditDueDate} onChange={e => setInvoiceEditDueDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 max-w-xs" />
+                </div>
+
+                <div className="space-y-2">
+                  {invoiceEditRows.map(row => (
+                    <div key={row.id} className="border border-gray-200 rounded-xl p-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Datum/Zeit</label>
+                          <input type="datetime-local" value={row.pickup_datetime}
+                            onChange={e => updateInvoiceEditRow(row.id, { pickup_datetime: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Gast</label>
+                          <input value={row.name} onChange={e => updateInvoiceEditRow(row.id, { name: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Von</label>
+                          <input value={row.pickup_address} onChange={e => updateInvoiceEditRow(row.id, { pickup_address: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Nach</label>
+                          <input value={row.dropoff_address} onChange={e => updateInvoiceEditRow(row.id, { dropoff_address: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1" />
+                        </div>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">Preis (brutto)</label>
+                          <input type="number" step="0.01" value={row.price}
+                            onChange={e => updateInvoiceEditRow(row.id, { price: parseFloat(e.target.value) || 0 })}
+                            className="w-28 border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">MwSt.</label>
+                          <select value={row.steuersatz} onChange={e => updateInvoiceEditRow(row.id, { steuersatz: Number(e.target.value) })}
+                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm mt-1">
+                            <option value={7}>7%</option>
+                            <option value={19}>19%</option>
+                            <option value={0}>0%</option>
+                          </select>
+                        </div>
+                        <button onClick={() => removeInvoiceEditRow(row.id)}
+                          className="ml-auto p-2 hover:bg-red-50 rounded-lg text-red-400" title="Aus Rechnung entfernen">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {invoiceEditRows.length === 0 && (
+                    <div className="text-center text-gray-400 text-sm py-6">Keine Positionen mehr in dieser Rechnung.</div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <span className="text-sm text-gray-500">
+                    Neuer Gesamtbetrag: <span className="font-semibold text-gray-900">
+                      {invoiceEditRows.reduce((s, r) => s + (Number(r.price) || 0), 0).toFixed(2).replace('.', ',')} €
+                    </span>
+                  </span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setInvoiceEditModal(null)} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Abbrechen</button>
+                    <button onClick={saveInvoiceEdit} disabled={invoiceEditSaving}
+                      className="bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50">
+                      {invoiceEditSaving ? 'Speichert…' : 'Speichern'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Rechnung per E-Mail senden Modal */}
       {sendModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSendModal(null)}>
