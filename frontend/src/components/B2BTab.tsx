@@ -465,6 +465,10 @@ export default function B2BTab({ token }: { token: string }) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center gap-1 justify-end">
+                          <button onClick={() => openInvoiceEdit(inv)}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500" title="Bearbeiten">
+                            <Pencil size={14} />
+                          </button>
                           <a href={`${API}/admin/companies/invoices/${inv.id}/pdf?token=${token}`} target="_blank" rel="noreferrer"
                             className="p-1.5 hover:bg-gray-100 rounded-lg" title="PDF">
                             <Download size={14} />
