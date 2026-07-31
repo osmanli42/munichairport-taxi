@@ -156,8 +156,8 @@ export function generateRechnungPdf(opts: {
     const parsedInvoiceDate = opts.invoice_date ? new Date(opts.invoice_date) : null;
     const today = parsedInvoiceDate && !isNaN(parsedInvoiceDate.getTime()) ? parsedInvoiceDate : new Date();
     const todayStr = fmtDate(today.toISOString(), lang);
-    const dueDate = new Date(today);
-    dueDate.setDate(dueDate.getDate() + 7);
+    const dueDate = due_date_override ? new Date(due_date_override) : new Date(today);
+    if (!due_date_override) dueDate.setDate(dueDate.getDate() + 7);
     const dueDateStr = fmtDate(dueDate.toISOString(), lang);
 
     const zahlungsartLabel = isPaid
