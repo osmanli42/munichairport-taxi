@@ -1677,11 +1677,17 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
 
     // Shared with autoRechnungJob: builds + mails the PDF and persists the render
     // params, so this invoice can be reproduced later via .../rechnung.pdf.
-    await sendRechnungForBooking(booking, { rechnungsnummer, mwst, lang, empfaenger_adresse, zahlungsart });
+    await sendRechnungForBooking(booking, { rechnungsnummer, mwst, lang, empfaenger_adresse, zahlungsart, force });
 
     res.json({ success: true });
   } catch (error: any) {
     console.error('Rechnung error:', error);
+    // "already sent" is a distinct, expected conflict (not a server error) — the
+    // frontend uses this status to offer an explicit "send again anyway" confirm.
+    if (error.message?.includes('bereits eine Rechnung gesendet')) {
+      res.status(409).json({ error: error.message, already_sent: true });
+      return;
+    }
     res.status(500).json({ error: error.message || 'Failed to generate invoice' });
   }
 });
