@@ -1648,12 +1648,13 @@ router.get('/rechnung/next-number', authenticateAdmin, async (_req: AuthRequest,
 // POST /api/admin/bookings/:id/rechnung
 router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse, zahlungsart } = req.body as {
+    const { rechnungsnummer, mwst_satz, sprache, empfaenger_adresse, zahlungsart, force } = req.body as {
       rechnungsnummer: string;
       mwst_satz: 0 | 7 | 19;
       sprache: 'de' | 'en';
       empfaenger_adresse?: string;
       zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
+      force?: boolean;
     };
 
     if (!rechnungsnummer) {
