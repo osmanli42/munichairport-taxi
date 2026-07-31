@@ -107,9 +107,14 @@ export function generateRechnungPdf(opts: {
   // rechnung_sent_at when re-rendering an already-sent invoice so the reproduced PDF
   // carries the same Datum/Zahlungsziel the customer received.
   invoice_date?: string | Date;
+  // Bereits erhaltene Anzahlung (z.B. Bankvorkasse) — wird vom Gesamtbetrag abgezogen,
+  // die Rechnung weist dann Gesamtbetrag/Anzahlung/Offener Betrag getrennt aus.
+  deposit?: number;
+  // Überschreibt die Standard-Zahlungsfrist (Rechnungsdatum + 7 Tage) mit einem festen Datum.
+  due_date_override?: string | Date;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { booking, rechnungsnummer, lang, s, empfaenger_adresse, zahlungsart } = opts;
+    const { booking, rechnungsnummer, lang, s, empfaenger_adresse, zahlungsart, deposit, due_date_override } = opts;
     // The booking's own tax rate (set per ride by an admin) takes precedence over whatever
     // rate was passed in, since that's the actual applicable rate for this specific ride.
     const mwst: 0 | 7 | 19 = [0, 7, 19].includes(Number(booking.steuersatz)) ? Number(booking.steuersatz) as 0 | 7 | 19 : opts.mwst;
