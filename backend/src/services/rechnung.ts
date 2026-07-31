@@ -273,11 +273,16 @@ export function generateRechnungPdf(opts: {
     const totValX = marginL + pageW - 40;
     let totY = tableBottom + 16;
 
+    const hasDeposit = deposit != null && deposit > 0;
     const totRows: [string, number, boolean][] = [
       [isEn ? 'Net Amount:' : 'Nettobetrag:', netPrice, false],
       [isEn ? `VAT (${mwst}%):` : `MwSt. (${mwst}%):`, mwstAmount, false],
-      [isEn ? 'TOTAL AMOUNT:' : 'GESAMTBETRAG:', grossPrice, true],
+      [isEn ? 'TOTAL AMOUNT:' : 'GESAMTBETRAG:', grossPrice, !hasDeposit],
     ];
+    if (hasDeposit) {
+      totRows.push([isEn ? 'Deposit Received:' : 'Anzahlung erhalten:', -deposit, false]);
+      totRows.push([isEn ? 'AMOUNT DUE:' : 'OFFENER BETRAG:', grossPrice - deposit, true]);
+    }
     for (const [label, amount, bold] of totRows) {
       if (bold) {
         doc.moveTo(totX, totY - 4).lineTo(marginL + pageW, totY - 4).lineWidth(0.5).strokeColor(BRAND).stroke();
