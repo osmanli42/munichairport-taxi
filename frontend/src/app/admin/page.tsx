@@ -4579,8 +4579,22 @@ export default function AdminPage() {
                     try {
                       await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart);
                       setRechnungSuccess(true);
-                    } catch (err: unknown) {
-                      setRechnungError(err instanceof Error ? err.message : 'Fehler beim Senden');
+                    } catch (err: any) {
+                      if (err.response?.status === 409 && err.response?.data?.already_sent) {
+                        // Bereits gesendet — nur nach ausdrücklicher Bestätigung erneut verschicken,
+                        // sonst bekommt der Kunde zwei Rechnungsmails für dieselbe Fahrt.
+                        const confirmed = window.confirm(`${err.response.data.error}\n\nTrotzdem erneut per E-Mail senden?`);
+                        if (confirmed) {
+                          try {
+                            await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart, true);
+                            setRechnungSuccess(true);
+                          } catch (err2: any) {
+                            setRechnungError(err2.response?.data?.error || err2.message || 'Fehler beim Senden');
+                          }
+                        }
+                      } else {
+                        setRechnungError(err.response?.data?.error || err.message || 'Fehler beim Senden');
+                      }
                     } finally { setRechnungSending(false); }
                   }}
                   disabled={rechnungSending || !rechnungsnummer.trim()}
