@@ -67,6 +67,7 @@ export async function sendRechnungForBooking(
     lang?: 'de' | 'en';
     zahlungsart?: Zahlungsart;
     empfaenger_adresse?: string;
+    force?: boolean;
   } = {}
 ): Promise<{ rechnungsnummer: string }> {
   if (!booking?.email) throw new Error('Buchung hat keine E-Mail-Adresse');
