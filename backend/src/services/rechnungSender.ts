@@ -88,19 +88,26 @@ async function doSendRechnung(
     lang?: 'de' | 'en';
     zahlungsart?: Zahlungsart;
     empfaenger_adresse?: string;
+    force?: boolean;
   }
 ): Promise<{ rechnungsnummer: string }> {
   // The caller's row may be stale: the cron reads its whole batch up front, so a
   // booking invoiced manually mid-batch would still look unsent. Re-check before
-  // spending an invoice number. Explicit opts.rechnungsnummer means the admin is
-  // deliberately (re)issuing, so it bypasses this.
-  if (!opts.rechnungsnummer) {
-    const [fresh] = await query<{ rechnung_number: string | null }>(
-      'SELECT rechnung_number FROM bookings WHERE id = ?', [booking.id]
-    );
-    if (fresh?.rechnung_number) {
+  // spending an invoice number — regardless of whether the caller passed an explicit
+  // rechnungsnummer, since that used to bypass this check entirely and caused a real
+  // double-send (customer got two invoice emails for the same ride). Only opts.force
+  // is allowed to bypass it now, for a deliberate, explicit re-issue.
+  const [fresh] = await query<{ rechnung_number: string | null }>(
+    'SELECT rechnung_number FROM bookings WHERE id = ?', [booking.id]
+  );
+  if (fresh?.rechnung_number && !opts.force) {
+    if (!opts.rechnungsnummer) {
+      // Silent path (cron / auto-complete trigger): already sent, nothing to do.
       return { rechnungsnummer: fresh.rechnung_number };
     }
+    // Explicit path (admin manually issuing via the Rechnung form): block clearly
+    // instead of silently resending, so the admin sees why nothing new went out.
+    throw new Error(`Für diese Buchung wurde bereits eine Rechnung gesendet (${fresh.rechnung_number}). Zum bewussten erneuten Versand "force" bestätigen.`);
   }
 
   const d = defaultsFromBooking(booking);
