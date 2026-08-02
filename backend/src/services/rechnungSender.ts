@@ -147,16 +147,21 @@ async function doSendRechnung(
   // send silently looks successful, which has bitten this project before.
   if (sendError) throw new Error(`Resend: ${sendError.message}`);
 
-  // Only mark as sent after the mail actually went out.
+  // Only mark as sent after the mail actually went out. rechnung_adresse must be
+  // persisted here too — it was missing before, so a custom address typed straight
+  // into the admin's send form (rather than pre-filled from the booking's own
+  // rechnung_adresse column) made it into the actual PDF/email but then vanished
+  // from the DB, so re-rendering the "sent" invoice later fell back to name+email
+  // and silently dropped the customer's real billing address.
   await run(
     `UPDATE bookings
        SET rechnung_number = ?, rechnung_sent_at = ?, rechnung_mwst = ?,
-           rechnung_sprache = ?, rechnung_zahlungsart = ?, rechnung_error = NULL
+           rechnung_sprache = ?, rechnung_zahlungsart = ?, rechnung_adresse = ?, rechnung_error = NULL
      WHERE id = ?`,
     [
       rechnungsnummer,
       sentAt.toISOString().slice(0, 19).replace('T', ' '),
-      mwst, lang, zahlungsart, booking.id,
+      mwst, lang, zahlungsart, empfaenger_adresse || null, booking.id,
     ]
   );
 
