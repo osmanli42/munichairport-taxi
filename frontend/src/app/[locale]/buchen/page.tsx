@@ -151,7 +151,6 @@ function BuchenContent() {
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
-  const [showExtras, setShowExtras] = useState(false);
   const [payment, setPayment] = useState<'cash' | 'card'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
