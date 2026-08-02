@@ -1474,7 +1474,6 @@ function BuchenContent() {
               )}
               {errors.rechnung && <p className="text-red-500 text-xs mb-3">{errors.rechnung}</p>}
             </div>
-            )}
 
             {/* Payment */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
