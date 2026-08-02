@@ -1330,17 +1330,7 @@ function BuchenContent() {
               </div>
             </div>
 
-            {/* Extras — collapsed by default, auto-open if something is already selected */}
-            {!showExtras && !childSeat && !rechnungRequired && fahrradCount === 0 ? (
-              <button
-                type="button"
-                onClick={() => setShowExtras(true)}
-                className="flex items-center gap-1.5 text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                <Briefcase size={14} />
-                {locale === 'de' ? '+ Extras (Kindersitz, Fahrrad, Firmenrechnung)' : locale === 'en' ? '+ Extras (child seat, bicycle, invoice)' : '+ Ekstralar (çocuk koltuğu, bisiklet, fatura)'}
-              </button>
-            ) : (
+            {/* Extras — immer sichtbar */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={16} /> Extras</h3>
 
