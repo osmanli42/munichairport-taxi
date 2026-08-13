@@ -4228,7 +4228,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrzeug</label>
-                      <select value={editForm.vehicle_type || 'kombi'} onChange={(e) => setEditForm(p => ({ ...p, vehicle_type: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                      <select value={editForm.vehicle_type || 'kombi'} onChange={(e) => { setEditForm(p => ({ ...p, vehicle_type: e.target.value })); setEditRecalcArmed(true); }} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                         <option value="kombi">Kombi</option>
                         <option value="van">Van</option>
                         <option value="grossraumtaxi">Großraumtaxi</option>
