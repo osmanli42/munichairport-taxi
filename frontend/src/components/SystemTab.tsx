@@ -293,6 +293,16 @@ export default function SystemTab({ token }: { token: string }) {
                     <span className="text-xs text-gray-500 ml-auto">
                       {h.latency_ms != null ? `${h.latency_ms}ms` : ''}
                     </span>
+                    {h.check_name === 'fmtde:api' && isWarn && (
+                      <button
+                        onClick={dismissStuckInquiries}
+                        disabled={dismissingStuck}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium disabled:opacity-50"
+                        title="Bu talepleri bilerek yanıtlamadım, uyarıdan kaldır"
+                      >
+                        {dismissingStuck ? 'Sıfırlanıyor…' : 'Sıfırla'}
+                      </button>
+                    )}
                   </div>
                   <div className="text-sm text-gray-600 ml-7">{h.message}</div>
                   {trend.length > 1 && (
