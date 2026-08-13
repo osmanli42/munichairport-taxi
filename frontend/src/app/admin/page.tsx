@@ -4151,6 +4151,7 @@ export default function AdminPage() {
                       onChange={(v) => setEditForm(p => ({ ...p, pickup_address: v }))}
                       onValidSelect={(v) => {
                         setEditPickupValid(v);
+                        setEditRecalcArmed(true);
                         if (v) setEditForm(p => ({ ...p, pickup_address: v }));
                       }}
                       onCoords={(lat, lng) => setEditPickupCoords(lat != null && lng != null ? { lat, lng } : null)}
