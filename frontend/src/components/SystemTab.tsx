@@ -157,6 +157,21 @@ export default function SystemTab({ token }: { token: string }) {
     setHealthRunning(false);
   };
 
+  const dismissStuckInquiries = async () => {
+    if (!confirm('Bilerek yanıtlanmamış FMT taleplerini uyarıdan kaldır?')) return;
+    setDismissingStuck(true);
+    try {
+      await fetch(`${API_BASE}/admin/health/fmtde/dismiss-stuck`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await runHealthCheck();
+    } catch {
+      // ignore
+    }
+    setDismissingStuck(false);
+  };
+
   const sendTestAlert = async () => {
     setTestEmailStatus('Gönderiliyor...');
     try {
