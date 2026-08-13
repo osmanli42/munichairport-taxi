@@ -681,7 +681,7 @@ export default function AdminPage() {
       .catch(() => {})
       .finally(() => setEditPriceCalcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editPickupValid, editDropoffValid, editForm.vehicle_type]);
+  }, [editPickupValid, editDropoffValid, editForm.vehicle_type, editRecalcArmed]);
 
   // Update price when fahrrad or child seat counts change
   useEffect(() => {
