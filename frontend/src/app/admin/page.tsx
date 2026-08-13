@@ -637,6 +637,7 @@ export default function AdminPage() {
   // Auto-calculate price when both addresses are confirmed in edit/create modal
   useEffect(() => {
     if (!editPickupValid || !editDropoffValid) return;
+    if (!editRecalcArmed) return;
     const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api');
     const vehicleType = editForm.vehicle_type || 'kombi';
     setEditPriceCalcLoading(true);
