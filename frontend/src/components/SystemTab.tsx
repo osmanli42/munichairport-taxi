@@ -85,6 +85,7 @@ export default function SystemTab({ token }: { token: string }) {
   const [healthRunning, setHealthRunning] = useState(false);
   const [alertSettings, setAlertSettings] = useState<{ cooldown_hours: number; enabled: boolean } | null>(null);
   const [alertSaving, setAlertSaving] = useState(false);
+  const [dismissingStuck, setDismissingStuck] = useState(false);
 
   const load = useCallback(async () => {
     try {
