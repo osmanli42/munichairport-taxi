@@ -291,6 +291,25 @@ router.post('/admin/health/run', authenticateAdmin, async (req: AuthRequest, res
   }
 });
 
+// POST /api/admin/health/fmtde/dismiss-stuck — blendet bewusst nicht beantwortete FMT-Anfragen
+// aus dem "Flughafen Taxi .de — API + DB"-Warnhinweis aus (siehe healthMonitor.ts SECONDARY_SITES).
+// Ruft FMTs eigenes Backend über ein Shared Secret auf, da FMT kein eigenes Admin-Login hat.
+router.post('/admin/health/fmtde/dismiss-stuck', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const secret = process.env.FMT_ADMIN_DISMISS_SECRET;
+    if (!secret) { res.status(500).json({ error: 'FMT_ADMIN_DISMISS_SECRET nicht konfiguriert' }); return; }
+    const r = await fetch('https://api.flughafen-muenchen-taxi.de/api/admin/inquiries/dismiss-stuck', {
+      method: 'POST',
+      headers: { 'x-admin-secret': secret },
+    });
+    const data = await r.json();
+    if (!r.ok) { res.status(r.status).json(data); return; }
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Manual test endpoint — send a test alert
 router.post('/admin/system-stats/test-alert', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
