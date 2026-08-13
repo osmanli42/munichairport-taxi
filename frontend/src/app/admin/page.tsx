@@ -600,6 +600,7 @@ export default function AdminPage() {
     setEditChildSeatBabyschale(counts.babyschale);
     setEditChildSeatKindersitz(counts.kindersitz);
     setEditChildSeatSitzerhoehung(counts.sitzerhoehung);
+    setEditRecalcArmed(false);
   }
 
   function openCreateModal() {
