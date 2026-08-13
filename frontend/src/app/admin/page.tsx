@@ -4165,6 +4165,7 @@ export default function AdminPage() {
                       onChange={(v) => setEditForm(p => ({ ...p, dropoff_address: v }))}
                       onValidSelect={(v) => {
                         setEditDropoffValid(v);
+                        setEditRecalcArmed(true);
                         if (v) setEditForm(p => ({ ...p, dropoff_address: v }));
                       }}
                       onCoords={(lat, lng) => setEditDropoffCoords(lat != null && lng != null ? { lat, lng } : null)}
