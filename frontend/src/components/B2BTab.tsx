@@ -498,6 +498,12 @@ export default function B2BTab({ token }: { token: string }) {
                               <Send size={14} />
                             </button>
                           )}
+                          {inv.reminder_level > 0 && (
+                            <button onClick={() => handleResetReminder(inv.id)}
+                              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500" title="Erinnerung/Mahnung zurücknehmen (zurück zu normaler Rechnung)">
+                              <Undo2 size={14} />
+                            </button>
+                          )}
                           <button onClick={() => inv.status !== 'paid' && handleMarkPaid(inv.id)}
                             disabled={inv.status === 'paid'}
                             className={`p-1.5 rounded-lg ${inv.status === 'paid' ? 'text-green-600 cursor-default' : 'text-red-500 hover:bg-red-50'}`}
