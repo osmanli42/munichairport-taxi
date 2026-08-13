@@ -439,6 +439,29 @@ router.delete('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest
 
 // ─── REMINDER / MAHNUNG ─────────────────────────────────────────────────────
 
+// Nimmt eine versehentlich gesendete Erinnerung/Mahnung zurück (Level → 0), damit die
+// nächste PDF-Ansicht/Versand wieder als normale RECHNUNG (nicht ZAHLUNGSERINNERUNG)
+// erscheint. Zieht eine bereits aufgeschlagene Mahngebühr (Level 3) vom total ab, da
+// die beim Erreichen von Level 3 addiert wird (siehe /remind unten).
+router.post('/invoices/:invoiceId/reset-reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
+    if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
+    if (!invoice.reminder_level) { res.status(400).json({ error: 'Keine Erinnerung/Mahnung vorhanden' }); return; }
+
+    const mahngebuehr = Number(invoice.mahngebuehr) || 0;
+    const newTotal = mahngebuehr > 0 ? Number(invoice.total) - mahngebuehr : Number(invoice.total);
+
+    await run(
+      'UPDATE company_invoices SET reminder_level = 0, reminder_sent_at = NULL, mahngebuehr = 0, total = ? WHERE id = ?',
+      [newTotal, req.params.invoiceId]
+    );
+    res.json({ success: true, total: newTotal });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to reset reminder' });
+  }
+});
+
 router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
