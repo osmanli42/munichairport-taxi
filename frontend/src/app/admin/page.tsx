@@ -72,6 +72,12 @@ export default function AdminPage() {
   const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
   const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
   const [editBaseTripPrice, setEditBaseTripPrice] = useState<number | null>(null);
+  // Guards the auto-recalc effect below: opening the edit modal seeds
+  // editPickupValid/editDropoffValid from the existing booking, which would
+  // otherwise trigger a fresh price calculation and silently overwrite a price
+  // that already has manual discounts/surcharges baked in. Only real user edits
+  // (address re-select, vehicle type change) arm it. Always armed for new bookings.
+  const [editRecalcArmed, setEditRecalcArmed] = useState(false);
   const [editChildSeatBabyschale, setEditChildSeatBabyschale] = useState(0);
   const [editChildSeatKindersitz, setEditChildSeatKindersitz] = useState(0);
   const [editChildSeatSitzerhoehung, setEditChildSeatSitzerhoehung] = useState(0);
