@@ -631,6 +631,7 @@ export default function AdminPage() {
     setEditChildSeatBabyschale(0);
     setEditChildSeatKindersitz(0);
     setEditChildSeatSitzerhoehung(0);
+    setEditRecalcArmed(true);
   }
 
   // Auto-calculate price when both addresses are confirmed in edit/create modal
