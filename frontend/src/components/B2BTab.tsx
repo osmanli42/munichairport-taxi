@@ -228,6 +228,13 @@ export default function B2BTab({ token }: { token: string }) {
     else { const d = await res.json(); flash(d.error || 'Fehler'); }
   };
 
+  const handleResetReminder = async (invoiceId: number) => {
+    if (!confirm('Erinnerung/Mahnung zurücknehmen? Die Rechnung gilt danach wieder als noch nie erinnert.')) return;
+    const res = await api(`/invoices/${invoiceId}/reset-reminder`, token, { method: 'POST' });
+    if (res.ok) { flash('Erinnerung zurückgenommen'); loadInvoices(); }
+    else { const d = await res.json(); flash(d.error || 'Fehler'); }
+  };
+
   const handleMarkPaid = async (invoiceId: number) => {
     await api(`/invoices/${invoiceId}`, token, { method: 'PUT', body: JSON.stringify({ status: 'paid' }) });
     flash('Als bezahlt markiert'); loadInvoices();
