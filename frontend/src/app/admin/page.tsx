@@ -4320,7 +4320,12 @@ export default function AdminPage() {
                   </div>
                   <div className="col-span-full">
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Zwischenstopp</label>
-                    <input type="text" value={editForm.zwischenstopp_address || ''} onChange={(e) => setEditForm(p => ({ ...p, zwischenstopp_address: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                    <AdminAddressField
+                      placeholder="Zwischenstopp eingeben..."
+                      value={editForm.zwischenstopp_address || ''}
+                      onChange={(v) => setEditForm(p => ({ ...p, zwischenstopp_address: v }))}
+                      onValidSelect={(v) => { if (v) setEditForm(p => ({ ...p, zwischenstopp_address: v })); }}
+                    />
                   </div>
                   <div className="col-span-full">
                     <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Notizen</label>
