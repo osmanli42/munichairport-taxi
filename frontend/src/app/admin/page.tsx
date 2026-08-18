@@ -69,6 +69,9 @@ export default function AdminPage() {
   const [editDropoffValid, setEditDropoffValid] = useState('');
   const [editPickupCoords, setEditPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [editDropoffCoords, setEditDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
+  // Confirmed (autocomplete-selected) Zwischenstopp address — null means no stopover,
+  // so the price recalc below falls back to the direct pickup→dropoff route.
+  const [editZwischenstoppValid, setEditZwischenstoppValid] = useState<string | null>(null);
   const [editDistanceKm, setEditDistanceKm] = useState<number | null>(null);
   const [editPriceCalcLoading, setEditPriceCalcLoading] = useState(false);
   const [editBaseTripPrice, setEditBaseTripPrice] = useState<number | null>(null);
@@ -594,6 +597,7 @@ export default function AdminPage() {
     setEditDropoffValid(booking.dropoff_address || '');
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
+    setEditZwischenstoppValid(booking.zwischenstopp_address || null);
     setEditDistanceKm(booking.distance_km ?? null);
     setEditBaseTripPrice(null);
     const counts = parseChildSeatCounts(booking.child_seat_details);
@@ -626,6 +630,7 @@ export default function AdminPage() {
     setEditDropoffValid('');
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
+    setEditZwischenstoppValid(null);
     setEditDistanceKm(null);
     setEditBaseTripPrice(null);
     setEditChildSeatBabyschale(0);
@@ -644,14 +649,21 @@ export default function AdminPage() {
     fetch(`${apiBase}/maps/distance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ origin: editPickupValid, destination: editDropoffValid }),
+      body: JSON.stringify({
+        origin: editPickupValid,
+        destination: editDropoffValid,
+        ...(editZwischenstoppValid ? { zwischenstopp: editZwischenstoppValid } : {}),
+      }),
     })
       .then(r => r.json())
       .then(async distData => {
-        if (distData.distance_km) {
-          const km: number = distData.distance_km;
+        // With a Zwischenstopp, price the full pickup→stop→dropoff route instead of
+        // the direct one — same fields the public booking page uses for this.
+        const km: number | undefined = editZwischenstoppValid ? distData.zwischenstopp_total_km : distData.distance_km;
+        const durationMin = editZwischenstoppValid ? distData.zwischenstopp_total_duration : distData.duration_minutes;
+        if (km) {
           setEditDistanceKm(km);
-          setEditForm(prev => ({ ...prev, distance_km: km, duration_minutes: distData.duration_minutes || prev.duration_minutes }));
+          setEditForm(prev => ({ ...prev, distance_km: km, duration_minutes: durationMin || prev.duration_minutes }));
           // Use backend calculate-price so Pflichtfahrgebiet & fixed routes are included
           const body: Record<string, unknown> = {
             vehicle_type: vehicleType,
@@ -681,7 +693,7 @@ export default function AdminPage() {
       .catch(() => {})
       .finally(() => setEditPriceCalcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editPickupValid, editDropoffValid, editForm.vehicle_type, editRecalcArmed]);
+  }, [editPickupValid, editDropoffValid, editZwischenstoppValid, editForm.vehicle_type, editRecalcArmed]);
 
   // Update price when fahrrad or child seat counts change
   useEffect(() => {
@@ -4323,8 +4335,16 @@ export default function AdminPage() {
                     <AdminAddressField
                       placeholder="Zwischenstopp eingeben..."
                       value={editForm.zwischenstopp_address || ''}
-                      onChange={(v) => setEditForm(p => ({ ...p, zwischenstopp_address: v }))}
-                      onValidSelect={(v) => { if (v) setEditForm(p => ({ ...p, zwischenstopp_address: v })); }}
+                      onChange={(v) => {
+                        setEditForm(p => ({ ...p, zwischenstopp_address: v }));
+                        // Cleared by hand — fall back to the direct route and recalc.
+                        if (!v.trim() && editZwischenstoppValid) { setEditZwischenstoppValid(null); setEditRecalcArmed(true); }
+                      }}
+                      onValidSelect={(v) => {
+                        if (v) setEditForm(p => ({ ...p, zwischenstopp_address: v }));
+                        setEditZwischenstoppValid(v || null);
+                        setEditRecalcArmed(true);
+                      }}
                     />
                   </div>
                   <div className="col-span-full">
