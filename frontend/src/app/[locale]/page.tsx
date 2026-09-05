@@ -62,34 +62,29 @@ export default function HomePage() {
   return (
     <>
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-visible">
-        {/* Background taxi image — right side fading in */}
+      <section className="relative bg-primary-800 text-white overflow-visible">
+        {/* Background photo — Munich Airport at sunset, full strength */}
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: "url('/images/hero-taxis.webp')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center right',
-            opacity: 0.18,
-          }}
+          className="absolute inset-0 pointer-events-none bg-cover"
+          style={{ backgroundImage: "url('/images/hero-airport.webp')", backgroundPosition: 'center 35%' }}
         />
-        {/* Dark overlay gradient — keeps left side readable */}
+        {/* Dark overlay — keeps the headline, badges and buttons readable over the photo */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(to right, rgba(26,54,93,0.92) 0%, rgba(26,54,93,0.75) 50%, rgba(26,54,93,0.35) 100%)',
+            background: 'linear-gradient(to bottom, rgba(16,34,60,0.88) 0%, rgba(16,34,60,0.70) 45%, rgba(16,34,60,0.90) 100%)',
           }}
         />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
           {/* Hero text - centered top */}
           <div className="text-center animate-fade-in mb-6 sm:mb-10">
-            <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-4">
+            <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-4" style={{ textShadow: '0 2px 14px rgba(0,0,0,0.45)' }}>
               {t('title')}
               <span className="block text-gold-400">{t('subtitle')}</span>
             </h1>
 
-            <p className="text-primary-200 text-lg mb-4 sm:mb-8 max-w-2xl mx-auto">{t('description')}</p>
+            <p className="text-primary-200 text-lg mb-4 sm:mb-8 max-w-2xl mx-auto" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>{t('description')}</p>
 
             {/* Feature badges — hidden on mobile so the search bar stays above the fold */}
             <div className="hidden sm:flex flex-wrap justify-center gap-3 mb-8">
