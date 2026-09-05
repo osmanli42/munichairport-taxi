@@ -77,7 +77,7 @@
       "features": [
         "Air conditioning",
         "Large trunk",
-        "Up to 7 suitcases"
+        "Up to 8 suitcases"
       ]
     },
     "grossraumtaxi": {
@@ -87,7 +87,7 @@
       "features": [
         "Air conditioning",
         "XXL trunk",
-        "Up to 12 suitcases"
+        "Up to 10 suitcases"
       ]
     },
     "base_price": "Base price",

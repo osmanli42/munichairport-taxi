@@ -77,7 +77,7 @@
       "features": [
         "Klimaanlage",
         "Großer Kofferraum",
-        "Bis zu 7 Koffer"
+        "Bis zu 8 Koffer"
       ]
     },
     "grossraumtaxi": {
@@ -87,7 +87,7 @@
       "features": [
         "Klimaanlage",
         "XXL Kofferraum",
-        "Bis zu 12 Koffer"
+        "Bis zu 10 Koffer"
       ]
     },
     "base_price": "Grundpreis",

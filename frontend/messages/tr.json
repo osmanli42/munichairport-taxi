@@ -77,7 +77,7 @@
       "features": [
         "Klima",
         "Geniş bagaj",
-        "7 valiz'e kadar"
+        "8 valiz'e kadar"
       ]
     },
     "grossraumtaxi": {
@@ -87,7 +87,7 @@
       "features": [
         "Klima",
         "XXL bagaj",
-        "12 valiz'e kadar"
+        "10 valiz'e kadar"
       ]
     },
     "base_price": "Başlangıç ücreti",
