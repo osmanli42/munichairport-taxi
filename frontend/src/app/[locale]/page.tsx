@@ -1,3 +1,4 @@
+import ReactDOM from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
@@ -58,6 +59,11 @@ export default function HomePage() {
     },
   };
   const sd = stepsData[locale] || stepsData.de;
+
+  // LCP: hero fotografi inline CSS background oldugu icin tarayicinin preload
+  // tarayicisi HTML'de goremiyor ve ancak render sonrasi kesfediyor. Preload ile
+  // indirme sayfa yuklenir yuklenmez basliyor.
+  ReactDOM.preload('/images/hero-airport.webp', { as: 'image', fetchPriority: 'high' });
 
   return (
     <>
