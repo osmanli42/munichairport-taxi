@@ -19,7 +19,7 @@ interface VehicleCardProps {
 const vehicleImage: Record<string, string> = {
   kombi: '/images/kombi.webp',
   van: '/images/van.webp',
-  grossraumtaxi: '/images/van.webp',
+  grossraumtaxi: '/images/grossraumtaxi.webp',
 };
 
 export default function VehicleCard({

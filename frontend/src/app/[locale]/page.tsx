@@ -295,7 +295,7 @@ export default function HomePage() {
                 features: f.van,
               },
               {
-                image: '/images/van.webp',
+                image: '/images/grossraumtaxi.webp',
                 name: tVehicles('grossraumtaxi.name'),
                 model: 'Mercedes Vito',
                 persons: tVehicles('grossraumtaxi.persons'),

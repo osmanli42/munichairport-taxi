@@ -62,7 +62,7 @@ const VEHICLES = [
   },
   {
     type: 'grossraumtaxi' as const,
-    image: '/images/van.webp',
+    image: '/images/grossraumtaxi.webp',
     nameDE: 'Großraumtaxi', nameEN: 'Large Taxi', nameTR: 'Büyük Taksi',
     descDE: 'Für große Gruppen mit viel Gepäck',
     descEN: 'For large groups with lots of luggage',

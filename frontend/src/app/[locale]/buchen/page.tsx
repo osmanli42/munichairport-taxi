@@ -25,7 +25,7 @@ const VEHICLE_LABELS: Record<string, Record<string, string>> = {
 const VEHICLE_IMAGES: Record<string, string> = {
   kombi: '/images/kombi.webp',
   van: '/images/van.webp',
-  grossraumtaxi: '/images/van.webp',
+  grossraumtaxi: '/images/grossraumtaxi.webp',
 };
 
 function BuchenContent() {

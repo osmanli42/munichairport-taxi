@@ -36,7 +36,7 @@ function isAirportArea(addr: string): boolean {
 const VEHICLES = [
   { type: 'kombi' as const, image: '/images/kombi.webp', name: 'Kombi', desc: 'Ideal für Einzelreisende & Paare', maxPassengers: 3, maxLuggage: 3, badge: null as string | null },
   { type: 'van' as const, image: '/images/van.webp', name: 'Van / Minibus', desc: 'Perfekt für Familien & Gruppen', maxPassengers: 7, maxLuggage: 7, badge: 'BELIEBT' },
-  { type: 'grossraumtaxi' as const, image: '/images/van.webp', name: 'Großraumtaxi', desc: 'Für große Gruppen mit viel Gepäck', maxPassengers: 8, maxLuggage: 10, badge: null },
+  { type: 'grossraumtaxi' as const, image: '/images/grossraumtaxi.webp', name: 'Großraumtaxi', desc: 'Für große Gruppen mit viel Gepäck', maxPassengers: 8, maxLuggage: 10, badge: null },
 ];
 
 interface PriceData {
