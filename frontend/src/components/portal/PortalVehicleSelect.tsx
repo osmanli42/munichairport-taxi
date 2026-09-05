@@ -289,9 +289,9 @@ export default function PortalVehicleSelect({
                 ⭐ {vehicle.badge} ⭐
               </div>
             )}
-            <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-5">
-              <div className="shrink-0 w-32 h-32 rounded-2xl overflow-hidden border border-gray-100">
-                <img src={vehicle.image} alt={vehicle.name} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
+            <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-5">
+              <div className="shrink-0 w-full aspect-[800/344] sm:w-32 sm:h-32 sm:aspect-auto rounded-2xl overflow-hidden border border-gray-100">
+                <img src={vehicle.image} alt={vehicle.name} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between flex-wrap gap-3">
