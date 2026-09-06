@@ -50,13 +50,12 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 group">
-            <img src="/images/logo.webp" alt="Munich Airport Taxi" className="h-10 w-auto" />
-            <span className="hidden sm:block text-white font-bold text-lg">Flughafen-muenchen.<span className="text-gold-400">TAXI</span></span>
+          <Link href="/" className="flex items-center group min-w-0">
+            <img src="/images/logo-wide.webp" alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-12 w-auto max-w-full object-contain object-left" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -111,7 +110,7 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden bg-primary-700 hover:bg-primary-800 text-white p-2 rounded-md"
+              className="lg:hidden bg-primary-700 hover:bg-primary-800 text-white p-2 rounded-md"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -122,7 +121,7 @@ export default function Header() {
 
         {/* Mobile Navigation */}
         {menuOpen && (
-          <div className="md:hidden pb-4 animate-fade-in">
+          <div className="lg:hidden pb-4 animate-fade-in">
             <div className="flex flex-col space-y-1 pt-2">
               {navLinks.map((link) => (
                 <Link
