@@ -3,7 +3,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, MapPin, Car, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, Check } from 'lucide-react';
+import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
@@ -26,10 +26,11 @@ export default function HomePage() {
   const tVehicles = useTranslations('vehicles');
   const locale = useLocale();
 
-  const stepsData: Record<string, { label: string; title: string; steps: { title: string; text: string; extra: string[] }[]; cta: string }> = {
+  const stepsData: Record<string, { label: string; title: string; sub: string; steps: { title: string; text: string; extra: string[] }[]; cta: string }> = {
     de: {
       label: 'So einfach geht\'s',
       title: 'In 3 Schritten zum Transfer',
+      sub: 'Schnell. Transparent. Zuverlässig.',
       steps: [
         { title: 'Adresse & Zeit eingeben', text: 'Geben Sie Abholadresse, Zielort, Datum und Uhrzeit ein. Unser System berechnet sofort Ihren Festpreis – in unter 1 Sekunde.', extra: ['✓ Zwischenstopp möglich', '✓ Alle Terminals verfügbar', '✓ Rückfahrt buchbar'] },
         { title: 'Fahrzeug & Preis wählen', text: 'Wählen Sie zwischen Kombi, Van oder Großraumtaxi. Transparenter Festpreis, kein Stauaufpreis – Ihr Preis bleibt fest.', extra: ['✓ Kombi bis 4 Pax', '✓ Van bis 7 Pax', '✓ Großraum bis 8 Pax'] },
@@ -40,6 +41,7 @@ export default function HomePage() {
     en: {
       label: 'How it works',
       title: 'Transfer in 3 simple steps',
+      sub: 'Fast. Transparent. Reliable.',
       steps: [
         { title: 'Enter address & time', text: 'Enter your pickup address, destination, date and time. Our system calculates your fixed price instantly – in under 1 second.', extra: ['✓ Intermediate stop possible', '✓ All terminals available', '✓ Return trip bookable'] },
         { title: 'Choose vehicle & price', text: 'Choose between Kombi, Van or Large Taxi. Transparent fixed price, no traffic surcharge – your price stays fixed.', extra: ['✓ Kombi up to 4 Pax', '✓ Van up to 7 Pax', '✓ Large Taxi up to 8 Pax'] },
@@ -50,6 +52,7 @@ export default function HomePage() {
     tr: {
       label: 'Bu kadar basit',
       title: '3 adımda transferiniz',
+      sub: 'Hızlı. Şeffaf. Güvenilir.',
       steps: [
         { title: 'Adres & saat girin', text: 'Alış adresinizi, varış noktasını, tarih ve saati girin. Sistemimiz sabit fiyatınızı anında hesaplar – 1 saniyenin altında.', extra: ['✓ Ara durak mümkün', '✓ Tüm terminaller mevcut', '✓ Dönüş yolculuğu rezerve edilebilir'] },
         { title: 'Araç & fiyat seçin', text: 'Kombi, Van veya Büyük Taksi arasından seçin. Şeffaf sabit fiyat, trafik ek ücreti yok – fiyatınız sabit kalır.', extra: ['✓ Kombi 4 kişiye kadar', '✓ Van 7 kişiye kadar', '✓ Büyük Taksi 8 kişiye kadar'] },
@@ -138,83 +141,100 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-20" style={{ background: '#f4f7fb' }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden py-20" style={{ background: '#f7f9fc' }}>
+        {/* Dekoratif arka plan — solda terminal cephesi, sagda kule + ucak izi.
+            Kenarlardan bolum rengine dogru soluyor, icerigin arkasinda kaliyor. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute top-0 left-0 hidden md:block" style={{ width: '380px' }}>
+            <img src="/images/steps-bg-left.webp" alt="" width={355} height={212} className="w-full block" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(247,249,252,.15), #f7f9fc 88%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(247,249,252,0) 30%, #f7f9fc 100%)' }} />
+          </div>
+          <div className="absolute top-0 right-0 hidden md:block" style={{ width: '380px' }}>
+            <img src="/images/steps-bg-right.webp" alt="" width={361} height={212} className="w-full block" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(247,249,252,0) 55%, #f7f9fc 100%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(247,249,252,0) 35%, #f7f9fc 100%)' }} />
+          </div>
+        </div>
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <p className="text-xs font-bold tracking-[.18em] uppercase mb-3" style={{ color: '#c9a84c' }}>
               {sd.label}
             </p>
-            <h2 className="text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
               {sd.title}
             </h2>
+            <p className="mt-3 text-lg" style={{ color: '#6b7c93' }}>{sd.sub}</p>
+            <span className="block mx-auto mt-5 rounded-full" style={{ width: '104px', height: '3px', background: '#c9a84c' }} />
           </div>
 
-          {/* Steps — alternating left/right rows */}
-          <div className="flex flex-col gap-6">
-            {([MapPin, Car, Plane] as const).map((StepIcon, idx) => {
-              const { title, text, extra } = sd.steps[idx];
-              const step = idx + 1;
-              const reverse = idx === 1;
+          {/* Steps — 3 kart */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {sd.steps.map((s, idx) => {
+              const foto = ['/images/step-1-adresse.webp', '/images/step-2-fahrzeug.webp', '/images/step-3-ankunft.webp'][idx];
+              const ikonlar = [[Clock, Plane, Calendar], [Users, Users, Users], [User, Clock, Luggage]][idx];
               return (
-              <div
-                key={step}
-                className={`flex flex-col md:flex-row items-center gap-8 ${reverse ? 'md:flex-row-reverse' : ''}`}
-              >
-                {/* Big number + icon side */}
-                <div className="flex-shrink-0 flex flex-col items-center justify-center rounded-2xl w-full md:w-72"
-                  style={{
-                    background: '#fff',
-                    border: '1.5px solid #e5edf5',
-                    minHeight: '200px',
-                    padding: '36px 32px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}>
-                  {/* Big faded step number in background */}
-                  <span style={{
-                    position: 'absolute',
-                    fontSize: '120px',
-                    fontWeight: 900,
-                    color: 'rgba(30,58,95,.04)',
-                    lineHeight: 1,
-                    bottom: '-10px',
-                    right: '16px',
-                    userSelect: 'none',
-                    letterSpacing: '-0.04em',
-                  }}>{step}</span>
-                  {/* Step pill */}
-                  <div className="mb-4 text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full"
-                    style={{ background: '#eef3f9', border: '1px solid #c8d8ec', color: '#1e3a5f' }}>
-                    {locale === 'en' ? 'Step' : locale === 'tr' ? 'Adım' : 'Schritt'} {step}
-                  </div>
-                  <StepIcon size={52} strokeWidth={1.5} style={{ color: '#1e3a5f' }} />
-                </div>
-
-                {/* Text side */}
-                <div className="flex-1 rounded-2xl p-8"
-                  style={{
-                    background: '#fff',
-                    border: '1px solid #e5edf5',
-                    boxShadow: '0 2px 20px rgba(15,27,45,.05)',
-                  }}>
-                  <h3 className="text-2xl font-extrabold mb-3 tracking-tight" style={{ color: '#0f1b2d' }}>
-                    {title}
-                  </h3>
-                  <p className="text-base mb-5 leading-relaxed" style={{ color: '#6b7c93' }}>
-                    {text}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {extra.map(e => (
-                      <span key={e} className="text-sm font-semibold px-3 py-1.5 rounded-lg"
-                        style={{ background: '#fdf8ec', color: '#a07820', border: '1px solid #f0e0a0' }}>
-                        {e}
+                <div key={s.title} className="relative">
+                  <div className="h-full bg-white rounded-2xl p-5 pt-8 flex flex-col" style={{ boxShadow: '0 4px 24px rgba(15,27,45,.07)' }}>
+                    {/* Foto + numara rozeti */}
+                    <div className="relative">
+                      <img
+                        src={foto}
+                        alt={s.title}
+                        loading="lazy"
+                        width={433}
+                        height={208}
+                        className="w-full aspect-[433/208] object-cover rounded-xl"
+                      />
+                      <span
+                        className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full text-white font-extrabold text-lg"
+                        style={{ width: '44px', height: '44px', background: '#c9a84c', boxShadow: '0 3px 10px rgba(201,168,76,.45)', border: '3px solid #fff' }}
+                        aria-hidden="true"
+                      >
+                        {idx + 1}
                       </span>
-                    ))}
+                    </div>
+
+                    <h3 className="text-xl font-extrabold mt-5 mb-2 tracking-tight" style={{ color: '#0f1b2d' }}>
+                      {s.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed mb-4" style={{ color: '#6b7c93' }}>
+                      {s.text}
+                    </p>
+
+                    <div className="flex flex-col gap-2 mt-auto">
+                      {s.extra.map((e, i) => {
+                        const Ikon = ikonlar[i];
+                        return (
+                          <div
+                            key={e}
+                            className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+                            style={{ background: '#fdf8ec', border: '1px solid #f3e7c4' }}
+                          >
+                            <Ikon size={17} strokeWidth={2} style={{ color: '#c9a84c', flexShrink: 0 }} />
+                            <span className="text-sm font-semibold" style={{ color: '#8a6d1f' }}>
+                              {e.replace(/^\u2713\s*/, '')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
+
+                  {/* Kartlar arasi ok — sadece 3 sutunlu duzende */}
+                  {idx < 2 && (
+                    <ChevronRight
+                      size={26}
+                      strokeWidth={3}
+                      className="hidden lg:block absolute top-1/2 -right-5 -translate-y-1/2 z-10"
+                      style={{ color: '#c9a84c' }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </div>
-              </div>
               );
             })}
           </div>
@@ -224,15 +244,13 @@ export default function HomePage() {
             <a
               href="#booking"
               className="inline-flex items-center gap-2 font-bold text-base px-8 py-4 rounded-xl transition-all hover:-translate-y-0.5"
-              style={{
-                background: '#c9a84c',
-                color: '#0f1b2d',
-                boxShadow: '0 4px 24px rgba(201,168,76,.3)',
-              }}
+              style={{ background: '#1e3a5f', color: '#fff', boxShadow: '0 6px 24px rgba(30,58,95,.28)' }}
             >
-              {locale === 'en' ? 'Get your free price quote →' : locale === 'tr' ? 'Ücretsiz fiyat hesapla →' : 'Jetzt kostenlos Preis berechnen →'}
+              {locale === 'en' ? 'Get your free price quote' : locale === 'tr' ? 'Ücretsiz fiyat hesapla' : 'Jetzt kostenlos Preis berechnen'}
+              <ChevronRight size={18} strokeWidth={3} />
             </a>
           </div>
+
         </div>
       </section>
 
