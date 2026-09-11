@@ -52,6 +52,24 @@ const content = {
     ],
 
     services_title: 'Unsere Business-Leistungen im Detail',
+    services_eyebrow: 'Business Travel · Airport Transfers · Premium Service',
+    services_title_1: 'Unsere Business-Leistungen',
+    services_title_2: 'im Detail',
+    services_subtitle: 'Drei Lösungen – ein Ziel: Ihre Mobilität. Einfach. Professionell. Zuverlässig.',
+    services_popular: 'Am beliebtesten',
+    services_cta_primary: 'Jetzt anfragen',
+    services_cta_secondary: 'Mehr erfahren',
+    services_tags: [
+      ['Effizient', 'Transparent', 'Planbar'],
+      ['Persönlich', 'Professionell', 'Starker erster Eindruck'],
+      ['Zuverlässig', 'Diskret', 'Flexibel', 'Deutschlandweit'],
+    ],
+    services_trust: [
+      { icon: Shield, big: '100%', small: 'Zuverlässigkeit' },
+      { icon: Clock, big: '24/7', small: 'Für Sie im Einsatz' },
+      { icon: Plane, big: 'Echtzeit-', small: 'Flugverfolgung' },
+      { icon: Users, big: 'Firmenkunden', small: 'willkommen' },
+    ],
     services: [
       {
         icon: FileText,
@@ -134,6 +152,24 @@ const content = {
     ],
 
     services_title: 'Our business services in detail',
+    services_eyebrow: 'Business Travel · Airport Transfers · Premium Service',
+    services_title_1: 'Our business services',
+    services_title_2: 'in detail',
+    services_subtitle: 'Three solutions – one goal: your mobility. Simple. Professional. Reliable.',
+    services_popular: 'Most popular',
+    services_cta_primary: 'Request now',
+    services_cta_secondary: 'Learn more',
+    services_tags: [
+      ['Efficient', 'Transparent', 'Plannable'],
+      ['Personal', 'Professional', 'Strong first impression'],
+      ['Reliable', 'Discreet', 'Flexible', 'Nationwide'],
+    ],
+    services_trust: [
+      { icon: Shield, big: '100%', small: 'Reliability' },
+      { icon: Clock, big: '24/7', small: 'At your service' },
+      { icon: Plane, big: 'Real-time', small: 'flight tracking' },
+      { icon: Users, big: 'Corporate clients', small: 'welcome' },
+    ],
     services: [
       {
         icon: FileText,
@@ -216,6 +252,24 @@ const content = {
     ],
 
     services_title: 'Business hizmetlerimizin detayları',
+    services_eyebrow: 'İş Seyahati · Havalimanı Transferi · Premium Hizmet',
+    services_title_1: 'Business hizmetlerimizin',
+    services_title_2: 'detayları',
+    services_subtitle: 'Üç çözüm – tek hedef: mobiliteniz. Basit. Profesyonel. Güvenilir.',
+    services_popular: 'En çok tercih edilen',
+    services_cta_primary: 'Hemen talep edin',
+    services_cta_secondary: 'Detaylı bilgi',
+    services_tags: [
+      ['Verimli', 'Şeffaf', 'Planlanabilir'],
+      ['Kişisel', 'Profesyonel', 'Güçlü ilk izlenim'],
+      ['Güvenilir', 'Gizlilik', 'Esnek', 'Tüm Almanya'],
+    ],
+    services_trust: [
+      { icon: Shield, big: '100%', small: 'Güvenilirlik' },
+      { icon: Clock, big: '24/7', small: 'Hizmetinizde' },
+      { icon: Plane, big: 'Gerçek zamanlı', small: 'uçuş takibi' },
+      { icon: Users, big: 'Kurumsal müşteriler', small: 'hoş geldiniz' },
+    ],
     services: [
       {
         icon: FileText,
@@ -321,8 +375,129 @@ export default function BusinessPage() {
         </div>
       </section>
 
+      {/* Services detail — yeni tasarim */}
+      <section className="relative overflow-hidden py-16" style={{ background: '#f7f9fc' }}>
+        {/* Dekoratif arka plan: solda ve sagda havalimani kulesi, kenardan bolum rengine soluyor */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute top-0 left-0 hidden md:block" style={{ width: '430px' }}>
+            <img src="/images/biz-bg-left.webp" alt="" width={430} height={168} className="w-full block" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(247,249,252,.15), #f7f9fc 88%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(247,249,252,0) 30%, #f7f9fc 100%)' }} />
+          </div>
+          <div className="absolute top-0 right-0 hidden md:block" style={{ width: '444px' }}>
+            <img src="/images/biz-bg-right.webp" alt="" width={444} height={178} className="w-full block" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(247,249,252,0) 55%, #f7f9fc 100%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(247,249,252,0) 35%, #f7f9fc 100%)' }} />
+          </div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Baslik */}
+          <div className="text-center mb-10">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
+              <span className="text-[11px] font-bold tracking-[.18em] uppercase" style={{ color: '#c9a84c' }}>
+                {d.services_eyebrow}
+              </span>
+              <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>
+              {d.services_title_1} <span style={{ color: '#c9a84c' }}>{d.services_title_2}</span>
+            </h2>
+            <p className="mt-3 text-base sm:text-lg" style={{ color: '#6b7c93' }}>{d.services_subtitle}</p>
+          </div>
+
+          {/* Kartlar */}
+          <div className="grid gap-6 lg:grid-cols-3 items-start">
+            {d.services.map((service, i) => {
+              const foto = ['/images/biz-1-sammelrechnung.webp', '/images/biz-2-abholschild.webp', '/images/biz-3-partner.webp'][i];
+              const etiketler = d.services_tags[i];
+              const oneCikan = i === 1;
+              return (
+                <div
+                  key={i}
+                  className={`bg-white rounded-2xl overflow-hidden flex flex-col h-full ${oneCikan ? 'lg:-mt-4' : ''}`}
+                  style={{
+                    border: oneCikan ? '2px solid #c9a84c' : '1px solid #e8eef6',
+                    boxShadow: oneCikan ? '0 12px 36px rgba(201,168,76,.20)' : '0 4px 20px rgba(15,27,45,.06)',
+                  }}
+                >
+                  {/* Foto + ustundeki rozet ve anahtar kelimeler */}
+                  <div className="relative m-3 rounded-xl overflow-hidden">
+                    <img src={foto} alt={service.title} loading="lazy" width={393} height={214} className="w-full aspect-[393/214] object-cover block" />
+                    {oneCikan && (
+                      <span
+                        className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white"
+                        style={{ background: '#c9a84c', boxShadow: '0 2px 8px rgba(0,0,0,.18)' }}
+                      >
+                        <Star size={12} fill="currentColor" /> {d.services_popular}
+                      </span>
+                    )}
+                    <div className={`absolute right-3 flex flex-col items-end gap-0.5 ${oneCikan ? 'bottom-3' : 'top-3'}`}>
+                      {etiketler.map((t) => (
+                        <span
+                          key={t}
+                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                          style={{ color: '#0f1b2d', background: 'rgba(255,255,255,.78)' }}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6 pt-2 flex flex-col flex-1">
+                    <h3 className="text-xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>{service.title}</h3>
+                    <p className="text-sm font-medium mt-0.5 mb-3" style={{ color: '#6b7c93' }}>{service.subtitle}</p>
+                    <p className="text-sm leading-relaxed mb-4" style={{ color: '#6b7c93' }}>{service.description}</p>
+
+                    <ul className="space-y-2 mb-6">
+                      {service.features.map((f, j) => (
+                        <li key={j} className="flex items-start gap-2.5 text-sm" style={{ color: '#25344a' }}>
+                          <span className="mt-0.5 flex items-center justify-center rounded-full shrink-0" style={{ width: '18px', height: '18px', background: '#c9a84c' }}>
+                            <CheckCircle size={12} className="text-white" strokeWidth={3} />
+                          </span>
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      href={oneCikan ? '/portal/apply' : '#features'}
+                      className="mt-auto flex items-center justify-center gap-2 rounded-xl font-bold text-sm uppercase tracking-wider py-3.5 transition-all hover:-translate-y-0.5"
+                      style={oneCikan
+                        ? { background: '#c9a84c', color: '#fff', boxShadow: '0 4px 16px rgba(201,168,76,.35)' }
+                        : { background: '#fff', color: '#0f1b2d', border: '1.5px solid #d9e2ee' }}
+                    >
+                      {oneCikan ? d.services_cta_primary : d.services_cta_secondary}
+                      <ArrowRight size={16} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Guven seridi */}
+          <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-y-6">
+            {d.services_trust.map((t, i) => {
+              const Ikon = t.icon;
+              return (
+                <div key={i} className={`flex items-center justify-center gap-3 ${i > 0 ? 'lg:border-l' : ''}`} style={{ borderColor: '#dde5ef' }}>
+                  <Ikon size={26} strokeWidth={1.75} style={{ color: '#0f1b2d' }} />
+                  <div className="leading-tight">
+                    <div className="font-extrabold text-sm" style={{ color: '#0f1b2d' }}>{t.big}</div>
+                    <div className="text-xs" style={{ color: '#6b7c93' }}>{t.small}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Feature showcase */}
-      <section className="py-16 bg-white">
+      <section id="features" className="py-16 bg-white scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-primary-600 text-center mb-2">{d.features_title}</h2>
           <p className="text-gray-500 text-center mb-12">{d.features_subtitle}</p>
@@ -378,38 +553,6 @@ export default function BusinessPage() {
                 <div key={i} className="flex items-center gap-2 text-gray-600">
                   <Icon size={20} className="text-primary-500" />
                   <span className="font-medium text-sm">{a.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Services detail */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-primary-600 text-center mb-12">{d.services_title}</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {d.services.map((service, i) => {
-              const Icon = service.icon;
-              return (
-                <div key={i} className={`bg-white rounded-2xl border-2 ${service.color} shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden`}>
-                  <div className="p-8">
-                    <div className={`w-16 h-16 ${service.iconBg} rounded-2xl flex items-center justify-center mb-6`}>
-                      <Icon size={32} className={service.iconColor} />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{service.title}</h3>
-                    <p className="text-sm font-medium text-gray-500 mb-4">{service.subtitle}</p>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-6">{service.description}</p>
-                    <ul className="space-y-2">
-                      {service.features.map((f, j) => (
-                        <li key={j} className="flex items-center gap-2 text-sm text-gray-700">
-                          <CheckCircle size={16} className="text-green-500 shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 </div>
               );
             })}
