@@ -356,7 +356,9 @@ router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: 
 // Payment methods an admin may set. 'ueberweisung' is admin-only on purpose: offered
 // publicly it would let anyone book without paying, so the customer flow in
 // routes/bookings.ts still accepts cash|card only. 'rechnung' is the B2B on-account value.
-const ADMIN_PAYMENT_METHODS = ['cash', 'card', 'ueberweisung', 'rechnung'];
+// 'transfer' and 'invoice' are legacy spellings written by old Kalender imports; they are
+// accepted so re-saving such a booking is not rejected, but nothing new ever writes them.
+const ADMIN_PAYMENT_METHODS = ['cash', 'card', 'ueberweisung', 'rechnung', 'transfer', 'invoice'];
 
 // PUT /api/admin/bookings/:id — update editable booking fields
 router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {

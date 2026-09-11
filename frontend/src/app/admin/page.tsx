@@ -57,6 +57,9 @@ const PAYMENT_LABELS: Record<string, string> = {
   ueberweisung: 'Überweisung',
   rechnung: 'Auf Rechnung',
   invoice: 'Auf Rechnung',
+  // Legacy spelling from an old Kalender import (one historical booking) — labelled
+  // so it does not show up as the raw column value.
+  transfer: 'Überweisung',
 };
 const paymentLabel = (method?: string | null): string => PAYMENT_LABELS[method || 'cash'] || method || '—';
 
@@ -2562,6 +2565,7 @@ export default function AdminPage() {
                               ueberweisung: { label: '🏦 Überweisung', bar: 'bg-amber-500' },
                               rechnung: { label: '🧾 Auf Rechnung', bar: 'bg-violet-500' },
                               invoice: { label: '🧾 Auf Rechnung', bar: 'bg-violet-500' },
+                              transfer: { label: '🏦 Überweisung (Altwert)', bar: 'bg-amber-400' },
                             };
                             const chart = PM_CHART[d.payment_method] || { label: d.payment_method, bar: 'bg-gray-400' };
                             return (
@@ -4526,6 +4530,15 @@ export default function AdminPage() {
                       <option value="cash">Bargeld</option>
                       <option value="card">Kreditkarte</option>
                       <option value="ueberweisung">Überweisung</option>
+                      {/* Imported bookings can carry values this dropdown does not offer
+                          ('transfer', 'invoice'). Without an option for them the browser
+                          falls back to the first entry and saving would silently rewrite
+                          the booking to Bargeld. */}
+                      {!['cash', 'card', 'ueberweisung'].includes(editForm.payment_method || 'cash') && (
+                        <option value={editForm.payment_method}>
+                          {paymentLabel(editForm.payment_method)} (importiert)
+                        </option>
+                      )}
                     </select>
                   </div>
                   <div>
