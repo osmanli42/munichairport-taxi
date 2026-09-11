@@ -4592,6 +4592,11 @@ export default function AdminPage() {
                         const updated = await adminApi.updateBooking(editingBooking.id, editForm);
                         setBookings(prev => prev.map(b => b.id === editingBooking.id ? updated : b));
                         setEditingBooking(updated);
+                        // The detail drawer sits behind this dialog and drives what it offers
+                        // (e.g. "Proforma senden" only shows for payment_method 'ueberweisung').
+                        // Without this it keeps the pre-edit row, so switching a booking to
+                        // Überweisung and saving left the drawer showing the old options.
+                        setSelectedBooking(prev => prev && prev.id === updated.id ? updated : prev);
                         setEditForm({ ...updated });
                         setEditSuccess(true);
                       }
