@@ -1136,7 +1136,10 @@ router.post('/manage/rechnung', async (req: Request, res: Response): Promise<voi
       lang: booking.rechnung_sprache === 'en' ? 'en' : 'de',
       s,
       empfaenger_adresse: booking.rechnung_adresse || undefined,
-      zahlungsart: booking.rechnung_zahlungsart || (booking.payment_method === 'card' ? 'kreditkarte' : 'bar'),
+      zahlungsart: booking.rechnung_zahlungsart
+        || (booking.payment_method === 'card'
+          ? 'kreditkarte'
+          : booking.payment_method === 'ueberweisung' ? 'ueberweisung' : 'bar'),
       invoice_date: booking.rechnung_sent_at || undefined,
     });
 

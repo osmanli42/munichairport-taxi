@@ -35,6 +35,38 @@ export async function nextRechnungsnummer(): Promise<string> {
   return `${prefix}${String(maxN + 1).padStart(3, '0')}`;
 }
 
+// Next proforma number for today: PRO-YYYYMMDD-NNN. Deliberately a SEPARATE series from
+// the WEB-… invoice numbers: a proforma is not an invoice under §14 UStG, so it must not
+// consume a slot in the gapless invoice sequence, and it is never written to
+// rechnung_number (which would make autoRechnungJob skip the real invoice entirely).
+export async function nextProformaNummer(): Promise<string> {
+  const now = new Date();
+  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const prefix = `PRO-${datePart}-`;
+  const rows = await query<{ proforma_number: string }>(
+    'SELECT proforma_number FROM bookings WHERE proforma_number LIKE ?',
+    [`${prefix}%`]
+  );
+  let maxN = 0;
+  for (const r of rows) {
+    const m = r.proforma_number?.slice(prefix.length).match(/^(\d+)$/);
+    if (m) maxN = Math.max(maxN, Number(m[1]));
+  }
+  return `${prefix}${String(maxN + 1).padStart(3, '0')}`;
+}
+
+// Payment deadline for a proforma: the money has to be on our account before the ride,
+// so the due date is one day before pickup. For rides less than a day away there is no
+// room left — fall back to today, and the admin can see it is effectively "immediately".
+export function proformaDueDate(booking: any): Date {
+  const pickup = booking.pickup_datetime ? new Date(booking.pickup_datetime) : null;
+  const today = new Date();
+  if (!pickup || isNaN(pickup.getTime())) return today;
+  const due = new Date(pickup);
+  due.setDate(due.getDate() - 1);
+  return due.getTime() < today.getTime() ? today : due;
+}
+
 // Defaults derived from the booking itself, so the automated path needs no admin input.
 export function defaultsFromBooking(booking: any): {
   mwst: 0 | 7 | 19;
@@ -48,7 +80,9 @@ export function defaultsFromBooking(booking: any): {
   return {
     mwst: [0, 7, 19].includes(steuersatz) ? (steuersatz as 0 | 7 | 19) : 19,
     lang: booking.language === 'en' ? 'en' : 'de',
-    zahlungsart: booking.payment_method === 'card' ? 'kreditkarte' : 'bar',
+    zahlungsart: booking.payment_method === 'card'
+      ? 'kreditkarte'
+      : booking.payment_method === 'ueberweisung' ? 'ueberweisung' : 'bar',
     empfaenger_adresse: booking.rechnung_adresse || undefined,
   };
 }
@@ -166,4 +200,117 @@ async function doSendRechnung(
   );
 
   return { rechnungsnummer };
+}
+
+// ─── PROFORMA ────────────────────────────────────────────────────────────────
+//
+// Sent BEFORE the ride to a customer paying by bank transfer: they pay against the
+// proforma, and once the ride is over the normal invoice flow (autoRechnungJob) mails
+// the real WEB-… invoice, which then prints "Bereits per Überweisung bezahlt" provided
+// an admin has confirmed the incoming payment.
+//
+// Its own in-flight guard: a proforma and a real invoice for the same booking are
+// different documents and may legitimately be in flight at the same time.
+const proformaInFlight = new Set<number>();
+
+export async function sendProformaForBooking(
+  booking: any,
+  opts: {
+    proformanummer?: string;
+    mwst?: 0 | 7 | 19;
+    lang?: 'de' | 'en';
+    empfaenger_adresse?: string;
+    force?: boolean;
+  } = {}
+): Promise<{ proformanummer: string; due_date: string }> {
+  if (!booking?.email) throw new Error('Buchung hat keine E-Mail-Adresse');
+  if (proformaInFlight.has(booking.id)) throw new Error('Proforma wird für diese Buchung bereits versendet');
+  proformaInFlight.add(booking.id);
+  try {
+    return await doSendProforma(booking, opts);
+  } finally {
+    proformaInFlight.delete(booking.id);
+  }
+}
+
+async function doSendProforma(
+  booking: any,
+  opts: {
+    proformanummer?: string;
+    mwst?: 0 | 7 | 19;
+    lang?: 'de' | 'en';
+    empfaenger_adresse?: string;
+    force?: boolean;
+  }
+): Promise<{ proformanummer: string; due_date: string }> {
+  // Same stale-row guard as the invoice path: re-read before spending a number.
+  const [fresh] = await query<{ proforma_number: string | null }>(
+    'SELECT proforma_number FROM bookings WHERE id = ?', [booking.id]
+  );
+  if (fresh?.proforma_number && !opts.force) {
+    throw new Error(`Für diese Buchung wurde bereits eine Proforma-Rechnung gesendet (${fresh.proforma_number}). Zum bewussten erneuten Versand "force" bestätigen.`);
+  }
+
+  const d = defaultsFromBooking(booking);
+  const proformanummer = opts.proformanummer?.trim() || (await nextProformaNummer());
+  const mwst = opts.mwst ?? d.mwst;
+  const lang = opts.lang ?? d.lang;
+  const empfaenger_adresse = opts.empfaenger_adresse ?? d.empfaenger_adresse;
+  const sentAt = new Date();
+  const dueDate = proformaDueDate(booking);
+
+  const s = await fetchBankSettings();
+  const pdfBuffer = await generateRechnungPdf({
+    booking, rechnungsnummer: proformanummer, mwst, lang, s, empfaenger_adresse,
+    // A proforma is always the bank-transfer document — that is its whole purpose.
+    zahlungsart: 'ueberweisung',
+    invoice_date: sentAt,
+    due_date_override: dueDate,
+    proforma: true,
+  });
+
+  const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
+  const subject = lang === 'en'
+    ? `Proforma Invoice ${proformanummer} – Munich Airport Taxi`
+    : `Proforma-Rechnung ${proformanummer} – Flughafen München Taxi`;
+  const htmlBody = buildRechnungEmail({
+    booking, rechnungsnummer: proformanummer, mwst, lang, s,
+    zahlungsart: 'ueberweisung', proforma: true, due_date: dueDate,
+  });
+
+  const { error: sendError } = await resend.emails.send({
+    from: `Flughafen München Taxi <${FROM_EMAIL}>`,
+    to: booking.email,
+    subject,
+    html: htmlBody,
+    attachments: [{
+      filename: `Proforma_${proformanummer}.pdf`,
+      content: pdfBuffer.toString('base64'),
+    }],
+  });
+  if (sendError) throw new Error(`Resend: ${sendError.message}`);
+
+  // Only persist after the mail actually went out. rechnung_number is deliberately
+  // untouched. rechnung_required is switched on so the existing auto-invoice cron mails
+  // the real invoice once the ride is over — the customer paying up front should not
+  // also have to have ticked the invoice box at booking time.
+  // rechnung_adresse is written too (same as doSendRechnung does): if the admin edited
+  // the billing address in the dialog, the real invoice that follows must carry the same
+  // address as the proforma the customer already paid against.
+  await run(
+    `UPDATE bookings
+       SET proforma_number = ?, proforma_sent_at = ?, proforma_adresse = ?,
+           rechnung_adresse = COALESCE(?, rechnung_adresse),
+           rechnung_sprache = ?, rechnung_mwst = ?, rechnung_required = 1
+     WHERE id = ?`,
+    [
+      proformanummer,
+      sentAt.toISOString().slice(0, 19).replace('T', ' '),
+      empfaenger_adresse || null,
+      empfaenger_adresse || null,
+      lang, mwst, booking.id,
+    ]
+  );
+
+  return { proformanummer, due_date: dueDate.toISOString().slice(0, 10) };
 }

@@ -62,6 +62,11 @@ function paymentLabel(method: string, lang: string): string {
     if (lang === 'tr') return 'Kredi Kartı';
     return 'Kartenzahlung';
   }
+  if (method === 'ueberweisung') {
+    if (lang === 'en') return 'Bank Transfer';
+    if (lang === 'tr') return 'Havale';
+    return 'Überweisung';
+  }
   if (lang === 'en') return 'Cash';
   if (lang === 'tr') return 'Nakit';
   return 'Bargeld';

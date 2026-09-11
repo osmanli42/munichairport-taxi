@@ -46,6 +46,33 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Storniert',
 };
 
+
+// Display labels for bookings.payment_method. Kept in one place because the raw column
+// holds English codes ('cash' | 'card' | 'ueberweisung' | 'rechnung' | 'invoice') while
+// the admin UI is German — the old inline `=== 'cash' ? 'Bargeld' : 'Karte'` ternary
+// mislabelled every non-cash value as "Karte".
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Bargeld',
+  card: 'Karte',
+  ueberweisung: 'Überweisung',
+  rechnung: 'Auf Rechnung',
+  invoice: 'Auf Rechnung',
+};
+const paymentLabel = (method?: string | null): string => PAYMENT_LABELS[method || 'cash'] || method || '—';
+
+// Payment deadline shown for a proforma: one day before pickup, never in the past.
+// Mirrors proformaDueDate() in backend/src/services/rechnungSender.ts, which is what
+// actually lands on the PDF — this is only the preview in the dialog.
+const proformaDueDate = (pickup?: string | null): Date => {
+  const today = new Date();
+  if (!pickup) return today;
+  const p = new Date(pickup);
+  if (isNaN(p.getTime())) return today;
+  const due = new Date(p);
+  due.setDate(due.getDate() - 1);
+  return due.getTime() < today.getTime() ? today : due;
+};
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
@@ -125,6 +152,10 @@ export default function AdminPage() {
   const [rechnungSending, setRechnungSending] = useState(false);
   const [rechnungSuccess, setRechnungSuccess] = useState(false);
   const [rechnungError, setRechnungError] = useState('');
+  // The same dialog serves both documents; 'proforma' hides the Zahlungsart picker
+  // (a proforma is always the bank-transfer document) and shows the payment deadline.
+  const [rechnungMode, setRechnungMode] = useState<'rechnung' | 'proforma'>('rechnung');
+  const [ueberweisungSaving, setUeberweisungSaving] = useState(false);
   // Marketing
   const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -946,6 +977,10 @@ export default function AdminPage() {
                           <td className="py-3 px-4">
                             {b.payment_method === 'card' ? (
                               <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">💳 Karte</span>
+                            ) : b.payment_method === 'ueberweisung' ? (
+                              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${b.ueberweisung_paid_at ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                🏦 Überweisung{b.ueberweisung_paid_at ? ' ✓' : ''}
+                              </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">💵 Bar</span>
                             )}
@@ -1346,6 +1381,28 @@ export default function AdminPage() {
                                   🧾 ausstehend
                                 </span>
                               ) : null}
+                              {/* Bank transfer: proforma sent before the ride, and whether
+                                  the money has been confirmed as received. */}
+                              {booking.proforma_number && (
+                                <span
+                                  className="inline-flex items-center gap-1 mt-1 ml-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                  title={`${booking.proforma_number}${booking.proforma_sent_at ? ` · ${formatDateTime(booking.proforma_sent_at)}` : ''}`}
+                                >
+                                  📄 Proforma
+                                </span>
+                              )}
+                              {booking.payment_method === 'ueberweisung' && (
+                                <span
+                                  className={`inline-flex items-center gap-1 mt-1 ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                                    booking.ueberweisung_paid_at ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                  }`}
+                                  title={booking.ueberweisung_paid_at
+                                    ? `Überweisung eingegangen am ${formatDateTime(booking.ueberweisung_paid_at)}`
+                                    : 'Überweisung noch nicht als eingegangen markiert'}
+                                >
+                                  {booking.ueberweisung_paid_at ? '💰 bezahlt' : '🏦 offen'}
+                                </span>
+                              )}
                             </td>
                             <td className="py-3 px-4 capitalize">{booking.vehicle_type}</td>
                             <td className="py-3 px-4">
@@ -2496,15 +2553,25 @@ export default function AdminPage() {
                         <div className="space-y-4">
                           {data.map(d => {
                             const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
-                            const isCard = d.payment_method === 'card';
+                            // The breakdown is GROUP BY payment_method, so it already carries
+                            // every value the column holds — label them all rather than
+                            // collapsing everything that is not 'card' into "Barzahlung".
+                            const PM_CHART: Record<string, { label: string; bar: string }> = {
+                              card: { label: '💳 Kreditkarte', bar: 'bg-blue-500' },
+                              cash: { label: '💵 Barzahlung', bar: 'bg-emerald-500' },
+                              ueberweisung: { label: '🏦 Überweisung', bar: 'bg-amber-500' },
+                              rechnung: { label: '🧾 Auf Rechnung', bar: 'bg-violet-500' },
+                              invoice: { label: '🧾 Auf Rechnung', bar: 'bg-violet-500' },
+                            };
+                            const chart = PM_CHART[d.payment_method] || { label: d.payment_method, bar: 'bg-gray-400' };
                             return (
                               <div key={d.payment_method}>
                                 <div className="flex justify-between text-sm mb-1">
-                                  <span className="font-medium">{isCard ? '💳 Kreditkarte' : '💵 Barzahlung'}</span>
+                                  <span className="font-medium">{chart.label}</span>
                                   <span className="text-gray-500">{d.count} Fahrten</span>
                                 </div>
                                 <div className="bg-gray-100 rounded-full h-7 relative overflow-hidden">
-                                  <div className={`h-full ${isCard ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full`} style={{ width: `${pct}%` }} />
+                                  <div className={`h-full ${chart.bar} rounded-full`} style={{ width: `${pct}%` }} />
                                   <div className="absolute inset-0 flex items-center px-3">
                                     <span className="text-xs font-medium text-white drop-shadow">{pct}% · {formatPrice(d.revenue)}</span>
                                   </div>
@@ -3221,7 +3288,7 @@ export default function AdminPage() {
                       💳 Karte — Details anzeigen
                     </button>
                   ) : (
-                    <p className="font-semibold capitalize">{selectedBooking.payment_method === 'cash' ? 'Bargeld' : 'Karte'}</p>
+                    <p className="font-semibold">{paymentLabel(selectedBooking.payment_method)}</p>
                   )}
                 </div>
               </div>
@@ -3378,7 +3445,8 @@ export default function AdminPage() {
                         ? selectedBooking.steuersatz
                         : 19
                     );
-                    setRechnungSprache('de');
+                    setRechnungMode('rechnung');
+                    setRechnungSprache(selectedBooking.language === 'en' ? 'en' : 'de');
                     // Prefer the billing address the customer supplied when booking;
                     // fall back to name + email for older bookings.
                     setRechnungEmpfaenger(
@@ -3386,7 +3454,11 @@ export default function AdminPage() {
                         || selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : '')
                     );
                     setEditingEmpfaenger(false);
-                    setRechnungZahlungsart(selectedBooking.payment_method === 'card' ? 'kreditkarte' : 'bar');
+                    setRechnungZahlungsart(
+                      selectedBooking.payment_method === 'card'
+                        ? 'kreditkarte'
+                        : selectedBooking.payment_method === 'ueberweisung' ? 'ueberweisung' : 'bar'
+                    );
                     setRechnungSuccess(false);
                     setRechnungError('');
                     setShowRechnungModal(true);
@@ -3401,6 +3473,40 @@ export default function AdminPage() {
                   Rechnung senden
                 </button>
               </div>
+              {/* Proforma: only for bank-transfer rides. Sent BEFORE the ride so the money
+                  is on the account in time; the real invoice still goes out automatically
+                  afterwards via autoRechnungJob. */}
+              {selectedBooking.payment_method === 'ueberweisung' && (
+                <button
+                  onClick={() => {
+                    setRechnungMode('proforma');
+                    setRechnungsnummer('');
+                    setRechnungMwst(
+                      selectedBooking.steuersatz === 7 || selectedBooking.steuersatz === 19 || selectedBooking.steuersatz === 0
+                        ? selectedBooking.steuersatz
+                        : 19
+                    );
+                    setRechnungSprache(selectedBooking.language === 'en' ? 'en' : 'de');
+                    setRechnungEmpfaenger(
+                      selectedBooking.proforma_adresse
+                        || selectedBooking.rechnung_adresse
+                        || selectedBooking.name + (selectedBooking.email ? '\n' + selectedBooking.email : '')
+                    );
+                    setEditingEmpfaenger(false);
+                    setRechnungZahlungsart('ueberweisung');
+                    setRechnungSuccess(false);
+                    setRechnungError('');
+                    setShowRechnungModal(true);
+                    adminApi.getNextProformaNummer()
+                      .then((r) => setRechnungsnummer(r.proformanummer))
+                      .catch(() => {});
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <FileText size={15} />
+                  Proforma senden
+                </button>
+              )}
               {/* Re-open the invoice that was actually sent (rebuilt from the stored
                   render params, so date and number match the customer's copy). */}
               {selectedBooking.rechnung_number && (
@@ -3413,6 +3519,46 @@ export default function AdminPage() {
                   <FileText size={15} />
                   Gesendete Rechnung ansehen ({selectedBooking.rechnung_number})
                 </a>
+              )}
+              {selectedBooking.proforma_number && (
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/proforma.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 py-2 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <FileText size={15} />
+                  Gesendete Proforma ansehen ({selectedBooking.proforma_number})
+                </a>
+              )}
+              {/* Confirming the incoming transfer is what makes the real invoice print
+                  "Bereits per Überweisung bezahlt" instead of Zahlungsziel + IBAN. */}
+              {selectedBooking.payment_method === 'ueberweisung' && (
+                <button
+                  disabled={ueberweisungSaving}
+                  onClick={async () => {
+                    const nowPaid = !selectedBooking.ueberweisung_paid_at;
+                    setUeberweisungSaving(true);
+                    try {
+                      const r = await adminApi.setUeberweisungPaid(selectedBooking.id, nowPaid);
+                      setSelectedBooking({ ...selectedBooking, ueberweisung_paid_at: r.ueberweisung_paid_at });
+                      loadBookings();
+                    } catch {
+                      alert('Zahlungsstatus konnte nicht gespeichert werden.');
+                    } finally {
+                      setUeberweisungSaving(false);
+                    }
+                  }}
+                  className={`mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 ${
+                    selectedBooking.ueberweisung_paid_at
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  {selectedBooking.ueberweisung_paid_at
+                    ? `✓ Überweisung eingegangen (${new Date(selectedBooking.ueberweisung_paid_at).toLocaleDateString('de-DE')}) — rückgängig`
+                    : 'Überweisung eingegangen ✓'}
+                </button>
               )}
             </div>
           </div>
@@ -4379,6 +4525,7 @@ export default function AdminPage() {
                     <select value={editForm.payment_method || 'cash'} onChange={(e) => setEditForm(p => ({ ...p, payment_method: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                       <option value="cash">Bargeld</option>
                       <option value="card">Kreditkarte</option>
+                      <option value="ueberweisung">Überweisung</option>
                     </select>
                   </div>
                   <div>
@@ -4455,25 +4602,25 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Rechnung Modal */}
+      {/* Rechnung / Proforma Modal — one dialog, two documents (see rechnungMode) */}
       {showRechnungModal && selectedBooking && (
         <div
           className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget && !rechnungSending) setShowRechnungModal(false); }}
         >
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="bg-primary-600 text-white p-5 flex items-center justify-between">
+            <div className={`text-white p-5 flex items-center justify-between ${rechnungMode === 'proforma' ? 'bg-amber-600' : 'bg-primary-600'}`}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${rechnungMode === 'proforma' ? 'bg-amber-500' : 'bg-primary-500'}`}>
                   <FileText size={18} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">Rechnung erstellen</h3>
-                  <p className="text-primary-200 text-xs">{selectedBooking.booking_number}</p>
+                  <h3 className="font-bold text-lg">{rechnungMode === 'proforma' ? 'Proforma-Rechnung erstellen' : 'Rechnung erstellen'}</h3>
+                  <p className={`text-xs ${rechnungMode === 'proforma' ? 'text-amber-100' : 'text-primary-200'}`}>{selectedBooking.booking_number}</p>
                 </div>
               </div>
               {!rechnungSending && (
-                <button onClick={() => setShowRechnungModal(false)} className="p-2 hover:bg-primary-500 rounded-lg">
+                <button onClick={() => setShowRechnungModal(false)} className={`p-2 rounded-lg ${rechnungMode === 'proforma' ? 'hover:bg-amber-500' : 'hover:bg-primary-500'}`}>
                   <X size={18} />
                 </button>
               )}
@@ -4526,13 +4673,13 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rechnungsnummer <span className="text-red-500">*</span>
+                  {rechnungMode === 'proforma' ? 'Proforma-Nummer' : 'Rechnungsnummer'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={rechnungsnummer}
                   onChange={(e) => setRechnungsnummer(e.target.value)}
-                  placeholder="z.B. 2026-001"
+                  placeholder={rechnungMode === 'proforma' ? 'z.B. PRO-20260911-001' : 'z.B. WEB-20260911-001'}
                   disabled={rechnungSending || rechnungSuccess}
                   className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 font-mono"
                 />
@@ -4564,6 +4711,24 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
+              {rechnungMode === 'proforma' ? (
+                /* A proforma is by definition the bank-transfer document, so there is
+                   nothing to pick — show the deadline the PDF will carry instead. */
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                  <p className="font-semibold text-amber-900 flex items-center gap-2">
+                    🏦 Zahlungsart: Überweisung
+                  </p>
+                  <p className="text-amber-800 mt-1.5">
+                    Zahlbar bis: <strong>{proformaDueDate(selectedBooking.pickup_datetime).toLocaleDateString('de-DE')}</strong>
+                    <span className="text-amber-700"> (ein Tag vor Fahrtantritt)</span>
+                  </p>
+                  <p className="text-xs text-amber-700 mt-2 leading-relaxed">
+                    Die Proforma enthält den Hinweis, dass die Zahlung vor Fahrtantritt eingegangen sein muss,
+                    sowie die Bankverbindung. Sie ist keine Rechnung i.S.d. §14 UStG — die richtige Rechnung
+                    geht nach der Fahrt automatisch raus.
+                  </p>
+                </div>
+              ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Zahlungsart</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -4596,9 +4761,10 @@ export default function AdminPage() {
                   </p>
                 )}
               </div>
+              )}
               {rechnungSuccess && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                  <Check size={16} />Rechnung erfolgreich gesendet!
+                  <Check size={16} />{rechnungMode === 'proforma' ? 'Proforma-Rechnung erfolgreich gesendet!' : 'Rechnung erfolgreich gesendet!'}
                 </div>
               )}
               {rechnungError && (
@@ -4609,12 +4775,21 @@ export default function AdminPage() {
               {!rechnungSuccess ? (
                 <button
                   onClick={async () => {
-                    if (!rechnungsnummer.trim()) { setRechnungError('Bitte Rechnungsnummer eingeben.'); return; }
+                    const isProforma = rechnungMode === 'proforma';
+                    if (!rechnungsnummer.trim()) {
+                      setRechnungError(isProforma ? 'Bitte Proforma-Nummer eingeben.' : 'Bitte Rechnungsnummer eingeben.');
+                      return;
+                    }
                     setRechnungError('');
                     setRechnungSending(true);
+                    // Same dialog, two endpoints — the proforma has no zahlungsart to pass.
+                    const send = (force?: boolean) => isProforma
+                      ? adminApi.sendProforma(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), force)
+                      : adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart, force);
                     try {
-                      await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart);
+                      await send();
                       setRechnungSuccess(true);
+                      loadBookings();
                     } catch (err: any) {
                       if (err.response?.status === 409 && err.response?.data?.already_sent) {
                         // Bereits gesendet — nur nach ausdrücklicher Bestätigung erneut verschicken,
@@ -4622,8 +4797,9 @@ export default function AdminPage() {
                         const confirmed = window.confirm(`${err.response.data.error}\n\nTrotzdem erneut per E-Mail senden?`);
                         if (confirmed) {
                           try {
-                            await adminApi.sendRechnung(selectedBooking.id, rechnungsnummer.trim(), rechnungMwst, rechnungSprache, rechnungEmpfaenger.trim(), rechnungZahlungsart, true);
+                            await send(true);
                             setRechnungSuccess(true);
+                            loadBookings();
                           } catch (err2: any) {
                             setRechnungError(err2.response?.data?.error || err2.message || 'Fehler beim Senden');
                           }
@@ -4634,7 +4810,7 @@ export default function AdminPage() {
                     } finally { setRechnungSending(false); }
                   }}
                   disabled={rechnungSending || !rechnungsnummer.trim()}
-                  className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className={`w-full disabled:opacity-50 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${rechnungMode === 'proforma' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'}`}
                 >
                   {rechnungSending
                     ? <><RefreshCw size={16} className="animate-spin" /> PDF wird erstellt...</>

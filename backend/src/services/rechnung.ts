@@ -112,13 +112,21 @@ export function generateRechnungPdf(opts: {
   deposit?: number;
   // Überschreibt die Standard-Zahlungsfrist (Rechnungsdatum + 7 Tage) mit einem festen Datum.
   due_date_override?: string | Date;
+  // Proforma-Modus: Das Dokument ist KEINE Rechnung i.S.d. §14 UStG (kein Vorsteuerabzug,
+  // keine Steuerschuld bei Ausstellung). Titel, Nummernfeld und Hinweisblock ändern sich;
+  // es gilt immer "unbezahlt", die Bankverbindung wird also stets gedruckt.
+  proforma?: boolean;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { booking, rechnungsnummer, lang, s, empfaenger_adresse, zahlungsart, deposit, due_date_override } = opts;
+    const { booking, rechnungsnummer, lang, s, empfaenger_adresse, zahlungsart, deposit, due_date_override, proforma } = opts;
     // The booking's own tax rate (set per ride by an admin) takes precedence over whatever
     // rate was passed in, since that's the actual applicable rate for this specific ride.
     const mwst: 0 | 7 | 19 = [0, 7, 19].includes(Number(booking.steuersatz)) ? Number(booking.steuersatz) as 0 | 7 | 19 : opts.mwst;
-    const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
+    // Ein per Überweisung bezahlter Transfer gilt erst als bezahlt, wenn ein Admin den
+    // Zahlungseingang bestätigt hat (ueberweisung_paid_at) — sonst würde die Rechnung
+    // "bezahlt" behaupten, obwohl das Geld noch aussteht. Im Proforma-Modus nie bezahlt.
+    const ueberweisungPaid = zahlungsart === 'ueberweisung' && !!booking.ueberweisung_paid_at;
+    const isPaid = !proforma && (zahlungsart === 'bar' || zahlungsart === 'kreditkarte' || ueberweisungPaid);
     const isEn = lang === 'en';
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -151,7 +159,10 @@ export function generateRechnungPdf(opts: {
 
     const titleX = marginL + pageW - 250;
     doc.fontSize(17).font('WorkSans-Bold').fillColor(BRAND)
-      .text(isEn ? 'INVOICE' : 'RECHNUNG', titleX, 50, { width: 250, align: 'right' });
+      .text(proforma
+        ? (isEn ? 'PROFORMA INVOICE' : 'PROFORMA-RECHNUNG')
+        : (isEn ? 'INVOICE' : 'RECHNUNG'),
+        titleX, 50, { width: 250, align: 'right' });
 
     const parsedInvoiceDate = opts.invoice_date ? new Date(opts.invoice_date) : null;
     const today = parsedInvoiceDate && !isNaN(parsedInvoiceDate.getTime()) ? parsedInvoiceDate : new Date();
@@ -160,18 +171,22 @@ export function generateRechnungPdf(opts: {
     if (!due_date_override) dueDate.setDate(dueDate.getDate() + 7);
     const dueDateStr = fmtDate(dueDate.toISOString(), lang);
 
-    const zahlungsartLabel = isPaid
-      ? (zahlungsart === 'bar'
-          ? (isEn ? 'Paid in Cash' : 'Bar bezahlt')
-          : (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt'))
-      : (isEn ? 'Bank Transfer' : 'Überweisung');
+    const zahlungsartLabel = !isPaid
+      ? (isEn ? 'Bank Transfer' : 'Überweisung')
+      : zahlungsart === 'bar'
+        ? (isEn ? 'Paid in Cash' : 'Bar bezahlt')
+        : zahlungsart === 'kreditkarte'
+          ? (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt')
+          : (isEn ? 'Paid by Bank Transfer' : 'Per Überweisung bezahlt');
 
     doc.fontSize(8).font('WorkSans').fillColor(GRAY);
     const metaX = titleX + 60;
     const metaLabelW = 95;
     const metaValW = 250 - 60 - metaLabelW;
     const rows2: [string, string][] = [
-      [isEn ? 'Invoice No.:' : 'Rechnungsnr.:', rechnungsnummer],
+      [proforma
+        ? (isEn ? 'Proforma No.:' : 'Proforma-Nr.:')
+        : (isEn ? 'Invoice No.:' : 'Rechnungsnr.:'), rechnungsnummer],
       [isEn ? 'Invoice Date:' : 'Datum:', todayStr],
       [isEn ? 'Booking No.:' : 'Buchungsnr.:', booking.booking_number || '—'],
       isPaid
@@ -304,6 +319,26 @@ export function generateRechnungPdf(opts: {
       totY += 24;
     }
 
+    // ── PROFORMA-HINWEIS (Zahlungsfrist + rechtlicher Charakter des Dokuments)
+    if (proforma) {
+      const noteH = 56;
+      const noteY = totY + 14;
+      doc.rect(marginL, noteY, pageW, noteH).fill('#fffbeb').stroke('#fcd34d');
+      doc.fontSize(9).font('WorkSans-Bold').fillColor('#92400e')
+        .text(isEn
+          ? 'Payment must be credited to our account no later than one day before the transfer date.'
+          : 'Die Zahlung muss spätestens einen Tag vor Fahrtantritt auf unserem Konto eingegangen sein.',
+          marginL + 12, noteY + 10, { width: pageW - 24 });
+      doc.fontSize(7.5).font('WorkSans').fillColor('#78350f')
+        .text(isEn
+          ? 'This document is not an invoice pursuant to §14 UStG and does not entitle you to an input tax deduction. '
+            + 'You will receive the proper invoice after the ride has been completed.'
+          : 'Dieses Dokument ist keine Rechnung im Sinne des §14 UStG und berechtigt nicht zum Vorsteuerabzug. '
+            + 'Die ordnungsgemäße Rechnung erhalten Sie nach Durchführung der Fahrt.',
+          marginL + 12, noteY + 30, { width: pageW - 24 });
+      totY = noteY + noteH;
+    }
+
     // ── BANK TRANSFER BOX or BEZAHLT BOX (anchored near the bottom of the page, like the Sammelrechnung)
     const pageBottom = doc.page.height - 120;
     const bankBoxH = isPaid ? 44 : 90;
@@ -311,7 +346,9 @@ export function generateRechnungPdf(opts: {
     if (isPaid) {
       const paidLabel = zahlungsart === 'bar'
         ? (isEn ? '✓  Paid in Cash' : '✓  Bar bezahlt')
-        : (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt');
+        : zahlungsart === 'kreditkarte'
+          ? (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt')
+          : (isEn ? '✓  Paid by Bank Transfer' : '✓  Bereits per Überweisung bezahlt');
       doc.rect(marginL, bankY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
       doc.fontSize(11).font('WorkSans-Bold').fillColor('#15803d')
         .text(paidLabel, marginL + 12, bankY + 15);
@@ -360,9 +397,14 @@ export function buildRechnungEmail(opts: {
   lang: 'de' | 'en';
   s: Record<string, string>;
   zahlungsart?: 'bar' | 'kreditkarte' | 'ueberweisung';
+  // Siehe generateRechnungPdf: Proforma ist keine Rechnung i.S.d. §14 UStG.
+  proforma?: boolean;
+  // Zahlungsfrist der Proforma (spätestens ein Tag vor Fahrtantritt).
+  due_date?: string | Date;
 }): string {
-  const { booking, rechnungsnummer, mwst, lang, s, zahlungsart } = opts;
-  const isPaid = zahlungsart === 'bar' || zahlungsart === 'kreditkarte';
+  const { booking, rechnungsnummer, mwst, lang, s, zahlungsart, proforma, due_date } = opts;
+  const ueberweisungPaid = zahlungsart === 'ueberweisung' && !!booking.ueberweisung_paid_at;
+  const isPaid = !proforma && (zahlungsart === 'bar' || zahlungsart === 'kreditkarte' || ueberweisungPaid);
   const isEn = lang === 'en';
   const companyName = s.company_name || 'Taxi N&N GbR';
   const grossPrice = roundGrossPrice(Number(booking.price) || 0, booking.source === 'calendar');
@@ -374,9 +416,13 @@ export function buildRechnungEmail(opts: {
     ? `Dear ${booking.name || 'Customer'},`
     : `Sehr geehrte/r ${booking.name || 'Kunde/Kundin'},`;
 
-  const intro = isEn
-    ? `Thank you for choosing Munich Airport Taxi. Please find your invoice <strong>${rechnungsnummer}</strong> attached to this email.`
-    : `Vielen Dank für Ihre Buchung bei Flughafen München Taxi. Anbei erhalten Sie Ihre Rechnung <strong>${rechnungsnummer}</strong> als PDF-Anhang.`;
+  const intro = proforma
+    ? (isEn
+        ? `Thank you for choosing Munich Airport Taxi. Please find your proforma invoice <strong>${rechnungsnummer}</strong> attached to this email. Kindly transfer the amount below to the account shown.`
+        : `Vielen Dank für Ihre Buchung bei Flughafen München Taxi. Anbei erhalten Sie Ihre Proforma-Rechnung <strong>${rechnungsnummer}</strong> als PDF-Anhang. Bitte überweisen Sie den unten genannten Betrag auf das angegebene Konto.`)
+    : (isEn
+        ? `Thank you for choosing Munich Airport Taxi. Please find your invoice <strong>${rechnungsnummer}</strong> attached to this email.`
+        : `Vielen Dank für Ihre Buchung bei Flughafen München Taxi. Anbei erhalten Sie Ihre Rechnung <strong>${rechnungsnummer}</strong> als PDF-Anhang.`);
 
   const tableRows = `
     <tr style="background:#f3f4f6;">
@@ -400,7 +446,9 @@ export function buildRechnungEmail(opts: {
 
   const paidLabel = zahlungsart === 'bar'
     ? (isEn ? '✓ Paid in Cash' : '✓ Bar bezahlt')
-    : (isEn ? '✓ Paid by Credit Card' : '✓ Kreditkarte bezahlt');
+    : zahlungsart === 'kreditkarte'
+      ? (isEn ? '✓ Paid by Credit Card' : '✓ Kreditkarte bezahlt')
+      : (isEn ? '✓ Paid by Bank Transfer' : '✓ Bereits per Überweisung bezahlt');
 
   const bankSection = isPaid ? `
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-top:20px;">
@@ -419,6 +467,18 @@ export function buildRechnungEmail(opts: {
     </div>
   ` : '');
 
+  const dueStr = due_date ? fmtDate(new Date(due_date).toISOString(), lang) : '';
+  const proformaNote = proforma ? `
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:16px;margin-top:20px;">
+      <p style="margin:0;font-weight:700;color:#92400e;font-size:14px;">${isEn
+        ? `Payment must be credited to our account no later than one day before the transfer date${dueStr ? ` (by ${dueStr})` : ''}.`
+        : `Die Zahlung muss spätestens einen Tag vor Fahrtantritt auf unserem Konto eingegangen sein${dueStr ? ` (bis ${dueStr})` : ''}.`}</p>
+      <p style="margin:10px 0 0;color:#78350f;font-size:12px;line-height:1.5;">${isEn
+        ? 'This document is not an invoice pursuant to §14 UStG and does not entitle you to an input tax deduction. You will receive the proper invoice after the ride has been completed.'
+        : 'Dieses Dokument ist keine Rechnung im Sinne des §14 UStG und berechtigt nicht zum Vorsteuerabzug. Die ordnungsgemäße Rechnung erhalten Sie nach Durchführung der Fahrt.'}</p>
+    </div>
+  ` : '';
+
   const closing = isEn
     ? 'If you have any questions, please do not hesitate to contact us.'
     : 'Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.';
@@ -432,7 +492,9 @@ export function buildRechnungEmail(opts: {
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
   <!-- Header -->
   <tr><td style="background:${BRAND};padding:24px 32px;">
-    <p style="margin:0;color:#fff;font-size:20px;font-weight:700;">${isEn ? 'Your Invoice' : 'Ihre Rechnung'}</p>
+    <p style="margin:0;color:#fff;font-size:20px;font-weight:700;">${proforma
+      ? (isEn ? 'Your Proforma Invoice' : 'Ihre Proforma-Rechnung')
+      : (isEn ? 'Your Invoice' : 'Ihre Rechnung')}</p>
     <p style="margin:4px 0 0;color:#93c5fd;font-size:13px;">${rechnungsnummer} · ${companyName}</p>
   </td></tr>
   <!-- Body -->
@@ -448,6 +510,7 @@ export function buildRechnungEmail(opts: {
       ${tableRows}
     </table>
     ${bankSection}
+    ${proformaNote}
     <p style="margin:24px 0 0;color:#374151;font-size:14px;">${closing}</p>
     <p style="margin:8px 0 0;color:#374151;font-size:14px;">${isEn ? 'With kind regards,<br>' : 'Mit freundlichen Grüßen,<br>'}<strong>${companyName}</strong></p>
   </td></tr>

@@ -67,7 +67,7 @@ export async function initializeDatabase(): Promise<void> {
         distance_km DOUBLE,
         duration_minutes INT,
         price DOUBLE NOT NULL,
-        payment_method VARCHAR(10) NOT NULL DEFAULT 'cash',
+        payment_method VARCHAR(20) NOT NULL DEFAULT 'cash',
         card_holder TEXT,
         card_number_enc TEXT,
         card_expiry TEXT,
@@ -508,6 +508,31 @@ export async function initializeDatabase(): Promise<void> {
     try {
       await conn.execute(`ALTER TABLE bookings ADD INDEX idx_rechnung_pending (rechnung_required, rechnung_number)`);
     } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+    // ────────────────────────────────────────────────────────────────────
+
+    // Migration: Überweisung (bank transfer) + Proforma-Rechnung.
+    // payment_method was VARCHAR(10) — 'ueberweisung' is 12 chars and would be rejected,
+    // so widen it before the admin UI can store the new value.
+    try {
+      await conn.execute(`ALTER TABLE bookings MODIFY COLUMN payment_method VARCHAR(20) NOT NULL DEFAULT 'cash'`);
+    } catch (e: any) { if (!e.message?.includes("Unknown column")) throw e; }
+
+    // The proforma is deliberately kept in its own columns and its own number series
+    // (PRO-…): it is NOT an invoice under §14 UStG, so it must not consume a slot in the
+    // gapless WEB-… sequence, and writing rechnung_number here would make autoRechnungJob
+    // treat the ride as already invoiced and never send the real invoice.
+    // ueberweisung_paid_at is set by the admin when the transfer lands; the real invoice
+    // then prints "Bereits per Überweisung bezahlt" instead of Zahlungsziel + IBAN.
+    const bookingProformaCols = [
+      `ALTER TABLE bookings ADD COLUMN proforma_number VARCHAR(50) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN proforma_sent_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN proforma_adresse TEXT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN ueberweisung_paid_at DATETIME DEFAULT NULL`,
+    ];
+    for (const stmt of bookingProformaCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
     // ────────────────────────────────────────────────────────────────────
 
     // Migration: company card-on-file (Stripe) columns

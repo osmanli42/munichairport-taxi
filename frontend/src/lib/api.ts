@@ -112,6 +112,11 @@ export interface Booking {
   rechnung_number?: string | null;
   rechnung_sent_at?: string | null;
   rechnung_error?: string | null;
+  // Proforma-Rechnung (admin-only, sent before the ride to bank-transfer customers)
+  proforma_number?: string | null;
+  proforma_sent_at?: string | null;
+  proforma_adresse?: string | null;
+  ueberweisung_paid_at?: string | null;
 }
 
 export interface Price {
@@ -491,6 +496,25 @@ export const adminApi = {
   getNextRechnungsnummer: async (): Promise<{ rechnungsnummer: string }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
     const response = await api.get('/admin/rechnung/next-number', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  // ─── Proforma (bank transfer, sent before the ride) ───
+  sendProforma: async (bookingId: number, proformanummer: string, mwst_satz: 0 | 7 | 19, sprache: 'de' | 'en', empfaenger_adresse?: string, force?: boolean): Promise<{ success: boolean; proformanummer: string; due_date: string }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post(`/admin/bookings/${bookingId}/proforma`, { proformanummer, mwst_satz, sprache, empfaenger_adresse, force }, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  getNextProformaNummer: async (): Promise<{ proformanummer: string }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.get('/admin/proforma/next-number', { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
+  setUeberweisungPaid: async (bookingId: number, paid: boolean): Promise<{ success: boolean; ueberweisung_paid_at: string | null }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post(`/admin/bookings/${bookingId}/ueberweisung-paid`, { paid }, { headers: { Authorization: `Bearer ${token}` } });
     return response.data;
   },
 

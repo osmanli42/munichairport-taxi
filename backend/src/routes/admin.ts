@@ -7,7 +7,7 @@ import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminL
 import { decrypt } from './bookings';
 import { signToken } from '../utils/trackingToken';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
-import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking } from '../services/rechnungSender';
+import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
 import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
@@ -353,6 +353,11 @@ router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: 
   res.json({ success: true });
 });
 
+// Payment methods an admin may set. 'ueberweisung' is admin-only on purpose: offered
+// publicly it would let anyone book without paying, so the customer flow in
+// routes/bookings.ts still accepts cash|card only. 'rechnung' is the B2B on-account value.
+const ADMIN_PAYMENT_METHODS = ['cash', 'card', 'ueberweisung', 'rechnung'];
+
 // PUT /api/admin/bookings/:id — update editable booking fields
 router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const EDITABLE_FIELDS = [
@@ -364,6 +369,12 @@ router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Res
     'anfahrt_cost', 'zwischenstopp_address', 'promo_code', 'discount_amount',
     'rechnung_adresse',
   ];
+
+  if (Object.prototype.hasOwnProperty.call(req.body, 'payment_method')
+      && !ADMIN_PAYMENT_METHODS.includes(req.body.payment_method)) {
+    res.status(400).json({ error: 'Ungültige Zahlungsart' });
+    return;
+  }
 
   const updates: string[] = [];
   const values: unknown[] = [];
@@ -409,6 +420,10 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
 
   if (!pickup_address || !dropoff_address || !pickup_datetime || !name || !phone || !email || !price) {
     res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  if (payment_method && !ADMIN_PAYMENT_METHODS.includes(payment_method)) {
+    res.status(400).json({ error: 'Ungültige Zahlungsart' });
     return;
   }
 
@@ -589,8 +604,10 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
         COALESCE(SUM(price), 0) as revenue,
         COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cash_revenue,
         COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as card_revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'ueberweisung' THEN price ELSE 0 END), 0) as ueberweisung_revenue,
         SUM(CASE WHEN payment_method = 'cash' THEN 1 ELSE 0 END) as cash_count,
-        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count
+        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count,
+        SUM(CASE WHEN payment_method = 'ueberweisung' THEN 1 ELSE 0 END) as ueberweisung_count
       FROM bookings
       WHERE status != 'cancelled'
         AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
@@ -711,8 +728,10 @@ router.get('/statistics', authenticateAdmin, async (req: AuthRequest, res: Respo
         COALESCE(SUM(price), 0) as revenue,
         COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN price ELSE 0 END), 0) as cash_revenue,
         COALESCE(SUM(CASE WHEN payment_method = 'card' THEN price ELSE 0 END), 0) as card_revenue,
+        COALESCE(SUM(CASE WHEN payment_method = 'ueberweisung' THEN price ELSE 0 END), 0) as ueberweisung_revenue,
         SUM(CASE WHEN payment_method = 'cash' THEN 1 ELSE 0 END) as cash_count,
-        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count
+        SUM(CASE WHEN payment_method = 'card' THEN 1 ELSE 0 END) as card_count,
+        SUM(CASE WHEN payment_method = 'ueberweisung' THEN 1 ELSE 0 END) as ueberweisung_count
       FROM bookings
       WHERE status != 'cancelled'
         AND pickup_datetime >= DATE_SUB(NOW(), INTERVAL 8 WEEK)
@@ -1726,6 +1745,121 @@ router.get('/bookings/:id/rechnung.pdf', authenticateAdmin, async (req: AuthRequ
   } catch (error: any) {
     console.error('Rechnung PDF error:', error);
     res.status(500).json({ error: error.message || 'Failed to render invoice' });
+  }
+});
+
+// ─── PROFORMA-RECHNUNG ────────────────────────────────────────────────────────
+//
+// Admin-only, for customers paying by bank transfer: sent BEFORE the ride so the money
+// arrives in time. A proforma is not an invoice under §14 UStG, so it uses its own
+// PRO-YYYYMMDD-NNN series and never touches rechnung_number — the real invoice still
+// goes out automatically once the ride is over.
+
+// GET /api/admin/proforma/next-number
+router.get('/proforma/next-number', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    res.json({ proformanummer: await nextProformaNummer() });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/admin/bookings/:id/proforma
+router.post('/bookings/:id/proforma', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { proformanummer, mwst_satz, sprache, empfaenger_adresse, force } = req.body as {
+      proformanummer: string;
+      mwst_satz: 0 | 7 | 19;
+      sprache: 'de' | 'en';
+      empfaenger_adresse?: string;
+      force?: boolean;
+    };
+
+    if (!proformanummer) {
+      res.status(400).json({ error: 'Proforma-Nummer ist erforderlich' });
+      return;
+    }
+    if (![0, 7, 19].includes(Number(mwst_satz))) {
+      res.status(400).json({ error: 'Ungültiger MwSt.-Satz' });
+      return;
+    }
+
+    const lang = sprache === 'en' ? 'en' : 'de';
+    const mwst = Number(mwst_satz) as 0 | 7 | 19;
+
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+
+    const result = await sendProformaForBooking(booking, { proformanummer, mwst, lang, empfaenger_adresse, force });
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('Proforma error:', error);
+    if (error.message?.includes('bereits eine Proforma-Rechnung gesendet')) {
+      res.status(409).json({ error: error.message, already_sent: true });
+      return;
+    }
+    res.status(500).json({ error: error.message || 'Failed to generate proforma invoice' });
+  }
+});
+
+// GET /api/admin/bookings/:id/proforma.pdf — re-render the proforma that was sent,
+// from the stored params, so the reproduced copy matches the customer's exactly.
+router.get('/bookings/:id/proforma.pdf', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    if (!booking.proforma_number) {
+      res.status(404).json({ error: 'Für diese Buchung wurde noch keine Proforma-Rechnung versendet' });
+      return;
+    }
+
+    const d = defaultsFromBooking(booking);
+    const s = await fetchBankSettings();
+    const pdfBuffer = await generateRechnungPdf({
+      booking,
+      rechnungsnummer: booking.proforma_number,
+      mwst: [0, 7, 19].includes(Number(booking.rechnung_mwst)) ? Number(booking.rechnung_mwst) as 0 | 7 | 19 : d.mwst,
+      lang: booking.rechnung_sprache === 'en' ? 'en' : 'de',
+      s,
+      empfaenger_adresse: booking.proforma_adresse || booking.rechnung_adresse || undefined,
+      zahlungsart: 'ueberweisung',
+      invoice_date: booking.proforma_sent_at || undefined,
+      due_date_override: proformaDueDate(booking),
+      proforma: true,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Proforma_${booking.proforma_number}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Proforma PDF error:', error);
+    res.status(500).json({ error: error.message || 'Failed to render proforma invoice' });
+  }
+});
+
+// POST /api/admin/bookings/:id/ueberweisung-paid — admin confirms the transfer landed.
+// This is what flips the real invoice from "Zahlungsziel + IBAN" to the green
+// "Bereits per Überweisung bezahlt" box, so it must stay reversible (paid: false).
+router.post('/bookings/:id/ueberweisung-paid', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const paid = req.body?.paid !== false;
+    const [booking] = await query<any>('SELECT id FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const paidAt = paid ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    await run('UPDATE bookings SET ueberweisung_paid_at = ? WHERE id = ?', [paidAt, req.params.id]);
+    res.json({ success: true, ueberweisung_paid_at: paidAt });
+  } catch (error: any) {
+    console.error('Überweisung paid error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update payment status' });
   }
 });
 
