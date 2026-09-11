@@ -19,6 +19,7 @@ const QUERY_TOKEN_ALLOWED = [
   /^\/api\/admin\/companies\/invoices\/\d+\/pdf(\?|$)/,
   /^\/api\/admin\/report\/finanzamt(\?|$)/,
   /^\/api\/admin\/bookings\/\d+\/rechnung\.pdf(\?|$)/,
+  /^\/api\/admin\/bookings\/\d+\/proforma\.pdf(\?|$)/,
 ];
 
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
