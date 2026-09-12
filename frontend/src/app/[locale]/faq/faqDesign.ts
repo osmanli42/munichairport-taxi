@@ -1,6 +1,6 @@
 import {
   Car, Plane, Users, Route, MapPin, Clock, ShieldCheck, Star,
-  Headphones, Gem, Phone as PhoneIcon,
+  Headphones, Gem,
 } from 'lucide-react';
 
 /** FAQ sayfasinin yeni tasarimina ait metinler ve ikonlar. Sorular/cevaplar
@@ -83,5 +83,3 @@ export const faqDesign: Record<string, FaqDesign> = {
     signature: 'Bir taksiden fazlası.',
   },
 };
-
-export { PhoneIcon };
