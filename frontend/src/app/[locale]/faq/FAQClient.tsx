@@ -91,16 +91,19 @@ export default function FAQClient() {
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
 
-      {/* Hero */}
+      {/* Hero — arka plan: Munih Havalimani M terminali (sol) + kule/ucak/taksi (sag),
+          tasarim gorselinden kesildi, ortaya dogru koyu lacivert (#0f1b2d) rengine soluyor */}
       <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
-        <div
-          className="absolute inset-0 bg-cover"
-          style={{ backgroundImage: "url('/images/hero-airport.webp')", backgroundPosition: 'center 40%' }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(to right, rgba(15,27,45,.92) 0%, rgba(15,27,45,.72) 45%, rgba(15,27,45,.55) 100%)' }}
-        />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute top-0 left-0 hidden sm:block h-full" style={{ width: '260px' }}>
+            <img src="/images/faq-bg-left.webp" alt="" width={180} height={280} className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.20) 0%, #0f1b2d 92%)' }} />
+          </div>
+          <div className="absolute top-0 right-0 hidden sm:block h-full" style={{ width: '260px' }}>
+            <img src="/images/faq-bg-right.webp" alt="" width={179} height={280} className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(15,27,45,.15) 0%, #0f1b2d 90%)' }} />
+          </div>
+        </div>
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-3 mb-5">
