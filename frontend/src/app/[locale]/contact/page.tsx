@@ -1,8 +1,13 @@
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
-import { Phone, Mail, MapPin, Clock, MessageCircle, ClipboardList, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Phone, Mail, MapPin, Clock, MessageCircle, ClipboardList, HelpCircle,
+  Calendar, Send, CheckCircle2, Plus, ArrowRight,
+} from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
+import { contactDesign, heroStatIcons } from './contactDesign';
 
 export async function generateMetadata({
   params: { locale },
@@ -28,11 +33,12 @@ export async function generateMetadata({
 
 export default function ContactPage() {
   const t = useTranslations('contact');
+  const locale = useLocale();
+  const dz = contactDesign[locale] || contactDesign.de;
 
   const contactItems = [
     {
       icon: Phone,
-      emoji: <Phone size={22} />,
       label: t('phone'),
       value: CONTACT_INFO.phone,
       href: CONTACT_INFO.phoneHref,
@@ -41,251 +47,294 @@ export default function ContactPage() {
           href={CONTACT_INFO.whatsapp}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 font-bold text-xs px-3.5 py-2 rounded-full transition-all hover:-translate-y-0.5"
           style={{ background: '#25d366', color: '#fff', boxShadow: '0 4px 12px rgba(37,211,102,.25)' }}
         >
           <MessageCircle size={13} /> {t('whatsapp')}
         </a>
       ),
     },
-    {
-      icon: Mail,
-      emoji: <Mail size={22} />,
-      label: t('email'),
-      value: CONTACT_INFO.email,
-      href: `mailto:${CONTACT_INFO.email}`,
-      extra: null,
-    },
+    { icon: Mail, label: t('email'), value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}`, extra: null },
     {
       icon: MapPin,
-      emoji: <MapPin size={22} />,
       label: t('address'),
       value: CONTACT_INFO.address,
       href: undefined,
-      extra: null,
+      extra: (
+        <a
+          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(CONTACT_INFO.address)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-bold text-xs px-3.5 py-2 rounded-full transition-all hover:-translate-y-0.5"
+          style={{ background: '#fff', border: '1px solid #d9e2ee', color: '#1e3a5f' }}
+        >
+          {dz.routeLabel} <Send size={12} />
+        </a>
+      ),
     },
-    {
-      icon: Clock,
-      emoji: <Clock size={22} />,
-      label: t('hours'),
-      value: t('hours_value'),
-      href: undefined,
-      extra: null,
-    },
+    { icon: Clock, label: t('hours'), value: t('hours_value'), href: undefined, extra: null },
   ];
 
   const faqs = t.raw('faqs') as { q: string; a: string }[];
 
+  const cities = [
+    'München', 'Freising', 'Erding', 'Landshut', 'Ingolstadt', 'Augsburg',
+    'Rosenheim', 'Dachau', 'Fürstenfeldbruck', 'Ebersberg', 'Salzburg', 'Innsbruck',
+  ];
+
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
 
-      {/* Hero */}
-      <section
-        className="py-16 text-white text-center"
-        style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)' }}
-      >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
-            style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
-          >
-            {t('badge')}
+      {/* Hero — arka plan tasarim gorselinden kesildi: sagda taksi + M Flughafen
+          München terminali + "Mehr als ein Taxi" el yazisi, sol/metin tarafi
+          fotografin kendi acik/pastel tonuna soluyor (bu hero koyu degil, acik) */}
+      <section className="relative overflow-hidden py-16" style={{ background: 'linear-gradient(120deg, #eef2f7 0%, #fdf1de 65%, #fdf1de 100%)' }}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute top-0 right-0 h-full hidden md:block" style={{ width: '46%', maxWidth: '560px' }}>
+            <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #fdf1de 0%, rgba(253,241,222,0) 18%)' }} />
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
-            {t('title')}
-          </h1>
-          <p className="text-lg" style={{ color: '#7a9ab8' }}>{t('subtitle')}</p>
+        </div>
 
-          {/* Quick contact strip */}
-          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-            <a
-              href={CONTACT_INFO.phoneHref}
-              className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-              style={{
-                background: 'linear-gradient(135deg, #c9a84c, #d4af6a)',
-                color: '#0f1b2d',
-                boxShadow: '0 4px 16px rgba(201,168,76,.3)',
-              }}
-            >
-              <Phone size={17} /> {CONTACT_INFO.phone}
-            </a>
-            <a
-              href={CONTACT_INFO.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-              style={{
-                background: '#25d366',
-                color: '#fff',
-                boxShadow: '0 4px 16px rgba(37,211,102,.25)',
-              }}
-            >
-              <MessageCircle size={17} /> WhatsApp
-            </a>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="h-px w-8" style={{ background: '#c9a84c' }} />
+            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#a07820' }}>{t('badge')}</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3" style={{ color: '#0f1b2d' }}>
+            {dz.heroTitleA} <span style={{ color: '#c9a84c' }}>{dz.heroTitleB}</span>
+          </h1>
+          <p className="text-lg font-semibold mb-2" style={{ color: '#25344a' }}>{dz.heroTagline}</p>
+          <p className="text-sm max-w-md" style={{ color: '#5a6a80' }}>{dz.heroText}</p>
+
+          <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
+            {dz.heroStats.map((label, i) => {
+              const Ikon = heroStatIcons[i] || heroStatIcons[0];
+              return (
+                <div key={label} className="flex items-center gap-2.5">
+                  <span
+                    className="flex items-center justify-center rounded-full shrink-0"
+                    style={{ width: '36px', height: '36px', border: '1.5px solid #25344a' }}
+                  >
+                    <Ikon size={16} style={{ color: '#25344a' }} />
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: '#25344a' }}>{label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 
           {/* Left — Contact info */}
-          <div>
-            {/* Header card */}
-            <div
-              className="rounded-2xl overflow-hidden mb-4"
-              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-            >
-              <div
-                className="flex items-center gap-4 px-7 py-5"
-                style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}
-              >
-                <div
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: '#fff', border: '1px solid #f0d890' }}
-                >
-                  <ClipboardList size={20} style={{ color: '#a07820' }} />
-                </div>
-                <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#a07820' }}>{t('direct_label')}</span>
-                  <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('contact_info_title')}</h2>
-                </div>
+          <div
+            className="rounded-2xl px-7 py-7"
+            style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+          >
+            <div className="flex items-center gap-4 mb-5">
+              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
+                <ClipboardList size={19} style={{ color: '#a07820' }} />
+              </div>
+              <div>
+                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('direct_label')}</span>
+                <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('contact_info_title')}</h2>
               </div>
             </div>
 
-            {/* Contact cards */}
-            <div className="space-y-3">
+            <div>
               {contactItems.map((item, i) => (
                 <div
                   key={i}
-                  className="rounded-2xl overflow-hidden"
-                  style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+                  className="flex flex-wrap items-center gap-3 sm:gap-4 py-4"
+                  style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : undefined}
                 >
-                  <div className="flex items-start gap-4 px-6 py-5">
-                    <div
-                      className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-xl"
-                      style={{ background: '#fffbf0', border: '1px solid #f0d890' }}
-                    >
-                      <item.icon size={18} style={{ color: '#a07820' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#a07820' }}>
-                        {item.label}
-                      </p>
-                      {item.href ? (
-                        <a
-                          href={item.href}
-                          className="text-base font-bold hover:underline block truncate"
-                          style={{ color: '#0f1b2d' }}
-                        >
-                          {item.value}
-                        </a>
-                      ) : (
-                        <p className="text-base font-bold" style={{ color: '#0f1b2d' }}>{item.value}</p>
-                      )}
-                      {item.extra}
-                    </div>
+                  <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
+                    <item.icon size={18} style={{ color: '#a07820' }} />
                   </div>
+                  <div className="flex-1 min-w-[140px]">
+                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#a07820' }}>
+                      {item.label}
+                    </p>
+                    {item.href ? (
+                      <a href={item.href} className="text-base font-bold hover:underline" style={{ color: '#0f1b2d' }}>
+                        {item.value}
+                      </a>
+                    ) : (
+                      <p className="text-base font-bold" style={{ color: '#0f1b2d' }}>{item.value}</p>
+                    )}
+                  </div>
+                  {item.extra}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right — CTA + FAQ */}
-          <div className="space-y-4">
-
-            {/* Booking CTA card */}
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-            >
-              <div className="px-7 py-6 text-center" style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}>
-                <div
-                  className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-3"
-                  style={{ background: '#fff', border: '1px solid #f0d890', color: '#a07820' }}
-                >
-                  {t('booking_badge')}
-                </div>
-                <h2 className="text-xl font-extrabold mb-1" style={{ color: '#0f1b2d' }}>{t('booking_title')}</h2>
-                <p className="text-sm" style={{ color: '#6b7c93' }}>{t('booking_text')}</p>
+          {/* Right — Booking CTA */}
+          <div
+            className="rounded-2xl px-7 py-7"
+            style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)', border: '1px solid rgba(201,168,76,.3)' }}
+          >
+            <div className="flex items-center gap-4 mb-5">
+              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)' }}>
+                <Calendar size={19} style={{ color: '#c9a84c' }} />
               </div>
-              <div className="px-7 py-6 space-y-3">
-                <a
-                  href="/"
-                  className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                  style={{
-                    background: '#eef3f9',
-                    border: '1px solid #c8d8ec',
-                    color: '#1e3a5f',
-                  }}
-                >
-                  {t('book_online')}
-                </a>
-                <a
-                  href={CONTACT_INFO.phoneHref}
-                  className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                  style={{
-                    background: '#1e3a5f',
-                    color: '#fff',
-                  }}
-                >
-                  <Phone size={15} /> {t('call')}
-                </a>
-                <a
-                  href={CONTACT_INFO.whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                  style={{
-                    background: '#25d366',
-                    color: '#fff',
-                    boxShadow: '0 4px 16px rgba(37,211,102,.25)',
-                  }}
-                >
-                  <MessageCircle size={15} /> {t('whatsapp')}
-                </a>
+              <div>
+                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('booking_badge')}</span>
+                <h2 className="text-lg font-bold leading-tight text-white">{t('booking_title')}</h2>
               </div>
             </div>
+            <p className="text-sm mb-6" style={{ color: '#a9bdd4' }}>{t('booking_text')}</p>
 
-            {/* FAQ card */}
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-            >
-              <div
-                className="flex items-center gap-4 px-7 py-5"
-                style={{ background: '#fffbf0', borderBottom: '1px solid #f5e9b8' }}
+            <div className="space-y-3 mb-6">
+              <Link
+                href="/"
+                className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
+                style={{ background: 'linear-gradient(135deg, #c9a84c, #d4af6a)', color: '#0f1b2d', boxShadow: '0 4px 16px rgba(201,168,76,.3)' }}
               >
-                <div
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: '#fff', border: '1px solid #f0d890' }}
-                >
-                  <HelpCircle size={20} style={{ color: '#a07820' }} />
-                </div>
-                <div>
-                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#a07820' }}>{t('quick_answers_label')}</span>
-                  <h3 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('faq_title')}</h3>
-                </div>
-              </div>
-              <div className="px-7 py-5 space-y-4 text-sm" style={{ color: '#4a6280' }}>
-                {faqs.map(({ q, a }, i) => (
-                  <div
-                    key={i}
-                    className={i > 0 ? 'pt-4' : ''}
-                    style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : {}}
-                  >
-                    <div className="flex items-start gap-2 mb-1">
-                      <span className="flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full" style={{ background: '#a07820', marginTop: '6px' }} />
-                      <p className="font-bold text-sm" style={{ color: '#0f1b2d' }}>{q}</p>
-                    </div>
-                    <p className="pl-3.5 text-sm" style={{ color: '#6b7c93' }}>{a}</p>
-                  </div>
-                ))}
-              </div>
+                {t('book_online')} <ArrowRight size={16} />
+              </Link>
+              <a
+                href={CONTACT_INFO.phoneHref}
+                className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
+                style={{ background: 'transparent', border: '1.5px solid rgba(201,168,76,.5)', color: '#fff' }}
+              >
+                <Phone size={15} /> {t('call')}
+              </a>
             </div>
 
+            <div className="space-y-2.5">
+              {dz.bookingChecklist.map((c) => (
+                <div key={c} className="flex items-start gap-2.5 text-sm" style={{ color: '#c3d2e3' }}>
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: '#c9a84c' }} />
+                  {c}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* FAQ teaser */}
+        <div
+          className="rounded-2xl px-7 py-7 mb-8"
+          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+        >
+          <div className="flex flex-wrap items-center gap-4 justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
+                <HelpCircle size={19} style={{ color: '#a07820' }} />
+              </div>
+              <div>
+                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('quick_answers_label')}</span>
+                <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('faq_title')}</h2>
+              </div>
+            </div>
+            <Link
+              href="/faq"
+              className="inline-flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-xl transition-all hover:-translate-y-0.5"
+              style={{ background: '#fff', border: '1.5px solid #d9e2ee', color: '#0f1b2d' }}
+            >
+              {dz.allQuestions} <ArrowRight size={15} />
+            </Link>
+          </div>
+
+          <div>
+            {faqs.map(({ q }, i) => (
+              <Link
+                key={i}
+                href="/faq"
+                className="flex items-center justify-between gap-3 py-3.5 group"
+                style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : undefined}
+              >
+                <span className="text-sm font-semibold" style={{ color: '#25344a' }}>{q}</span>
+                <Plus size={16} className="shrink-0 transition-transform group-hover:rotate-90" style={{ color: '#a07820' }} />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Service area */}
+        <div
+          className="rounded-2xl px-7 py-7"
+          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10 mb-6">
+            <div className="shrink-0 lg:w-56">
+              <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3" style={{ background: '#fdf3de' }}>
+                <MapPin size={19} style={{ color: '#a07820' }} />
+              </div>
+              <span className="text-xs font-bold tracking-widest uppercase block mb-1" style={{ color: '#c9a84c' }}>
+                {dz.areaEyebrow}
+              </span>
+              <h2 className="text-xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>{dz.areaTitle}</h2>
+            </div>
+            <p className="text-sm leading-relaxed lg:pt-14" style={{ color: '#4a6280' }}>
+              {dz.areaText}
+            </p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+            <div className="flex flex-wrap gap-2 flex-1">
+              {cities.map(city => (
+                <span
+                  key={city}
+                  className="text-xs font-semibold px-3.5 py-2 rounded-full"
+                  style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
+                >
+                  {city}
+                </span>
+              ))}
+              <span
+                className="text-xs font-medium px-3.5 py-2 rounded-full"
+                style={{ background: '#fff', color: '#8a9bb0', border: '1.5px dashed #c8d3e0' }}
+              >
+                {dz.areaMore}
+              </span>
+            </div>
+
+            {/* Decorative mini map: München merkez + 5 komsu sehir */}
+            <svg viewBox="0 0 260 150" className="hidden lg:block shrink-0" style={{ width: '250px', height: '144px' }} aria-hidden="true">
+              <defs>
+                <pattern id="contactMapDots" width="7" height="7" patternUnits="userSpaceOnUse">
+                  <circle cx="1.2" cy="1.2" r="1.2" fill="#c9d3e0" />
+                </pattern>
+              </defs>
+              <path d="M35 20 C 90 2, 175 5, 220 35 C 250 55, 245 95, 210 120 C 170 145, 100 148, 55 128 C 15 110, 8 75, 12 50 C 15 35, 22 25, 35 20 Z" fill="url(#contactMapDots)" opacity="0.7" />
+
+              {/* baglantilar */}
+              <path d="M130 75 L 75 30" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
+              <path d="M130 75 L 195 25" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
+              <path d="M130 75 L 40 95" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
+              <path d="M130 75 L 222 100" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
+              <path d="M130 75 L 118 138" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
+
+              {/* uydu sehirler */}
+              {[
+                { x: 75, y: 30, label: 'Ingolstadt', anchor: 'middle', dy: -8 },
+                { x: 195, y: 25, label: 'Regensburg', anchor: 'middle', dy: -8 },
+                { x: 40, y: 95, label: 'Augsburg', anchor: 'end', dy: 4, dx: -8 },
+                { x: 222, y: 100, label: 'Salzburg', anchor: 'start', dy: 4, dx: 8 },
+                { x: 118, y: 138, label: 'Innsbruck', anchor: 'middle', dy: 14 },
+              ].map((c) => (
+                <g key={c.label}>
+                  <circle cx={c.x} cy={c.y} r="4" fill="#c9a84c" />
+                  <circle cx={c.x} cy={c.y} r="1.6" fill="#fff" />
+                  <text x={c.x + (c.dx || 0)} y={c.y + c.dy} textAnchor={c.anchor as 'middle' | 'end' | 'start'} fontSize="9.5" fontWeight="700" fill="#5a6a80">
+                    {c.label}
+                  </text>
+                </g>
+              ))}
+
+              {/* merkez: München */}
+              <circle cx="130" cy="75" r="7" fill="#1e3a5f" />
+              <circle cx="130" cy="75" r="2.6" fill="#fff" />
+              <text x="130" y="60" textAnchor="middle" fontSize="11" fontWeight="800" fill="#1e3a5f">München</text>
+            </svg>
+          </div>
+        </div>
+
       </div>
     </div>
   );
