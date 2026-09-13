@@ -86,26 +86,27 @@ export default function ContactPage() {
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
 
       {/* Hero — arka plan tasarim gorselinden kesildi: sagda taksi + M Flughafen
-          München terminali + "Mehr als ein Taxi" el yazisi, sol/metin tarafi
-          fotografin kendi acik/pastel tonuna soluyor (bu hero koyu degil, acik) */}
-      <section className="relative overflow-hidden py-16" style={{ background: 'linear-gradient(120deg, #eef2f7 0%, #fdf1de 65%, #fdf1de 100%)' }}>
+          München terminali + "Mehr als ein Taxi" el yazisi; diger sayfalarla
+          (About/FAQ/Vehicles) tutarli olsun diye koyu lacivert */}
+      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute top-0 right-0 h-full hidden md:block" style={{ width: '46%', maxWidth: '560px' }}>
+          <div className="absolute top-0 right-0 h-full hidden xl:block" style={{ width: '46%', maxWidth: '560px' }}>
             <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #fdf1de 0%, rgba(253,241,222,0) 18%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f1b2d 0%, rgba(15,27,45,0) 30%)' }} />
           </div>
         </div>
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="lg:max-w-xl">
           <div className="flex items-center gap-3 mb-4">
             <span className="h-px w-8" style={{ background: '#c9a84c' }} />
-            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#a07820' }}>{t('badge')}</span>
+            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#c9a84c' }}>{t('badge')}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3" style={{ color: '#0f1b2d' }}>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
             {dz.heroTitleA} <span style={{ color: '#c9a84c' }}>{dz.heroTitleB}</span>
           </h1>
-          <p className="text-lg font-semibold mb-2" style={{ color: '#25344a' }}>{dz.heroTagline}</p>
-          <p className="text-sm max-w-md" style={{ color: '#5a6a80' }}>{dz.heroText}</p>
+          <p className="text-lg font-semibold mb-2" style={{ color: '#e2ebf5' }}>{dz.heroTagline}</p>
+          <p className="text-sm max-w-md" style={{ color: '#a9bdd4' }}>{dz.heroText}</p>
 
           <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
             {dz.heroStats.map((label, i) => {
@@ -114,14 +115,15 @@ export default function ContactPage() {
                 <div key={label} className="flex items-center gap-2.5">
                   <span
                     className="flex items-center justify-center rounded-full shrink-0"
-                    style={{ width: '36px', height: '36px', border: '1.5px solid #25344a' }}
+                    style={{ width: '36px', height: '36px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
                   >
-                    <Ikon size={16} style={{ color: '#25344a' }} />
+                    <Ikon size={16} style={{ color: '#c9a84c' }} />
                   </span>
-                  <span className="text-sm font-bold" style={{ color: '#25344a' }}>{label}</span>
+                  <span className="text-sm font-bold" style={{ color: '#fff' }}>{label}</span>
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       </section>
