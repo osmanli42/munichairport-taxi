@@ -85,31 +85,33 @@ export default function ContactPage() {
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
 
-      {/* Hero — arka plan tasarim gorselinden kesildi: sagda taksi + M Flughafen
-          München terminali + "Mehr als ein Taxi" el yazisi; diger sayfalarla
-          (About/FAQ/Vehicles) tutarli olsun diye koyu lacivert */}
-      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
-        {/* xl+ (fotografin gorundugu genislikler) icin butun hero'yu daha acik/orta ton
-            lacivertle kaplayan katman; mobil/tablet'te bu gorunmuyor, eski koyu lacivert
-            (#0f1b2d) aynen kaliyor */}
-        <div className="pointer-events-none absolute inset-0 hidden xl:block" style={{ background: 'linear-gradient(115deg, #1e3a5f 0%, #17314f 55%, #142a44 100%)' }} />
+      {/* Hero — bg-primary-600 duz lacivert zemin (Unsere Fahrzeuge sayfasiyla ayni ton).
+          Sadece SAG tarafta gercek fotograf var: kaynak tasarim tek parca bir PNG oldugu
+          icin sol taraftaki foto ile metin (KONTAKT / Wir sind für Sie da. / ...) ayni
+          pikselin icinde kaynasik — sol tarafi kirpip kullanmaya calisirsak (dogrudan ya
+          da aynalanmis) arkada eski Almanca yazi hayalet gibi gorunuyor ve EN/TR'de hic
+          anlamsiz duruyor. O yuzden sol taraf sade lacivert birakildi.
+          Sagdaki foto tam gorunur biciminde, ustune duz lacivert maske (yari saydam)
+          binmis halde; sol kenari da merkezdeki duz laciverte yumusakca geciyor. */}
+      <section className="relative overflow-hidden bg-primary-600 text-white py-16">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="absolute top-0 right-0 h-full hidden xl:block" style={{ width: '46%', maxWidth: '560px' }}>
             <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
-            {/* fotografi butunuyle hafifce lacivertlestir, sonra sol kenari sahneye karissin diye ekstra koyulastir */}
-            <div className="absolute inset-0" style={{ background: 'rgba(20,42,68,.45)' }} />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #17314f 0%, rgba(23,49,79,0) 35%)' }} />
+            {/* lacivert maske: fotografin tamami uzerinde, sabit yari saydam bir film */}
+            <div className="absolute inset-0" style={{ background: 'rgba(26,54,93,.38)' }} />
+            {/* sol kenari merkezdeki duz laciverte kaynastir */}
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #1a365d 0%, rgba(26,54,93,0) 30%)' }} />
           </div>
         </div>
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:max-w-xl">
           <div className="flex items-center gap-3 mb-4">
-            <span className="h-px w-8" style={{ background: '#c9a84c' }} />
-            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#c9a84c' }}>{t('badge')}</span>
+            <span className="h-px w-8 bg-gold-400" />
+            <span className="text-xs font-bold tracking-[.2em] uppercase text-gold-400">{t('badge')}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
-            {dz.heroTitleA} <span style={{ color: '#c9a84c' }}>{dz.heroTitleB}</span>
+            {dz.heroTitleA} <span className="text-gold-400">{dz.heroTitleB}</span>
           </h1>
           <p className="text-lg font-semibold mb-2" style={{ color: '#e2ebf5' }}>{dz.heroTagline}</p>
           <p className="text-sm max-w-md" style={{ color: '#a9bdd4' }}>{dz.heroText}</p>
@@ -123,9 +125,9 @@ export default function ContactPage() {
                     className="flex items-center justify-center rounded-full shrink-0"
                     style={{ width: '36px', height: '36px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
                   >
-                    <Ikon size={16} style={{ color: '#c9a84c' }} />
+                    <Ikon size={16} className="text-gold-400" />
                   </span>
-                  <span className="text-sm font-bold" style={{ color: '#fff' }}>{label}</span>
+                  <span className="text-sm font-bold text-white">{label}</span>
                 </div>
               );
             })}
