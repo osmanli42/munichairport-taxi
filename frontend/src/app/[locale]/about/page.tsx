@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
 import {
-  Shield, ShieldCheck, Clock, Tag, Globe, Phone, Mail, MapPin, Star, Award, Users,
+  ShieldCheck, Clock, Tag, Globe, Phone, Mail, MapPin, Star, Users,
   Trophy, MessageCircle,
 } from 'lucide-react';
 import { aboutDesign, contactExtraIcons } from './aboutDesign';
@@ -186,7 +186,7 @@ export default function AboutPage() {
                 className="flex items-center justify-center gap-2.5 font-bold px-6 py-3 rounded-xl transition-all hover:-translate-y-0.5"
                 style={{ background: 'linear-gradient(135deg, #c9a84c, #d4af6a)', color: '#0f1b2d', boxShadow: '0 4px 16px rgba(201,168,76,.3)' }}
               >
-                <Phone size={16} /> {t('label_phone') === 'Phone' ? 'Call now' : (locale === 'tr' ? 'Şimdi ara' : 'Jetzt anrufen')}
+                <Phone size={16} /> {dz.ctaCall}
               </a>
               <a
                 href={CONTACT_INFO.whatsapp}
@@ -195,7 +195,7 @@ export default function AboutPage() {
                 className="flex items-center justify-center gap-2.5 font-bold px-6 py-3 rounded-xl transition-all hover:-translate-y-0.5"
                 style={{ background: '#25d366', color: '#fff', boxShadow: '0 4px 16px rgba(37,211,102,.25)' }}
               >
-                <MessageCircle size={16} /> WhatsApp {locale === 'tr' ? 'yaz' : locale === 'en' ? 'message' : 'schreiben'}
+                <MessageCircle size={16} /> {dz.ctaWhatsapp}
               </a>
             </div>
 
