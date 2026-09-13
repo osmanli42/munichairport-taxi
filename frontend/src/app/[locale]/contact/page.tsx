@@ -85,79 +85,51 @@ export default function ContactPage() {
   return (
     <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
 
-      {/* Hero. Metin blogu iki yerde kullanilabilsin diye once tanimlaniyor:
-          - DE + sm ve uzeri: fotografin icinde zaten mukemmel dizilmis Almanca yazi var,
-            kendi HTML metnimizi onun USTUNE bindirmek "hayalet/bulanik cift yazi" etkisi
-            yaratiyordu (kullanici bunu net gordu, istemedi). O yuzden DE + sm+'ta gercek
-            metin GORSEL olarak gizleniyor (sr-only) — yalnizca SEO/erisilebilirlik icin
-            DOM'da duruyor — ve hero SADECE fotograftan olusuyor, aynen tasarimdaki gibi.
-          - DE + mobil VE EN/TR (her boyutta): fotografin o kismi kullanilamiyor
-            (mobilde image zaten yok; EN/TR'de Almanca metin kendi cevirileriyle
-            catisiyordu) — bu durumlarda metin normal, gorunur sekilde basiliyor. */}
-      <section className="relative overflow-hidden bg-primary-600 text-white">
-        {(() => {
-          const heroText = (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="h-px w-8 bg-gold-400" />
-                <span className="text-xs font-bold tracking-[.2em] uppercase text-gold-400">{t('badge')}</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
-                {dz.heroTitleA} <span className="text-gold-400">{dz.heroTitleB}</span>
-              </h1>
-              <p className="text-lg font-semibold mb-2" style={{ color: '#e2ebf5' }}>{dz.heroTagline}</p>
-              <p className="text-sm max-w-md" style={{ color: '#a9bdd4' }}>{dz.heroText}</p>
+      {/* Hero — FAQ sayfasiyla ayni desen: koyu lacivert zemin, iki kenarda
+          fotograf merkeze dogru laciverte soluyor, ortada gercek (cevrilebilir) metin.
+          Sol: FAQ tasarimindan M Flughafen München terminali (metinsiz bolge).
+          Sag: Kontakt tasarimindan taksi + terminal + "Mehr als ein Taxi" el yazisi. */}
+      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute top-0 left-0 hidden sm:block h-full" style={{ width: '260px' }}>
+            <img src="/images/faq-bg-left.webp" alt="" width={180} height={280} className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.20) 0%, #0f1b2d 92%)' }} />
+          </div>
+          <div className="absolute top-0 right-0 hidden sm:block h-full" style={{ width: '300px' }}>
+            <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(15,27,45,.15) 0%, #0f1b2d 90%)' }} />
+          </div>
+        </div>
 
-              <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
-                {dz.heroStats.map((label, i) => {
-                  const Ikon = heroStatIcons[i] || heroStatIcons[0];
-                  return (
-                    <div key={label} className="flex items-center gap-2.5">
-                      <span
-                        className="flex items-center justify-center rounded-full shrink-0"
-                        style={{ width: '36px', height: '36px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
-                      >
-                        <Ikon size={16} className="text-gold-400" />
-                      </span>
-                      <span className="text-sm font-bold text-white">{label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          );
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
+            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#c9a84c' }}>{t('badge')}</span>
+            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
+            {dz.heroTitleA} <span className="text-gold-400">{dz.heroTitleB}</span>
+          </h1>
+          <p className="text-lg font-semibold mb-2" style={{ color: '#e2ebf5' }}>{dz.heroTagline}</p>
+          <p className="text-sm max-w-xl mx-auto" style={{ color: '#a9bdd4' }}>{dz.heroText}</p>
 
-          if (locale === 'de') {
-            return (
-              <>
-                {/* Mobil: gorsel yok, metin normal gorunur */}
-                <div className="sm:hidden py-16">
-                  <div className="relative max-w-6xl mx-auto px-4">{heroText}</div>
+          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-5">
+            {dz.heroStats.map((label, i) => {
+              const Ikon = heroStatIcons[i] || heroStatIcons[0];
+              return (
+                <div key={label} className="flex items-center gap-2.5">
+                  <span
+                    className="flex items-center justify-center rounded-full shrink-0"
+                    style={{ width: '38px', height: '38px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
+                  >
+                    <Ikon size={17} style={{ color: '#c9a84c' }} />
+                  </span>
+                  <span className="text-sm font-bold text-white">{label}</span>
                 </div>
-                {/* sm+: sadece fotograf; gercek metin sr-only (SEO/erisilebilirlik icin DOM'da) */}
-                <div className="hidden sm:block relative w-full" style={{ aspectRatio: '1024 / 348' }}>
-                  <img src="/images/contact-bg-full.webp" alt={`${dz.heroTitleA} ${dz.heroTitleB}`} className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="sr-only">{heroText}</div>
-                </div>
-              </>
-            );
-          }
-
-          return (
-            <div className="py-16">
-              <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                <div className="absolute top-0 right-0 h-full hidden xl:block" style={{ width: '46%', maxWidth: '560px' }}>
-                  <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0" style={{ background: 'rgba(26,54,93,.38)' }} />
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #1a365d 0%, rgba(26,54,93,0) 30%)' }} />
-                </div>
-              </div>
-              <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="lg:max-w-xl">{heroText}</div>
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
