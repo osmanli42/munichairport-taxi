@@ -89,10 +89,16 @@ export default function ContactPage() {
           München terminali + "Mehr als ein Taxi" el yazisi; diger sayfalarla
           (About/FAQ/Vehicles) tutarli olsun diye koyu lacivert */}
       <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
+        {/* xl+ (fotografin gorundugu genislikler) icin butun hero'yu daha acik/orta ton
+            lacivertle kaplayan katman; mobil/tablet'te bu gorunmuyor, eski koyu lacivert
+            (#0f1b2d) aynen kaliyor */}
+        <div className="pointer-events-none absolute inset-0 hidden xl:block" style={{ background: 'linear-gradient(115deg, #1e3a5f 0%, #17314f 55%, #142a44 100%)' }} />
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="absolute top-0 right-0 h-full hidden xl:block" style={{ width: '46%', maxWidth: '560px' }}>
             <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0f1b2d 0%, rgba(15,27,45,0) 30%)' }} />
+            {/* fotografi butunuyle hafifce lacivertlestir, sonra sol kenari sahneye karissin diye ekstra koyulastir */}
+            <div className="absolute inset-0" style={{ background: 'rgba(20,42,68,.45)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #17314f 0%, rgba(23,49,79,0) 35%)' }} />
           </div>
         </div>
 
