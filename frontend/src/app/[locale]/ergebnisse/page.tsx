@@ -673,7 +673,7 @@ function ResultsContent() {
                   {/* Vehicle image */}
                   <div className="relative shrink-0 w-full aspect-[800/344] sm:w-36 sm:h-36 sm:aspect-auto rounded-2xl overflow-hidden border border-gray-100">
                     {redBadge && autoDiscount && (
-                      <div className="absolute top-[20px] -left-[36px] z-10 w-[140px] -rotate-45 bg-red-600 text-white text-[13px] font-extrabold text-center py-1 shadow-md">
+                      <div className="absolute top-[16px] -left-[34px] z-10 w-[125px] -rotate-45 bg-red-600 text-white text-[11px] font-extrabold text-center py-0.5 shadow-md">
                         {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)}
                       </div>
                     )}
@@ -709,8 +709,8 @@ function ResultsContent() {
                         )}
                         {autoDiscount && redBadge && (
                           <div className="flex flex-col items-end gap-1 mt-1.5">
-                            <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-sm font-bold px-3 py-1 rounded-2xl shadow-sm max-w-[300px] text-left leading-snug">
-                              <Tag size={13} className="shrink-0" />
+                            <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full max-w-[260px] text-left leading-snug">
+                              <Tag size={11} className="shrink-0" />
                               <span>−{formatPrice(shownSaving)} · {discountLabel}</span>
                             </span>
                             {remainingText && (
