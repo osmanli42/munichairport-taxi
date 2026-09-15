@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -801,307 +801,6 @@ function BuchenContent() {
     );
   }
 
-  // Review screen
-  if ((submitState as string) === 'review' || (submitState as string) === 'loading' && submitState !== 'idle') {
-    if ((submitState as string) === 'review' || (submitState as string) === 'loading') {
-      const returnDateFormatted = returnDate
-        ? new Date(returnDate + 'T00:00:00').toLocaleDateString(
-            locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
-            { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }
-          )
-        : '';
-
-      return (
-        <div className="min-h-screen bg-gray-50">
-          <div className="bg-white border-b border-gray-100 py-3">
-            <div className="max-w-3xl mx-auto px-4">
-              <button onClick={() => setSubmitState('idle')} className="flex items-center gap-2 text-primary-600 hover:text-primary-700 text-sm font-medium">
-                <ChevronLeft size={18} /> {tx.review_edit}
-              </button>
-            </div>
-          </div>
-
-          <div className="max-w-3xl mx-auto px-4 py-8">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-primary-700">{tx.review_title}</h1>
-              <p className="text-gray-500 mt-1">{tx.review_subtitle}</p>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              {/* Vehicle & Price header */}
-              <div className="bg-primary-600 px-6 py-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
-                    <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.webp'} alt={vehicleLabel} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-lg">{vehicleLabel}</p>
-                    <p className="text-primary-200 text-sm">{effectiveDistanceKm.toFixed(1)} km · ca. {effectiveDuration} Min.</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-white/70 text-xs">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total' : 'Toplam'}</p>
-                  <p className="text-white font-bold text-2xl">{formatPrice(finalPriceWithAutoDiscount)}</p>
-                  {appliedPromo && (
-                    <p className="text-white/70 text-xs line-through">{formatPrice(price)}</p>
-                  )}
-                  {autoDiscount && !appliedPromo && (
-                    <p className="text-green-200 text-xs font-medium">−{formatPrice(autoDiscountAmount)} {autoDiscountLabel}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-6 space-y-5">
-                {/* Route */}
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{tx.review_route}</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-3">
-                      <MapPin size={16} className="text-green-500 mt-0.5 shrink-0" />
-                      <p className="text-gray-800 text-sm">{addressIcon(pickup)}{pickup}</p>
-                    </div>
-                    {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
-                      <div className="flex items-start gap-3">
-                        <MapPin size={16} className="text-blue-500 mt-0.5 shrink-0" />
-                        <p className="text-blue-700 text-sm font-medium flex items-center gap-1"><MapPin size={14} /> {params.get('zwischenstopp_address') || localZwischenstopp}</p>
-                      </div>
-                    )}
-                    <div className="flex items-start gap-3">
-                      <MapPin size={16} className="text-red-500 mt-0.5 shrink-0" />
-                      <p className="text-gray-800 text-sm">{addressIcon(dropoff)}{dropoff}</p>
-                    </div>
-                  </div>
-                  {/* Route link */}
-                  {(() => {
-                    const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStop ? `&waypoints=${encodeURIComponent(zwStop)}` : ''}&travelmode=driving`;
-                    return (
-                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-xs text-gray-600 hover:text-gray-800 transition-colors">
-                        <Map size={14} /> {locale === 'de' ? 'Route auf Google Maps anzeigen' : locale === 'en' ? 'View route on Google Maps' : 'Rotayı Google Maps\'te göster'}
-                      </a>
-                    );
-                  })()}
-                </div>
-
-                <hr className="border-gray-100" />
-
-                {/* Date & Time */}
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{tx.review_datetime}</h3>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={16} className="text-primary-500 shrink-0" />
-                      <p className="text-gray-800 text-sm">
-                        <span className="font-semibold">{locale === 'de' ? 'Hinfahrt:' : locale === 'en' ? 'Outbound:' : 'Gidiş:'}</span>{' '}
-                        {dateFormatted} · {time} Uhr
-                      </p>
-                    </div>
-                    {tripType === 'roundtrip' && returnDate && (
-                      <div className="flex items-center gap-3">
-                        <Calendar size={16} className="text-primary-500 shrink-0" />
-                        <p className="text-primary-600 text-sm font-medium">
-                          <span className="font-semibold">{locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}</span>{' '}
-                          {returnDateFormatted} · {returnTime} Uhr
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <hr className="border-gray-100" />
-
-                {/* Passengers & Luggage */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_persons}</h3>
-                    <p className="text-gray-800 text-sm flex items-center gap-2"><Users size={16} className="text-primary-500" /> {passengers}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_luggage_label}</h3>
-                    <p className="text-gray-800 text-sm flex items-center gap-2"><Luggage size={16} className="text-primary-500" /> {luggageCount}</p>
-                  </div>
-                </div>
-
-                {(childSeat || fahrradCount > 0) && (
-                  <>
-                    <hr className="border-gray-100" />
-                    <div>
-                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Extras</h3>
-                      <div className="space-y-1 text-sm">
-                        {childSeat && <p className="text-gray-800"><Baby size={14} className="text-gray-400 inline mr-1" /> {locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'}){buildChildSeatDetails() ? ` — ${buildChildSeatDetails()}` : ''}</p>}
-                        {fahrradCount > 0 && <p className="text-gray-800"><Bike size={14} className="text-gray-400 inline mr-1" /> {fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</p>}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <hr className="border-gray-100" />
-
-                {/* Contact */}
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{tx.review_contact}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center gap-2"><User size={14} className="text-gray-400" /> <span className="text-gray-800">{name}</span></div>
-                    <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span className="text-gray-800">{phone}</span></div>
-                    <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /> <span className="text-gray-800">{email}</span></div>
-                    {flightNumber && <div className="flex items-center gap-2"><Plane size={14} className="text-gray-400" /> <span className="text-gray-800">{flightNumber}</span></div>}
-                    {pickupSign && <div className="flex items-center gap-2"><Signpost size={14} className="text-gray-400" /> <span className="text-gray-800"><span className="text-gray-500">{locale === 'de' ? 'Abholschild:' : locale === 'en' ? 'Pickup sign:' : 'Tabela:'}</span> <span className="font-medium">{pickupSign}</span></span></div>}
-                  </div>
-                </div>
-
-                {notes && (
-                  <>
-                    <hr className="border-gray-100" />
-                    <div>
-                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_notes_label}</h3>
-                      <p className="text-gray-700 text-sm">{notes}</p>
-                    </div>
-                  </>
-                )}
-
-                {rechnungRequired && rechnungAdresse && (
-                  <>
-                    <hr className="border-gray-100" />
-                    <div>
-                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{rx.modalTitle}</h3>
-                      <p className="text-gray-700 text-sm whitespace-pre-line">{rechnungAdresse}</p>
-                    </div>
-                  </>
-                )}
-
-                <hr className="border-gray-100" />
-
-                {/* Payment */}
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{tx.review_payment_label}</h3>
-                  <p className="text-gray-800 text-sm">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
-                </div>
-              </div>
-
-              {/* Automatischer Rabatt — kein Code, wird bei Zutreffen direkt abgezogen.
-                  Wird nur angezeigt, wenn kein Promo-Code aktiv ist: das Backend wendet
-                  serverseitig ohnehin nur den größeren der beiden Rabatte an (stackable_with_promo). */}
-              {autoDiscount && !appliedPromo && (
-                <div className="px-6 pb-2">
-                  <hr className="border-gray-100 mb-4" />
-                  <div className={cn('flex items-center justify-between flex-wrap gap-2 rounded-xl px-4 py-3 text-sm border',
-                    autoDiscountRed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200')}>
-                    <span className={cn('font-medium', autoDiscountRed ? 'text-red-700' : 'text-green-700')}>
-                      <PartyPopper size={13} className="inline mr-1" /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
-                    </span>
-                    {autoDiscountRemaining && (
-                      <span className={cn('text-xs font-bold', autoDiscountRed ? 'text-red-600' : 'text-green-700')}>{autoDiscountRemaining}</span>
-                    )}
-                    <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire}
-                      className={cn('text-xs font-bold', autoDiscountRed ? 'text-red-600' : 'text-green-700')} />
-                  </div>
-                  <div className="flex items-center justify-between text-sm px-1 mt-2">
-                    <span className="text-gray-500">
-                      {locale === 'tr' ? 'Grundpreis' : locale === 'en' ? 'Base price' : 'Grundpreis'}:
-                    </span>
-                    <span className="text-gray-500 line-through">{formatPrice(finalPrice)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-base font-bold px-1">
-                    <span className="text-gray-800">
-                      {locale === 'tr' ? 'Toplam' : locale === 'en' ? 'Total' : 'Gesamtpreis'}:
-                    </span>
-                    <span className="text-green-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Promo code — shown when any active promo exists (with or without banner) */}
-              {hasAnyActivePromo && (
-                <div className="px-6 pb-2">
-                  <hr className="border-gray-100 mb-4" />
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    {locale === 'tr' ? 'Promosyon Kodu' : locale === 'en' ? 'Promo Code' : 'Aktionscode'}
-                  </h3>
-                  {appliedPromo ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
-                        <span className="text-green-700 font-medium">
-                          <PartyPopper size={13} className="inline mr-1" /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}
-                        </span>
-                        <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }}
-                          className="text-gray-400 hover:text-gray-600 text-xs">
-                          × {locale === 'tr' ? 'Kaldır' : locale === 'en' ? 'Remove' : 'Entfernen'}
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between text-sm px-1">
-                        <span className="text-gray-500">
-                          {locale === 'tr' ? 'Grundpreis' : locale === 'en' ? 'Base price' : 'Grundpreis'}:
-                        </span>
-                        <span className="text-gray-500 line-through">{formatPrice(promoBase)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-base font-bold px-1">
-                        <span className="text-gray-800">
-                          {locale === 'tr' ? 'Toplam' : locale === 'en' ? 'Total' : 'Gesamtpreis'}:
-                        </span>
-                        <span className="text-green-600">{formatPrice(finalPrice)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={promoInput}
-                          onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
-                          placeholder={locale === 'tr' ? 'Kod girin...' : locale === 'en' ? 'Enter code...' : 'Code eingeben...'}
-                          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary-400"
-                        />
-                        <button
-                          onClick={handleApplyPromo}
-                          disabled={promoLoading || !promoInput.trim()}
-                          className="bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                        >
-                          {promoLoading ? '…' : (locale === 'tr' ? 'Uygula' : locale === 'en' ? 'Apply' : 'Anwenden')}
-                        </button>
-                      </div>
-                      {promoError && (
-                        <p className="text-red-600 text-xs px-1">{promoError}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="px-6 pb-6 space-y-3">
-                {/* Trust mini-bar */}
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-2">
-                  <p className="text-center text-sm font-bold text-green-800">
-                    {locale === 'tr' ? '✅ 0 Risk — Güvenle Rezervasyon Yap' : locale === 'en' ? '✅ Zero Risk — Book with Confidence' : '✅ 0 Risiko — Einfach & sicher buchen'}
-                  </p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                    <span className="inline-flex items-center gap-1"><Ban size={12} /> {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vorher'}</span>
-                    <span className="inline-flex items-center gap-1"><Banknote size={12} /> {locale === 'tr' ? 'Şoföre ödeme de mümkün — rezervasyon ücretsiz' : locale === 'en' ? 'Pay the driver also possible — booking is free' : 'Zahlung auch beim Fahrer möglich — Reservierung kostenlos'}</span>
-                    <span className="inline-flex items-center gap-1"><BadgeEuro size={12} /> {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
-                  </div>
-                </div>
-                {(submitState as string) === 'error' && (
-                  <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-3 rounded-xl text-sm">
-                    <AlertCircle size={16} /> {tx.err_submit}
-                  </div>
-                )}
-                <button onClick={handleSubmit} disabled={(submitState as string) === 'loading'}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-70 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg">
-                  {(submitState as string) === 'loading' ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><CheckCircle size={20} /> {tx.review_confirm}</>}
-                </button>
-                <button onClick={() => setSubmitState('idle')}
-                  className="w-full text-gray-500 hover:text-primary-600 font-medium py-2 text-sm transition-colors">
-                  {tx.review_edit}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  const inputCls = 'w-full bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none py-0.5';
   const L = (de: string, en: string, tr: string) => (locale === 'en' ? en : locale === 'tr' ? tr : de);
   const zwStopAddress = params.get('zwischenstopp_address') || localZwischenstopp;
   const vehicleDesc = VEHICLE_DESC[vehicle]?.[locale] || VEHICLE_DESC[vehicle]?.de || '';
@@ -1154,10 +853,9 @@ function BuchenContent() {
     L('Bestätigung', 'Confirmation', 'Onay'),
   ];
 
-  return (
-    <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
-      {/* Hero — heller Verlauf, rechts Flughafenfoto (Terminal, Tower, Flugzeug, "Mehr als ein Taxi") */}
-      <section className="relative overflow-hidden lg:overflow-visible">
+  // Hero-Hintergrund (Flughafen-/Taxi-Foto) — gemeinsam für Ihre Angaben und Überprüfung
+  const heroBackdrop = (
+    <>
         {/* < lg: Foto hinter dem Titel, stark aufgehellt */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px] md:h-[360px] lg:hidden" aria-hidden="true">
           <div className="absolute inset-y-0 right-0 w-full md:w-[640px]">
@@ -1178,6 +876,423 @@ function BuchenContent() {
             </div>
           </div>
         </div>
+    </>
+  );
+
+  // Review screen
+  if ((submitState as string) === 'review' || (submitState as string) === 'loading' && submitState !== 'idle') {
+    if ((submitState as string) === 'review' || (submitState as string) === 'loading') {
+      const isLoading = (submitState as string) === 'loading';
+      const backToForm = () => { setSubmitState('idle'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50); };
+      const cardCls = 'bg-white rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(15,27,45,.06)] p-4 sm:p-5';
+      const cardHead = (Icon: typeof User, title: string, onEdit?: () => void) => (
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex items-center justify-center w-10 h-10 xl:w-11 xl:h-11 rounded-full shrink-0" style={{ background: '#fdf0c8' }}>
+              <Icon size={20} className="text-primary-800" />
+            </span>
+            <h2 className="text-base xl:text-[17px] font-bold text-primary-800 leading-tight xl:whitespace-nowrap">{title}</h2>
+          </div>
+          {onEdit && (
+            <button type="button" onClick={onEdit} className="shrink-0 text-sm font-semibold text-primary-800 underline underline-offset-2 border border-gray-200 hover:border-primary-400 rounded-lg px-3 xl:px-4 py-1.5 xl:py-2 transition-colors">
+              {L('Ändern', 'Change', 'Değiştir')}
+            </button>
+          )}
+        </div>
+      );
+      const line = (Icon: typeof User, text: React.ReactNode, key?: string) => (
+        <div key={key} className="flex items-start gap-3 text-sm text-gray-800 min-w-0">
+          <Icon size={18} className="mt-0.5 shrink-0 text-gray-900" />
+          <span className="min-w-0 break-words">{text}</span>
+        </div>
+      );
+      const hasExtras = childSeat || fahrradCount > 0;
+
+      return (
+        <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
+          <section className="relative overflow-hidden lg:overflow-visible">
+            {heroBackdrop}
+            <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-6">
+              <p className="text-xs md:text-sm font-bold tracking-[.2em] uppercase text-gold-600">{L('Schritt 3 von 4', 'Step 3 of 4', 'Adım 3 / 4')}</p>
+              <h1 className="mt-2 text-4xl md:text-[46px] font-extrabold tracking-tight text-primary-800">
+                {L('Buchung', 'Review', 'Rezervasyonu')} <span className="text-gold-400">{L('überprüfen', 'your booking', 'kontrol edin')}</span>
+              </h1>
+              <p className="mt-2 text-base md:text-lg text-gray-700">{tx.review_subtitle}</p>
+
+              <ol className="mt-7 flex items-center gap-2 sm:gap-3">
+                {steps.map((label, i) => {
+                  const done = i < 2;
+                  const active = i === 2;
+                  return (
+                    <li key={label} className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      {i > 0 && <span className="hidden sm:block h-px w-6 lg:w-10 bg-gray-300 shrink-0" aria-hidden="true" />}
+                      <button
+                        type="button"
+                        disabled={!done}
+                        onClick={() => { if (i === 0) router.back(); else if (i === 1) backToForm(); }}
+                        className="flex items-center gap-2 min-w-0 disabled:cursor-default"
+                      >
+                        <span className={cn(
+                          'flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0',
+                          done && 'bg-primary-800 text-white',
+                          active && 'bg-gold-400 text-primary-800 ring-2 ring-primary-800',
+                          !done && !active && 'bg-gray-200 text-gray-700'
+                        )}>
+                          {i + 1}
+                        </span>
+                        <span className={cn('text-sm whitespace-nowrap', active ? 'font-bold text-gray-900' : 'font-semibold text-gray-800', !active && 'hidden md:inline lg:hidden xl:inline')}>{label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          </section>
+
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+              {/* LEFT */}
+              <div className="space-y-4 min-w-0">
+                {/* Fahrzeugdetails */}
+                <div className={cardCls}>
+                  {cardHead(Car, L('Fahrzeugdetails', 'Vehicle details', 'Araç bilgileri'), () => router.back())}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="w-full sm:w-[136px] aspect-[800/344] sm:aspect-auto sm:h-[100px] rounded-xl overflow-hidden bg-gray-50 shrink-0">
+                      <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.webp'} alt={vehicleLabel} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-bold text-primary-800">{vehicleLabel}</p>
+                      {vehicleDesc && <p className="text-sm text-gray-600">{vehicleDesc}</p>}
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3 text-[11px] sm:text-[13px] leading-tight text-gray-700 max-w-[440px]">
+                        {[
+                          { Icon: User, a: maxPassengers ? `${L('Bis zu', 'Up to', 'En fazla')} ${maxPassengers}` : String(passengers), b: L('Passagiere', 'Passengers', 'Yolcu') },
+                          { Icon: Luggage, a: String(maxLuggage), b: L('Gepäckstücke', 'Luggage', 'Bagaj') },
+                          { Icon: Clock, a: `ca. ${effectiveDuration} Min.`, b: L('Fahrtzeit', 'Journey time', 'Süre') },
+                        ].map(({ Icon, a, b }) => (
+                          <div key={b} className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                            <Icon size={20} className="shrink-0 text-gray-900" strokeWidth={1.8} />
+                            <div className="min-w-0"><div className="whitespace-nowrap">{a}</div><div className="whitespace-nowrap">{b}</div></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Strecke */}
+                <div className={cardCls}>
+                  {cardHead(MapPin, tx.review_route, changeSearch)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                    <div className="space-y-4">
+                      <div className="relative flex items-start gap-3">
+                        <span className="absolute left-[9px] top-6 bottom-[-18px] border-l-2 border-dashed border-gray-300" aria-hidden="true" />
+                        <span className="relative mt-0.5 w-5 h-5 rounded-full border-[4px] border-gold-400 bg-white shrink-0" />
+                        <div className="min-w-0 text-sm">
+                          <p className="font-bold text-gray-900">{L('Abholung', 'Pickup', 'Alış')}</p>
+                          <p className="text-gray-700 break-words">{addressIcon(pickup)}{pickup}</p>
+                        </div>
+                      </div>
+                      {zwStopAddress && (
+                        <div className="relative flex items-start gap-3">
+                          <span className="absolute left-[9px] top-6 bottom-[-18px] border-l-2 border-dashed border-gray-300" aria-hidden="true" />
+                          <span className="relative mt-0.5 w-5 h-5 rounded-full bg-blue-500 border-[4px] border-blue-100 shrink-0" />
+                          <div className="min-w-0 text-sm">
+                            <p className="font-bold text-gray-900">{L('Zwischenstopp', 'Intermediate stop', 'Ara durak')}</p>
+                            <p className="text-gray-700 break-words">{zwStopAddress}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-3">
+                        <MapPin size={20} className="shrink-0 text-primary-800" fill="#10233e" stroke="#fff" />
+                        <div className="min-w-0 text-sm">
+                          <p className="font-bold text-gray-900">{L('Ziel', 'Destination', 'Varış')}</p>
+                          <p className="font-semibold text-gray-900 break-words">{addressIcon(dropoff)}{dropoff}</p>
+                        </div>
+                      </div>
+                      {(() => {
+                        const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}${zwStopAddress ? `&waypoints=${encodeURIComponent(zwStopAddress)}` : ''}&travelmode=driving`;
+                        return (
+                          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-primary-700 underline underline-offset-2">
+                            <Map size={13} /> {L('Route auf Google Maps anzeigen', 'View route on Google Maps', "Rotayı Google Maps'te göster")}
+                          </a>
+                        );
+                      })()}
+                    </div>
+                    <div className="relative [&>div]:mt-0 [&>div]:rounded-xl [&>div]:!h-[180px]">
+                      <RouteMap
+                        pickup={pickup}
+                        dropoff={dropoff}
+                        waypoint={zwStopAddress || undefined}
+                        pickupCoords={pickupLat && pickupLng ? { lat: Number(pickupLat), lng: Number(pickupLng) } : null}
+                        dropoffCoords={dropoffLat && dropoffLng ? { lat: Number(dropoffLat), lng: Number(dropoffLng) } : null}
+                      />
+                      <span className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/95 border border-gray-200 rounded-md px-2.5 py-1 text-xs font-medium text-gray-800 shadow-sm whitespace-nowrap">
+                        {kmText} km · ca. {effectiveDuration} Min.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Datum & Uhrzeit + Personen & Gepäck */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={cardCls}>
+                    {cardHead(CalendarDays, tx.review_datetime, changeSearch)}
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <CalendarDays size={18} className="mt-0.5 shrink-0 text-gray-900" />
+                        <div className="text-sm">
+                          <p className="font-bold text-gray-900">{L('Hinfahrt', 'Outbound', 'Gidiş')}</p>
+                          <p className="text-gray-700">{dateFormatted} · {time} {L('Uhr', '', '')}</p>
+                        </div>
+                      </div>
+                      {tripType === 'roundtrip' && returnDate && (
+                        <div className="flex items-start gap-3">
+                          <CalendarDays size={18} className="mt-0.5 shrink-0 text-gray-900" />
+                          <div className="text-sm">
+                            <p className="font-bold text-gray-900">{L('Rückfahrt', 'Return', 'Dönüş')}</p>
+                            <p className="text-gray-700">{returnDateLong} · {returnTime} {L('Uhr', '', '')}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className={cardCls}>
+                    {cardHead(User, L('Personen & Gepäck', 'Passengers & luggage', 'Kişi & bagaj'), backToForm)}
+                    <div className="space-y-2.5 sm:pl-14">
+                      {line(User, `${passengers} ${passengers === 1 ? L('Person', 'passenger', 'kişi') : L('Personen', 'passengers', 'kişi')}`)}
+                      {line(Luggage, `${luggageCount} ${luggageCount === 1 ? L('Gepäckstück', 'piece of luggage', 'bagaj') : L('Gepäckstücke', 'pieces of luggage', 'bagaj')}`)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Extras + Kontaktdaten */}
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-4">
+                  <div className={cardCls}>
+                    {cardHead(Star, 'Extras', backToForm)}
+                    {hasExtras ? (
+                      <div className="space-y-3">
+                        {childSeat && (
+                          <div className="flex items-start gap-3">
+                            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 shrink-0"><Baby size={22} className="text-gray-900" /></span>
+                            <div className="text-sm text-gray-800">
+                              <p>{L('Kindersitz', 'Child seat', 'Çocuk koltuğu')} ({L('kostenlos', 'free', 'ücretsiz')})</p>
+                              {buildChildSeatDetails() && <p className="text-gray-600">{buildChildSeatDetails().replace(/, /g, ' · ')}</p>}
+                            </div>
+                          </div>
+                        )}
+                        {fahrradCount > 0 && (
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 shrink-0"><Bike size={22} className="text-gray-900" /></span>
+                            <p className="text-sm text-gray-800">{fahrradCount}× {L('Fahrrad', 'Bicycle', 'Bisiklet')}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">{L('Keine Extras gewählt', 'No extras selected', 'Ekstra seçilmedi')}</p>
+                    )}
+                  </div>
+                  <div className={cardCls}>
+                    {cardHead(User, tx.review_contact, backToForm)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+                      {line(User, name)}
+                      {line(Phone, phone ? toSubmitValue(phone, phoneCountry) : '')}
+                      {line(Mail, email)}
+                      {flightNumber && line(Plane, <>{tx.review_flight_label}: <span className="font-medium">{flightNumber}</span></>)}
+                      {pickupSign && line(Tag, <>{L('Abholschild', 'Pickup sign', 'Tabela')}: <span className="font-medium">{pickupSign}</span></>)}
+                    </div>
+                    {notes && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {line(MessageSquare, <><span className="text-gray-500">{tx.review_notes_label}:</span> {notes}</>)}
+                      </div>
+                    )}
+                    {rechnungRequired && rechnungAdresse && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {line(FileText, <><span className="block text-gray-500">{rx.modalTitle}</span><span className="whitespace-pre-line">{rechnungAdresse}</span></>)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="hidden lg:flex items-center justify-center gap-2.5 rounded-xl px-5 py-3.5 text-sm text-gray-700 border" style={{ background: '#eaf1fa', borderColor: '#dbe6f3' }}>
+                  <Info size={18} className="shrink-0 text-primary-800" fill="#10233e" stroke="#fff" />
+                  <span>
+                    {L('Mit der Buchung akzeptieren Sie unsere', 'By booking you accept our', 'Rezervasyonla')}{' '}
+                    <a href={locale === 'de' ? '/agb' : `/${locale}/agb`} target="_blank" className="underline underline-offset-2 hover:text-primary-800">{L('AGB', 'Terms', 'Hizmet Şartlarımızı')}</a>{' '}
+                    {L('und', 'and', 've')}{' '}
+                    <a href={locale === 'de' ? '/datenschutz' : `/${locale}/datenschutz`} target="_blank" className="underline underline-offset-2 hover:text-primary-800">{L('Datenschutzerklärung', 'Privacy Policy', 'Gizlilik Politikamızı')}</a>
+                    {locale === 'tr' ? ' kabul etmiş olursunuz.' : '.'}
+                  </span>
+                </div>
+              </div>
+
+              {/* RIGHT */}
+              <div className="space-y-4 lg:mt-[68px] xl:mt-[118px] lg:sticky lg:top-24">
+                {/* Gesamtpreis */}
+                <div className="rounded-2xl p-5 sm:p-6 text-white shadow-[0_10px_30px_rgba(15,27,45,.25)]" style={{ background: '#0f1b2d' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-lg font-bold">{L('Gesamtpreis', 'Total price', 'Toplam fiyat')}</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-400 border border-white/10 bg-white/5 rounded-lg px-3 py-1.5">
+                      <Tag size={14} className="text-gold-400" fill="#f6c644" stroke="#0f1b2d" /> {L('Festpreis garantiert', 'Fixed price guaranteed', 'Sabit fiyat garantili')}
+                    </span>
+                  </div>
+                  <div className="mt-5 flex items-end gap-3 flex-wrap">
+                    <span className="text-[44px] leading-none font-extrabold tracking-tight">{formatPrice(finalPriceWithAutoDiscount)}</span>
+                    {strikePrice != null && strikePrice > finalPriceWithAutoDiscount && (
+                      <span className="text-base text-white/50 line-through mb-1">{formatPrice(strikePrice)}</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-white/80">{L('Inkl. MwSt., Maut & Gepäck', 'Incl. VAT, tolls & luggage', 'KDV, otoyol & bagaj dahil')}</p>
+
+                  {autoDiscount && !appliedPromo && (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <span className={cn('inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-md', autoDiscountRed ? 'bg-red-600 text-white' : 'bg-green-600 text-white')}>
+                        −{formatPrice(autoDiscountAmount)} · {autoDiscountLabel}
+                      </span>
+                      {autoDiscountRemaining && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-300"><Flame size={13} /> {autoDiscountRemaining}</span>
+                      )}
+                      <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-semibold text-red-300" />
+                    </div>
+                  )}
+                  {tripType === 'roundtrip' && roundtripDiscount > 0 && (
+                    <p className="mt-2 text-xs text-green-300 font-medium flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {L('Hin- & Rückfahrt Rabatt inklusive', 'round trip discount included', 'gidiş-dönüş indirimi dahil')}</p>
+                  )}
+                  {anfahrtCost > 0 && (
+                    <p className="mt-1 text-xs text-amber-300 font-medium flex items-center gap-1"><Car size={12} /> {L('inkl.', 'incl.', 'dahil')} {formatPrice(anfahrtCost)} {L('Anfahrtskosten', 'approach fee', 'yaklaşım ücreti')}</p>
+                  )}
+
+                  {/* Promo code — shown when any active promo exists (with or without banner) */}
+                  {hasAnyActivePromo && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      {appliedPromo ? (
+                        <div className="flex items-center justify-between gap-2 bg-green-500/15 border border-green-400/30 rounded-lg px-3 py-2 text-sm">
+                          <span className="text-green-300 font-medium"><PartyPopper size={13} className="inline mr-1" /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</span>
+                          <button onClick={() => { setAppliedPromo(null); setPromoInput(''); }} className="text-white/60 hover:text-white text-xs">
+                            × {L('Entfernen', 'Remove', 'Kaldır')}
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={promoInput}
+                              onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                              placeholder={L('Aktionscode', 'Promo code', 'Promosyon kodu')}
+                              className="flex-1 min-w-0 bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-sm uppercase tracking-wider text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-gold-400"
+                            />
+                            <button onClick={handleApplyPromo} disabled={promoLoading || !promoInput.trim()} className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors">
+                              {promoLoading ? '…' : L('Anwenden', 'Apply', 'Uygula')}
+                            </button>
+                          </div>
+                          {promoError && <p className="text-red-300 text-xs mt-1.5">{promoError}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <ul className="mt-5 space-y-3">
+                    {[
+                      L('Keine versteckten Kosten', 'No hidden costs', 'Gizli maliyet yok'),
+                      L('Kostenloser Storno bis 3 Std.', 'Free cancellation up to 3 hrs', '3 saate kadar ücretsiz iptal'),
+                      L('Zahlung auch beim Fahrer möglich', 'Payment to the driver also possible', 'Şoföre ödeme de mümkün'),
+                      L('Sofortige Bestätigung', 'Instant confirmation', 'Anında onay'),
+                      L('Festpreis garantiert', 'Fixed price guaranteed', 'Sabit fiyat garantili'),
+                    ].map((item, i) => (
+                      <li key={item} className="flex items-center gap-3 text-sm text-white/90">
+                        {i === 2 ? (
+                          <span className="flex items-center justify-center w-5 h-5 rounded bg-green-500 shrink-0"><Banknote size={13} className="text-white" /></span>
+                        ) : (
+                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-500 shrink-0"><Check size={12} strokeWidth={3.5} className="text-white" /></span>
+                        )}
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {submitState === 'error' && (
+                    <div className="mt-4 flex items-center gap-2 text-red-200 bg-red-500/15 border border-red-400/30 px-3 py-2.5 rounded-lg text-sm">
+                      <AlertCircle size={16} className="shrink-0" /> {tx.err_submit}
+                    </div>
+                  )}
+
+                  <button onClick={handleSubmit} disabled={isLoading}
+                    className="mt-6 w-full bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 disabled:opacity-70 text-primary-800 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2.5 text-base">
+                    {isLoading ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><Lock size={18} /> {tx.review_confirm} <ArrowRight size={18} /></>}
+                  </button>
+                  <p className="mt-3 flex items-start justify-center gap-2 text-xs text-white/75 text-center">
+                    <Lock size={14} className="shrink-0 mt-0.5" /> {L('Ihre Daten sind bei uns sicher und werden verschlüsselt übertragen.', 'Your data is safe with us and transmitted encrypted.', 'Verileriniz bizde güvende ve şifreli olarak iletilir.')}
+                  </p>
+                </div>
+
+                {/* Zahlungsart */}
+                <div className={cardCls}>
+                  {cardHead(CreditCard, L('Zahlungsart', 'Payment method', 'Ödeme yöntemi'), backToForm)}
+                  <div className="flex items-center gap-3 sm:pl-1">
+                    <span className="flex items-center justify-center w-11 h-11 rounded-lg bg-gray-50 border border-gray-200 shrink-0">
+                      {payment === 'cash' ? <Banknote size={22} className="text-gray-900" /> : <CreditCard size={22} className="text-gray-900" />}
+                    </span>
+                    <div className="text-sm">
+                      <p className="font-bold text-gray-900">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
+                      <p className="text-gray-600">{payment === 'cash' ? L('Zahlung direkt beim Fahrer', 'Pay the driver directly', 'Doğrudan şoföre ödeme') : L('Sicher über Stripe hinterlegt', 'Securely stored via Stripe', 'Stripe ile güvenle kaydedildi')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hilfe */}
+                <div className={cardCls}>
+                  <div className="flex items-center gap-3.5">
+                    <span className="flex items-center justify-center w-11 h-11 rounded-full shrink-0" style={{ background: '#fdf0c8' }}>
+                      <Headphones size={20} className="text-primary-800" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-primary-800">{L('Fragen? Wir helfen gern!', 'Questions? We are happy to help!', 'Sorunuz mu var? Yardımcı olalım!')}</p>
+                      <p className="text-sm text-gray-600">{L('Unser Team ist 24/7 für Sie erreichbar.', 'Our team is available 24/7.', 'Ekibimiz 7/24 ulaşılabilir.')}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
+                    <a href={CONTACT_INFO.phoneHref} className="group flex flex-col items-center gap-2">
+                      <span className="flex items-center justify-center w-11 h-11 rounded-full group-hover:scale-105 transition-transform" style={{ background: '#fdf0c8' }}><Phone size={19} className="text-primary-800" /></span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-gray-900 whitespace-nowrap">{CONTACT_INFO.phone}</span>
+                    </a>
+                    <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center gap-2">
+                      <span className="flex items-center justify-center w-11 h-11 rounded-full bg-green-500 group-hover:scale-105 transition-transform">
+                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.79 14.02c-.24.68-1.42 1.3-1.95 1.35-.5.05-.97.23-3.27-.68-2.77-1.09-4.52-3.92-4.66-4.1-.13-.18-1.1-1.47-1.1-2.8 0-1.33.7-1.99.95-2.26.24-.27.53-.34.71-.34l.51.01c.16.01.38-.06.6.46.22.53.75 1.83.82 1.96.07.13.11.29.02.47-.09.18-.13.29-.27.45-.13.16-.28.35-.4.47-.13.13-.27.28-.12.54.16.27.69 1.14 1.48 1.84 1.02.91 1.88 1.19 2.15 1.32.27.13.42.11.58-.07.16-.18.67-.78.85-1.05.18-.27.36-.22.6-.13.25.09 1.56.74 1.83.87.27.13.44.2.51.31.07.11.07.64-.17 1.32z" /></svg>
+                      </span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-gray-900">WhatsApp</span>
+                    </a>
+                    <a href={`mailto:${CONTACT_INFO.email}`} className="group flex flex-col items-center gap-2">
+                      <span className="flex items-center justify-center w-11 h-11 rounded-full group-hover:scale-105 transition-transform" style={{ background: '#fdf0c8' }}><Mail size={19} className="text-primary-800" /></span>
+                      <span className="text-[11px] sm:text-xs font-semibold text-gray-900">E-Mail</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="lg:hidden flex items-start gap-2.5 rounded-xl px-4 py-3 text-xs text-gray-700 border" style={{ background: '#eaf1fa', borderColor: '#dbe6f3' }}>
+                  <Info size={16} className="shrink-0 text-primary-800 mt-0.5" />
+                  <span>
+                    {L('Mit der Buchung akzeptieren Sie unsere', 'By booking you accept our', 'Rezervasyonla')}{' '}
+                    <a href={locale === 'de' ? '/agb' : `/${locale}/agb`} target="_blank" className="underline">{L('AGB', 'Terms', 'Hizmet Şartlarımızı')}</a>{' '}
+                    {L('und', 'and', 've')}{' '}
+                    <a href={locale === 'de' ? '/datenschutz' : `/${locale}/datenschutz`} target="_blank" className="underline">{L('Datenschutzerklärung', 'Privacy Policy', 'Gizlilik Politikamızı')}</a>
+                    {locale === 'tr' ? ' kabul etmiş olursunuz.' : '.'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <SocialProofToast locale={locale} />
+        </div>
+      );
+    }
+  }
+
+  const inputCls = 'w-full bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none py-0.5';
+  return (
+    <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
+      {/* Hero — heller Verlauf, rechts Flughafenfoto (Terminal, Tower, Flugzeug, "Mehr als ein Taxi") */}
+      <section className="relative overflow-hidden lg:overflow-visible">
+        {heroBackdrop}
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-6">
           <p className="text-xs font-semibold tracking-[.28em] uppercase text-gray-700">{L('Buchung', 'Booking', 'Rezervasyon')}</p>
           <h1 className="mt-2 text-4xl md:text-[44px] font-extrabold tracking-tight text-primary-800">{tx.title}</h1>
