@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Briefcase, Lock, BadgeCheck, FileText, Check, X } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -29,6 +29,68 @@ const VEHICLE_IMAGES: Record<string, string> = {
   van: '/images/van.webp',
   grossraumtaxi: '/images/grossraumtaxi.webp',
 };
+
+const VEHICLE_DESC: Record<string, Record<string, string>> = {
+  kombi: { de: 'Ideal für Einzelreisende & Paare', en: 'Ideal for solo travelers & couples', tr: 'Bireysel yolcular ve çiftler için ideal' },
+  van: { de: 'Perfekt für Familien & Gruppen', en: 'Perfect for families & groups', tr: 'Aileler ve gruplar için mükemmel' },
+  grossraumtaxi: { de: 'Für große Gruppen mit viel Gepäck', en: 'For large groups with lots of luggage', tr: 'Çok bavullu büyük gruplar için' },
+};
+
+type IconType = typeof User;
+
+// Umrandetes Eingabefeld mit Icon links und Label über dem Wert (Buchungsformular).
+// Außerhalb von BuchenContent definiert, damit Inputs beim Re-Render nicht neu gemountet werden.
+function FieldBox({ icon: Icon, label, required, error, hasError, as = 'div', children }: {
+  icon: IconType; label: string; required?: boolean; error?: string; hasError?: boolean;
+  as?: 'div' | 'label'; children: React.ReactNode;
+}) {
+  const Tag = as;
+  return (
+    <div>
+      <Tag className={cn(
+        'flex items-center gap-3.5 bg-white border rounded-xl px-4 py-2.5 min-h-[64px] transition-colors',
+        'focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-400/30',
+        error || hasError ? 'border-red-400' : 'border-gray-200'
+      )}>
+        <Icon size={22} className="shrink-0 text-gray-900" strokeWidth={1.8} />
+        <div className="flex-1 min-w-0">
+          <span className="block text-[13px] text-gray-800">{label}{required && <span className="text-red-500"> *</span>}</span>
+          {children}
+        </div>
+      </Tag>
+      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
+    </div>
+  );
+}
+
+function OptionRow({ checked, onToggle, icon: Icon, title, sub }: {
+  checked: boolean; onToggle: () => void; icon: IconType; title: string; sub: string;
+}) {
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} onClick={onToggle} className="w-full flex items-center gap-4 px-4 py-3 text-left">
+      <span className={cn('flex items-center justify-center w-5 h-5 rounded border-2 shrink-0 transition-colors', checked ? 'bg-primary-800 border-primary-800' : 'border-gray-400 bg-white')}>
+        {checked && <Check size={13} strokeWidth={3.5} className="text-white" />}
+      </span>
+      <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 shrink-0">
+        <Icon size={20} className="text-gray-900" />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-bold text-gray-900">{title}</span>
+        <span className="block text-xs text-gray-600 mt-0.5 truncate">{sub}</span>
+      </span>
+    </button>
+  );
+}
+
+function Counter({ value, onChange, max }: { value: number; onChange: (fn: (v: number) => number) => void; max: number }) {
+  return (
+    <div className="flex items-stretch border border-gray-200 rounded-lg overflow-hidden bg-white shrink-0">
+      <button type="button" aria-label="−" onClick={() => onChange(c => Math.max(0, c - 1))} className="w-8 h-8 flex items-center justify-center text-gray-800 hover:bg-gray-50"><Minus size={14} /></button>
+      <span className="w-8 flex items-center justify-center text-sm font-semibold text-gray-900 border-x border-gray-200">{value}</span>
+      <button type="button" aria-label="+" onClick={() => onChange(c => Math.min(max, c + 1))} className="w-8 h-8 flex items-center justify-center text-gray-800 hover:bg-gray-50"><Plus size={14} /></button>
+    </div>
+  );
+}
 
 function BuchenContent() {
   const params = useSearchParams();
@@ -137,7 +199,10 @@ function BuchenContent() {
   }, [pickup, dropoff, locale, router, stadtfahrtEnabled, settingsLoaded]);
 
   // Form state
-  const [name, setName] = useState('');
+  // Vor- und Nachname getrennt erfasst, ans Backend geht weiterhin ein kombiniertes `name`.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
   // `phone` holds only the national part — the dial code lives in `phoneCountry`,
   // shown in its own control inside PhoneInput.
   const [phone, setPhone] = useState('');
@@ -178,6 +243,7 @@ function BuchenContent() {
   const [rechnungDraft, setRechnungDraft] = useState('');
   const [showRechnungBeispiel, setShowRechnungBeispiel] = useState(false);
   const [maxLuggage, setMaxLuggage] = useState(10);
+  const [maxPassengers, setMaxPassengers] = useState<number | null>(null);
   const [roundtripDiscount, setRoundtripDiscount] = useState(5);
   const [vehiclePriceConfig, setVehiclePriceConfig] = useState<{ base_price: number; price_per_km: number; min_price: number; min_price_km: number } | null>(null);
 
@@ -191,6 +257,7 @@ function BuchenContent() {
           setFahrradEnabled(data.fahrrad_enabled === 1);
           setFahrradPrice(data.fahrrad_price || 0);
           setMaxLuggage(data.max_luggage ?? 10);
+          if (data.max_passengers) setMaxPassengers(data.max_passengers);
           setRoundtripDiscount(data.roundtrip_discount || 5);
           setVehiclePriceConfig({
             base_price: data.base_price || 0,
@@ -421,7 +488,8 @@ function BuchenContent() {
 
   function validateField(field: string, value: string) {
     let err = '';
-    if (field === 'name' && !value.trim()) err = tx.err_name;
+    if (field === 'firstName' && !value.trim()) err = locale === 'de' ? 'Vorname erforderlich' : locale === 'en' ? 'First name required' : 'Ad gerekli';
+    if (field === 'lastName' && !value.trim()) err = locale === 'de' ? 'Nachname erforderlich' : locale === 'en' ? 'Last name required' : 'Soyad gerekli';
     if (field === 'phone' && !value.trim()) err = tx.err_phone;
     if (field === 'email' && (!value.trim() || !value.includes('@'))) err = tx.err_email;
     if (field === 'flightNumber' && flightNumberRequired && !value.trim()) err = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
@@ -431,7 +499,8 @@ function BuchenContent() {
 
   function validate() {
     const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = tx.err_name;
+    if (!firstName.trim()) errs.firstName = locale === 'de' ? 'Vorname erforderlich' : locale === 'en' ? 'First name required' : 'Ad gerekli';
+    if (!lastName.trim()) errs.lastName = locale === 'de' ? 'Nachname erforderlich' : locale === 'en' ? 'Last name required' : 'Soyad gerekli';
     if (!phone.trim()) errs.phone = tx.err_phone;
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
@@ -1032,195 +1101,134 @@ function BuchenContent() {
     }
   }
 
-  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white';
-  const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+  const inputCls = 'w-full bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none py-0.5';
+  const L = (de: string, en: string, tr: string) => (locale === 'en' ? en : locale === 'tr' ? tr : de);
+  const zwStopAddress = params.get('zwischenstopp_address') || localZwischenstopp;
+  const vehicleDesc = VEHICLE_DESC[vehicle]?.[locale] || VEHICLE_DESC[vehicle]?.de || '';
+  const kmText = effectiveDistanceKm.toFixed(1).replace('.', locale === 'en' ? '.' : ',');
+  const returnDateLong = returnDate
+    ? new Date(returnDate + 'T00:00:00').toLocaleDateString(
+        locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
+        { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }
+      )
+    : '';
+  const strikePrice = (appliedPromo || autoDiscount) ? price : tripType === 'roundtrip' ? oneWayPrice * 2 : null;
+
+  function changeSearch() {
+    const sp = new URLSearchParams();
+    sp.set('pickup', pickup);
+    sp.set('dropoff', dropoff);
+    sp.set('date', date);
+    sp.set('time', time);
+    sp.set('passengers', passengers.toString());
+    if (tripType === 'roundtrip') {
+      sp.set('trip_type', 'roundtrip');
+      if (returnDate) sp.set('return_date', returnDate);
+      if (returnTime) sp.set('return_time', returnTime);
+    }
+    router.push(`/${locale}?${sp.toString()}`);
+  }
+
+  const sectionHead = (Icon: typeof User, title: string, sub: string) => (
+    <div className="flex items-center gap-4 mb-5">
+      <span className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0" style={{ background: '#fdf0c8' }}>
+        <Icon size={24} className="text-primary-800" />
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-lg md:text-xl font-extrabold text-primary-800 leading-tight">{title}</h2>
+        <p className="text-sm text-gray-600 mt-0.5">{sub}</p>
+      </div>
+    </div>
+  );
+
+  const editBtn = (onClick: () => void) => (
+    <button type="button" onClick={onClick} className="shrink-0 text-xs font-medium text-gray-700 border border-gray-200 hover:border-primary-400 hover:text-primary-700 rounded-md px-2.5 py-1 transition-colors">
+      {L('Ändern', 'Change', 'Değiştir')}
+    </button>
+  );
+
+  const steps = [
+    L('Fahrzeug wählen', 'Choose vehicle', 'Araç seçimi'),
+    L('Ihre Angaben', 'Your details', 'Bilgileriniz'),
+    L('Überprüfung', 'Review', 'Kontrol'),
+    L('Bestätigung', 'Confirmation', 'Onay'),
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Back bar */}
-      <div className="bg-white border-b border-gray-100 py-3">
-        <div className="max-w-5xl mx-auto px-4">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-primary-600 hover:text-primary-700 text-sm font-medium">
-            <ChevronLeft size={18} /> {tx.back}
-          </button>
+    <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
+      {/* Hero — heller Verlauf, rechts Flughafenfoto (Terminal, Tower, Flugzeug, "Mehr als ein Taxi") */}
+      <section className="relative overflow-hidden lg:overflow-visible">
+        {/* < lg: Foto hinter dem Titel, stark aufgehellt */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px] md:h-[360px] lg:hidden" aria-hidden="true">
+          <div className="absolute inset-y-0 right-0 w-full md:w-[640px]">
+            <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" style={{ objectPosition: '40% 30%' }} />
+            <div className="absolute inset-0 hidden md:block" style={{ background: 'linear-gradient(to right, #f4f7fb 0%, rgba(244,247,251,.75) 18%, rgba(244,247,251,.15) 45%, rgba(244,247,251,0) 70%)' }} />
+            <div className="absolute inset-0 md:hidden" style={{ background: 'linear-gradient(to right, rgba(244,247,251,.97) 0%, rgba(244,247,251,.9) 60%, rgba(244,247,251,.7) 100%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #f4f7fb 0%, rgba(244,247,251,0) 35%)' }} />
+          </div>
         </div>
-      </div>
+        {/* ≥ lg: ganzes Foto über der rechten Spalte, Taxi vollständig sichtbar — die Buchungsübersicht beginnt darunter */}
+        <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
+          <div className="relative max-w-6xl h-full mx-auto">
+            <div className="absolute top-0 right-0 w-[460px] h-[290px] xl:w-[540px] xl:h-[340px]">
+              <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #f4f7fb 0%, rgba(244,247,251,.55) 16%, rgba(244,247,251,0) 38%)' }} />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, #f4f7fb 0%, rgba(244,247,251,.7) 7%, rgba(244,247,251,0) 22%)' }} />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #f4f7fb 0%, rgba(244,247,251,.6) 8%, rgba(244,247,251,0) 22%)' }} />
+            </div>
+          </div>
+        </div>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 pb-6">
+          <p className="text-xs font-semibold tracking-[.28em] uppercase text-gray-700">{L('Buchung', 'Booking', 'Rezervasyon')}</p>
+          <h1 className="mt-2 text-4xl md:text-[44px] font-extrabold tracking-tight text-primary-800">{tx.title}</h1>
+          <p className="mt-2 text-base md:text-lg text-gray-700">{L('Nur noch wenige Schritte zu Ihrem stressfreien Transfer.', 'Just a few steps to your stress-free transfer.', 'Stressiz transferinize sadece birkaç adım kaldı.')}</p>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: Form */}
-          <div className="lg:col-span-2 space-y-5">
-            <h1 className="text-2xl font-bold text-primary-700">{tx.title}</h1>
-
-            {/* Return trip — TOP (hide if already set from ergebnisse) */}
-            {roundtripFromErgebnisse ? null : tripType === 'roundtrip' ? (
-              <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-primary-700 flex items-center gap-2">⇄ {locale === 'de' ? 'Rückfahrt' : locale === 'en' ? 'Return trip' : 'Dönüş'}</h3>
+          {/* Stepper */}
+          <ol className="mt-7 flex items-center gap-2 sm:gap-3">
+            {steps.map((label, i) => {
+              const done = i === 0;
+              const active = i === 1;
+              return (
+                <li key={label} className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  {i > 0 && <span className="hidden sm:block h-px w-6 lg:w-10 bg-gray-300 shrink-0" aria-hidden="true" />}
                   <button
                     type="button"
-                    onClick={() => { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); setAppliedPromo(null); setPromoInput(''); setPromoError(''); }}
-                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                    disabled={!done}
+                    onClick={() => done && router.back()}
+                    className="flex items-center gap-2 min-w-0 disabled:cursor-default"
                   >
-                    × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
-                    <label className="text-xs text-gray-500 font-medium">
-                      {locale === 'de' ? 'Rückfahrtdatum' : locale === 'en' ? 'Return date' : 'Dönüş tarihi'}
-                    </label>
-                    <input
-                      type="date"
-                      value={returnDate}
-                      min={date}
-                      onChange={e => setReturnDate(e.target.value)}
-                      className="border border-primary-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
-                    <label className="text-xs text-gray-500 font-medium">
-                      {locale === 'de' ? 'Rückfahrtzeit' : locale === 'en' ? 'Return time' : 'Dönüş saati'}
-                    </label>
-                    <input
-                      type="time"
-                      value={returnTime}
-                      onChange={e => setReturnTime(e.target.value)}
-                      className="border border-primary-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-xs text-green-700 font-medium">
-                  <Tag size={12} className="inline mr-1" /> {roundtripDiscount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt inklusive' : locale === 'en' ? 'Round trip discount included' : 'Gidiş-dönüş indirimi dahil'}
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setTripType('roundtrip'); setAppliedPromo(null); setPromoInput(''); setPromoError(''); }}
-                className="flex items-center gap-2 w-full border-2 border-dashed border-primary-300 hover:border-primary-500 bg-white hover:bg-primary-50 text-primary-600 hover:text-primary-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
-              >
-                <span className="text-lg">⇄</span>
-                {locale === 'de' ? '+ Rückfahrt hinzufügen' : locale === 'en' ? '+ Add return trip' : '+ Dönüş ekle'}
-                <span className="text-xs font-normal text-green-600">
-                  ({roundtripDiscount}% {locale === 'de' ? 'Rabatt' : locale === 'en' ? 'discount' : 'indirim'})
-                </span>
-              </button>
-            )}
-
-            {/* Zwischenstopp — only show if not already added from ergebnisse */}
-            {zwischenstoppEnabled && !zwischenstoppFromErgebnisse && (
-              localZwischenstopp ? (
-                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
-                  <div className="flex items-center gap-2 text-sm text-blue-700 font-medium">
-                    <MapPin size={14} className="shrink-0" />
-                    <span>
-                      {locale === 'de' ? 'Zwischenstopp:' : locale === 'en' ? 'Intermediate stop:' : 'Ara durak:'}{' '}
-                      {localZwischenstopp}
+                    <span className={cn(
+                      'flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0',
+                      done && 'bg-primary-800 text-white',
+                      active && 'bg-gold-400 text-primary-800 ring-2 ring-primary-800',
+                      !done && !active && 'bg-gray-200 text-gray-700'
+                    )}>
+                      {done ? <Check size={16} strokeWidth={3} /> : i + 1}
                     </span>
-                  </div>
-                  <button type="button" onClick={() => { setLocalZwischenstopp(''); setLocalZwischenstoppBasePrice(0); setLocalZwischenstoppDistanceKm(0); setLocalZwischenstoppDuration(0); }} className="text-xs text-red-500 hover:text-red-700 font-medium">
-                    × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
+                    <span className={cn('text-sm whitespace-nowrap', active ? 'font-bold text-gray-900' : 'font-medium text-gray-700', !active && 'hidden md:inline lg:hidden xl:inline')}>{label}</span>
                   </button>
-                </div>
-              ) : showZwischenstoppPicker ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 space-y-3 relative">
-                  <p className="text-sm font-semibold text-primary-700">
-                    {locale === 'de' ? 'Zwischenstopp hinzufügen' : locale === 'en' ? 'Add intermediate stop' : 'Ara durak ekle'}
-                  </p>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={zwischenstoppInput}
-                      onChange={e => setZwischenstoppInput(e.target.value)}
-                      placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white"
-                      autoFocus
-                    />
-                    {zwischenstoppSuggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                        {zwischenstoppSuggestions.map((s: any) => (
-                          <button
-                            key={s.place_id}
-                            type="button"
-                            onClick={async () => {
-                              setShowZwischenstoppPicker(false);
-                              setZwischenstoppInput('');
-                              setZwischenstoppSuggestions([]);
-                              setZwischenstoppLoading(true);
-                              try {
-                                const r = await fetch(`${API_URL}/maps/distance`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ origin: pickup, destination: dropoff, zwischenstopp: s.description, language: locale }),
-                                });
-                                const data = await r.json();
-                                if (data.zwischenstopp_total_km && vehiclePriceConfig) {
-                                  const km = data.zwischenstopp_total_km;
-                                  const calc = vehiclePriceConfig.base_price + km * vehiclePriceConfig.price_per_km;
-                                  const newBasePrice = (vehiclePriceConfig.min_price > 0 && km <= (vehiclePriceConfig.min_price_km || 15))
-                                    ? Math.max(calc, vehiclePriceConfig.min_price)
-                                    : calc;
-                                  setLocalZwischenstoppDistanceKm(km);
-                                  setLocalZwischenstoppDuration(data.zwischenstopp_total_duration || duration);
-                                  setLocalZwischenstoppBasePrice(Math.ceil(newBasePrice * 2) / 2);
-                                }
-                              } catch (e) {
-                                console.error('Zwischenstopp distance calc failed:', e);
-                              } finally {
-                                setZwischenstoppLoading(false);
-                              }
-                              setLocalZwischenstopp(s.description);
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
-                          >
-                            {s.description}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {zwischenstoppLoading && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                  <button type="button" onClick={() => { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
-                    {locale === 'de' ? 'Abbrechen' : locale === 'en' ? 'Cancel' : 'İptal'}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowZwischenstoppPicker(true)}
-                  className="flex items-center gap-2 w-full border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-2xl px-5 py-4 text-sm font-semibold transition-colors justify-center"
-                >
-                  <MapPin size={14} className="shrink-0" />
-                  {locale === 'de' ? '+ Zwischenstopp hinzufügen' : locale === 'en' ? '+ Add intermediate stop' : '+ Ara durak ekle'}
-                </button>
-              )
-            )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
 
-            {/* Personal details */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-              <div>
-                <label className={labelCls}><span className="flex items-center gap-1"><User size={14} /> {tx.name}</span></label>
-                <input value={name} onChange={e => setName(e.target.value)} onBlur={e => validateField('name', e.target.value)} autoComplete="name" enterKeyHint="next" className={cn(inputCls, errors.name && 'border-red-400')} placeholder="Max Mustermann" />
-                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>
-                    <span className="flex items-center gap-1">
-                      <Phone size={14} /> {tx.phone}
-                      <span className="relative group ml-0.5">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          {locale === 'tr' ? 'Şoförünüz gerektiğinde size bu numaradan ulaşır.' : locale === 'en' ? 'Your driver uses this number to reach you if needed.' : 'Ihr Fahrer erreicht Sie unter dieser Nummer, falls nötig.'}
-                        </span>
-                      </span>
-                    </span>
-                  </label>
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
+          {/* LEFT: Form */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(15,27,45,.06)] p-4 sm:p-6">
+            {/* Persönliche Daten */}
+            {sectionHead(User, L('Persönliche Daten', 'Personal details', 'Kişisel bilgiler'), L('Bitte geben Sie Ihre Daten ein, um die Buchung abzuschließen.', 'Please enter your details to complete the booking.', 'Rezervasyonu tamamlamak için lütfen bilgilerinizi girin.'))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldBox as="label" icon={User} label={L('Vorname', 'First name', 'Ad')} required error={errors.firstName}>
+                <input value={firstName} onChange={e => setFirstName(e.target.value)} onBlur={e => validateField('firstName', e.target.value)} autoComplete="given-name" enterKeyHint="next" className={inputCls} placeholder="Max" />
+              </FieldBox>
+              <FieldBox as="label" icon={UserRound} label={L('Nachname', 'Last name', 'Soyad')} required error={errors.lastName}>
+                <input value={lastName} onChange={e => setLastName(e.target.value)} onBlur={e => validateField('lastName', e.target.value)} autoComplete="family-name" enterKeyHint="next" className={inputCls} placeholder="Mustermann" />
+              </FieldBox>
+              <FieldBox icon={Phone} label={L('Telefonnummer', 'Phone number', 'Telefon numarası')} required hasError={!!errors.phone}>
+                <div className="pt-1">
                   <PhoneInput
                     value={phone}
                     onChange={setPhone}
@@ -1230,465 +1238,535 @@ function BuchenContent() {
                     locale={locale}
                     errorText={errors.phone}
                     statusEnabled={phoneValidationEnabled}
+                    compact
                   />
                 </div>
-                <div>
-                  <label className={labelCls}>
-                    <span className="flex items-center gap-1">
-                      <Mail size={14} /> {tx.email}
-                      <span className="relative group ml-0.5">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          {locale === 'tr' ? 'Rezervasyon onayı bu adrese gönderilecek.' : locale === 'en' ? 'Your booking confirmation will be sent here.' : 'Ihre Buchungsbestätigung wird an diese Adresse gesendet.'}
-                        </span>
-                      </span>
-                    </span>
-                  </label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} onBlur={e => validateField('email', e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="off" enterKeyHint="next" className={cn(inputCls, errors.email && 'border-red-400')} placeholder="name@example.com" />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>
-                    <span className="flex items-center gap-1">
-                      <Plane size={14} /> {flightNumberRequired ? (tx as any).flightRequired : tx.flight}
-                      <span className="relative group ml-0.5">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          {locale === 'tr' ? 'Uçuş gecikmelerini takip edebilmemiz için uçuş numaranızı girin.' : locale === 'en' ? 'We monitor your flight for delays so your driver is always on time.' : 'Damit wir Ihren Flug auf Verspätungen überwachen und den Fahrer rechtzeitig informieren können.'}
-                        </span>
-                      </span>
-                    </span>
-                  </label>
-                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} onBlur={e => validateField('flightNumber', e.target.value)} className={cn(inputCls, (errors as any).flightNumber && 'border-red-400')} placeholder="LH 1234" />
-                  {(errors as any).flightNumber && <p className="text-red-500 text-xs mt-1">{(errors as any).flightNumber}</p>}
-                  {flightCheckStatus === 'checking' && (
-                    <p className="text-gray-400 text-xs mt-1.5 flex items-center gap-1">
-                      <Loader2 size={12} className="animate-spin" /> {tx.flightChecking}
-                    </p>
-                  )}
-                  {flightCheckStatus === 'found' && flightCheckResult && (
-                    <div className="mt-1.5 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5 text-xs text-green-700 flex items-start gap-1.5">
-                      <CheckCircle size={13} className="mt-0.5 shrink-0" />
-                      <span>{tx.flightConfirmed}: {buildFlightInfo()}</span>
-                    </div>
-                  )}
-                  {flightCheckStatus === 'wrongairport' && flightCheckResult && (
-                    <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2.5 py-1.5 text-xs text-orange-700 flex items-start gap-1.5">
-                      <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                      <span>{tx.flightWrongAirport} ({buildFlightInfo()})</span>
-                    </div>
-                  )}
-                  {flightCheckStatus === 'notfound' && (
-                    <div className="mt-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-700 flex items-start gap-1.5">
-                      <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                      <span>{tx.flightNotFound}</span>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className={labelCls}><span className="flex items-center gap-1"><Luggage size={14} /> {tx.luggage}</span></label>
-                  <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 bg-white">
-                    <button onClick={() => setLuggageCount(l => Math.max(0, l - 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center">−</button>
-                    <span className="flex-1 text-center text-sm font-semibold text-gray-900">{luggageCount}</span>
-                    <button onClick={() => setLuggageCount(l => Math.min(maxLuggage, l + 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center">+</button>
-                  </div>
-                </div>
-              </div>
-              {flightNumberRequired && (
-                <div>
-                  <label className={labelCls}>
-                    <span className="flex items-center gap-1">
-                      <Signpost size={13} className="inline mr-1" /> {locale === 'de' ? 'Abholschild' : locale === 'en' ? 'Pickup Sign' : 'Karşılama Tabelası'} *
-                      <span className="relative group ml-0.5">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                          {locale === 'tr' ? 'Sürücünüz havalimanında bu isimle sizi karşılayacak.' : locale === 'en' ? 'Your driver will hold a sign with this name at the airport.' : 'Ihr Fahrer erwartet Sie am Flughafen mit diesem Namen auf dem Schild.'}
-                        </span>
-                      </span>
-                    </span>
-                  </label>
-                  <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} onBlur={e => validateField('pickupSign', e.target.value)} className={`${inputCls}${errors.pickupSign ? ' border-red-400' : ''}`} placeholder={locale === 'de' ? 'z.B. Familie Müller' : locale === 'en' ? 'e.g. Smith family' : 'örn. Müller ailesi'} />
-                  {errors.pickupSign ? <p className="text-red-500 text-xs mt-1">{errors.pickupSign}</p> : <p className="text-xs text-gray-400 mt-1">{locale === 'de' ? 'Name auf dem Abholschild am Flughafen' : locale === 'en' ? 'Name on the pickup sign at the airport' : 'Havalimanında karşılama tabelasındaki isim'}</p>}
-                </div>
-              )}
+              </FieldBox>
+              <FieldBox as="label" icon={Mail} label={L('E-Mail', 'Email', 'E-posta')} required error={errors.email}>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} onBlur={e => validateField('email', e.target.value)} autoComplete="email" inputMode="email" autoCapitalize="off" enterKeyHint="next" className={inputCls} placeholder="max.mustermann@example.com" />
+              </FieldBox>
               <div>
-                {showNotes || notes ? (
-                  <>
-                    <label className={labelCls}>
-                      <span className="flex items-center gap-1">
-                        {tx.notes}
-                        <span className="relative group ml-0.5">
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold cursor-default">?</span>
-                          <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                            {locale === 'tr' ? 'Özel isteklerinizi buraya yazın: bebek koltuğu, ekstra bagaj, karşılama tercihleri vb.' : locale === 'en' ? 'Special requests: child seat details, extra luggage, meeting preferences, etc.' : 'Besondere Wünsche: Kindersitz-Details, extra Gepäck, Treffpunkt-Präferenzen usw.'}
-                          </span>
-                        </span>
-                      </span>
-                    </label>
-                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} autoFocus={showNotes && !notes} className={inputCls} placeholder={locale === 'de' ? 'Besondere Wünsche...' : locale === 'en' ? 'Special requests...' : 'Özel istekler...'} />
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowNotes(true)}
-                    className="flex items-center gap-1.5 text-primary-600 hover:text-primary-700 text-sm font-medium"
-                  >
-                    <StickyNote size={14} />
-                    {locale === 'de' ? '+ Anmerkung hinzufügen' : locale === 'en' ? '+ Add a note' : '+ Not ekle'}
-                  </button>
+                <FieldBox as="label" icon={Plane} label={flightNumberRequired ? L('Flugnummer', 'Flight number', 'Uçuş numarası') : L('Flugnummer (optional)', 'Flight number (optional)', 'Uçuş numarası (isteğe bağlı)')} required={flightNumberRequired} error={errors.flightNumber}>
+                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} onBlur={e => validateField('flightNumber', e.target.value)} className={inputCls} placeholder={L('z. B. LH1234', 'e.g. LH1234', 'örn. LH1234')} />
+                </FieldBox>
+                {flightCheckStatus === 'checking' && (
+                  <p className="text-gray-400 text-xs mt-1.5 flex items-center gap-1">
+                    <Loader2 size={12} className="animate-spin" /> {tx.flightChecking}
+                  </p>
+                )}
+                {flightCheckStatus === 'found' && flightCheckResult && (
+                  <div className="mt-1.5 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5 text-xs text-green-700 flex items-start gap-1.5">
+                    <CheckCircle size={13} className="mt-0.5 shrink-0" />
+                    <span>{tx.flightConfirmed}: {buildFlightInfo()}</span>
+                  </div>
+                )}
+                {flightCheckStatus === 'wrongairport' && flightCheckResult && (
+                  <div className="mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2.5 py-1.5 text-xs text-orange-700 flex items-start gap-1.5">
+                    <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                    <span>{tx.flightWrongAirport} ({buildFlightInfo()})</span>
+                  </div>
+                )}
+                {flightCheckStatus === 'notfound' && (
+                  <div className="mt-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5 text-xs text-yellow-700 flex items-start gap-1.5">
+                    <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                    <span>{tx.flightNotFound}</span>
+                  </div>
                 )}
               </div>
+              <FieldBox icon={Luggage} label={tx.luggage}>
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="flex items-stretch border border-gray-200 rounded-lg overflow-hidden flex-1 max-w-[220px]">
+                    <button type="button" aria-label="−" onClick={() => setLuggageCount(l => Math.max(0, l - 1))} className="w-10 flex items-center justify-center text-gray-800 hover:bg-gray-50"><Minus size={16} /></button>
+                    <span className="flex-1 text-center text-[15px] font-semibold text-gray-900 border-x border-gray-200 py-1.5">{luggageCount}</span>
+                    <button type="button" aria-label="+" onClick={() => setLuggageCount(l => Math.min(maxLuggage, l + 1))} className="w-10 flex items-center justify-center text-gray-800 hover:bg-gray-50"><Plus size={16} /></button>
+                  </div>
+                  <span className="relative group shrink-0">
+                    <Info size={18} className="text-gray-500" />
+                    <span className="absolute right-0 bottom-full mb-2 w-48 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                      {L(`Maximal ${maxLuggage} Gepäckstücke für dieses Fahrzeug.`, `Up to ${maxLuggage} pieces of luggage for this vehicle.`, `Bu araç için en fazla ${maxLuggage} bagaj.`)}
+                    </span>
+                  </span>
+                </div>
+              </FieldBox>
+              {flightNumberRequired && (
+                <div className="sm:col-span-2">
+                  <FieldBox as="label" icon={Signpost} label={L('Abholschild', 'Pickup sign', 'Karşılama tabelası')} required error={errors.pickupSign}>
+                    <input value={pickupSign} onChange={e => setPickupSign(e.target.value)} onBlur={e => validateField('pickupSign', e.target.value)} className={inputCls} placeholder={L('z. B. Familie Müller', 'e.g. Smith family', 'örn. Müller ailesi')} />
+                  </FieldBox>
+                  {!errors.pickupSign && <p className="text-xs text-gray-400 mt-1 ml-1">{L('Name auf dem Abholschild am Flughafen', 'Name on the pickup sign at the airport', 'Havalimanında karşılama tabelasındaki isim')}</p>}
+                </div>
+              )}
+              <div className="sm:col-span-2">
+                <FieldBox as="label" icon={MessageSquare} label={L('Anmerkung (optional)', 'Note (optional)', 'Not (isteğe bağlı)')}>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value.slice(0, 500))} rows={3} maxLength={500} className={cn(inputCls, 'resize-none')} placeholder={L('z. B. Kindersitz, besondere Wünsche …', 'e.g. child seat, special requests …', 'örn. çocuk koltuğu, özel istekler …')} />
+                  <span className="block text-right text-xs text-gray-400">{notes.length}/500</span>
+                </FieldBox>
+              </div>
             </div>
 
-            {/* Extras — immer sichtbar */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Briefcase size={16} /> Extras</h3>
-
-              {/* Kindersitz */}
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <Baby size={22} className="text-gray-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'}</p>
-                    <p className="text-xs text-green-600 font-medium">{locale === 'de' ? 'Kostenlos' : locale === 'en' ? 'Free' : 'Ücretsiz'}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newVal = !childSeat;
-                    setChildSeat(newVal);
-                    if (!newVal) { setChildSeatBabyschale(0); setChildSeatKindersitz(0); setChildSeatSitzerhoehung(0); }
-                  }}
-                  className={cn(
-                    'w-12 h-7 rounded-full transition-colors relative',
-                    childSeat ? 'bg-green-500' : 'bg-gray-300'
+            {/* Extras */}
+            <div className="mt-8">
+              {sectionHead(Star, 'Extras', L('Machen Sie Ihre Fahrt noch komfortabler.', 'Make your ride even more comfortable.', 'Yolculuğunuzu daha da konforlu hale getirin.'))}
+              <div className="space-y-3">
+                {/* Kindersitz */}
+                <div className={cn('border rounded-xl transition-colors', childSeat ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
+                  <OptionRow
+                    checked={childSeat}
+                    onToggle={() => {
+                      const newVal = !childSeat;
+                      setChildSeat(newVal);
+                      if (!newVal) { setChildSeatBabyschale(0); setChildSeatKindersitz(0); setChildSeatSitzerhoehung(0); }
+                    }}
+                    icon={Baby}
+                    title={L('Kindersitz', 'Child seat', 'Çocuk koltuğu')}
+                    sub={L('Kostenlos – bitte bei der Buchung angeben.', 'Free – please specify when booking.', 'Ücretsiz – lütfen rezervasyonda belirtin.')}
+                  />
+                  {childSeat && (
+                    <div className="px-4 pb-4 pl-4 sm:pl-[74px] space-y-3">
+                      <p className="text-xs text-gray-500 font-medium">{L('Bitte wählen Sie die benötigten Kindersitze:', 'Please select the child seats you need:', 'Lütfen ihtiyacınız olan çocuk koltuklarını seçin:')}</p>
+                      {[
+                        { label: L('Babyschale', 'Infant carrier', 'Bebek taşıyıcı'), hint: L('0–12 Monate', '0–12 months', '0–12 ay'), value: childSeatBabyschale, set: setChildSeatBabyschale },
+                        { label: L('Kindersitz', 'Child seat', 'Çocuk koltuğu'), hint: L('1–4 Jahre, bis 18 kg', '1–4 years, up to 18 kg', "1–4 yaş, 18 kg'a kadar"), value: childSeatKindersitz, set: setChildSeatKindersitz },
+                        { label: L('Sitzerhöhung', 'Booster seat', 'Yükseltici koltuk'), hint: L('4–12 Jahre, bis 36 kg', '4–12 years, up to 36 kg', "4–12 yaş, 36 kg'a kadar"), value: childSeatSitzerhoehung, set: setChildSeatSitzerhoehung },
+                      ].map(row => (
+                        <div key={row.label} className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{row.label}</p>
+                            <p className="text-xs text-gray-400">{row.hint}</p>
+                          </div>
+                          <Counter value={row.value} onChange={row.set} max={3} />
+                        </div>
+                      ))}
+                    </div>
                   )}
-                >
-                  <span className={cn(
-                    'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                    childSeat ? 'translate-x-5' : 'translate-x-0.5'
-                  )} />
-                </button>
-              </div>
-              {childSeat && (
-                <div className="mt-3 mb-3 bg-green-50 rounded-xl p-4 border border-green-100 space-y-3">
-                  <p className="text-xs text-gray-500 font-medium mb-2">{locale === 'de' ? 'Bitte wählen Sie die benötigten Kindersitze:' : locale === 'en' ? 'Please select the child seats you need:' : 'Lütfen ihtiyacınız olan çocuk koltuklarını seçin:'}</p>
-                  {/* Babyschale (0-12 Monate) */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Babyschale' : locale === 'en' ? 'Infant carrier' : 'Bebek taşıyıcı'}</p>
-                      <p className="text-xs text-gray-400">{locale === 'de' ? '0–12 Monate' : locale === 'en' ? '0–12 months' : '0–12 ay'}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildSeatBabyschale(c => Math.max(0, c - 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">−</button>
-                      <span className="w-5 text-center text-sm font-bold text-gray-800">{childSeatBabyschale}</span>
-                      <button type="button" onClick={() => setChildSeatBabyschale(c => Math.min(3, c + 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">+</button>
-                    </div>
-                  </div>
-                  {/* Kindersitz (1-4 Jahre) */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu'}</p>
-                      <p className="text-xs text-gray-400">{locale === 'de' ? '1–4 Jahre, bis 18 kg' : locale === 'en' ? '1–4 years, up to 18 kg' : '1–4 yaş, 18 kg\'a kadar'}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildSeatKindersitz(c => Math.max(0, c - 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">−</button>
-                      <span className="w-5 text-center text-sm font-bold text-gray-800">{childSeatKindersitz}</span>
-                      <button type="button" onClick={() => setChildSeatKindersitz(c => Math.min(3, c + 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">+</button>
-                    </div>
-                  </div>
-                  {/* Sitzerhöhung (4-12 Jahre) */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Sitzerhöhung' : locale === 'en' ? 'Booster seat' : 'Yükseltici koltuk'}</p>
-                      <p className="text-xs text-gray-400">{locale === 'de' ? '4–12 Jahre, bis 36 kg' : locale === 'en' ? '4–12 years, up to 36 kg' : '4–12 yaş, 36 kg\'a kadar'}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildSeatSitzerhoehung(c => Math.max(0, c - 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">−</button>
-                      <span className="w-5 text-center text-sm font-bold text-gray-800">{childSeatSitzerhoehung}</span>
-                      <button type="button" onClick={() => setChildSeatSitzerhoehung(c => Math.min(3, c + 1))} className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-gray-100 font-bold text-gray-600 flex items-center justify-center text-xs">+</button>
-                    </div>
-                  </div>
                 </div>
-              )}
 
-              {/* Fahrrad */}
-              {fahrradEnabled && (
-              <div className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <Bike size={22} className="text-gray-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</p>
-                    <p className="text-xs text-gray-500">{fahrradPrice > 0 ? `${formatPrice(fahrradPrice)} / ${locale === 'de' ? 'Stk.' : locale === 'en' ? 'each' : 'adet'}` : (locale === 'de' ? 'Kostenlos' : locale === 'en' ? 'Free' : 'Ücretsiz')}</p>
+                {/* Rückfahrt */}
+                {!roundtripFromErgebnisse && (
+                  <div className={cn('border rounded-xl transition-colors', tripType === 'roundtrip' ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
+                    <OptionRow
+                      checked={tripType === 'roundtrip'}
+                      onToggle={() => {
+                        if (tripType === 'roundtrip') { setTripType('oneway'); setReturnDate(''); setReturnTime('10:00'); }
+                        else setTripType('roundtrip');
+                        setAppliedPromo(null); setPromoInput(''); setPromoError('');
+                      }}
+                      icon={ArrowLeftRight}
+                      title={L('Rückfahrt hinzufügen', 'Add return trip', 'Dönüş ekle')}
+                      sub={`${roundtripDiscount}% ${L('Rabatt auf Hin- & Rückfahrt', 'discount on the round trip', 'gidiş-dönüş indirimi')}`}
+                    />
+                    {tripType === 'roundtrip' && (
+                      <div className="px-4 pb-4 pl-4 sm:pl-[74px] flex flex-wrap gap-3">
+                        <label className="flex flex-col gap-1 flex-1 min-w-[140px]">
+                          <span className="text-xs text-gray-500 font-medium">{L('Rückfahrtdatum', 'Return date', 'Dönüş tarihi')}</span>
+                          <input type="date" value={returnDate} min={date} onChange={e => setReturnDate(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white" />
+                        </label>
+                        <label className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                          <span className="text-xs text-gray-500 font-medium">{L('Rückfahrtzeit', 'Return time', 'Dönüş saati')}</span>
+                          <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white" />
+                        </label>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setFahrradCount(c => Math.max(0, c - 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center text-sm">−</button>
-                  <span className="w-6 text-center text-sm font-bold text-gray-800">{fahrradCount}</span>
-                  <button type="button" onClick={() => setFahrradCount(c => Math.min(4, c + 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 flex items-center justify-center text-sm">+</button>
-                </div>
-              </div>
-              )}
+                )}
 
-              {/* Rechnung für Firma */}
-              <div className="flex items-center justify-between py-3 border-t border-gray-100">
-                <div className="flex items-center gap-3">
-                  <FileText size={22} className="text-gray-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{rx.toggle}</p>
-                    <p className="text-xs text-gray-500">{rx.toggleHint}</p>
+                {/* Zwischenstopp */}
+                {zwischenstoppEnabled && !zwischenstoppFromErgebnisse && (
+                  <div className={cn('border rounded-xl transition-colors relative', (localZwischenstopp || showZwischenstoppPicker) ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
+                    <OptionRow
+                      checked={!!localZwischenstopp || showZwischenstoppPicker}
+                      onToggle={() => {
+                        if (localZwischenstopp) { setLocalZwischenstopp(''); setLocalZwischenstoppBasePrice(0); setLocalZwischenstoppDistanceKm(0); setLocalZwischenstoppDuration(0); }
+                        else if (showZwischenstoppPicker) { setShowZwischenstoppPicker(false); setZwischenstoppInput(''); setZwischenstoppSuggestions([]); }
+                        else setShowZwischenstoppPicker(true);
+                      }}
+                      icon={MapPin}
+                      title={L('Zwischenstopp', 'Intermediate stop', 'Ara durak')}
+                      sub={localZwischenstopp || L('Unterwegs einen Halt einlegen', 'Make a stop on the way', 'Yolda bir mola verin')}
+                    />
+                    {showZwischenstoppPicker && !localZwischenstopp && (
+                      <div className="px-4 pb-4 pl-4 sm:pl-[74px] relative">
+                        <input
+                          type="text"
+                          value={zwischenstoppInput}
+                          onChange={e => setZwischenstoppInput(e.target.value)}
+                          placeholder={L('Adresse eingeben...', 'Enter address...', 'Adres girin...')}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white"
+                          autoFocus
+                        />
+                        {zwischenstoppSuggestions.length > 0 && (
+                          <div className="absolute left-4 sm:left-[74px] right-4 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                            {zwischenstoppSuggestions.map((s: any) => (
+                              <button
+                                key={s.place_id}
+                                type="button"
+                                onClick={async () => {
+                                  setShowZwischenstoppPicker(false);
+                                  setZwischenstoppInput('');
+                                  setZwischenstoppSuggestions([]);
+                                  setZwischenstoppLoading(true);
+                                  try {
+                                    const r = await fetch(`${API_URL}/maps/distance`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ origin: pickup, destination: dropoff, zwischenstopp: s.description, language: locale }),
+                                    });
+                                    const data = await r.json();
+                                    if (data.zwischenstopp_total_km && vehiclePriceConfig) {
+                                      const km = data.zwischenstopp_total_km;
+                                      const calc = vehiclePriceConfig.base_price + km * vehiclePriceConfig.price_per_km;
+                                      const newBasePrice = (vehiclePriceConfig.min_price > 0 && km <= (vehiclePriceConfig.min_price_km || 15))
+                                        ? Math.max(calc, vehiclePriceConfig.min_price)
+                                        : calc;
+                                      setLocalZwischenstoppDistanceKm(km);
+                                      setLocalZwischenstoppDuration(data.zwischenstopp_total_duration || duration);
+                                      setLocalZwischenstoppBasePrice(Math.ceil(newBasePrice * 2) / 2);
+                                    }
+                                  } catch (e) {
+                                    console.error('Zwischenstopp distance calc failed:', e);
+                                  } finally {
+                                    setZwischenstoppLoading(false);
+                                  }
+                                  setLocalZwischenstopp(s.description);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 border-b border-gray-50 last:border-0"
+                              >
+                                {s.description}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {zwischenstoppLoading && (
+                      <div className="px-4 pb-3 pl-4 sm:pl-[74px] flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 size={14} className="animate-spin" /> {L('Berechne Route...', 'Calculating route...', 'Rota hesaplanıyor...')}
+                      </div>
+                    )}
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newVal = !rechnungRequired;
-                    setRechnungRequired(newVal);
-                    if (newVal) {
-                      setRechnungDraft(rechnungAdresse);
-                      setShowRechnungBeispiel(false);
-                      setShowRechnungModal(true);
-                    } else {
-                      setRechnungAdresse('');
-                      setErrors(e => { const { rechnung, ...rest } = e; return rest; });
-                    }
-                  }}
-                  className={cn(
-                    'w-12 h-7 rounded-full transition-colors relative',
-                    rechnungRequired ? 'bg-green-500' : 'bg-gray-300'
+                )}
+
+                {/* Fahrrad */}
+                {fahrradEnabled && (
+                  <div className="flex items-center gap-4 border border-gray-200 rounded-xl px-4 py-3">
+                    <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 shrink-0 ml-9">
+                      <Bike size={20} className="text-gray-800" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">{L('Fahrrad', 'Bicycle', 'Bisiklet')}</p>
+                      <p className="text-xs text-gray-600">{fahrradPrice > 0 ? `${formatPrice(fahrradPrice)} / ${L('Stk.', 'each', 'adet')}` : L('Kostenlos', 'Free', 'Ücretsiz')}</p>
+                    </div>
+                    <Counter value={fahrradCount} onChange={setFahrradCount} max={4} />
+                  </div>
+                )}
+
+                {/* Rechnung für Firma */}
+                <div className={cn('border rounded-xl transition-colors', rechnungRequired ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
+                  <OptionRow
+                    checked={rechnungRequired}
+                    onToggle={() => {
+                      const newVal = !rechnungRequired;
+                      setRechnungRequired(newVal);
+                      if (newVal) {
+                        setRechnungDraft(rechnungAdresse);
+                        setShowRechnungBeispiel(false);
+                        setShowRechnungModal(true);
+                      } else {
+                        setRechnungAdresse('');
+                        setErrors(e => { const { rechnung, ...rest } = e; return rest; });
+                      }
+                    }}
+                    icon={FileText}
+                    title={rx.toggle}
+                    sub={rx.toggleHint}
+                  />
+                  {rechnungRequired && rechnungAdresse && (
+                    <div className="px-4 pb-4 pl-4 sm:pl-[74px] flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-green-700 flex items-center gap-1"><Check size={12} /> {rx.saved}</p>
+                        <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-words">{rechnungAdresse}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setRechnungDraft(rechnungAdresse); setShowRechnungBeispiel(false); setShowRechnungModal(true); }}
+                        className="text-xs font-semibold text-primary-600 hover:text-primary-700 shrink-0"
+                      >
+                        {rx.edit}
+                      </button>
+                    </div>
                   )}
-                >
-                  <span className={cn(
-                    'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                    rechnungRequired ? 'translate-x-5' : 'translate-x-0.5'
-                  )} />
-                </button>
-              </div>
-              {rechnungRequired && rechnungAdresse && (
-                <div className="mb-3 bg-green-50 rounded-xl p-4 border border-green-100 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-green-700 flex items-center gap-1">
-                      <Check size={12} /> {rx.saved}
-                    </p>
-                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-line break-words">{rechnungAdresse}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setRechnungDraft(rechnungAdresse); setShowRechnungBeispiel(false); setShowRechnungModal(true); }}
-                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 shrink-0"
-                  >
-                    {rx.edit}
-                  </button>
                 </div>
-              )}
-              {errors.rechnung && <p className="text-red-500 text-xs mb-3">{errors.rechnung}</p>}
+                {errors.rechnung && <p className="text-red-500 text-xs">{errors.rechnung}</p>}
+              </div>
             </div>
 
-            {/* Payment */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><CreditCard size={16} /> {tx.payment}</h3>
-              <div className="flex gap-2 mb-4">
-                <button onClick={() => setPayment('cash')}
-                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'cash' ? 'bg-primary-50 text-primary-700 border-primary-600' : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-gray-700')}>
-                  <Banknote size={16} /> {tx.cash}
-                </button>
-                <button onClick={() => setPayment('card')}
-                  className={cn('flex-1 py-3 rounded-xl text-sm font-semibold transition-all border-2 flex items-center justify-center gap-2', payment === 'card' ? 'bg-primary-50 text-primary-700 border-primary-600' : 'bg-white text-gray-500 border-gray-200 hover:border-primary-300 hover:text-gray-700')}>
-                  <CreditCard size={16} /> {tx.card}
-                </button>
+            {/* Zahlungsart */}
+            <div className="mt-8">
+              {sectionHead(CreditCard, L('Zahlungsart', 'Payment method', 'Ödeme yöntemi'), L('Sie können bequem vorab oder direkt beim Fahrer bezahlen.', 'Pay conveniently in advance or directly to the driver.', 'Rahatça önceden veya doğrudan şoföre ödeyebilirsiniz.'))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {([
+                  { key: 'cash' as const, Icon: Banknote, title: tx.cash, sub: L('Zahlung direkt beim Fahrer', 'Pay the driver directly', 'Doğrudan şoföre ödeme') },
+                  { key: 'card' as const, Icon: CreditCard, title: tx.card, sub: 'Visa, Mastercard, Amex' },
+                ]).map(({ key, Icon, title, sub }) => {
+                  const selected = payment === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setPayment(key)}
+                      aria-pressed={selected}
+                      className={cn(
+                        'flex items-center gap-4 text-left rounded-xl px-4 py-4 transition-all',
+                        selected ? 'border-2 border-gold-400 bg-[#fffaeb]' : 'border border-gray-200 bg-white hover:border-gray-300 m-px'
+                      )}
+                    >
+                      <span className={cn('flex items-center justify-center w-12 h-12 rounded-lg shrink-0', selected ? 'bg-[#fdf0c8]' : 'bg-gray-50 border border-gray-200')}>
+                        <Icon size={24} className="text-gray-900" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-bold text-gray-900">{title}</span>
+                        <span className="block text-xs text-gray-600 mt-0.5">{sub}</span>
+                      </span>
+                      {selected ? (
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gold-400 shrink-0"><Check size={14} strokeWidth={3} className="text-primary-800" /></span>
+                      ) : (
+                        <span className="w-6 h-6 rounded-full border-2 border-gray-300 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               {payment === 'card' && (
-                <div className="space-y-3">
+                <div className="mt-4 space-y-3">
                   <CardPaymentField
                     ref={cardFieldRef}
                     locale={locale}
-                    name={name.trim() || undefined}
+                    name={name || undefined}
                     email={email.trim() || undefined}
                     errorText={errors.card}
-                    notConfiguredText={locale === 'tr' ? 'Kart ödemesi henüz yapılandırılmadı.' : locale === 'en' ? 'Card payment is not configured yet.' : 'Kartenzahlung ist noch nicht konfiguriert.'}
-                    trustText={locale === 'tr' ? 'Kart bilgileriniz şifrelenerek doğrudan ödeme sağlayıcımız Stripe\'a iletilir ve sunucularımızda asla saklanmaz.' : locale === 'en' ? 'Your card details are encrypted and transmitted directly to our payment provider Stripe — they are never stored on our servers.' : 'Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.'}
+                    notConfiguredText={L('Kartenzahlung ist noch nicht konfiguriert.', 'Card payment is not configured yet.', 'Kart ödemesi henüz yapılandırılmadı.')}
+                    trustText={L('Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.', 'Your card details are encrypted and transmitted directly to our payment provider Stripe — they are never stored on our servers.', "Kart bilgileriniz şifrelenerek doğrudan ödeme sağlayıcımız Stripe'a iletilir ve sunucularımızda asla saklanmaz.")}
                   />
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <Lock size={15} />
-                      <p className="font-semibold">
-                        {locale === 'tr' ? 'SSL şifreli — kart bilgileriniz güvende' : locale === 'en' ? 'SSL encrypted — your card data is secure' : 'SSL-verschlüsselt — Ihre Kartendaten sind sicher'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BadgeCheck size={15} />
-                      <p className="font-semibold text-blue-800">
-                        {locale === 'tr' ? '%100 Risk Yok — Güvenle Rezervasyon Yap' : locale === 'en' ? '100% No Risk — Book with Confidence' : '100% Kein Risiko — Einfach & sicher buchen'}
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 font-semibold">
+                    <Lock size={14} /> {L('SSL-verschlüsselt — Ihre Kartendaten sind sicher', 'SSL encrypted — your card data is secure', 'SSL şifreli — kart bilgileriniz güvende')}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Submit */}
+            {/* Trust row */}
+            <div className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-2 gap-4 md:flex md:flex-wrap md:justify-between md:gap-x-2 md:gap-y-3">
+              {[
+                { Icon: Ban, title: L('Kostenloser Storno', 'Free cancellation', 'Ücretsiz iptal'), sub: L('bis 3 Std. vor Abfahrt', 'up to 3 hrs before', 'kalkıştan 3 saat önce'), green: true },
+                { Icon: BadgeEuro, title: L('Festpreis garantiert', 'Fixed price guaranteed', 'Sabit fiyat garantili'), sub: L('Ohne versteckte Kosten', 'No hidden costs', 'Gizli maliyet yok'), green: true },
+                { Icon: Mail, title: L('Sofortige Bestätigung', 'Instant confirmation', 'Anında onay'), sub: L('Per E-Mail', 'By email', 'E-posta ile'), green: true },
+                { Icon: Banknote, title: L('Zahlung beim Fahrer', 'Pay the driver', 'Şoföre ödeme'), sub: L('Bar oder Karte', 'Cash or card', 'Nakit veya kart'), green: false },
+              ].map(({ title, sub, green }) => (
+                <div key={title} className="flex items-center gap-1.5 min-w-0 md:whitespace-nowrap">
+                  {green ? (
+                    <span className="flex items-center justify-center w-[22px] h-[22px] rounded-full bg-green-500 shrink-0"><Check size={13} strokeWidth={3} className="text-white" /></span>
+                  ) : (
+                    <span className="flex items-center justify-center w-6 h-6 shrink-0"><Banknote size={22} className="text-green-600" /></span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs md:text-[11.5px] font-bold text-gray-900 leading-tight">{title}</p>
+                    <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {submitState === 'error' && (
-              <div className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 text-sm">
+              <div className="mt-5 flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-xl p-4 text-sm">
                 <AlertCircle size={16} /> {tx.err_submit}
               </div>
             )}
-            {/* Trust mini-bar */}
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-green-700 font-medium justify-center">
-                <span className="inline-flex items-center gap-1"><Ban size={12} /> {locale === 'tr' ? '3 saate kadar ücretsiz iptal' : locale === 'en' ? 'Free cancellation up to 3 hrs' : 'Kostenloser Storno bis 3 Std. vor Abfahrt'}</span>
-                <span className="inline-flex items-center gap-1"><BadgeEuro size={12} /> {locale === 'tr' ? 'Sabit fiyat garantili' : locale === 'en' ? 'Fixed price guaranteed' : 'Festpreis garantiert'}</span>
-                <span className="inline-flex items-center gap-1"><Mail size={12} /> {locale === 'tr' ? 'Anında e-posta onayı' : locale === 'en' ? 'Instant email confirmation' : 'Sofortige E-Mail-Bestätigung'}</span>
-              </div>
-            </div>
 
             <button onClick={handleContinueToReview} disabled={cardSubmitting}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-lg disabled:opacity-60">
-              {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><CheckCircle size={20} /> {tx.submit}</>}
+              className="mt-6 w-full bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 text-primary-800 font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-sm disabled:opacity-60">
+              {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <>{tx.submit} <ArrowRight size={18} /></>}
             </button>
-            <p className="text-center text-xs text-gray-400">
-              {locale === 'tr' ? 'Henüz rezervasyon değil — sadece kontrol' : locale === 'en' ? 'Not a booking yet — review only' : 'Noch keine Buchung — nur Überprüfung Ihrer Angaben'}
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-gray-600">
+              <Lock size={13} /> {L('Ihre Daten sind bei uns sicher und werden verschlüsselt übertragen.', 'Your data is safe with us and transmitted encrypted.', 'Verileriniz bizde güvende ve şifreli olarak iletilir.')}
             </p>
           </div>
 
           {/* RIGHT: Booking summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
-              <div className="w-full bg-primary-600 px-5 py-4 flex items-center justify-between">
-                <h3 className="text-white font-bold">{tx.summary}</h3>
+          <div className="lg:sticky lg:top-24 lg:mt-[68px] xl:mt-[118px]">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_4px_20px_rgba(15,27,45,.08)] overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4" style={{ background: '#0f1b2d' }}>
+                <h3 className="text-white font-bold text-lg">{tx.summary}</h3>
+                <button type="button" onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-white/90 hover:text-gold-400 underline underline-offset-2">
+                  <Pencil size={14} /> {L('Ändern', 'Change', 'Değiştir')}
+                </button>
               </div>
-              <div>
-              {/* Payment trust badge */}
-              <div className="mx-4 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-center">
-                <p className="font-bold text-amber-800 text-sm">
-                  <Banknote size={14} className="inline mr-1" /> {locale === 'tr' ? 'Şoföre Ödeme de Mümkün' : locale === 'en' ? 'Pay the Driver Also Possible' : 'Zahlung auch beim Fahrer möglich'}
-                </p>
-              </div>
-              <div className="p-5 space-y-4 text-sm">
+
+              <div className="p-5">
                 {/* Vehicle */}
-                <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-                    <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.webp'} alt={vehicleLabel} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
+                <div className="flex items-center gap-4">
+                  <div className="w-[108px] h-[68px] rounded-lg overflow-hidden shrink-0 bg-gray-50">
+                    <img src={VEHICLE_IMAGES[vehicle] || '/images/kombi.webp'} alt={vehicleLabel} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{vehicleLabel}</p>
-                    <p className="text-gray-500 text-xs">{locale === 'de' ? 'Festpreis garantiert' : locale === 'en' ? 'Fixed price guaranteed' : 'Sabit fiyat garantili'}</p>
+                  <div className="min-w-0">
+                    <p className="text-lg font-extrabold text-primary-800 leading-tight">{vehicleLabel}</p>
+                    {vehicleDesc && <p className="text-sm text-gray-600 mt-0.5">{vehicleDesc}</p>}
                   </div>
                 </div>
-                {/* Route */}
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <MapPin size={14} className="text-green-500 mt-0.5 shrink-0" />
-                    <p className="text-gray-700 text-xs leading-relaxed">{addressIcon(pickup)}{pickup}</p>
+                <div className="mt-4 pb-4 border-b border-gray-100 grid grid-cols-3 gap-2 text-[12px] leading-tight text-gray-800">
+                  {[
+                    { Icon: User, a: maxPassengers ? `${L('Bis zu', 'Up to', 'En fazla')} ${maxPassengers}` : String(passengers), b: L('Passagiere', 'Passengers', 'Yolcu') },
+                    { Icon: Luggage, a: String(maxLuggage), b: L('Gepäckstücke', 'Luggage', 'Bagaj') },
+                    { Icon: Clock, a: `ca. ${effectiveDuration} Min.`, b: L('Fahrtzeit', 'Journey time', 'Süre') },
+                  ].map(({ Icon, a, b }) => (
+                    <div key={b} className="flex items-center gap-1.5 min-w-0">
+                      <Icon size={20} className="shrink-0 text-gray-900" />
+                      <div className="min-w-0"><div className="truncate">{a}</div><div className="truncate text-gray-600">{b}</div></div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Route timeline */}
+                <div className="mt-4 space-y-4">
+                  <div className="relative flex items-start gap-3">
+                    <span className="absolute left-[7px] top-5 bottom-[-18px] border-l-2 border-dotted border-gray-400" aria-hidden="true" />
+                    <span className="relative mt-1 w-4 h-4 rounded-full border-[3px] border-gold-400 bg-white shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">{L('Abholung', 'Pickup', 'Alış')}</p>
+                      <p className="text-sm text-gray-700 break-words">{addressIcon(pickup)}{pickup}</p>
+                    </div>
+                    {editBtn(changeSearch)}
                   </div>
-                  {(zwischenstoppFromErgebnisse || localZwischenstopp) && (
-                    <div className="flex items-start gap-2">
-                      <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
-                      <p className="text-blue-700 text-xs leading-relaxed font-medium flex items-center gap-1"><MapPin size={12} /> {params.get('zwischenstopp_address') || localZwischenstopp}</p>
+                  {zwStopAddress && (
+                    <div className="relative flex items-start gap-3">
+                      <span className="absolute left-[7px] top-5 bottom-[-18px] border-l-2 border-dotted border-gray-400" aria-hidden="true" />
+                      <span className="relative mt-1 w-4 h-4 rounded-full bg-blue-500 border-[3px] border-blue-100 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">{L('Zwischenstopp', 'Intermediate stop', 'Ara durak')}</p>
+                        <p className="text-sm text-gray-700 break-words">{zwStopAddress}</p>
+                      </div>
                     </div>
                   )}
-                  <div className="flex items-start gap-2">
-                    <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
-                    <p className="text-gray-700 text-xs leading-relaxed">{addressIcon(dropoff)}{dropoff}</p>
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-primary-800 shrink-0"><Plus size={10} strokeWidth={3.5} className="text-white" /></span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">{L('Ziel', 'Destination', 'Varış')}</p>
+                      <p className="text-sm font-bold text-gray-900 break-words">{dropoff}</p>
+                    </div>
+                    {editBtn(changeSearch)}
                   </div>
-                  {/* Inline route map */}
-                  {(() => {
-                    const zwStop = params.get('zwischenstopp_address') || localZwischenstopp;
-                    return (
-                      <RouteMap
-                        pickup={pickup}
-                        dropoff={dropoff}
-                        waypoint={zwStop || undefined}
-                        pickupCoords={pickupLat && pickupLng ? { lat: Number(pickupLat), lng: Number(pickupLng) } : null}
-                        dropoffCoords={dropoffLat && dropoffLng ? { lat: Number(dropoffLat), lng: Number(dropoffLng) } : null}
-                      />
-                    );
-                  })()}
                 </div>
-                {/* Info */}
-                <div className="space-y-2 text-xs text-gray-600 border-t border-gray-100 pt-4">
-                  <div className="flex items-start gap-2">
-                    <Calendar size={13} className="text-primary-400 mt-0.5" />
-                    <div>
-                      <div><span className="font-semibold text-gray-700">{locale === 'de' ? 'Hinfahrt:' : locale === 'en' ? 'Outbound:' : 'Gidiş:'}</span> {dateFormatted} · {time} Uhr</div>
-                      {tripType === 'roundtrip' && returnDate && (
-                        <div className="text-primary-500 font-medium mt-1">
-                          <span className="font-semibold">{locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}</span>{' '}
-                          {new Date(returnDate + 'T00:00:00').toLocaleDateString(
-                            locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
-                            { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }
-                          )} · {returnTime} Uhr
-                        </div>
-                      )}
+
+                <div className="[&>div]:mt-4 [&>div]:rounded-xl">
+                  <RouteMap
+                    pickup={pickup}
+                    dropoff={dropoff}
+                    waypoint={zwStopAddress || undefined}
+                    pickupCoords={pickupLat && pickupLng ? { lat: Number(pickupLat), lng: Number(pickupLng) } : null}
+                    dropoffCoords={dropoffLat && dropoffLng ? { lat: Number(dropoffLat), lng: Number(dropoffLng) } : null}
+                  />
+                </div>
+
+                {/* Details */}
+                <div className="mt-5 space-y-3.5">
+                  <div className="flex items-start gap-3">
+                    <CalendarDays size={20} className="mt-0.5 shrink-0 text-gray-900" />
+                    <div className="flex-1 min-w-0 text-sm">
+                      <p className="text-gray-900">{L('Abfahrt', 'Departure', 'Kalkış')}</p>
+                      <p className="text-gray-700">{dateFormatted} · {time} {L('Uhr', '', '')}</p>
+                    </div>
+                    {editBtn(changeSearch)}
+                  </div>
+                  {tripType === 'roundtrip' && returnDate && (
+                    <div className="flex items-start gap-3">
+                      <ArrowLeftRight size={20} className="mt-0.5 shrink-0 text-gray-900" />
+                      <div className="flex-1 min-w-0 text-sm">
+                        <p className="text-gray-900">{L('Rückfahrt', 'Return trip', 'Dönüş')}</p>
+                        <p className="text-gray-700">{returnDateLong} · {returnTime} {L('Uhr', '', '')}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-3">
+                    <User size={20} className="mt-0.5 shrink-0 text-gray-900" />
+                    <div className="flex-1 min-w-0 text-sm">
+                      <p className="text-gray-900">{L('Personen', 'Passengers', 'Kişi')}</p>
+                      <p className="text-gray-700">{passengers} {passengers === 1 ? L('Person', 'passenger', 'kişi') : L('Personen', 'passengers', 'kişi')}</p>
+                    </div>
+                    {editBtn(changeSearch)}
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPin size={20} className="mt-0.5 shrink-0 text-gray-900" />
+                    <div className="flex-1 min-w-0 text-sm">
+                      <p className="text-gray-900">{L('Strecke', 'Distance', 'Mesafe')}</p>
+                      <p className="text-gray-700">{kmText} km · ca. {effectiveDuration} Min.</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2"><Users size={13} className="text-primary-400" /><span>{passengers} {locale === 'de' ? 'Person(en)' : locale === 'en' ? 'Passenger(s)' : 'Kişi'}</span></div>
-                  <div className="flex items-center gap-2"><Car size={13} className="text-primary-400" /><span>{effectiveDistanceKm.toFixed(1)} km · ca. {effectiveDuration} Min.</span></div>
-                  {tripType === 'roundtrip' && (
-                    <div className="flex items-center gap-2 text-primary-500 font-medium">
-                      <ArrowRight size={13} className="text-primary-400" />
-                      <span>{locale === 'de' ? 'Hin- & Rückfahrt' : locale === 'en' ? 'Round trip' : 'Gidiş-Dönüş'}</span>
+                  {(childSeat || fahrradCount > 0) && (
+                    <div className="flex items-start gap-3">
+                      <Star size={20} className="mt-0.5 shrink-0 text-gray-900" />
+                      <div className="flex-1 min-w-0 text-sm">
+                        <p className="text-gray-900">Extras</p>
+                        {childSeat && <p className="text-gray-700">{buildChildSeatDetails() || L('Kindersitz', 'Child seat', 'Çocuk koltuğu')} ({L('kostenlos', 'free', 'ücretsiz')})</p>}
+                        {fahrradCount > 0 && <p className="text-gray-700">{fahrradCount}× {L('Fahrrad', 'Bicycle', 'Bisiklet')}</p>}
+                      </div>
                     </div>
                   )}
                 </div>
-                {/* Extras in sidebar */}
-                {(childSeat || fahrradCount > 0) && (
-                  <div className="space-y-1 text-xs text-gray-600 border-t border-gray-100 pt-3">
-                    {childSeat && <div className="flex items-center gap-2"><Baby size={14} className="text-gray-400" /> <span>{buildChildSeatDetails() || (locale === 'de' ? 'Kindersitz' : locale === 'en' ? 'Child seat' : 'Çocuk koltuğu')} ({locale === 'de' ? 'kostenlos' : locale === 'en' ? 'free' : 'ücretsiz'})</span></div>}
-                    {fahrradCount > 0 && <div className="flex items-center gap-2"><Bike size={14} className="text-gray-400" /> <span>{fahrradCount}× {locale === 'de' ? 'Fahrrad' : locale === 'en' ? 'Bicycle' : 'Bisiklet'}</span></div>}
-                  </div>
-                )}
+
                 {/* Price */}
-                <div className="border-t-2 border-dashed border-gray-200 pt-4">
-                  {tripType === 'roundtrip' && (
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>{locale === 'de' ? 'Hin- & Rückfahrt ohne Rabatt' : locale === 'en' ? 'Round trip without discount' : 'İndirimiz gidiş-dönüş'}</span>
-                      <span className="line-through">{formatPrice(oneWayPrice * 2)}</span>
+                <div className="mt-6 pt-5 border-t border-gray-100">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-lg font-extrabold text-primary-800 mt-4">{L('Gesamtpreis', 'Total price', 'Toplam fiyat')}</span>
+                    <div className="text-right">
+                      {autoDiscountReady && strikePrice != null && strikePrice > finalPriceWithAutoDiscount && (
+                        <div className="text-base text-gray-400 line-through">{formatPrice(strikePrice)}</div>
+                      )}
+                      {autoDiscountReady
+                        ? <div className="text-[32px] leading-tight font-extrabold text-primary-800">{formatPrice(finalPriceWithAutoDiscount)}</div>
+                        : <span className="h-9 w-28 mt-5 bg-gray-100 rounded animate-pulse inline-block" />}
                     </div>
-                  )}
-                  {(appliedPromo || (autoDiscount && !appliedPromo)) && (
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                      <span>{locale === 'de' ? 'ohne Rabatt' : locale === 'en' ? 'without discount' : 'indirimsiz'}</span>
-                      <span className="line-through">{formatPrice(price)}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-700">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</span>
-                    {autoDiscountReady
-                      ? <span className="text-2xl font-bold text-primary-600">{formatPrice(finalPriceWithAutoDiscount)}</span>
-                      : <span className="h-7 w-20 bg-gray-100 rounded animate-pulse inline-block" />}
                   </div>
-                  {tripType === 'roundtrip' && roundtripDiscount > 0 && (
-                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
-                  )}
+
                   {autoDiscount && !appliedPromo && (
                     autoDiscountRed ? (
-                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                          <Tag size={12} /> −{formatPrice(autoDiscountAmount)} · {autoDiscountLabel}
+                      <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                        <span className="inline-flex items-center bg-red-50 text-red-600 text-xs font-bold uppercase px-3 py-1.5 rounded-lg">
+                          −{formatPrice(autoDiscountAmount)} · {autoDiscountLabel}
                         </span>
-                        {autoDiscountRemaining && <span className="text-xs font-bold text-red-600">{autoDiscountRemaining}</span>}
-                        <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-bold text-red-600" />
+                        {autoDiscountRemaining && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600"><Flame size={14} className="text-red-500" /> {autoDiscountRemaining}</span>
+                        )}
+                        <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-bold text-red-600 w-full justify-end" />
                       </div>
                     ) : (
-                      <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1 flex-wrap"><Tag size={12} /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
+                      <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1 flex-wrap"><Tag size={12} /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
                         {autoDiscountRemaining && <span className="ml-1 font-semibold">· {autoDiscountRemaining}</span>}
                         <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="ml-1 font-semibold" /></p>
                     )
                   )}
+                  {tripType === 'roundtrip' && roundtripDiscount > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {L('Hin- & Rückfahrt Rabatt inklusive', 'round trip discount included', 'gidiş-dönüş indirimi dahil')}</p>
+                  )}
                   {appliedPromo && (
-                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>
+                    <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>
                   )}
                   {anfahrtCost > 0 && (
-                    <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1"><Car size={12} /> {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}</p>
+                    <p className="text-xs text-amber-600 font-medium mt-2 flex items-center gap-1"><Car size={12} /> {L('inkl.', 'incl.', 'dahil')} {formatPrice(anfahrtCost)} {L('Anfahrtskosten', 'approach fee', 'yaklaşım ücreti')}</p>
                   )}
-                  <p className="text-xs text-green-600 font-medium mt-1">✅ {locale === 'de' ? 'Inkl. Maut & Gepäck' : locale === 'en' ? 'Incl. tolls & luggage' : 'Otoyol & bagaj dahil'}</p>
-                  <p className="text-xs text-green-700 font-semibold mt-1">💳 {locale === 'de' ? 'Keine Vorauszahlung — Zahlung beim Fahrer' : locale === 'en' ? 'No prepayment — pay the driver' : 'Ön ödeme yok — sürücüye ödeme'}</p>
+
+                  <ul className="mt-5 space-y-2.5">
+                    {[
+                      L('Inkl. Maut & Gepäck', 'Incl. tolls & luggage', 'Otoyol & bagaj dahil'),
+                      L('Keine Vorauszahlung', 'No prepayment', 'Ön ödeme yok'),
+                      L('Zahlung auch beim Fahrer möglich', 'Payment to the driver also possible', 'Şoföre ödeme de mümkün'),
+                    ].map(item => (
+                      <li key={item} className="flex items-center gap-3 text-sm text-gray-800">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-500 shrink-0"><Check size={12} strokeWidth={3.5} className="text-white" /></span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-              </div>{/* end collapsible */}
             </div>
           </div>
         </div>
@@ -1701,17 +1779,17 @@ function BuchenContent() {
           reservation on <main>, so no separate spacer is needed here. */}
       <div className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] text-gray-400 leading-none">{locale === 'de' ? 'Gesamtpreis' : locale === 'en' ? 'Total price' : 'Toplam fiyat'}</p>
+          <p className="text-[11px] text-gray-400 leading-none">{L('Gesamtpreis', 'Total price', 'Toplam fiyat')}</p>
           {autoDiscountReady
-            ? <p className="text-lg font-bold text-primary-600 leading-tight">{formatPrice(finalPriceWithAutoDiscount)}</p>
+            ? <p className="text-lg font-extrabold text-primary-800 leading-tight">{formatPrice(finalPriceWithAutoDiscount)}</p>
             : <span className="h-5 w-16 bg-gray-100 rounded animate-pulse inline-block" />}
         </div>
         <button
           onClick={handleContinueToReview}
           disabled={cardSubmitting}
-          className="flex-1 max-w-[220px] bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
+          className="flex-1 max-w-[220px] bg-gold-400 hover:bg-[#f0b92b] text-primary-800 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
         >
-          {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{locale === 'de' ? 'Weiter' : locale === 'en' ? 'Continue' : 'Devam'} <ArrowRight size={16} /></>}
+          {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{L('Weiter', 'Continue', 'Devam')} <ArrowRight size={16} /></>}
         </button>
       </div>
       <SocialProofToast locale={locale} />

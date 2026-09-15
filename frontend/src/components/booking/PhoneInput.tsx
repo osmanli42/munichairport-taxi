@@ -27,6 +27,8 @@ interface Props {
   /** Turns the advisory status line off (admin kill switch). */
   statusEnabled?: boolean;
   placeholder?: string;
+  /** Smaller control for use inside a labelled field box. */
+  compact?: boolean;
 }
 
 const TX = {
@@ -63,6 +65,7 @@ export default function PhoneInput({
   errorText,
   statusEnabled = true,
   placeholder = '151 41620000',
+  compact = false,
 }: Props) {
   const tx = TX[(locale as keyof typeof TX)] ?? TX.de;
   const [open, setOpen] = useState(false);
@@ -163,7 +166,8 @@ export default function PhoneInput({
       {/* One bordered shell around both controls so it reads as a single field. */}
       <div
         className={cn(
-          'flex items-stretch rounded-xl border bg-white transition-colors',
+          'flex items-stretch border bg-white transition-colors',
+          compact ? 'rounded-lg' : 'rounded-xl',
           'focus-within:ring-2 focus-within:ring-primary-400 focus-within:border-primary-400',
           borderTone,
         )}
@@ -174,7 +178,7 @@ export default function PhoneInput({
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={tx.countryLabel}
-          className="flex items-center gap-1 pl-3 pr-2 py-3 text-sm font-medium text-gray-700 hover:text-primary-600 rounded-l-xl focus:outline-none shrink-0"
+          className={cn('flex items-center gap-1 pl-3 pr-2 text-sm font-semibold text-gray-800 hover:text-primary-600 focus:outline-none shrink-0', compact ? 'py-1.5 rounded-l-lg' : 'py-3 font-medium text-gray-700 rounded-l-xl')}
         >
           <span className="tabular-nums">{selected?.callingCode ?? '+49'}</span>
           <ChevronDown size={14} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />
@@ -190,7 +194,7 @@ export default function PhoneInput({
           onChange={e => handleInput(e.target.value)}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className="w-full min-w-0 bg-transparent px-3 py-3 text-sm text-gray-900 rounded-r-xl focus:outline-none"
+          className={cn('w-full min-w-0 bg-transparent px-3 text-gray-900 focus:outline-none', compact ? 'py-1.5 text-[15px] rounded-r-lg' : 'py-3 text-sm rounded-r-xl')}
         />
 
         {showValid && (
