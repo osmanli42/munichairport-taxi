@@ -10,8 +10,15 @@ export interface AutoDiscountRule {
   zone_scope: 'inside' | 'outside' | 'any';
   min_km: number | null;
   max_km: number | null;
-  hour_from: number | null;
-  hour_to: number | null;
+  trip_time_from: number | null; // Fahrtzeit, Minute des Tages 0–1439
+  trip_time_to: number | null;
+  booking_time_from: number | null; // Buchungszeit (deutsche Zeit), Minute des Tages 0–1439
+  booking_time_to: number | null;
+  label_de: string | null;
+  label_en: string | null;
+  label_tr: string | null;
+  show_in_banner: number;
+  show_countdown: number;
   weekday_mask: string | null; // '1,2,3' — 1=Montag … 7=Sonntag (ISO)
   booking_index_max: number | null;
   daily_max_uses: number | null;
@@ -34,7 +41,7 @@ export interface AutoDiscountInput {
   zone: 'inside' | 'outside';
   vehicleType: string | null;
   isRoundtrip: boolean;
-  pickupDateTime: Date | null; // transfer zamanı (rezervasyon anı değil)
+  pickupRaw: string | null; // transfer zamanı "YYYY-MM-DDTHH:MM" (Berlin, rezervasyon anı değil)
   customerBookingCount: number | null; // null = bilinmiyor (önizleme) → booking_index koşulu geçer sayılır
   baseTotal: number;
 }
@@ -42,6 +49,7 @@ export interface AutoDiscountInput {
 export interface AutoDiscountResult {
   rule: AutoDiscountRule;
   amount: number;
+  endsAt: string | null; // UTC ISO — echtes Ende des Buchungsfensters, sonst null
 }
 
 let cache: { rules: AutoDiscountRule[]; enabled: boolean; loadedAt: number } | null = null;
@@ -64,22 +72,104 @@ export function invalidateAutoDiscountCache(): void {
   cache = null;
 }
 
-function hourMatches(rule: AutoDiscountRule, dt: Date | null): boolean {
-  if (rule.hour_from == null || rule.hour_to == null) return true;
-  if (!dt) return false;
-  const h = dt.getHours();
-  const from = Number(rule.hour_from);
-  const to = Number(rule.hour_to);
-  if (from === to) return true; // 24 saat
-  if (from < to) return h >= from && h < to;
-  return h >= from || h < to; // gece aşan aralık, örn. 22→06
+const TZ = 'Europe/Berlin';
+
+interface LocalParts {
+  dateStr: string; // YYYY-MM-DD
+  minutes: number; // 0–1439
+  isoWeekday: number; // 1=Mo … 7=So
 }
 
-function weekdayMatches(rule: AutoDiscountRule, dt: Date | null): boolean {
+// Server läuft in UTC — alle Kalender-/Uhrzeitvergleiche müssen in deutscher Zeit passieren.
+function berlinParts(d: Date): LocalParts {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(d).map(p => [p.type, p.value])
+  );
+  const dateStr = `${parts.year}-${parts.month}-${parts.day}`;
+  return {
+    dateStr,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+    isoWeekday: isoWeekdayOf(dateStr),
+  };
+}
+
+function isoWeekdayOf(dateStr: string): number {
+  const day = new Date(`${dateStr}T12:00:00Z`).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+// Fahrtzeit kommt als naive deutsche Zeit "YYYY-MM-DDTHH:MM" — direkt aus dem String lesen,
+// nicht über new Date() (auf dem UTC-Server wäre das nur zufällig richtig). Mit Zeitzone
+// (Z/±hh:mm) wird sie nach Berlin umgerechnet.
+export function pickupParts(raw: string | null | undefined): LocalParts | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const naive = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+  if (naive) {
+    return { dateStr: naive[1], minutes: Number(naive[2]) * 60 + Number(naive[3]), isoWeekday: isoWeekdayOf(naive[1]) };
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : berlinParts(d);
+}
+
+// Minutenfenster [from, to): from === to → ganzer Tag; from > to → über Mitternacht (22:00–06:00).
+function windowMatches(from: number | null, to: number | null, minutes: number | null): boolean {
+  if (from == null || to == null) return true;
+  if (minutes == null) return false;
+  const f = Number(from);
+  const t = Number(to);
+  if (f === t) return true;
+  if (f < t) return minutes >= f && minutes < t;
+  return minutes >= f || minutes < t;
+}
+
+function weekdayMatches(rule: AutoDiscountRule, trip: LocalParts | null): boolean {
   if (!rule.weekday_mask) return true;
-  if (!dt) return false;
-  const iso = dt.getDay() === 0 ? 7 : dt.getDay(); // 1=Mo … 7=So
-  return rule.weekday_mask.split(',').map(s => parseInt(s.trim(), 10)).includes(iso);
+  if (!trip) return false;
+  return rule.weekday_mask.split(',').map(s => parseInt(s.trim(), 10)).includes(trip.isoWeekday);
+}
+
+// UTC-Zeitpunkt für eine deutsche Wandzeit (dateStr + Minute). Offset wird zweimal
+// bestimmt, damit Tage der Sommer-/Winterzeitumstellung korrekt bleiben.
+function berlinWallToUtc(dateStr: string, minutes: number): Date {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const guess = Date.UTC(y, mo - 1, d, Math.floor(minutes / 60), minutes % 60);
+  const offsetAt = (ms: number) => {
+    const p = berlinParts(new Date(ms));
+    const [py, pm, pd] = p.dateStr.split('-').map(Number);
+    return Date.UTC(py, pm - 1, pd, Math.floor(p.minutes / 60), p.minutes % 60) - ms;
+  };
+  let ms = guess - offsetAt(guess);
+  ms = guess - offsetAt(ms);
+  return new Date(ms);
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Countdown nur für echte Buchungs-Deadlines: Ende des Buchungsdatums bzw. Ende des
+// aktuellen Buchungszeit-Fensters. Fahrtdatum/-zeit sind keine Deadline zum Buchen.
+export function computeEndsAt(rule: AutoDiscountRule, now: Date = new Date()): string | null {
+  const nowP = berlinParts(now);
+  const candidates: number[] = [];
+  const be = toDateOnlyStr(rule.booking_end_date);
+  if (be) candidates.push(berlinWallToUtc(addDays(be, 1), 0).getTime());
+  const f = rule.booking_time_from;
+  const t = rule.booking_time_to;
+  if (f != null && t != null && Number(f) !== Number(t)) {
+    const to = Number(t);
+    // Über Mitternacht und aktuell im Abendteil → Ende ist morgen früh.
+    const endDate = Number(f) > to && nowP.minutes >= Number(f) ? addDays(nowP.dateStr, 1) : nowP.dateStr;
+    candidates.push(berlinWallToUtc(endDate, to).getTime());
+  }
+  const future = candidates.filter(ms => ms > now.getTime());
+  return future.length ? new Date(Math.min(...future)).toISOString() : null;
 }
 
 function listMatches(list: string | null, value: number | string | null): boolean {
@@ -133,24 +223,23 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   // tarihli bir kural güvenli tarafta kalıp eşleşmez.
   // Lokale Datumsteile (nicht toISOString/UTC) — konsistent mit hourMatches/weekdayMatches,
   // die ebenfalls getHours()/getDay() (lokale Serverzeit) verwenden.
-  const tripDateStr = input.pickupDateTime
-    ? `${input.pickupDateTime.getFullYear()}-${String(input.pickupDateTime.getMonth() + 1).padStart(2, '0')}-${String(input.pickupDateTime.getDate()).padStart(2, '0')}`
-    : null;
-  // Buchungsdatum — der Tag, an dem JETZT gebucht wird (unabhängig vom Fahrtdatum oben).
-  // Beide Datumsbereiche sind unabhängig voneinander nutzbar (auch gleichzeitig).
+  // Fahrt- und Buchungszeit immer in deutscher Zeit (Server = UTC).
+  const trip = pickupParts(input.pickupRaw);
+  const tripDateStr = trip?.dateStr ?? null;
+  // Buchungsdatum/-zeit — der Moment, in dem JETZT gebucht wird (unabhängig von der Fahrt).
+  // Beide Bereiche sind unabhängig voneinander nutzbar (auch gleichzeitig).
   const now = new Date();
-  const bookingDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const booking = berlinParts(now);
 
   const matching = rules.filter(r => {
     if (r.zone_scope !== 'any' && r.zone_scope !== input.zone) return false;
     if (r.min_km != null && input.km < Number(r.min_km)) return false;
     if (r.max_km != null && input.km > Number(r.max_km)) return false;
-    if (!hourMatches(r, input.pickupDateTime)) return false;
-    if (!weekdayMatches(r, input.pickupDateTime)) return false;
+    if (!windowMatches(r.trip_time_from, r.trip_time_to, trip?.minutes ?? null)) return false;
+    if (!weekdayMatches(r, trip)) return false;
     if (r.booking_index_max != null && input.customerBookingCount != null
         && input.customerBookingCount >= Number(r.booking_index_max)) return false;
-    if (r.max_uses != null && r.used_count >= Number(r.max_uses)) return false;
-    if (r.daily_max_uses != null && (dailyUsage[r.id] || 0) >= Number(r.daily_max_uses)) return false;
+    if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
@@ -161,10 +250,6 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       if (s && s > tripDateStr) return false;
       if (e && e < tripDateStr) return false;
     }
-    const bs = toDateOnlyStr(r.booking_start_date);
-    const be = toDateOnlyStr(r.booking_end_date);
-    if (bs && bs > bookingDateStr) return false;
-    if (be && be < bookingDateStr) return false;
     return true;
   });
 
@@ -186,7 +271,50 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   amount = Math.round(amount * 100) / 100;
   if (amount <= 0) return null;
 
-  return { rule, amount };
+  return { rule, amount, endsAt: computeEndsAt(rule, now) };
+}
+
+// Bedingungen, die nur vom Buchungsmoment abhängen (nicht von Route/Fahrzeug/Kunde) —
+// gemeinsam genutzt von der Preisberechnung und dem Startseiten-Banner.
+function vehicleIndependentMatches(r: AutoDiscountRule, booking: LocalParts, dailyUsage: Record<number, number>): boolean {
+  if (r.max_uses != null && r.used_count >= Number(r.max_uses)) return false;
+  if (r.daily_max_uses != null && (dailyUsage[r.id] || 0) >= Number(r.daily_max_uses)) return false;
+  if (!windowMatches(r.booking_time_from, r.booking_time_to, booking.minutes)) return false;
+  const bs = toDateOnlyStr(r.booking_start_date);
+  const be = toDateOnlyStr(r.booking_end_date);
+  if (bs && bs > booking.dateStr) return false;
+  if (be && be < booking.dateStr) return false;
+  return true;
+}
+
+export function ruleLabels(r: AutoDiscountRule): { de: string; en: string; tr: string } {
+  const pick = (v: string | null) => (v && v.trim() ? v.trim() : r.name);
+  return { de: pick(r.label_de), en: pick(r.label_en), tr: pick(r.label_tr) };
+}
+
+// Startseiten-Banner: aktive Regel mit show_in_banner, die JETZT buchbar ist. Route-abhängige
+// Bedingungen (km, Zone, Fahrzeug, Fahrtdatum) prüft erst die Preisberechnung.
+export async function resolveBannerDiscount(): Promise<AutoDiscountResult | null> {
+  const { rules, enabled } = await loadRules();
+  if (!enabled) return null;
+  const candidates = rules.filter(r => Number(r.show_in_banner) === 1);
+  if (candidates.length === 0) return null;
+  const now = new Date();
+  const booking = berlinParts(now);
+  const dailyUsage = await getDailyUsageCounts(candidates.filter(r => r.daily_max_uses != null).map(r => r.id));
+  const matching = candidates.filter(r => {
+    if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
+    // Fahrtdatum komplett in der Vergangenheit → Aktion ist vorbei.
+    const e = toDateOnlyStr(r.end_date);
+    if (e && e < booking.dateStr) return false;
+    return true;
+  });
+  if (matching.length === 0) return null;
+  matching.sort((a, b) =>
+    (Number(b.priority) - Number(a.priority)) || (Number(b.discount_value) - Number(a.discount_value))
+  );
+  const rule = matching[0];
+  return { rule, amount: 0, endsAt: computeEndsAt(rule, now) };
 }
 
 // Müşterinin (iptal hariç) önceki rezervasyon sayısı — "ilk N rezervasyon" koşulu için.

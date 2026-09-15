@@ -12,7 +12,7 @@ import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
-import { resolveAutoDiscount, countCustomerBookings } from '../services/autoDiscount';
+import { resolveAutoDiscount, countCustomerBookings, ruleLabels } from '../services/autoDiscount';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 
@@ -409,7 +409,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         zone: adZone,
         vehicleType: vehicle_type,
         isRoundtrip,
-        pickupDateTime: pickup_datetime ? new Date(pickup_datetime) : null,
+        pickupRaw: pickup_datetime ? String(pickup_datetime) : null,
         customerBookingCount,
         baseTotal,
       });
@@ -722,7 +722,17 @@ export interface RoutePriceEstimate {
   total_price: number;
   pflichtgebiet: boolean;
   fixed_route: boolean;
-  auto_discount?: { name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null;
+  auto_discount?: PublicAutoDiscount | null;
+}
+
+export interface PublicAutoDiscount {
+  name: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  amount: number;
+  labels: { de: string; en: string; tr: string };
+  ends_at: string | null; // nur wenn Countdown global + für die Regel aktiv
+  badge: 'red' | 'classic';
 }
 
 export interface RoutePriceOptions {
@@ -832,21 +842,23 @@ export async function computeRoutePrice(
 
   // Automatische Rabatte — Vorschau (calculate-price). Identisch mit POST /
   // Nur Anwendungsfall unterscheidet: Kundenzahl fehlt evtl. (visitorId/email optional übergeben).
-  let autoDiscount: { name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null = null;
+  let autoDiscount: PublicAutoDiscount | null = null;
   try {
     const customerCount = (options?.visitorId || options?.email)
       ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
       : null;
-    const [ignoreFloorSetting] = await query<{ setting_value: string }>(
-      "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_ignore_pg_floor'"
+    const settingRows = await query<{ setting_key: string; setting_value: string }>(
+      `SELECT setting_key, setting_value FROM settings WHERE setting_key IN
+        ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled')`
     );
-    const ignorePgFloor = ignoreFloorSetting?.setting_value === '1';
+    const adSettings = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const ignorePgFloor = adSettings.auto_discount_ignore_pg_floor === '1';
     const result = await resolveAutoDiscount({
       km,
       zone: zoneInside ? 'inside' : 'outside',
       vehicleType: vehicle_type,
       isRoundtrip: options?.tripType === 'roundtrip',
-      pickupDateTime: options?.pickupDatetime ? new Date(options.pickupDatetime) : null,
+      pickupRaw: options?.pickupDatetime || null,
       customerBookingCount: customerCount,
       baseTotal: price,
     });
@@ -856,7 +868,16 @@ export async function computeRoutePrice(
       // ignorePgFloor (Rabatte-Tab) schaltet diesen Schutz bewusst ab.
       const cappedAmount = (pgFloorValue != null && !ignorePgFloor) ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
       if (cappedAmount > 0) {
-        autoDiscount = { name: result.rule.name, type: result.rule.discount_type, value: Number(result.rule.discount_value), amount: cappedAmount };
+        const countdownOn = (adSettings.auto_discount_countdown_enabled ?? '1') === '1' && Number(result.rule.show_countdown) === 1;
+        autoDiscount = {
+          name: result.rule.name,
+          type: result.rule.discount_type,
+          value: Number(result.rule.discount_value),
+          amount: cappedAmount,
+          labels: ruleLabels(result.rule),
+          ends_at: countdownOn ? result.endsAt : null,
+          badge: (adSettings.auto_discount_red_badge_enabled ?? '1') === '1' ? 'red' : 'classic',
+        };
       }
     }
   } catch (e) {

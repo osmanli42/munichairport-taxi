@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
 
 const WEEKDAYS = [
   { v: 1, label: 'Mo' }, { v: 2, label: 'Di' }, { v: 3, label: 'Mi' }, { v: 4, label: 'Do' },
@@ -30,11 +31,38 @@ type FormState = Partial<AutoDiscount>;
 
 const emptyForm = (): FormState => ({
   name: '', discount_type: 'percent', discount_value: 10, zone_scope: 'outside', min_km: null, max_km: null,
-  hour_from: null, hour_to: null, weekday_mask: null, booking_index_max: null, daily_max_uses: null,
+  trip_time_from: null, trip_time_to: null, booking_time_from: null, booking_time_to: null,
+  weekday_mask: null, booking_index_max: null, daily_max_uses: null,
   max_uses: null, max_discount_amount: null, vehicle_types: null, trip_types: null,
   start_date: null, end_date: null, booking_start_date: null, booking_end_date: null,
   priority: 0, stackable_with_promo: 0,
+  label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1,
 });
+
+// Anzeige-Schalter (Einstellungen) — alle mit gleichem Kartenmuster im Tab.
+const DISPLAY_SETTINGS = [
+  {
+    key: 'auto_discount_red_badge_enabled', def: '1', icon: Tag,
+    title: 'Rotes Rabatt-Label auf Fahrzeugkarten',
+    desc: 'Rote Ecke + roter Preis-Badge. Aus = dezente grüne Zeile wie bisher.',
+    on: 'Rotes Rabatt-Label aktiv ✓', off: 'Rotes Rabatt-Label ausgeblendet ✓',
+  },
+  {
+    key: 'auto_discount_countdown_enabled', def: '1', icon: Timer,
+    title: 'Countdown anzeigen',
+    desc: 'Zeigt die Restzeit — nur bei Regeln mit echtem Buchungsende (Buchungsdatum bis / Buchungszeit bis). Pro Regel abschaltbar.',
+    on: 'Countdown aktiv ✓', off: 'Countdown ausgeblendet ✓',
+  },
+  {
+    key: 'auto_discount_banner_enabled', def: '0', icon: Megaphone,
+    title: 'Rabatt-Banner auf der Startseite',
+    desc: 'Roter Hinweis über dem Suchformular. Zeigt die Regel, bei der „Im Startseiten-Banner zeigen“ aktiviert ist.',
+    on: 'Startseiten-Banner aktiv ✓', off: 'Startseiten-Banner ausgeblendet ✓',
+  },
+] as const;
+
+const timeRange = (from: number | null, to: number | null) =>
+  from != null && to != null ? `${minutesToHHMM(from)}–${minutesToHHMM(to)}` : null;
 
 export default function RabatteTab({ token }: { token: string }) {
   void token;
@@ -42,6 +70,7 @@ export default function RabatteTab({ token }: { token: string }) {
   const [masterEnabled, setMasterEnabled] = useState(true);
   const [ignorePgFloor, setIgnorePgFloor] = useState(false);
   const [showInEmail, setShowInEmail] = useState(false);
+  const [displaySettings, setDisplaySettings] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -58,6 +87,7 @@ export default function RabatteTab({ token }: { token: string }) {
       setMasterEnabled((settings.auto_discounts_enabled ?? '1') === '1');
       setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
       setShowInEmail((settings.auto_discount_show_in_email ?? '0') === '1');
+      setDisplaySettings(Object.fromEntries(DISPLAY_SETTINGS.map(d => [d.key, (settings[d.key] ?? d.def) === '1'])));
       setErr('');
     } catch {
       setErr('Regeln konnten nicht geladen werden');
@@ -106,6 +136,20 @@ export default function RabatteTab({ token }: { token: string }) {
       flash(next ? 'Rabatt-Zeile wird in der Kunden-E-Mail angezeigt ✓' : 'Rabatt-Zeile in der Kunden-E-Mail ausgeblendet ✓');
     } catch {
       setShowInEmail(!next);
+      setErr('Konnte nicht gespeichert werden');
+    }
+    setSaving(false);
+  };
+
+  const toggleDisplaySetting = async (d: typeof DISPLAY_SETTINGS[number]) => {
+    const next = !displaySettings[d.key];
+    setDisplaySettings(v => ({ ...v, [d.key]: next }));
+    setSaving(true);
+    try {
+      await adminApi.updateSettings({ [d.key]: next ? '1' : '0' });
+      flash(next ? d.on : d.off);
+    } catch {
+      setDisplaySettings(v => ({ ...v, [d.key]: !next }));
       setErr('Konnte nicht gespeichert werden');
     }
     setSaving(false);
@@ -229,6 +273,26 @@ export default function RabatteTab({ token }: { token: string }) {
         <Toggle on={showInEmail} onClick={toggleShowInEmail} disabled={saving} />
       </div>
 
+      {/* Anzeige für Kunden: rotes Label, Countdown, Startseiten-Banner */}
+      {DISPLAY_SETTINGS.map(d => {
+        const Icon = d.icon;
+        const on = !!displaySettings[d.key];
+        return (
+          <div key={d.key} className="bg-white border border-gray-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={cn('w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0', on ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200')}>
+                <Icon size={18} className={on ? 'text-red-600' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">{d.title}</p>
+                <p className="text-sm text-gray-500 max-w-xl">{d.desc}</p>
+              </div>
+            </div>
+            <Toggle on={on} onClick={() => toggleDisplaySetting(d)} disabled={saving} />
+          </div>
+        );
+      })}
+
       {/* Kural listesi */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -248,19 +312,22 @@ export default function RabatteTab({ token }: { token: string }) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900">{r.name}</span>
                     <span className="text-sm font-bold text-green-700">
-                      {r.discount_type === 'fixed' ? `−${r.discount_value}€` : `%${r.discount_value}`}
+                      {formatDiscountValue(r.discount_type, Number(r.discount_value), 'de')}
                     </span>
                     <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border', zoneColor(r.zone_scope))}>{zoneLabel(r.zone_scope)}</span>
                     {r.zone_scope === 'inside' && <AlertTriangle size={14} className="text-amber-500" />}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {r.min_km != null || r.max_km != null ? `${r.min_km ?? 0}–${r.max_km ?? '∞'} km · ` : ''}
-                    {r.hour_from != null && r.hour_to != null ? `${r.hour_from}:00–${r.hour_to}:00 Uhr · ` : ''}
+                    {timeRange(r.trip_time_from, r.trip_time_to) ? `Fahrtzeit ${timeRange(r.trip_time_from, r.trip_time_to)} · ` : ''}
+                    {timeRange(r.booking_time_from, r.booking_time_to) ? `Buchungszeit ${timeRange(r.booking_time_from, r.booking_time_to)} · ` : ''}
                     {r.booking_index_max != null ? `erste ${r.booking_index_max} Buchungen · ` : ''}
                     {r.daily_max_uses != null ? `max. ${r.daily_max_uses}/Tag · ` : ''}
                     {(r.start_date || r.end_date) ? `Fahrt: ${(r.start_date ?? '…').slice(0, 10)}–${(r.end_date ?? '…').slice(0, 10)} · ` : ''}
                     {(r.booking_start_date || r.booking_end_date) ? `Buchung: ${(r.booking_start_date ?? '…').slice(0, 10)}–${(r.booking_end_date ?? '…').slice(0, 10)} · ` : ''}
                     Genutzt: {r.used_count}{r.max_uses != null ? `/${r.max_uses}` : ''}
+                    {r.show_in_banner ? ' · 📣 Banner' : ''}
+                    {r.show_countdown ? '' : ' · kein Countdown'}
                   </p>
                 </div>
                 <button onClick={() => startEdit(r)} className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
@@ -363,38 +430,6 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Uhrzeit von</label>
-                  <input type="number" min={0} max={23} value={editing.hour_from ?? ''}
-                    onChange={e => patch({ hour_from: e.target.value === '' ? null : parseInt(e.target.value) })}
-                    placeholder="jederzeit"
-                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Uhrzeit bis</label>
-                  <input type="number" min={0} max={23} value={editing.hour_to ?? ''}
-                    onChange={e => patch({ hour_to: e.target.value === '' ? null : parseInt(e.target.value) })}
-                    placeholder="jederzeit"
-                    className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Wochentage (leer = alle)</label>
-                <div className="mt-1 flex gap-1.5">
-                  {WEEKDAYS.map(d => {
-                    const active = (editing.weekday_mask || '').split(',').map(Number).includes(d.v);
-                    return (
-                      <button key={d.v} onClick={() => toggleWeekday(d.v)}
-                        className={cn('flex-1 py-2 rounded-lg text-xs font-bold border', active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-500 border-gray-200')}>
-                        {d.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrzeuge (leer = alle)</label>
                 <div className="mt-1 flex gap-1.5">
@@ -456,7 +491,7 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
-              <div>
+              <div className="border-t border-gray-100 pt-4">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtdatum</label>
                 <p className="text-xs text-gray-400 mb-1">Datum der Fahrt selbst. Für einen einzelnen Tag (z.B. 30.07.2026) beide Felder auf dasselbe Datum setzen.</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -474,6 +509,39 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtzeit (leer = ganztägig)</label>
+                <p className="text-xs text-gray-400 mb-1">Uhrzeit der Abholung. Über Mitternacht möglich, z.B. 22:00–06:00. „bis“ zählt nicht mehr mit — bis Mitternacht: 00:00.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">von</label>
+                    <input type="time" value={minutesToHHMM(editing.trip_time_from)}
+                      onChange={e => patch({ trip_time_from: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">bis</label>
+                    <input type="time" value={minutesToHHMM(editing.trip_time_to)}
+                      onChange={e => patch({ trip_time_to: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Wochentage der Fahrt (leer = alle)</label>
+                <div className="mt-1 flex gap-1.5">
+                  {WEEKDAYS.map(d => {
+                    const active = (editing.weekday_mask || '').split(',').map(Number).includes(d.v);
+                    return (
+                      <button key={d.v} onClick={() => toggleWeekday(d.v)}
+                        className={cn('flex-1 py-2 rounded-lg text-xs font-bold border', active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-500 border-gray-200')}>
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Buchungsdatum</label>
                 <p className="text-xs text-gray-400 mb-1">Datum, an dem gebucht wird (unabhängig vom Fahrtdatum oben — beide Bereiche können gleichzeitig aktiv sein).</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -488,6 +556,63 @@ export default function RabatteTab({ token }: { token: string }) {
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Buchungszeit (leer = ganztägig)</label>
+                <p className="text-xs text-gray-400 mb-1">Uhrzeit, zu der der Kunde bucht (deutsche Zeit) — z.B. „Abendaktion 18:00–00:00“. Unabhängig von der Fahrtzeit.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">von</label>
+                    <input type="time" value={minutesToHHMM(editing.booking_time_from)}
+                      onChange={e => patch({ booking_time_from: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">bis</label>
+                    <input type="time" value={minutesToHHMM(editing.booking_time_to)}
+                      onChange={e => patch({ booking_time_to: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kundentext (leer = Name)</label>
+                <p className="text-xs text-gray-400 mb-1">So heißt die Aktion für Kunden auf Fahrzeugkarte, Buchung und Banner. Max. 80 Zeichen.</p>
+                <div className="space-y-2">
+                  {(['de', 'en', 'tr'] as const).map(l => {
+                    const key = `label_${l}` as const;
+                    return (
+                      <div key={l} className="flex items-center gap-2">
+                        <span className="w-8 text-xs font-bold text-gray-400 uppercase">{l}</span>
+                        <input value={editing[key] || ''} maxLength={80}
+                          onChange={e => patch({ [key]: e.target.value || null })}
+                          placeholder={editing.name || (l === 'de' ? 'z.B. Abendrabatt' : l === 'en' ? 'e.g. Evening deal' : 'örn. Akşam indirimi')}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-400">Vorschau:</span>
+                  <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                    <Tag size={11} /> {formatDiscountValue(editing.discount_type || 'percent', Number(editing.discount_value) || 0, 'de')} · {editing.label_de || editing.name || 'Rabatt'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={!!editing.show_in_banner}
+                    onChange={e => patch({ show_in_banner: e.target.checked ? 1 : 0 })} />
+                  Im Startseiten-Banner zeigen
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={!!editing.show_countdown}
+                    onChange={e => patch({ show_countdown: e.target.checked ? 1 : 0 })} />
+                  Countdown zeigen (nur wenn Buchungsdatum/-zeit ein Ende hat)
+                </label>
               </div>
 
               <label className="flex items-center gap-2 text-sm cursor-pointer">

@@ -733,6 +733,39 @@ export async function initializeDatabase(): Promise<void> {
       // ausgewiesen — nur der Endpreis. Admin kann das im Rabatte-Tab umschalten.
       await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('auto_discount_show_in_email', '0')`);
     } catch (e: any) { console.error('auto_discount_show_in_email seed failed:', e.message); }
+    // Uhrzeit-Fenster minutengenau (0–1439), getrennt nach Fahrtzeit und Buchungszeit
+    // (Buchungszeit = deutsche Uhrzeit, zu der der Kunde bucht). Kundentexte je Sprache,
+    // Banner-/Countdown-Schalter je Regel.
+    for (const [col, def] of [
+      ['trip_time_from', 'SMALLINT DEFAULT NULL'],
+      ['trip_time_to', 'SMALLINT DEFAULT NULL'],
+      ['booking_time_from', 'SMALLINT DEFAULT NULL'],
+      ['booking_time_to', 'SMALLINT DEFAULT NULL'],
+      ['label_de', 'VARCHAR(80) DEFAULT NULL'],
+      ['label_en', 'VARCHAR(80) DEFAULT NULL'],
+      ['label_tr', 'VARCHAR(80) DEFAULT NULL'],
+      ['show_in_banner', 'TINYINT(1) NOT NULL DEFAULT 0'],
+      ['show_countdown', 'TINYINT(1) NOT NULL DEFAULT 1'],
+    ]) {
+      try {
+        await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
+      } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error(`auto_discounts.${col} migration failed:`, e.message); }
+    }
+    try {
+      // Alte ganzstündige Fahrtzeit (hour_from/hour_to) → Minuten. Speichern einer Regel setzt
+      // hour_from/hour_to auf NULL, daher läuft diese Übernahme pro Regel nur ein einziges Mal.
+      await conn.execute(`UPDATE auto_discounts SET trip_time_from = hour_from * 60, trip_time_to = hour_to * 60
+        WHERE hour_from IS NOT NULL AND hour_to IS NOT NULL AND trip_time_from IS NULL AND trip_time_to IS NULL`);
+    } catch (e: any) { console.error('auto_discounts trip_time backfill failed:', e.message); }
+    for (const [key, val] of [
+      ['auto_discount_red_badge_enabled', '1'],
+      ['auto_discount_countdown_enabled', '1'],
+      ['auto_discount_banner_enabled', '0'],
+    ]) {
+      try {
+        await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);
+      } catch (e: any) { console.error(`${key} seed failed:`, e.message); }
+    }
     // ────────────────────────────────────────────────────────────────────
 
     // Seed default prices if not exists

@@ -286,8 +286,15 @@ export interface AutoDiscount {
   zone_scope: 'inside' | 'outside' | 'any';
   min_km: number | null;
   max_km: number | null;
-  hour_from: number | null;
-  hour_to: number | null;
+  trip_time_from: number | null;
+  trip_time_to: number | null;
+  booking_time_from: number | null;
+  booking_time_to: number | null;
+  label_de: string | null;
+  label_en: string | null;
+  label_tr: string | null;
+  show_in_banner: number;
+  show_countdown: number;
   weekday_mask: string | null;
   booking_index_max: number | null;
   daily_max_uses: number | null;

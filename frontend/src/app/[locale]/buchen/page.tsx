@@ -11,6 +11,8 @@ import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/c
 import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
+import Countdown from '@/components/discount/Countdown';
+import { PublicAutoDiscount, pickDiscountLabel } from '@/components/discount/format';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -242,7 +244,8 @@ function BuchenContent() {
 
   // Automatische Rabatte (Rabatte-Tab, kein Code nötig) — Vorschau vom Server,
   // damit Anzeige und tatsächliche Abrechnung immer übereinstimmen.
-  const [autoDiscount, setAutoDiscount] = useState<{ name: string; type: 'percent' | 'fixed'; value: number; amount: number } | null>(null);
+  const [autoDiscount, setAutoDiscount] = useState<PublicAutoDiscount | null>(null);
+  const [discountRefresh, setDiscountRefresh] = useState(0); // Countdown abgelaufen → neu prüfen
   // Solange die erste Prüfung für diese Route noch läuft, wird der Preis nicht gezeigt —
   // sonst blitzt kurz der (falsche) Preis ohne Rabatt auf, bevor der Rabatt nachträglich
   // abgezogen wird ("92€ → 87€"-Flackern).
@@ -275,12 +278,15 @@ function BuchenContent() {
         .finally(() => setAutoDiscountReady(true));
     }, 0);
     return () => { clearTimeout(t); controller.abort(); };
-  }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType, email]);
+  }, [vehicle, effectiveDistanceKm, pickupLat, pickupLng, dropoffLat, dropoffLng, pickup, dropoff, date, time, tripType, email, discountRefresh]);
 
   // Backend wendet serverseitig nur den größeren von Promo-Code und Auto-Rabatt an —
   // Anzeige spiegelt das, indem der Auto-Rabatt nur ohne aktiven Promo-Code gezeigt wird.
   const autoDiscountAmount = (autoDiscount && !appliedPromo) ? autoDiscount.amount : 0;
   const finalPriceWithAutoDiscount = Math.max(0, finalPrice - autoDiscountAmount);
+  const autoDiscountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
+  const autoDiscountRed = !!autoDiscount && autoDiscount.badge !== 'classic';
+  const onAutoDiscountExpire = () => setDiscountRefresh(n => n + 1);
 
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: 'Barzahlung', card: 'Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: 'Einfache Fahrt', roundtrip: 'Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich!', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: 'Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: 'Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },
@@ -770,7 +776,7 @@ function BuchenContent() {
                     <p className="text-white/70 text-xs line-through">{formatPrice(price)}</p>
                   )}
                   {autoDiscount && !appliedPromo && (
-                    <p className="text-green-200 text-xs font-medium">−{formatPrice(autoDiscountAmount)} {autoDiscount.name}</p>
+                    <p className="text-green-200 text-xs font-medium">−{formatPrice(autoDiscountAmount)} {autoDiscountLabel}</p>
                   )}
                 </div>
               </div>
@@ -908,10 +914,13 @@ function BuchenContent() {
               {autoDiscount && !appliedPromo && (
                 <div className="px-6 pb-2">
                   <hr className="border-gray-100 mb-4" />
-                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
-                    <span className="text-green-700 font-medium">
-                      <PartyPopper size={13} className="inline mr-1" /> {autoDiscount.name}: −{formatPrice(autoDiscountAmount)}
+                  <div className={cn('flex items-center justify-between flex-wrap gap-2 rounded-xl px-4 py-3 text-sm border',
+                    autoDiscountRed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200')}>
+                    <span className={cn('font-medium', autoDiscountRed ? 'text-red-700' : 'text-green-700')}>
+                      <PartyPopper size={13} className="inline mr-1" /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
                     </span>
+                    <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire}
+                      className={cn('text-xs font-bold', autoDiscountRed ? 'text-red-600' : 'text-green-700')} />
                   </div>
                   <div className="flex items-center justify-between text-sm px-1 mt-2">
                     <span className="text-gray-500">
@@ -1651,7 +1660,17 @@ function BuchenContent() {
                     <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {locale === 'de' ? 'Rabatt inklusive' : locale === 'en' ? 'discount included' : 'indirim dahil'}</p>
                   )}
                   {autoDiscount && !appliedPromo && (
-                    <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {autoDiscount.name}: −{formatPrice(autoDiscountAmount)}</p>
+                    autoDiscountRed ? (
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                          <Tag size={12} /> −{formatPrice(autoDiscountAmount)} · {autoDiscountLabel}
+                        </span>
+                        <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-bold text-red-600" />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1 flex-wrap"><Tag size={12} /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
+                        <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="ml-1 font-semibold" /></p>
+                    )
                   )}
                   {appliedPromo && (
                     <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1"><Tag size={12} /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>

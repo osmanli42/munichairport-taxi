@@ -7,6 +7,8 @@ import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, Chevr
 import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import { DateTimeField } from '@/components/SearchBar';
+import Countdown from '@/components/discount/Countdown';
+import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel } from '@/components/discount/format';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -235,27 +237,30 @@ function ResultsContent() {
   }
 
   // Fetch prices from API
-  // Automatische Rabatte (Rabatte-Tab) — Vorschau vom Server; gleiche % für alle Fahrzeuge (bewusst einfach gehalten)
-  const [autoDiscount, setAutoDiscount] = useState<{ name: string; type: 'percent' | 'fixed'; value: number } | null>(null);
+  // Automatische Rabatte (Rabatte-Tab) — Vorschau vom Server je Fahrzeug (Regeln können auf Fahrzeuge beschränkt sein)
+  const [autoDiscounts, setAutoDiscounts] = useState<Record<string, PublicAutoDiscount | null>>({});
+  const [discountRefresh, setDiscountRefresh] = useState(0); // Countdown abgelaufen → neu laden
   useEffect(() => {
-    if (!distanceKm || distanceKm <= 0) { setAutoDiscount(null); return; }
+    if (!distanceKm || distanceKm <= 0) { setAutoDiscounts({}); return; }
     const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
-    fetch(`${API_URL}/bookings/calculate-price`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        vehicle_type: 'kombi',
-        distance_km: distanceKm,
-        pickup_address: pickup, dropoff_address: dropoff,
-        visitor_id: visitorId,
-        pickup_datetime: date && time ? `${date}T${time}` : undefined,
-        trip_type: tripType,
-      }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setAutoDiscount(d?.auto_discount ? { name: d.auto_discount.name, type: d.auto_discount.type, value: d.auto_discount.value } : null))
-      .catch(() => {});
-  }, [distanceKm, pickup, dropoff, date, time, tripType]);
+    Promise.all(VEHICLES.map(v =>
+      fetch(`${API_URL}/bookings/calculate-price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vehicle_type: v.type,
+          distance_km: distanceKm,
+          pickup_address: pickup, dropoff_address: dropoff,
+          visitor_id: visitorId,
+          pickup_datetime: date && time ? `${date}T${time}` : undefined,
+          trip_type: tripType,
+        }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => [v.type, (d?.auto_discount as PublicAutoDiscount) || null] as const)
+        .catch(() => [v.type, null] as const)
+    )).then(entries => setAutoDiscounts(Object.fromEntries(entries)));
+  }, [distanceKm, pickup, dropoff, date, time, tripType, discountRefresh]);
 
   const [apiPrices, setApiPrices] = useState<Record<string, PriceData> | null>(null);
   useEffect(() => {
@@ -637,10 +642,16 @@ function ResultsContent() {
             const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
             const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayWithToll;
             const preAutoDiscountPrice = tripPrice + anfahrtCost + plzSurcharge;
+            const autoDiscount = autoDiscounts[vehicle.type] || null;
+            const redBadge = !!autoDiscount && autoDiscount.badge !== 'classic';
+            const discountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
             const autoDiscountAmount = autoDiscount
               ? (autoDiscount.type === 'fixed' ? Math.min(autoDiscount.value, preAutoDiscountPrice) : preAutoDiscountPrice * (autoDiscount.value / 100))
               : 0;
             const finalPrice = Math.max(0, preAutoDiscountPrice - autoDiscountAmount);
+            // formatPrice rundet auf 0,50 € auf — Ersparnis aus den angezeigten Preisen ableiten,
+            // damit "alter Preis − Badge = neuer Preis" für den Kunden exakt aufgeht.
+            const shownSaving = Math.max(0, Math.ceil(preAutoDiscountPrice * 2) / 2 - Math.ceil(finalPrice * 2) / 2);
             const tooMany = passengers > (priceData.max_passengers ?? vehicle.maxPassengers);
 
             return (
@@ -648,7 +659,7 @@ function ResultsContent() {
                 key={vehicle.type}
                 className={cn(
                   'bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-200',
-                  tooMany ? 'opacity-50 border-gray-100' : vehicle.badge ? 'border-primary-400 shadow-md' : 'border-gray-100 hover:border-primary-200 hover:shadow-md'
+                  tooMany ? 'opacity-50 border-gray-100' : redBadge ? 'border-red-400 shadow-md' : vehicle.badge ? 'border-primary-400 shadow-md' : 'border-gray-100 hover:border-primary-200 hover:shadow-md'
                 )}
               >
                 {vehicle.badge && (
@@ -659,7 +670,12 @@ function ResultsContent() {
 
                 <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-5">
                   {/* Vehicle image */}
-                  <div className="shrink-0 w-full aspect-[800/344] sm:w-36 sm:h-36 sm:aspect-auto rounded-2xl overflow-hidden border border-gray-100">
+                  <div className="relative shrink-0 w-full aspect-[800/344] sm:w-36 sm:h-36 sm:aspect-auto rounded-2xl overflow-hidden border border-gray-100">
+                    {redBadge && autoDiscount && (
+                      <div className="absolute top-[20px] -left-[36px] z-10 w-[140px] -rotate-45 bg-red-600 text-white text-[13px] font-extrabold text-center py-1 shadow-md">
+                        {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)}
+                      </div>
+                    )}
                     <img src={vehicle.image} alt={getVehicleName(vehicle)} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
                   </div>
 
@@ -674,7 +690,7 @@ function ResultsContent() {
                         {isRoundtrip ? (
                           <>
                             <div className="text-xs text-gray-400 mb-0.5">{t.roundtrip_price}</div>
-                            <div className="text-sm text-gray-400 line-through">{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</div>
+                            <div className={cn('text-sm line-through', redBadge ? 'text-red-500 font-semibold' : 'text-gray-400')}>{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</div>
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                             <div className="flex items-center gap-1 justify-end mt-0.5">
                               <Tag size={11} className="text-green-600" />
@@ -685,18 +701,32 @@ function ResultsContent() {
                           <>
                             <div className="text-xs text-gray-400 mb-0.5">{t.total}</div>
                             {autoDiscount && (
-                              <div className="text-sm text-gray-400 line-through">{formatPrice(preAutoDiscountPrice)}</div>
+                              <div className={cn('text-sm line-through', redBadge ? 'text-red-500 font-semibold' : 'text-gray-400')}>{formatPrice(preAutoDiscountPrice)}</div>
                             )}
                             <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
                           </>
                         )}
-                        {autoDiscount && (
+                        {autoDiscount && redBadge && (
+                          <div className="flex flex-col items-end gap-1 mt-1.5">
+                            <span className="inline-flex items-center gap-1.5 bg-red-600 text-white text-sm font-bold px-3 py-1 rounded-2xl shadow-sm max-w-[300px] text-left leading-snug">
+                              <Tag size={13} className="shrink-0" />
+                              <span>−{formatPrice(shownSaving)} · {discountLabel}</span>
+                            </span>
+                            <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
+                              className="text-xs font-bold text-red-600" />
+                          </div>
+                        )}
+                        {autoDiscount && !redBadge && (
                           <div className="flex items-center gap-1 justify-end mt-0.5">
                             <Tag size={11} className="text-green-600" />
                             <span className="text-xs text-green-600 font-bold">
-                              {autoDiscount.type === 'fixed' ? `−${autoDiscount.value}€` : `%${autoDiscount.value}`} {autoDiscount.name}
+                              {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)} {discountLabel}
                             </span>
                           </div>
+                        )}
+                        {autoDiscount && !redBadge && autoDiscount.ends_at && (
+                          <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
+                            className="text-xs font-semibold text-green-700 justify-end w-full" />
                         )}
                         {anfahrtCost > 0 && (
                           <div className="text-xs text-amber-600 font-medium mt-0.5">

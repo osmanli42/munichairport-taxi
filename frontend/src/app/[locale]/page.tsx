@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
+const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
 import { CONTACT_INFO } from '@/lib/utils';
 
@@ -112,6 +113,11 @@ export default function HomePage() {
             {/* CTA butonlari kaldirildi; yer tutucu ayni yuksekligi koruyor (48px buton + 40px bosluk),
                 boylece altindaki arama cubugu ve sonraki bolumler yukari kaymiyor. */}
             <div className="hidden sm:block h-12 mb-10" aria-hidden="true" />
+          </div>
+
+          {/* Rabatt-Banner (Rabatte-Tab) — auf Desktop im Platzhalter über der Suche, damit nichts verrutscht */}
+          <div className="relative w-full sm:-mt-[88px] sm:mb-10 sm:h-12 sm:flex sm:items-center sm:justify-center">
+            <AutoDiscountBanner locale={locale} />
           </div>
 
           {/* Search Bar */}
