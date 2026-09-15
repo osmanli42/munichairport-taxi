@@ -659,7 +659,7 @@ function ResultsContent() {
                 key={vehicle.type}
                 className={cn(
                   'bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-200',
-                  tooMany ? 'opacity-50 border-gray-100' : redBadge ? 'border-red-400 shadow-md' : vehicle.badge ? 'border-primary-400 shadow-md' : 'border-gray-100 hover:border-primary-200 hover:shadow-md'
+                  tooMany ? 'opacity-50 border-gray-100' : vehicle.badge ? 'border-primary-400 shadow-md' : 'border-gray-100 hover:border-primary-200 hover:shadow-md'
                 )}
               >
                 {vehicle.badge && (
