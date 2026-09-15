@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import {
   MapPin, Clock, ArrowRight, Baby, Tag, Plane, CalendarDays, CalendarCheck, UsersRound, UserRound, Pencil,
-  ChevronRight, ShieldCheck, CircleCheck, ArrowLeftRight, BriefcaseBusiness, Info, CarFront, Headphones,
+  ChevronRight, ShieldCheck, CircleCheck, ArrowLeftRight, BriefcaseBusiness, Info, CarFront, Headphones, X,
 } from 'lucide-react';
 import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
-import { DateTimeField } from '@/components/SearchBar';
+import SearchBar, { DateTimeField } from '@/components/SearchBar';
 import Countdown from '@/components/discount/Countdown';
 import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
 
@@ -90,7 +90,7 @@ const VEHICLE_TAGS: Record<(typeof VEHICLES)[number]['type'], TagKey[]> = {
 
 type DesignText = {
   eyebrow: string; titleA: string; titleB: string; subtitle: string;
-  pickup: string; dropoff: string; person: string; persons: string; change: string;
+  pickup: string; dropoff: string; person: string; persons: string; change: string; closeEdit: string; editTitle: string;
   upTo: string; approx: string; journey: string;
   tags: Record<TagKey, string>;
   trustTop: { title: string; text: string }[];
@@ -101,7 +101,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
   de: {
     eyebrow: 'Ihre Buchung', titleA: 'Fahrzeug', titleB: 'wählen',
     subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck – keine versteckten Kosten.',
-    pickup: 'Abholung', dropoff: 'Ziel', person: 'Person', persons: 'Personen', change: 'Suche ändern',
+    pickup: 'Abholung', dropoff: 'Ziel', person: 'Person', persons: 'Personen', change: 'Suche ändern', closeEdit: 'Schließen', editTitle: 'Suche bearbeiten',
     upTo: 'Bis zu', approx: 'ca.', journey: 'Fahrtzeit',
     tags: { ac: 'Klimaanlage', fixed: 'Festpreis', storno: 'Kostenloser Storno bis 3 Std.', childseat: 'Kindersitz kostenlos', space: 'Viel Platz', capacity: 'Max. Kapazität' },
     trustTop: [
@@ -120,7 +120,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
   en: {
     eyebrow: 'Your booking', titleA: 'Choose your', titleB: 'vehicle',
     subtitle: 'All prices are fixed rates incl. tolls & luggage – no hidden costs.',
-    pickup: 'Pickup', dropoff: 'Destination', person: 'Passenger', persons: 'Passengers', change: 'Change search',
+    pickup: 'Pickup', dropoff: 'Destination', person: 'Passenger', persons: 'Passengers', change: 'Change search', closeEdit: 'Close', editTitle: 'Edit search',
     upTo: 'Up to', approx: 'approx.', journey: 'Journey time',
     tags: { ac: 'Air conditioning', fixed: 'Fixed price', storno: 'Free cancellation up to 3 hrs', childseat: 'Free child seat', space: 'Lots of space', capacity: 'Max. capacity' },
     trustTop: [
@@ -139,7 +139,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
   tr: {
     eyebrow: 'Rezervasyonunuz', titleA: 'Araç', titleB: 'seçin',
     subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır – gizli maliyet yok.',
-    pickup: 'Alış', dropoff: 'Varış', person: 'Kişi', persons: 'Kişi', change: 'Aramayı değiştir',
+    pickup: 'Alış', dropoff: 'Varış', person: 'Kişi', persons: 'Kişi', change: 'Aramayı değiştir', closeEdit: 'Kapat', editTitle: 'Aramayı düzenle',
     upTo: 'En fazla', approx: 'yakl.', journey: 'Yolculuk süresi',
     tags: { ac: 'Klima', fixed: 'Sabit fiyat', storno: '3 saate kadar ücretsiz iptal', childseat: 'Ücretsiz çocuk koltuğu', space: 'Geniş alan', capacity: 'Maks. kapasite' },
     trustTop: [
@@ -226,6 +226,10 @@ function ResultsContent() {
       router.replace(`/${locale}`);
     }
   }, [pickup, dropoff, locale, router, stadtfahrtEnabled, settingsLoaded]);
+
+  // Inline-Suche bearbeiten: statt zurück zur Startseite wird die Suchleiste
+  // direkt auf dieser Seite aufgeklappt; das Ergebnis aktualisiert nur die URL.
+  const [showSearchEdit, setShowSearchEdit] = useState(false);
 
   // Return trip picker state
   const [showReturnPicker, setShowReturnPicker] = useState(false);
@@ -513,21 +517,6 @@ function ResultsContent() {
 
   const dz = DESIGN[locale as 'de' | 'en' | 'tr'] || DESIGN.de;
 
-  function changeSearch() {
-    const sp = new URLSearchParams();
-    sp.set('pickup', pickup);
-    sp.set('dropoff', dropoff);
-    sp.set('date', date);
-    sp.set('time', time);
-    sp.set('passengers', passengers.toString());
-    if (isRoundtrip) {
-      sp.set('trip_type', 'roundtrip');
-      if (returnDate) sp.set('return_date', returnDate);
-      if (returnTime) sp.set('return_time', returnTime);
-    }
-    router.push(`/${locale}?${sp.toString()}`);
-  }
-
   return (
     <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
       {/* Hero — koyu lacivert zemin, sağda havalimanı fotoğrafı (kule + uçak) sola doğru laciverte soluyor */}
@@ -583,13 +572,35 @@ function ResultsContent() {
               </div>
             </div>
             <button
-              onClick={changeSearch}
+              onClick={() => setShowSearchEdit(v => !v)}
+              aria-expanded={showSearchEdit}
               className="col-span-2 lg:ml-2 flex items-center justify-center gap-2 bg-gold-400 hover:bg-[#f0b92b] text-primary-800 font-bold text-sm px-5 py-3 rounded-xl transition-colors shrink-0"
             >
-              <Pencil size={16} /> {dz.change}
+              {showSearchEdit ? <><X size={16} /> {dz.closeEdit}</> : <><Pencil size={16} /> {dz.change}</>}
             </button>
           </div>
         </div>
+
+        {/* Suche bearbeiten — dieselbe SearchBar wie auf der Startseite, bleibt aber auf dieser Seite */}
+        {showSearchEdit && (
+          <div className="mt-4 bg-white rounded-2xl border border-gray-100 shadow-[0_12px_32px_rgba(15,27,45,.10)] px-4 py-4 sm:px-5 sm:py-5">
+            <p className="text-sm font-bold text-primary-800 mb-3">{dz.editTitle}</p>
+            <SearchBar
+              initialValues={{
+                pickup, dropoff, date, time, passengers,
+                hasReturn: isRoundtrip,
+                returnDate: returnDate || undefined,
+                returnTime: returnTime || undefined,
+              }}
+              onSearchComplete={sp => {
+                const zw = params.get('zwischenstopp_address');
+                if (zw) sp.set('zwischenstopp_address', zw);
+                router.replace(`?${sp.toString()}`);
+                setShowSearchEdit(false);
+              }}
+            />
+          </div>
+        )}
 
         {/* Trust row */}
         <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-y-5">

@@ -813,6 +813,8 @@ function BuchenContent() {
     : '';
   const strikePrice = (appliedPromo || autoDiscount) ? price : tripType === 'roundtrip' ? oneWayPrice * 2 : null;
 
+  // Zurück zur Fahrzeugauswahl statt zur Startseite: dort lässt sich die Suche
+  // inline bearbeiten und der Preis wird direkt neu berechnet.
   function changeSearch() {
     const sp = new URLSearchParams();
     sp.set('pickup', pickup);
@@ -820,12 +822,16 @@ function BuchenContent() {
     sp.set('date', date);
     sp.set('time', time);
     sp.set('passengers', passengers.toString());
+    sp.set('distance_km', String(effectiveDistanceKm));
+    sp.set('duration', String(effectiveDuration));
+    sp.set('trip_type', tripType);
     if (tripType === 'roundtrip') {
-      sp.set('trip_type', 'roundtrip');
       if (returnDate) sp.set('return_date', returnDate);
       if (returnTime) sp.set('return_time', returnTime);
     }
-    router.push(`/${locale}?${sp.toString()}`);
+    if (zwStopAddress) sp.set('zwischenstopp_address', zwStopAddress);
+    const prefix = locale === 'de' ? '' : `/${locale}`;
+    router.push(`${prefix}/ergebnisse?${sp.toString()}`);
   }
 
   const sectionHead = (Icon: typeof User, title: string, sub: string) => (
