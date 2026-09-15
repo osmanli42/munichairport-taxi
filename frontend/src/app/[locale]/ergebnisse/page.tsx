@@ -3,7 +3,10 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Baby, Shield, Tag } from 'lucide-react';
+import {
+  MapPin, Clock, ArrowRight, Baby, Tag, Plane, CalendarDays, CalendarCheck, UsersRound, UserRound, Pencil,
+  ChevronRight, ShieldCheck, CircleCheck, ArrowLeftRight, BriefcaseBusiness, Info, CarFront, Headphones,
+} from 'lucide-react';
 import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import { DateTimeField } from '@/components/SearchBar';
@@ -76,6 +79,83 @@ const VEHICLES = [
     color: 'border-gray-200',
   },
 ];
+
+type TagKey = 'ac' | 'fixed' | 'storno' | 'childseat' | 'space' | 'capacity';
+
+const VEHICLE_TAGS: Record<(typeof VEHICLES)[number]['type'], TagKey[]> = {
+  kombi: ['ac', 'fixed', 'storno', 'childseat'],
+  van: ['ac', 'space', 'fixed', 'childseat'],
+  grossraumtaxi: ['ac', 'capacity', 'fixed', 'storno'],
+};
+
+type DesignText = {
+  eyebrow: string; titleA: string; titleB: string; subtitle: string;
+  pickup: string; dropoff: string; person: string; persons: string; change: string;
+  upTo: string; approx: string; journey: string;
+  tags: Record<TagKey, string>;
+  trustTop: { title: string; text: string }[];
+  trustBottom: { title: string; text: string }[];
+};
+
+const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
+  de: {
+    eyebrow: 'Ihre Buchung', titleA: 'Fahrzeug', titleB: 'wählen',
+    subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck – keine versteckten Kosten.',
+    pickup: 'Abholung', dropoff: 'Ziel', person: 'Person', persons: 'Personen', change: 'Suche ändern',
+    upTo: 'Bis zu', approx: 'ca.', journey: 'Fahrtzeit',
+    tags: { ac: 'Klimaanlage', fixed: 'Festpreis', storno: 'Kostenloser Storno bis 3 Std.', childseat: 'Kindersitz kostenlos', space: 'Viel Platz', capacity: 'Max. Kapazität' },
+    trustTop: [
+      { title: 'Festpreisgarantie', text: 'Keine versteckten Kosten' },
+      { title: 'Kindersitz kostenlos', text: 'Auf Anfrage' },
+      { title: 'Sofortbestätigung', text: 'Direkt per E-Mail' },
+      { title: 'Kostenlose Stornierung', text: 'Bis 3 Stunden vorher' },
+    ],
+    trustBottom: [
+      { title: 'Sicher & zuverlässig', text: 'Ihr Transfer in besten Händen' },
+      { title: 'Moderne Fahrzeuge', text: 'Komfortabel & klimatisiert' },
+      { title: 'Pünktlich am Ziel', text: 'Wir überwachen Ihren Flug' },
+      { title: 'Persönlicher Service', text: 'Wir sind 24/7 für Sie da' },
+    ],
+  },
+  en: {
+    eyebrow: 'Your booking', titleA: 'Choose your', titleB: 'vehicle',
+    subtitle: 'All prices are fixed rates incl. tolls & luggage – no hidden costs.',
+    pickup: 'Pickup', dropoff: 'Destination', person: 'Passenger', persons: 'Passengers', change: 'Change search',
+    upTo: 'Up to', approx: 'approx.', journey: 'Journey time',
+    tags: { ac: 'Air conditioning', fixed: 'Fixed price', storno: 'Free cancellation up to 3 hrs', childseat: 'Free child seat', space: 'Lots of space', capacity: 'Max. capacity' },
+    trustTop: [
+      { title: 'Fixed price guarantee', text: 'No hidden costs' },
+      { title: 'Free child seat', text: 'On request' },
+      { title: 'Instant confirmation', text: 'Directly by email' },
+      { title: 'Free cancellation', text: 'Up to 3 hours before' },
+    ],
+    trustBottom: [
+      { title: 'Safe & reliable', text: 'Your transfer in the best hands' },
+      { title: 'Modern vehicles', text: 'Comfortable & air-conditioned' },
+      { title: 'On time', text: 'We monitor your flight' },
+      { title: 'Personal service', text: 'We are here for you 24/7' },
+    ],
+  },
+  tr: {
+    eyebrow: 'Rezervasyonunuz', titleA: 'Araç', titleB: 'seçin',
+    subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır – gizli maliyet yok.',
+    pickup: 'Alış', dropoff: 'Varış', person: 'Kişi', persons: 'Kişi', change: 'Aramayı değiştir',
+    upTo: 'En fazla', approx: 'yakl.', journey: 'Yolculuk süresi',
+    tags: { ac: 'Klima', fixed: 'Sabit fiyat', storno: '3 saate kadar ücretsiz iptal', childseat: 'Ücretsiz çocuk koltuğu', space: 'Geniş alan', capacity: 'Maks. kapasite' },
+    trustTop: [
+      { title: 'Sabit fiyat garantisi', text: 'Gizli maliyet yok' },
+      { title: 'Ücretsiz çocuk koltuğu', text: 'Talep üzerine' },
+      { title: 'Anında onay', text: 'Doğrudan e-posta ile' },
+      { title: 'Ücretsiz iptal', text: '3 saat öncesine kadar' },
+    ],
+    trustBottom: [
+      { title: 'Güvenli & güvenilir', text: 'Transferiniz emin ellerde' },
+      { title: 'Modern araçlar', text: 'Konforlu & klimalı' },
+      { title: 'Zamanında varış', text: 'Uçuşunuzu takip ediyoruz' },
+      { title: 'Kişisel hizmet', text: '7/24 yanınızdayız' },
+    ],
+  },
+};
 
 interface PriceData {
   base_price: number;
@@ -431,71 +511,110 @@ function ResultsContent() {
     );
   }
 
+  const dz = DESIGN[locale as 'de' | 'en' | 'tr'] || DESIGN.de;
+
+  function changeSearch() {
+    const sp = new URLSearchParams();
+    sp.set('pickup', pickup);
+    sp.set('dropoff', dropoff);
+    sp.set('date', date);
+    sp.set('time', time);
+    sp.set('passengers', passengers.toString());
+    if (isRoundtrip) {
+      sp.set('trip_type', 'roundtrip');
+      if (returnDate) sp.set('return_date', returnDate);
+      if (returnTime) sp.set('return_time', returnTime);
+    }
+    router.push(`/${locale}?${sp.toString()}`);
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar - route summary */}
-      <div className="bg-primary-700 text-white sticky top-16 z-40 shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button onClick={() => {
-              const sp = new URLSearchParams();
-              sp.set('pickup', pickup);
-              sp.set('dropoff', dropoff);
-              sp.set('date', date);
-              sp.set('time', time);
-              sp.set('passengers', passengers.toString());
-              if (isRoundtrip) {
-                sp.set('trip_type', 'roundtrip');
-                if (returnDate) sp.set('return_date', returnDate);
-                if (returnTime) sp.set('return_time', returnTime);
-              }
-              router.push(`/${locale}?${sp.toString()}`);
-            }} className="flex items-center gap-1 text-primary-200 hover:text-white transition-colors mr-2 shrink-0">
-              <ChevronLeft size={16} /> {t.back}
-            </button>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <MapPin size={14} className="text-green-400" />
-              <span className="font-medium max-w-[160px] truncate">{addressIcon(pickup)}{pickup}</span>
-            </div>
-            <ArrowRight size={14} className="text-primary-300 shrink-0" />
-            <div className="flex items-center gap-1.5 shrink-0">
-              <MapPin size={14} className="text-red-400" />
-              <span className="font-medium max-w-[160px] truncate">{addressIcon(dropoff)}{dropoff}</span>
-            </div>
-            <div className="flex items-center gap-3 ml-auto text-primary-200 text-xs shrink-0">
-              <span className="flex items-center gap-1"><Calendar size={12} /> {dateFormatted} · {time}</span>
-              {isRoundtrip && <span className="text-gold-400 font-semibold">⇄ {t.roundtrip_price}</span>}
-              <span className="flex items-center gap-1"><Users size={12} /> {passengers}</span>
-              <span className="font-medium text-white">{distanceKm.toFixed(1)} km · {duration} Min.</span>
-            </div>
+    <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
+      {/* Hero — koyu lacivert zemin, sağda havalimanı fotoğrafı (kule + uçak) sola doğru laciverte soluyor */}
+      <section className="relative overflow-hidden text-white" style={{ background: '#0f1b2d' }}>
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute inset-y-0 right-0 w-full md:w-[72%]">
+            <img src="/images/hero-airport.webp" alt="" width={1774} height={887} className="w-full h-full object-cover" style={{ objectPosition: '82% 18%' }} />
+            <div className="absolute inset-0 hidden md:block" style={{ background: 'linear-gradient(to right, #0f1b2d 0%, rgba(15,27,45,.82) 22%, rgba(15,27,45,.35) 55%, rgba(15,27,45,.08) 100%)' }} />
+            <div className="absolute inset-0 md:hidden" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.92) 0%, rgba(15,27,45,.75) 60%, rgba(15,27,45,.55) 100%)' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(15,27,45,.85) 0%, rgba(15,27,45,0) 45%)' }} />
           </div>
         </div>
-      </div>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20 md:pt-10 md:pb-24">
+          <p className="text-xs md:text-sm font-bold tracking-[.2em] uppercase text-white/90">{dz.eyebrow}</p>
+          <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+            {dz.titleA} <span className="text-gold-400">{dz.titleB}</span>
+          </h1>
+          <p className="mt-3 text-sm md:text-base text-white/90">{dz.subtitle}</p>
+        </div>
+      </section>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-primary-700">{t.title}</h1>
-          <p className="text-gray-500 text-sm mt-1">{t.subtitle}</p>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        {/* Search summary card — overlaps the hero */}
+        <div className="relative z-10 -mt-12 md:-mt-14 bg-white rounded-2xl border border-gray-100 shadow-[0_12px_32px_rgba(15,27,45,.10)] px-4 py-4 md:px-6 md:py-5">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:flex lg:items-center lg:gap-0">
+            <div className="col-span-2 sm:col-span-1 flex items-center gap-3 min-w-0 lg:flex-1 lg:pr-4">
+              <MapPin size={22} className="shrink-0 text-gold-500" fill="#f6c644" stroke="#b7860b" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs text-gray-500">{dz.pickup}</div>
+                <div className="text-sm font-bold text-gray-900 truncate">{addressIcon(pickup)}{pickup}</div>
+              </div>
+              <ChevronRight size={16} className="hidden lg:block shrink-0 text-gray-400" />
+            </div>
+            <div className="col-span-2 sm:col-span-1 flex items-center gap-3 min-w-0 lg:flex-1 lg:px-4">
+              <Plane size={22} className="shrink-0 text-gray-900" />
+              <div className="min-w-0">
+                <div className="text-xs text-gray-500">{dz.dropoff}</div>
+                <div className="text-sm font-bold text-gray-900 truncate">{dropoff}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 min-w-0 lg:flex-none lg:px-5 lg:border-l lg:border-gray-200 lg:whitespace-nowrap">
+              <CalendarDays size={22} className="shrink-0 text-gray-900" />
+              <div className="min-w-0 text-sm text-gray-900 leading-snug">
+                <div className="truncate lg:overflow-visible">{dateFormatted}</div>
+                <div>{time}{isRoundtrip && <span className="ml-1.5 text-xs font-semibold text-gold-600">⇄ {t.roundtrip_price}</span>}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 min-w-0 lg:flex-none lg:px-5 lg:border-l lg:border-gray-200 lg:whitespace-nowrap">
+              <UsersRound size={22} className="shrink-0 text-gray-900" />
+              <div className="min-w-0 text-sm text-gray-900 leading-snug">
+                <div>{passengers} {passengers === 1 ? dz.person : dz.persons}</div>
+                <div className="text-gray-600">{distanceKm.toFixed(1).replace('.', locale === 'en' ? '.' : ',')} km · {duration} Min.</div>
+              </div>
+            </div>
+            <button
+              onClick={changeSearch}
+              className="col-span-2 lg:ml-2 flex items-center justify-center gap-2 bg-gold-400 hover:bg-[#f0b92b] text-primary-800 font-bold text-sm px-5 py-3 rounded-xl transition-colors shrink-0"
+            >
+              <Pencil size={16} /> {dz.change}
+            </button>
+          </div>
         </div>
 
-        {/* Trust badges */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        {/* Trust row */}
+        <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-y-5">
           {[
-            { icon: <Shield size={14} />, text: locale === 'de' ? 'Festpreisgarantie' : locale === 'en' ? 'Fixed price guarantee' : 'Sabit fiyat garantisi' },
-            { icon: <Baby size={14} />, text: locale === 'de' ? 'Kindersitz kostenlos' : locale === 'en' ? 'Free child seat' : 'Ücretsiz çocuk koltuğu' },
-{ icon: <CheckCircle size={14} />, text: locale === 'de' ? 'Sofortbestätigung' : locale === 'en' ? 'Instant confirmation' : 'Anında onay' },
-          ].map(b => (
-            <div key={b.text} className="flex items-center gap-1.5 bg-white text-gray-600 text-xs px-3 py-2 rounded-full shadow-sm border border-gray-100">
-              <span className="text-primary-500">{b.icon}</span> {b.text}
+            { Icon: ShieldCheck, ...dz.trustTop[0] },
+            { Icon: Baby, ...dz.trustTop[1] },
+            { Icon: CalendarCheck, ...dz.trustTop[2] },
+            { Icon: CircleCheck, ...dz.trustTop[3] },
+          ].map(({ Icon, title, text }, i) => (
+            <div key={title} className={cn('flex items-center gap-2.5 sm:gap-3 px-1 lg:px-3', i > 0 && 'lg:border-l lg:border-gray-200', i === 0 && 'lg:pl-1')}>
+              <span className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full shrink-0" style={{ background: '#fdf0c8' }}>
+                <Icon size={18} className="text-primary-800" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[13px] sm:text-sm font-bold text-gray-900 leading-tight lg:whitespace-nowrap [overflow-wrap:anywhere] sm:[overflow-wrap:normal]">{title}</div>
+                <div className="text-xs text-gray-500">{text}</div>
+              </div>
             </div>
           ))}
         </div>
 
         {/* Pickers (full width, shown one at a time) */}
         {showReturnPicker && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3">
-            <p className="text-sm font-semibold text-primary-700">
+          <div className="mt-8 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 shadow-sm">
+            <p className="text-sm font-bold text-primary-800">
               {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
             </p>
             <div className="inline-block border border-gray-300 rounded-lg bg-white">
@@ -510,7 +629,7 @@ function ResultsContent() {
               />
             </div>
             <div className="flex gap-2">
-              <button onClick={addReturnTrip} disabled={!localReturnDate} className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              <button onClick={addReturnTrip} disabled={!localReturnDate} className="bg-gold-400 hover:bg-[#f0b92b] disabled:opacity-40 text-primary-800 text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
                 {locale === 'de' ? 'Bestätigen' : locale === 'en' ? 'Confirm' : 'Onayla'}
               </button>
               <button onClick={() => setShowReturnPicker(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
@@ -520,12 +639,12 @@ function ResultsContent() {
           </div>
         )}
         {showZwischenstoppPicker && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-4 mb-4 space-y-3 relative">
-            <p className="text-sm font-semibold text-primary-700">
+          <div className="mt-8 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 relative shadow-sm">
+            <p className="text-sm font-bold text-primary-800">
               {locale === 'de' ? 'Zwischenstopp hinzufügen' : locale === 'en' ? 'Add intermediate stop' : 'Ara durak ekle'}
             </p>
             <div className="relative">
-              <input type="text" value={zwischenstoppInput} onChange={e => setZwischenstoppInput(e.target.value)} placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 bg-white" autoFocus />
+              <input type="text" value={zwischenstoppInput} onChange={e => setZwischenstoppInput(e.target.value)} placeholder={locale === 'de' ? 'Adresse eingeben...' : locale === 'en' ? 'Enter address...' : 'Adres girin...'} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400 bg-white" autoFocus />
               {zwischenstoppSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                   {zwischenstoppSuggestions.map((s: any) => (
@@ -548,12 +667,12 @@ function ResultsContent() {
 
         {/* Rückfahrt + Zwischenstopp — always same row (active banners + add buttons) */}
         {!showReturnPicker && !showZwischenstoppPicker && (
-          <div className="flex gap-3 mb-4">
+          <div className={cn('mt-8 grid grid-cols-1 gap-4', zwischenstoppEnabled && 'sm:grid-cols-2')}>
             {/* Rückfahrt: active banner OR add button */}
             {isRoundtrip ? (
-              <div className="flex items-center justify-between flex-1 bg-primary-50 border border-primary-200 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 text-sm text-primary-700 font-medium truncate">
-                  <span>⇄</span>
+              <div className="flex items-center justify-between bg-white border border-gray-300 rounded-xl px-5 min-h-[56px]">
+                <div className="flex items-center gap-2.5 text-sm text-primary-800 font-semibold min-w-0">
+                  <ArrowLeftRight size={18} className="shrink-0" />
                   <span className="truncate">
                     {locale === 'de' ? 'Rückfahrt:' : locale === 'en' ? 'Return:' : 'Dönüş:'}{' '}
                     {new Date(returnDate + 'T00:00:00').toLocaleDateString(
@@ -562,42 +681,44 @@ function ResultsContent() {
                     )} · {returnTime}
                   </span>
                 </div>
-                <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
+                <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-semibold ml-2 shrink-0">
                   × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setShowReturnPicker(true)}
-                className="flex items-center gap-2 flex-1 border-2 border-dashed border-primary-300 hover:border-primary-500 text-primary-600 hover:text-primary-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+                className="relative flex items-center justify-center gap-2.5 bg-white border border-gray-300 hover:border-primary-400 hover:shadow-sm rounded-xl px-10 min-h-[56px] text-primary-800 transition-all"
               >
-                <span className="text-lg">⇄</span>
-                {locale === 'de' ? '+ Rückfahrt' : locale === 'en' ? '+ Return trip' : '+ Dönüş'}
-                <span className="text-xs font-normal text-green-600 ml-1">
-                  ({locale === 'de' ? '5% Rabatt' : locale === 'en' ? '5% discount' : '%5 indirim'})
+                <ArrowLeftRight size={20} className="shrink-0" />
+                <span className="text-base font-bold">{locale === 'de' ? '+ Rückfahrt' : locale === 'en' ? '+ Return trip' : '+ Dönüş'}</span>
+                <span className="text-xs font-medium text-gray-800 px-2 py-0.5 rounded-md" style={{ background: '#fdf0c8' }}>
+                  {locale === 'de' ? '5% Rabatt' : locale === 'en' ? '5% discount' : '%5 indirim'}
                 </span>
+                <ChevronRight size={18} className="absolute right-5 text-gray-900" />
               </button>
             )}
 
             {/* Zwischenstopp: active banner OR add button */}
             {zwischenstoppEnabled && (
               zwischenstoppAddress ? (
-                <div className="flex items-center justify-between flex-1 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm text-blue-700 font-medium truncate">
-                    <MapPin size={14} className="shrink-0" />
+                <div className="flex items-center justify-between bg-white border border-gray-300 rounded-xl px-5 min-h-[56px]">
+                  <div className="flex items-center gap-2.5 text-sm text-primary-800 font-semibold min-w-0">
+                    <MapPin size={18} className="shrink-0" />
                     <span className="truncate">{zwischenstoppAddress}</span>
                   </div>
-                  <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 shrink-0">
+                  <button onClick={removeZwischenstopp} className="text-xs text-red-500 hover:text-red-700 font-semibold ml-2 shrink-0">
                     × {locale === 'de' ? 'Entfernen' : locale === 'en' ? 'Remove' : 'Kaldır'}
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setShowZwischenstoppPicker(true)}
-                  className="flex items-center gap-2 flex-1 border-2 border-dashed border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold transition-colors justify-center"
+                  className="relative flex items-center justify-center gap-2.5 border-2 border-dashed border-gray-300 hover:border-primary-400 rounded-xl px-10 min-h-[56px] text-primary-800 transition-colors"
                 >
-                  <MapPin size={14} className="shrink-0" />
-                  {locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}
+                  <MapPin size={20} className="shrink-0" />
+                  <span className="text-base font-bold">{locale === 'de' ? '+ Zwischenstopp' : locale === 'en' ? '+ Intermediate stop' : '+ Ara durak'}</span>
+                  <ChevronRight size={18} className="absolute right-5 text-gray-400" />
                 </button>
               )
             )}
@@ -605,7 +726,7 @@ function ResultsContent() {
         )}
 
         {/* Vehicle cards */}
-        <div className="space-y-4">
+        <div className="mt-6 space-y-5">
           {VEHICLES.map(vehicle => {
             const priceData = apiPrices[vehicle.type];
             if (!priceData) return null;
@@ -654,151 +775,132 @@ function ResultsContent() {
             // damit "alter Preis − Badge = neuer Preis" für den Kunden exakt aufgeht.
             const shownSaving = Math.max(0, Math.ceil(preAutoDiscountPrice * 2) / 2 - Math.ceil(finalPrice * 2) / 2);
             const tooMany = passengers > (priceData.max_passengers ?? vehicle.maxPassengers);
+            const maxPax = priceData.max_passengers ?? vehicle.maxPassengers;
+            const maxLug = priceData.max_luggage ?? vehicle.maxLuggage;
 
             return (
               <div
                 key={vehicle.type}
                 className={cn(
-                  'bg-white rounded-2xl shadow-sm border-2 overflow-hidden transition-all duration-200',
-                  tooMany ? 'opacity-50 border-gray-100' : vehicle.badge ? 'border-primary-400 shadow-md' : 'border-gray-100 hover:border-primary-200 hover:shadow-md'
+                  'relative bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(15,27,45,.05)] overflow-hidden transition-all duration-200',
+                  tooMany ? 'opacity-60' : 'hover:shadow-[0_8px_24px_rgba(15,27,45,.10)]'
                 )}
               >
-                {vehicle.badge && (
-                  <div className="bg-primary-600 text-white text-xs font-bold text-center py-1.5 tracking-widest">
-                    ⭐ {t.badge_popular} ⭐
+                {redBadge && autoDiscount && (
+                  <div className="absolute top-[20px] -left-[38px] z-10 w-[140px] -rotate-45 bg-red-600 text-white text-xs font-extrabold text-center py-1.5 shadow-md">
+                    {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)}
                   </div>
                 )}
 
-                <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-5">
+                <div className="p-4 sm:p-5 flex flex-col md:grid md:grid-cols-[190px_minmax(0,1fr)_210px] gap-5 md:gap-6 md:items-center">
                   {/* Vehicle image */}
-                  <div className="relative shrink-0 w-full aspect-[800/344] sm:w-36 sm:h-36 sm:aspect-auto rounded-2xl overflow-hidden border border-gray-100">
-                    {redBadge && autoDiscount && (
-                      <div className="absolute top-[16px] -left-[34px] z-10 w-[125px] -rotate-45 bg-red-600 text-white text-[11px] font-extrabold text-center py-0.5 shadow-md">
-                        {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)}
-                      </div>
-                    )}
+                  <div className="w-full aspect-[800/344] md:aspect-auto md:h-[150px] rounded-xl overflow-hidden bg-gray-50">
                     <img src={vehicle.image} alt={getVehicleName(vehicle)} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
                   </div>
 
                   {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between flex-wrap gap-3">
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">{getVehicleName(vehicle)}</h2>
-                        <p className="text-gray-500 text-sm mt-0.5">{getVehicleDesc(vehicle)}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {isRoundtrip ? (
-                          <>
-                            <div className="text-xs text-gray-400 mb-0.5">{t.roundtrip_price}</div>
-                            <div className={cn('text-sm line-through', redBadge ? 'text-red-500 font-semibold' : 'text-gray-400')}>{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</div>
-                            <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
-                            <div className="flex items-center gap-1 justify-end mt-0.5">
-                              <Tag size={11} className="text-green-600" />
-                              <span className="text-xs text-green-600 font-bold">{discount}% {t.discount}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-xs text-gray-400 mb-0.5">{t.total}</div>
-                            {autoDiscount && (
-                              <div className={cn('text-sm line-through', redBadge ? 'text-red-500 font-semibold' : 'text-gray-400')}>{formatPrice(preAutoDiscountPrice)}</div>
-                            )}
-                            <div className="text-3xl font-bold text-primary-600">{formatPrice(finalPrice)}</div>
-                          </>
-                        )}
-                        {autoDiscount && redBadge && (
-                          <div className="flex flex-col items-end gap-1 mt-1.5">
-                            <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full max-w-[260px] text-left leading-snug">
-                              <Tag size={11} className="shrink-0" />
-                              <span>−{formatPrice(shownSaving)} · {discountLabel}</span>
-                            </span>
-                            {remainingText && (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
-                                <Users size={12} className="shrink-0" /> {remainingText}
-                              </span>
-                            )}
-                            <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
-                              className="text-xs font-bold text-red-600" />
-                          </div>
-                        )}
-                        {autoDiscount && !redBadge && (
-                          <div className="flex items-center gap-1 justify-end mt-0.5">
-                            <Tag size={11} className="text-green-600" />
-                            <span className="text-xs text-green-600 font-bold">
-                              {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)} {discountLabel}
-                            </span>
-                          </div>
-                        )}
-                        {autoDiscount && !redBadge && remainingText && (
-                          <div className="text-xs font-semibold text-green-700 mt-0.5">{remainingText}</div>
-                        )}
-                        {autoDiscount && !redBadge && autoDiscount.ends_at && (
-                          <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
-                            className="text-xs font-semibold text-green-700 justify-end w-full" />
-                        )}
-                        {anfahrtCost > 0 && (
-                          <div className="text-xs text-amber-600 font-medium mt-0.5">
-                            {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}
-                          </div>
-                        )}
-                        <div className="text-xs text-green-600 font-semibold mt-0.5">{t.fixed}</div>
-                        <div className="text-xs text-green-700 font-semibold mt-0.5">
-                          💳 {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-extrabold text-primary-800 tracking-tight">{getVehicleName(vehicle)}</h2>
+                    <p className="text-gray-500 text-[15px] mt-0.5">{getVehicleDesc(vehicle)}</p>
 
                     {/* Capacity row */}
-                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">
-                      <div className="flex items-center gap-1.5">
-                        <Users size={15} className="text-primary-400" />
-                        <span>{locale === 'de' ? 'Bis zu' : locale === 'en' ? 'Up to' : 'Max.'} {priceData.max_passengers ?? vehicle.maxPassengers} {t.persons}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Luggage size={15} className="text-primary-400" />
-                        <span>{priceData.max_luggage ?? vehicle.maxLuggage} {t.luggage}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={15} className="text-primary-400" />
-                        <span>{locale === 'de' ? 'ca.' : 'approx.'} {duration} {t.duration_label}</span>
-                      </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {[
+                        { Icon: UserRound, a: `${dz.upTo} ${maxPax}`, b: t.persons },
+                        { Icon: BriefcaseBusiness, a: String(maxLug), b: t.luggage },
+                        { Icon: Clock, a: `${dz.approx} ${duration} Min.`, b: dz.journey },
+                      ].map(({ Icon, a, b }) => (
+                        <div key={b} className="flex items-center gap-2 border border-gray-200 rounded-xl px-2.5 py-2">
+                          <Icon size={19} className="shrink-0 text-gray-900" />
+                          <div className="text-[12px] leading-tight text-gray-800 whitespace-nowrap">
+                            <div>{a}</div>
+                            <div className="text-gray-600">{b}</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     {/* Feature tags */}
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {vehicle.features.map(f => (
-                        <span key={f} className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
-                          <CheckCircle size={10} /> {f}
-                        </span>
+                    <div className="flex flex-wrap gap-1.5 mt-4">
+                      {VEHICLE_TAGS[vehicle.type].map(k => (
+                        <span key={k} className="text-[11px] text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md whitespace-nowrap">{dz.tags[k]}</span>
                       ))}
-                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
-                        <CheckCircle size={10} /> {locale === 'de' ? 'Festpreis' : locale === 'en' ? 'Fixed price' : 'Sabit fiyat'}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
-                        <CheckCircle size={10} /> {locale === 'de' ? 'Kostenloser Storno bis 3 Std.' : locale === 'en' ? 'Free cancellation up to 3 hrs' : '3 saate kadar ücretsiz iptal'}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
-                        <CheckCircle size={10} /> {locale === 'de' ? 'Kindersitz kostenlos' : locale === 'en' ? 'Child seat free' : 'Ücretsiz çocuk koltuğu'}
-                      </span>
                       {isRoundtrip && discount > 0 && (
-                        <span className="flex items-center gap-1 text-xs bg-gold-50 text-gold-700 border border-gold-200 px-2.5 py-1 rounded-full font-semibold">
-                          <Tag size={10} /> {discount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt' : locale === 'en' ? 'Round trip discount' : 'Gidiş-dönüş indirimi'}
+                        <span className="flex items-center gap-1 text-xs text-gray-800 px-3 py-1.5 rounded-lg font-semibold" style={{ background: '#fdf0c8' }}>
+                          <Tag size={11} /> {discount}% {locale === 'de' ? 'Hin- & Rückfahrt Rabatt' : locale === 'en' ? 'Round trip discount' : 'Gidiş-dönüş indirimi'}
                         </span>
                       )}
                     </div>
+                  </div>
 
-                    {/* CTA */}
-                    <div className="mt-4">
+                  {/* Price + CTA */}
+                  <div className="flex flex-col items-stretch md:items-end border-t border-gray-100 pt-4 md:border-0 md:pt-0">
+                    <div className="flex items-baseline justify-between md:justify-end gap-3 w-full">
+                      <span className="text-sm text-gray-500">{isRoundtrip ? t.roundtrip_price : t.total}</span>
+                      {isRoundtrip ? (
+                        <span className={cn('text-sm line-through', redBadge ? 'text-red-600' : 'text-gray-400')}>{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</span>
+                      ) : autoDiscount ? (
+                        <span className={cn('text-sm line-through', redBadge ? 'text-red-600' : 'text-gray-400')}>{formatPrice(preAutoDiscountPrice)}</span>
+                      ) : null}
+                    </div>
+                    <div className="text-[32px] leading-tight font-extrabold text-primary-800 mt-0.5 md:text-right">{formatPrice(finalPrice)}</div>
+
+                    {isRoundtrip && (
+                      <div className="flex items-center gap-1 md:justify-end mt-0.5">
+                        <Tag size={11} className="text-green-600" />
+                        <span className="text-xs text-green-600 font-bold">{discount}% {t.discount}</span>
+                      </div>
+                    )}
+                    {autoDiscount && redBadge && (
+                      <div className="flex flex-col items-start md:items-end gap-1 mt-1.5">
+                        <span className="inline-block bg-red-600 text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md max-w-[240px] leading-snug md:text-right">
+                          −{formatPrice(shownSaving)} – {discountLabel}
+                        </span>
+                        {remainingText && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600">
+                            <UsersRound size={13} className="shrink-0" /> {remainingText}
+                          </span>
+                        )}
+                        <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
+                          className="text-xs font-semibold text-red-600" />
+                      </div>
+                    )}
+                    {autoDiscount && !redBadge && (
+                      <div className="flex items-center gap-1 md:justify-end mt-0.5">
+                        <Tag size={11} className="text-green-600" />
+                        <span className="text-xs text-green-600 font-bold">
+                          {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)} {discountLabel}
+                        </span>
+                      </div>
+                    )}
+                    {autoDiscount && !redBadge && remainingText && (
+                      <div className="text-xs font-semibold text-green-700 mt-0.5 md:text-right">{remainingText}</div>
+                    )}
+                    {autoDiscount && !redBadge && autoDiscount.ends_at && (
+                      <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
+                        className="text-xs font-semibold text-green-700 md:justify-end w-full" />
+                    )}
+                    {anfahrtCost > 0 && (
+                      <div className="text-xs text-amber-600 font-medium mt-0.5 md:text-right">
+                        {locale === 'de' ? 'inkl.' : locale === 'en' ? 'incl.' : 'dahil'} {formatPrice(anfahrtCost)} {locale === 'de' ? 'Anfahrtskosten' : locale === 'en' ? 'approach fee' : 'yaklaşım ücreti'}
+                      </div>
+                    )}
+
+                    <div className="mt-4 w-full">
                       {tooMany ? (
-                        <p className="text-sm text-red-500 font-medium">{t.notSuitable} {passengers} {t.passengers_label}</p>
+                        <p className="text-sm text-red-500 font-semibold md:text-right">{t.notSuitable} {passengers} {t.passengers_label}</p>
                       ) : (
                         <button
                           onClick={() => handleBook(vehicle.type, oneWayWithToll + plzSurcharge)}
-                          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold px-6 py-3 rounded-xl transition-colors text-sm"
+                          className="w-full flex items-center justify-center gap-2 bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 text-primary-800 font-bold px-3 py-3.5 rounded-xl transition-colors text-sm shadow-sm whitespace-nowrap"
                         >
                           {t.book} <ArrowRight size={16} />
                         </button>
+                      )}
+                      {!tooMany && (
+                        <div className="mt-2 text-[11px] text-gray-500 text-center">
+                          {locale === 'de' ? 'Keine Vorauszahlung' : locale === 'en' ? 'No prepayment' : 'Ön ödeme yok'}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -809,12 +911,35 @@ function ResultsContent() {
         </div>
 
         {/* Price note */}
-        <div className="mt-6 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
-          ℹ️ {locale === 'de'
-            ? 'Alle Preise sind Festpreise inklusive Maut, Gepäck und Kindersitz. Keine versteckten Kosten.'
-            : locale === 'en'
-            ? 'All prices are fixed rates including tolls, luggage, and child seat. No hidden costs.'
-            : 'Tüm fiyatlar otoyol, bagaj ve çocuk koltuğu dahil sabit fiyatlardır. Gizli maliyet yoktur.'}
+        <div className="mt-6 flex items-center gap-3 rounded-xl px-5 py-4 text-sm text-primary-800 border" style={{ background: '#eaf2fc', borderColor: '#d8e5f5' }}>
+          <Info size={18} className="shrink-0 text-primary-500" />
+          <span>
+            {locale === 'de'
+              ? 'Alle Preise sind Festpreise inklusive Maut, Gepäck und Kindersitz. Keine versteckten Kosten.'
+              : locale === 'en'
+              ? 'All prices are fixed rates including tolls, luggage, and child seat. No hidden costs.'
+              : 'Tüm fiyatlar otoyol, bagaj ve çocuk koltuğu dahil sabit fiyatlardır. Gizli maliyet yoktur.'}
+          </span>
+        </div>
+
+        {/* Bottom trust row */}
+        <div className="mt-12 grid grid-cols-2 lg:grid-cols-4 gap-y-6">
+          {[
+            { Icon: ShieldCheck, ...dz.trustBottom[0] },
+            { Icon: CarFront, ...dz.trustBottom[1] },
+            { Icon: Clock, ...dz.trustBottom[2] },
+            { Icon: Headphones, ...dz.trustBottom[3] },
+          ].map(({ Icon, title, text }, i) => (
+            <div key={title} className={cn('flex items-center gap-2.5 sm:gap-3 px-1 lg:px-3', i > 0 && 'lg:border-l lg:border-gray-200')}>
+              <span className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full shrink-0" style={{ background: '#fdf0c8' }}>
+                <Icon size={19} className="text-primary-800" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[13px] sm:text-sm font-bold text-gray-900 leading-tight lg:whitespace-nowrap [overflow-wrap:anywhere] sm:[overflow-wrap:normal]">{title}</div>
+                <div className="text-xs text-gray-500">{text}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <SocialProofToast locale={locale} />
