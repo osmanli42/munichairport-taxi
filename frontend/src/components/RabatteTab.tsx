@@ -183,7 +183,19 @@ export default function RabatteTab({ token }: { token: string }) {
   };
 
   const startCreate = () => { setEditing(emptyForm()); setEditingId(null); };
-  const startEdit = (r: AutoDiscount) => { setEditing({ ...r }); setEditingId(r.id); };
+  // API liefert DATE-Spalten als ISO ("2026-09-16T00:00:00.000Z") — <input type="date"> braucht
+  // "YYYY-MM-DD", sonst bleibt das Feld leer und Speichern würde die Daten löschen.
+  const dateOnly = (d: string | null) => (d ? String(d).slice(0, 10) : null);
+  const startEdit = (r: AutoDiscount) => {
+    setEditing({
+      ...r,
+      start_date: dateOnly(r.start_date),
+      end_date: dateOnly(r.end_date),
+      booking_start_date: dateOnly(r.booking_start_date),
+      booking_end_date: dateOnly(r.booking_end_date),
+    });
+    setEditingId(r.id);
+  };
   const cancelEdit = () => { setEditing(null); setEditingId(null); };
 
   const saveForm = async () => {
