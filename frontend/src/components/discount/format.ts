@@ -9,7 +9,17 @@ export interface PublicAutoDiscount {
   amount: number;
   labels?: { de: string; en: string; tr: string };
   ends_at?: string | null;
+  remaining?: number | null;
   badge?: 'red' | 'classic';
+}
+
+// "Nur noch 2 Rabattplätze" — nur wenn ein Kontingent existiert und noch Plätze frei sind.
+export function formatRemainingSpots(n: number | null | undefined, locale: string): string | null {
+  if (n == null || n <= 0) return null;
+  const l = asLocale(locale);
+  if (l === 'en') return n === 1 ? 'Only 1 discount spot left' : `Only ${n} discount spots left`;
+  if (l === 'tr') return `Son ${n} indirim hakkı`;
+  return n === 1 ? 'Nur noch 1 Rabattplatz' : `Nur noch ${n} Rabattplätze`;
 }
 
 const asLocale = (l: string): DiscountLocale => (l === 'en' || l === 'tr' ? l : 'de');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
@@ -36,7 +36,7 @@ const emptyForm = (): FormState => ({
   max_uses: null, max_discount_amount: null, vehicle_types: null, trip_types: null,
   start_date: null, end_date: null, booking_start_date: null, booking_end_date: null,
   priority: 0, stackable_with_promo: 0,
-  label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1,
+  label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1, show_remaining: 1,
 });
 
 // Anzeige-Schalter (Einstellungen) — alle mit gleichem Kartenmuster im Tab.
@@ -52,6 +52,12 @@ const DISPLAY_SETTINGS = [
     title: 'Countdown anzeigen',
     desc: 'Zeigt die Restzeit — nur bei Regeln mit echtem Buchungsende (Buchungsdatum bis / Buchungszeit bis). Pro Regel abschaltbar.',
     on: 'Countdown aktiv ✓', off: 'Countdown ausgeblendet ✓',
+  },
+  {
+    key: 'auto_discount_remaining_enabled', def: '1', icon: Users,
+    title: 'Freie Rabattplätze anzeigen',
+    desc: '„Nur noch 2 Rabattplätze“ — nur bei Regeln mit Kontingent (Max. Buchungen pro Tag / Max. Nutzungen gesamt). Pro Regel abschaltbar.',
+    on: 'Freie Rabattplätze werden angezeigt ✓', off: 'Freie Rabattplätze ausgeblendet ✓',
   },
   {
     key: 'auto_discount_banner_enabled', def: '0', icon: Megaphone,
@@ -328,6 +334,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     Genutzt: {r.used_count}{r.max_uses != null ? `/${r.max_uses}` : ''}
                     {r.show_in_banner ? ' · 📣 Banner' : ''}
                     {r.show_countdown ? '' : ' · kein Countdown'}
+                    {(r.daily_max_uses != null || r.max_uses != null) && !r.show_remaining ? ' · Restplätze ausgeblendet' : ''}
                   </p>
                 </div>
                 <button onClick={() => startEdit(r)} className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
@@ -612,6 +619,11 @@ export default function RabatteTab({ token }: { token: string }) {
                   <input type="checkbox" checked={!!editing.show_countdown}
                     onChange={e => patch({ show_countdown: e.target.checked ? 1 : 0 })} />
                   Countdown zeigen (nur wenn Buchungsdatum/-zeit ein Ende hat)
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={!!editing.show_remaining}
+                    onChange={e => patch({ show_remaining: e.target.checked ? 1 : 0 })} />
+                  Freie Rabattplätze zeigen (nur mit Max. Buchungen pro Tag / Max. Nutzungen gesamt)
                 </label>
               </div>
 

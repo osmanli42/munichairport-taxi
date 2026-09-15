@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, Tag } from 'lucide-react';
 import Countdown from '@/components/discount/Countdown';
-import { formatDiscountValue } from '@/components/discount/format';
+import { formatDiscountValue, formatRemainingSpots } from '@/components/discount/format';
 
 const API_URL = (() => {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -15,6 +15,7 @@ interface BannerDiscount {
   type: 'percent' | 'fixed';
   value: number;
   ends_at: string | null;
+  remaining?: number | null;
 }
 
 const DISMISS_KEY = 'auto_discount_banner_dismissed';
@@ -47,6 +48,11 @@ export default function AutoDiscountBanner({ locale }: { locale: string }) {
         <Tag size={13} /> {formatDiscountValue(discount.type, discount.value, locale)}
       </span>
       <span className="font-bold text-sm truncate min-w-0">{discount.label}</span>
+      {formatRemainingSpots(discount.remaining, locale) && (
+        <span className="text-xs font-semibold bg-white/15 rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap">
+          {formatRemainingSpots(discount.remaining, locale)}
+        </span>
+      )}
       <Countdown endsAt={discount.ends_at} locale={locale} onExpire={() => setDiscount(null)}
         className="hidden sm:inline-flex text-xs font-semibold bg-white/15 rounded-full px-2 py-0.5 shrink-0" />
       <button onClick={dismiss} className="opacity-70 hover:opacity-100 shrink-0 p-0.5" aria-label={locale === 'en' ? 'Close' : locale === 'tr' ? 'Kapat' : 'Schließen'}>

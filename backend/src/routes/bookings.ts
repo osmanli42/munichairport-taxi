@@ -732,6 +732,7 @@ export interface PublicAutoDiscount {
   amount: number;
   labels: { de: string; en: string; tr: string };
   ends_at: string | null; // nur wenn Countdown global + für die Regel aktiv
+  remaining: number | null; // freie Rabattplätze, nur wenn global + für die Regel aktiv
   badge: 'red' | 'classic';
 }
 
@@ -849,7 +850,7 @@ export async function computeRoutePrice(
       : null;
     const settingRows = await query<{ setting_key: string; setting_value: string }>(
       `SELECT setting_key, setting_value FROM settings WHERE setting_key IN
-        ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled')`
+        ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_remaining_enabled')`
     );
     const adSettings = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
     const ignorePgFloor = adSettings.auto_discount_ignore_pg_floor === '1';
@@ -876,6 +877,7 @@ export async function computeRoutePrice(
           amount: cappedAmount,
           labels: ruleLabels(result.rule),
           ends_at: countdownOn ? result.endsAt : null,
+          remaining: (adSettings.auto_discount_remaining_enabled ?? '1') === '1' && Number(result.rule.show_remaining) === 1 ? result.remaining : null,
           badge: (adSettings.auto_discount_red_badge_enabled ?? '1') === '1' ? 'red' : 'classic',
         };
       }

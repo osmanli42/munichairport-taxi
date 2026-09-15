@@ -12,7 +12,7 @@ import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
 import Countdown from '@/components/discount/Countdown';
-import { PublicAutoDiscount, pickDiscountLabel } from '@/components/discount/format';
+import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -286,6 +286,7 @@ function BuchenContent() {
   const finalPriceWithAutoDiscount = Math.max(0, finalPrice - autoDiscountAmount);
   const autoDiscountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
   const autoDiscountRed = !!autoDiscount && autoDiscount.badge !== 'classic';
+  const autoDiscountRemaining = autoDiscount ? formatRemainingSpots(autoDiscount.remaining, locale) : null;
   const onAutoDiscountExpire = () => setDiscountRefresh(n => n + 1);
 
   const t: Record<string, Record<string, string>> = {
@@ -919,6 +920,9 @@ function BuchenContent() {
                     <span className={cn('font-medium', autoDiscountRed ? 'text-red-700' : 'text-green-700')}>
                       <PartyPopper size={13} className="inline mr-1" /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
                     </span>
+                    {autoDiscountRemaining && (
+                      <span className={cn('text-xs font-bold', autoDiscountRed ? 'text-red-600' : 'text-green-700')}>{autoDiscountRemaining}</span>
+                    )}
                     <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire}
                       className={cn('text-xs font-bold', autoDiscountRed ? 'text-red-600' : 'text-green-700')} />
                   </div>
@@ -1665,10 +1669,12 @@ function BuchenContent() {
                         <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                           <Tag size={12} /> −{formatPrice(autoDiscountAmount)} · {autoDiscountLabel}
                         </span>
+                        {autoDiscountRemaining && <span className="text-xs font-bold text-red-600">{autoDiscountRemaining}</span>}
                         <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-bold text-red-600" />
                       </div>
                     ) : (
                       <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1 flex-wrap"><Tag size={12} /> {autoDiscountLabel}: −{formatPrice(autoDiscountAmount)}
+                        {autoDiscountRemaining && <span className="ml-1 font-semibold">· {autoDiscountRemaining}</span>}
                         <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="ml-1 font-semibold" /></p>
                     )
                   )}

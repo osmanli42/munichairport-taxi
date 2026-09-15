@@ -746,6 +746,7 @@ export async function initializeDatabase(): Promise<void> {
       ['label_tr', 'VARCHAR(80) DEFAULT NULL'],
       ['show_in_banner', 'TINYINT(1) NOT NULL DEFAULT 0'],
       ['show_countdown', 'TINYINT(1) NOT NULL DEFAULT 1'],
+      ['show_remaining', 'TINYINT(1) NOT NULL DEFAULT 1'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
@@ -761,6 +762,7 @@ export async function initializeDatabase(): Promise<void> {
       ['auto_discount_red_badge_enabled', '1'],
       ['auto_discount_countdown_enabled', '1'],
       ['auto_discount_banner_enabled', '0'],
+      ['auto_discount_remaining_enabled', '1'],
     ]) {
       try {
         await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);

@@ -295,6 +295,7 @@ export interface AutoDiscount {
   label_tr: string | null;
   show_in_banner: number;
   show_countdown: number;
+  show_remaining: number;
   weekday_mask: string | null;
   booking_index_max: number | null;
   daily_max_uses: number | null;

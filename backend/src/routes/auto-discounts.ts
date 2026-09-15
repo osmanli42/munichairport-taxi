@@ -11,7 +11,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     trip_time_from, trip_time_to, booking_time_from, booking_time_to,
     weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
     vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
-    priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown,
+    priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -65,6 +65,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       strOrNull(label_tr),
       show_in_banner ? 1 : 0,
       show_countdown === undefined ? 1 : (show_countdown ? 1 : 0),
+      show_remaining === undefined ? 1 : (show_remaining ? 1 : 0),
     ],
   };
 }
@@ -73,13 +74,13 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   trip_time_from, trip_time_to, booking_time_from, booking_time_to,
   weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
-  priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown`;
+  priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
   try {
     const settings = await query<{ setting_key: string; setting_value: string }>(
-      `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('auto_discount_banner_enabled', 'auto_discount_countdown_enabled')`
+      `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('auto_discount_banner_enabled', 'auto_discount_countdown_enabled', 'auto_discount_remaining_enabled')`
     );
     const s = Object.fromEntries(settings.map(r => [r.setting_key, r.setting_value]));
     if ((s.auto_discount_banner_enabled ?? '0') !== '1') { res.json(null); return; }
@@ -93,6 +94,7 @@ router.get('/public/banner', async (req: Request, res: Response): Promise<void> 
       type: rule.discount_type,
       value: Number(rule.discount_value),
       ends_at: countdownOn ? result.endsAt : null,
+      remaining: (s.auto_discount_remaining_enabled ?? '1') === '1' && Number(rule.show_remaining) === 1 ? result.remaining : null,
     });
   } catch {
     res.status(500).json({ error: 'Failed to fetch banner discount' });
@@ -147,7 +149,7 @@ router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response):
         trip_time_from=?, trip_time_to=?, booking_time_from=?, booking_time_to=?,
         weekday_mask=?, booking_index_max=?, daily_max_uses=?, max_uses=?, max_discount_amount=?,
         vehicle_types=?, trip_types=?, start_date=?, end_date=?, booking_start_date=?, booking_end_date=?,
-        priority=?, stackable_with_promo=?, label_de=?, label_en=?, label_tr=?, show_in_banner=?, show_countdown=?,
+        priority=?, stackable_with_promo=?, label_de=?, label_en=?, label_tr=?, show_in_banner=?, show_countdown=?, show_remaining=?,
         hour_from=NULL, hour_to=NULL,
         active=?
        WHERE id=?`,

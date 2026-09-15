@@ -8,7 +8,7 @@ import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon 
 import SocialProofToast from '@/components/SocialProofToast';
 import { DateTimeField } from '@/components/SearchBar';
 import Countdown from '@/components/discount/Countdown';
-import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel } from '@/components/discount/format';
+import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -645,6 +645,7 @@ function ResultsContent() {
             const autoDiscount = autoDiscounts[vehicle.type] || null;
             const redBadge = !!autoDiscount && autoDiscount.badge !== 'classic';
             const discountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
+            const remainingText = autoDiscount ? formatRemainingSpots(autoDiscount.remaining, locale) : null;
             const autoDiscountAmount = autoDiscount
               ? (autoDiscount.type === 'fixed' ? Math.min(autoDiscount.value, preAutoDiscountPrice) : preAutoDiscountPrice * (autoDiscount.value / 100))
               : 0;
@@ -712,6 +713,11 @@ function ResultsContent() {
                               <Tag size={13} className="shrink-0" />
                               <span>−{formatPrice(shownSaving)} · {discountLabel}</span>
                             </span>
+                            {remainingText && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
+                                <Users size={12} className="shrink-0" /> {remainingText}
+                              </span>
+                            )}
                             <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
                               className="text-xs font-bold text-red-600" />
                           </div>
@@ -723,6 +729,9 @@ function ResultsContent() {
                               {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)} {discountLabel}
                             </span>
                           </div>
+                        )}
+                        {autoDiscount && !redBadge && remainingText && (
+                          <div className="text-xs font-semibold text-green-700 mt-0.5">{remainingText}</div>
                         )}
                         {autoDiscount && !redBadge && autoDiscount.ends_at && (
                           <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}

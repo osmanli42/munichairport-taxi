@@ -19,6 +19,7 @@ export interface AutoDiscountRule {
   label_tr: string | null;
   show_in_banner: number;
   show_countdown: number;
+  show_remaining: number;
   weekday_mask: string | null; // '1,2,3' — 1=Montag … 7=Sonntag (ISO)
   booking_index_max: number | null;
   daily_max_uses: number | null;
@@ -50,6 +51,7 @@ export interface AutoDiscountResult {
   rule: AutoDiscountRule;
   amount: number;
   endsAt: string | null; // UTC ISO — echtes Ende des Buchungsfensters, sonst null
+  remaining: number | null; // freie Rabattplätze (Tages- bzw. Gesamtkontingent), null = unbegrenzt
 }
 
 let cache: { rules: AutoDiscountRule[]; enabled: boolean; loadedAt: number } | null = null;
@@ -194,9 +196,10 @@ function toDateOnlyStr(v: unknown): string | null {
 // keinen manuellen Reset-Knopf: um 00:00 zählt "heute" automatisch neu ab null.
 async function getDailyUsageCounts(ruleIds: number[]): Promise<Record<number, number>> {
   if (ruleIds.length === 0) return {};
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+  // Deutscher Kalendertag (Server = UTC) — sonst würde das Kontingent erst um 02:00 zurückgesetzt.
+  const today = berlinParts(new Date()).dateStr;
+  const startOfDay = berlinWallToUtc(today, 0);
+  const startOfTomorrow = berlinWallToUtc(addDays(today, 1), 0);
   const rows = await query<{ auto_discount_id: number; cnt: number }>(
     `SELECT auto_discount_id, COUNT(*) as cnt FROM bookings
      WHERE auto_discount_id IN (${ruleIds.map(() => '?').join(',')})
@@ -271,7 +274,15 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   amount = Math.round(amount * 100) / 100;
   if (amount <= 0) return null;
 
-  return { rule, amount, endsAt: computeEndsAt(rule, now) };
+  return { rule, amount, endsAt: computeEndsAt(rule, now), remaining: remainingSpots(rule, dailyUsage) };
+}
+
+// Kleinster Rest aus Tageskontingent und Gesamtkontingent — "Nur noch 2 Rabattplätze".
+function remainingSpots(r: AutoDiscountRule, dailyUsage: Record<number, number>): number | null {
+  const rests: number[] = [];
+  if (r.daily_max_uses != null) rests.push(Number(r.daily_max_uses) - (dailyUsage[r.id] || 0));
+  if (r.max_uses != null) rests.push(Number(r.max_uses) - Number(r.used_count));
+  return rests.length ? Math.max(0, Math.min(...rests)) : null;
 }
 
 // Bedingungen, die nur vom Buchungsmoment abhängen (nicht von Route/Fahrzeug/Kunde) —
@@ -314,7 +325,7 @@ export async function resolveBannerDiscount(): Promise<AutoDiscountResult | null
     (Number(b.priority) - Number(a.priority)) || (Number(b.discount_value) - Number(a.discount_value))
   );
   const rule = matching[0];
-  return { rule, amount: 0, endsAt: computeEndsAt(rule, now) };
+  return { rule, amount: 0, endsAt: computeEndsAt(rule, now), remaining: remainingSpots(rule, dailyUsage) };
 }
 
 // Müşterinin (iptal hariç) önceki rezervasyon sayısı — "ilk N rezervasyon" koşulu için.
