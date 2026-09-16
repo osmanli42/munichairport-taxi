@@ -8,7 +8,7 @@ import { CONTACT_INFO } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-const CITY_BASE_URL = 'https://www.flughafen-muenchen.taxi';
+const CITY_BASE_URL = 'https://flughafen-muenchen.taxi';
 
 type Props = { params: { citySlug: string; locale: string } };
 
@@ -16,17 +16,50 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const city = citiesBySlug[params.citySlug];
   if (!city) return {};
 
-  const countryLabel = city.country === 'AT' ? 'Österreich' : city.country === 'CH' ? 'Schweiz' : 'Bayern';
+  const locale = params.locale;
+  const path = `/blog/${params.citySlug}`;
+
+  // 37.5 -> "37,50" (de/tr) bzw. "37.50" (en)
+  const eu = (n: number) => n.toFixed(2).replace('.', ',');
+  const us = (n: number) => n.toFixed(2);
+
+  const copy =
+    locale === 'en'
+      ? {
+          title: `Taxi ${city.nameDE} to Munich Airport – Fixed Price €${us(city.kombi_price)}`,
+          description: `Taxi from ${city.nameDE} to Munich Airport (MUC): ${city.distance_km} km, approx. ${city.drive_minutes} min. Fixed price from €${us(city.kombi_price)} – book online now!`,
+          ogTitle: `Taxi ${city.nameDE} → Munich Airport | Fixed Price €${us(city.kombi_price)}`,
+          ogDescription: `${city.distance_km} km, ${city.drive_minutes} min from ${city.nameDE}. Estate car from €${us(city.kombi_price)}, van from €${us(city.van_price)}. Around the clock, punctual & reliable.`,
+        }
+      : locale === 'tr'
+        ? {
+            title: `${city.nameDE} Münih Havalimanı Taksi – Sabit Fiyat ${eu(city.kombi_price)} €`,
+            description: `${city.nameDE} şehrinden Münih Havalimanı'na (MUC) taksi: ${city.distance_km} km, yaklaşık ${city.drive_minutes} dk. ${eu(city.kombi_price)} € sabit fiyattan başlar – hemen online rezervasyon!`,
+            ogTitle: `Taksi ${city.nameDE} → Münih Havalimanı | Sabit Fiyat ${eu(city.kombi_price)} €`,
+            ogDescription: `${city.nameDE} şehrinden ${city.distance_km} km, ${city.drive_minutes} dk. Kombi ${eu(city.kombi_price)} €, Van ${eu(city.van_price)} €. 7/24, dakik ve güvenilir.`,
+          }
+        : {
+            title: `Taxi ${city.nameDE} Flughafen München – Festpreis ${eu(city.kombi_price)} €`,
+            description: `Taxi von ${city.nameDE} zum Flughafen München (MUC): ${city.distance_km} km, ca. ${city.drive_minutes} Min. Fahrtzeit. Festpreis ab ${eu(city.kombi_price)} € – jetzt online buchen!`,
+            ogTitle: `Taxi ${city.nameDE} → Flughafen München | Festpreis ${eu(city.kombi_price)} €`,
+            ogDescription: `${city.distance_km} km, ${city.drive_minutes} Min. Fahrtzeit ab ${city.nameDE}. Kombi ab ${eu(city.kombi_price)} €, Van ab ${eu(city.van_price)} €. Rund um die Uhr, pünktlich & zuverlässig.`,
+          };
 
   return {
-    title: `Taxi ${city.nameDE} Flughafen München – Festpreis ${city.kombi_price} €`,
-    description: `Taxi von ${city.nameDE} zum Flughafen München (MUC): ${city.distance_km} km, ca. ${city.drive_minutes} Min. Fahrtzeit. Festpreis ab ${city.kombi_price} € – jetzt online buchen!`,
+    title: copy.title,
+    description: copy.description,
     alternates: {
-      canonical: `/blog/${params.citySlug}`,
+      canonical: locale === 'de' ? `${CITY_BASE_URL}${path}` : `${CITY_BASE_URL}/${locale}${path}`,
+      languages: {
+        'de': `${CITY_BASE_URL}${path}`,
+        'en': `${CITY_BASE_URL}/en${path}`,
+        'tr': `${CITY_BASE_URL}/tr${path}`,
+        'x-default': `${CITY_BASE_URL}${path}`,
+      },
     },
     openGraph: {
-      title: `Taxi ${city.nameDE} → Flughafen München | Festpreis ${city.kombi_price} €`,
-      description: `${city.distance_km} km, ${city.drive_minutes} Min. Fahrtzeit ab ${city.nameDE}. Kombi ab ${city.kombi_price} €, Van ab ${city.van_price} €. Rund um die Uhr, pünktlich & zuverlässig.`,
+      title: copy.ogTitle,
+      description: copy.ogDescription,
       type: 'article',
     },
   };

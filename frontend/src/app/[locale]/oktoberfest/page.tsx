@@ -164,7 +164,7 @@ export default function OktoberfestPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://flughafen-muenchen.taxi' },
       { '@type': 'ListItem', position: 2, name: ui.title },
     ],
   };

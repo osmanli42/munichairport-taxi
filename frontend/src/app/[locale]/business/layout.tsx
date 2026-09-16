@@ -7,7 +7,7 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  const baseUrl = 'https://www.flughafen-muenchen.taxi';
+  const baseUrl = 'https://flughafen-muenchen.taxi';
   const path = '/business';
   return {
     title: t('business_title'),
@@ -18,6 +18,7 @@ export async function generateMetadata({
         'de': `${baseUrl}${path}`,
         'en': `${baseUrl}/en${path}`,
         'tr': `${baseUrl}/tr${path}`,
+        'x-default': `${baseUrl}${path}`,
       },
     },
   };

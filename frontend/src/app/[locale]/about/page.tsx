@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  const baseUrl = 'https://www.flughafen-muenchen.taxi';
+  const baseUrl = 'https://flughafen-muenchen.taxi';
   const path = '/about';
   return {
     title: t('about_title'),
@@ -25,6 +25,7 @@ export async function generateMetadata({
         'de': `${baseUrl}${path}`,
         'en': `${baseUrl}/en${path}`,
         'tr': `${baseUrl}/tr${path}`,
+        'x-default': `${baseUrl}${path}`,
       },
     },
   };
@@ -54,7 +55,7 @@ export default function AboutPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://flughafen-muenchen.taxi' },
       { '@type': 'ListItem', position: 2, name: t('title') },
     ],
   };

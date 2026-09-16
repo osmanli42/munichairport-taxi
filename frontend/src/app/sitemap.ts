@@ -1,15 +1,13 @@
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
 import { allCitySlugs } from '@/lib/citiesData';
-import { eventsData } from '@/lib/eventsData';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const host = headers().get('host') ?? 'www.flughafen-muenchen.taxi';
+  const host = headers().get('host') ?? 'flughafen-muenchen.taxi';
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
   const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
-  const eventPages = eventsData.map((event) => `/events/${event.slug}`);
-  const pages = ['', '/vehicles', '/about', '/contact', '/faq', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...eventPages, ...cityPages];
+  const pages = ['', '/vehicles', '/business', '/about', '/contact', '/faq', '/treffpunkt-flughafen-muenchen', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...cityPages];
 
   const routes: MetadataRoute.Sitemap = [];
 

@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!route) return {};
   const t = await getTranslations({ locale: params.locale, namespace: 'routePage' });
   const priceRaw = route.prices.kombi != null ? route.prices.kombi.toFixed(2).replace('.', ',') : '?';
-  const baseUrl = 'https://www.flughafen-muenchen.taxi';
+  const baseUrl = 'https://flughafen-muenchen.taxi';
   const path = `/${params.routeSlug}`;
   return {
     title: t('seoTitle', { city: route.city, price: priceRaw }),
@@ -50,6 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         de: `${baseUrl}${path}`,
         en: `${baseUrl}/en${path}`,
         tr: `${baseUrl}/tr${path}`,
+        'x-default': `${baseUrl}${path}`,
       },
     },
   };

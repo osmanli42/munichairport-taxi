@@ -11,7 +11,7 @@ export async function generateMetadata({
   params: { locale: string };
 }): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'seo' });
-  const baseUrl = 'https://www.flughafen-muenchen.taxi';
+  const baseUrl = 'https://flughafen-muenchen.taxi';
   const path = '/vehicles';
   return {
     title: t('vehicles_title'),
@@ -22,6 +22,7 @@ export async function generateMetadata({
         'de': `${baseUrl}${path}`,
         'en': `${baseUrl}/en${path}`,
         'tr': `${baseUrl}/tr${path}`,
+        'x-default': `${baseUrl}${path}`,
       },
     },
   };
@@ -67,7 +68,7 @@ export default function VehiclesPage() {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.flughafen-muenchen.taxi' },
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://flughafen-muenchen.taxi' },
       { '@type': 'ListItem', position: 2, name: t('title') },
     ],
   };
@@ -76,7 +77,7 @@ export default function VehiclesPage() {
     '@context': 'https://schema.org',
     '@type': 'Service',
     serviceType: 'Flughafentransfer München',
-    provider: { '@type': 'TaxiService', name: 'Munich Airport Taxi', url: 'https://www.flughafen-muenchen.taxi' },
+    provider: { '@type': 'TaxiService', name: 'Munich Airport Taxi', url: 'https://flughafen-muenchen.taxi' },
     areaServed: 'München, Bavaria',
     hasOfferCatalog: {
       '@type': 'OfferCatalog',
