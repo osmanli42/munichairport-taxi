@@ -110,6 +110,9 @@ export default function RabatteTab({ token }: { token: string }) {
   const [editing, setEditing] = useState<FormState | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [copying, setCopying] = useState(false);
+  // Löschen ohne window.confirm: Browser unterdrücken den Dialog nach mehrfacher Nutzung
+  // ("weitere Dialoge blockieren"), dann passiert beim Klick scheinbar gar nichts.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
@@ -199,7 +202,7 @@ export default function RabatteTab({ token }: { token: string }) {
   };
 
   const removeRule = async (id: number) => {
-    if (!confirm('Diese Regel wirklich löschen?')) return;
+    setConfirmDeleteId(null);
     try {
       await autoDiscountsApi.remove(id);
       setRules(arr => arr.filter(x => x.id !== id));
@@ -398,7 +401,21 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
                 <button onClick={() => startEdit(r)} title="Bearbeiten" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
                 <button onClick={() => startCopy(r)} title="Kopieren — gleiche Einstellungen als neue Regel" className="p-2 text-gray-400 hover:text-primary-600"><Copy size={16} /></button>
-                <button onClick={() => removeRule(r.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                {confirmDeleteId === r.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => removeRule(r.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold">
+                      Wirklich löschen
+                    </button>
+                    <button onClick={() => setConfirmDeleteId(null)}
+                      className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold">
+                      Abbrechen
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(r.id)} title="Löschen"
+                    className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                )}
               </div>
             ))}
           </div>
