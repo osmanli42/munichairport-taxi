@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, Copy, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
@@ -109,6 +109,7 @@ export default function RabatteTab({ token }: { token: string }) {
   const [err, setErr] = useState('');
   const [editing, setEditing] = useState<FormState | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [copying, setCopying] = useState(false);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
@@ -208,11 +209,29 @@ export default function RabatteTab({ token }: { token: string }) {
     }
   };
 
-  const startCreate = () => { setEditing(emptyForm()); setEditingId(null); };
+  const startCreate = () => { setEditing(emptyForm()); setEditingId(null); setCopying(false); };
+
+  // Kopieren: alle Einstellungen übernehmen, aber als neue Regel speichern — praktisch für
+  // Aktionen, die sich nur in der Uhrzeit unterscheiden (z.B. 18:30–00:00 und 00:00–07:00).
+  const startCopy = (r: AutoDiscount) => {
+    const { id, used_count, created_at, ...rest } = r as AutoDiscount & { created_at?: string };
+    void id; void used_count; void created_at;
+    setEditing({
+      ...rest,
+      name: `${r.name} (Kopie)`,
+      start_date: dateOnly(r.start_date),
+      end_date: dateOnly(r.end_date),
+      booking_start_date: dateOnly(r.booking_start_date),
+      booking_end_date: dateOnly(r.booking_end_date),
+    });
+    setEditingId(null);
+    setCopying(true);
+  };
   // API liefert DATE-Spalten als ISO ("2026-09-16T00:00:00.000Z") — <input type="date"> braucht
   // "YYYY-MM-DD", sonst bleibt das Feld leer und Speichern würde die Daten löschen.
   const dateOnly = (d: string | null) => (d ? String(d).slice(0, 10) : null);
   const startEdit = (r: AutoDiscount) => {
+    setCopying(false);
     setEditing({
       ...r,
       start_date: dateOnly(r.start_date),
@@ -222,7 +241,7 @@ export default function RabatteTab({ token }: { token: string }) {
     });
     setEditingId(r.id);
   };
-  const cancelEdit = () => { setEditing(null); setEditingId(null); };
+  const cancelEdit = () => { setEditing(null); setEditingId(null); setCopying(false); };
 
   const saveForm = async () => {
     if (!editing) return;
@@ -236,7 +255,7 @@ export default function RabatteTab({ token }: { token: string }) {
       }
       await load();
       cancelEdit();
-      flash('Gespeichert ✓');
+      flash(copying ? 'Kopie angelegt ✓' : 'Gespeichert ✓');
     } catch (e: any) {
       setErr(e?.response?.data?.error || 'Speichern fehlgeschlagen');
     }
@@ -377,7 +396,8 @@ export default function RabatteTab({ token }: { token: string }) {
                     {visitorRange(r.visitor_min_km, r.visitor_max_km) ? ` · ${visitorRange(r.visitor_min_km, r.visitor_max_km)}` : ''}
                   </p>
                 </div>
-                <button onClick={() => startEdit(r)} className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
+                <button onClick={() => startEdit(r)} title="Bearbeiten" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
+                <button onClick={() => startCopy(r)} title="Kopieren — gleiche Einstellungen als neue Regel" className="p-2 text-gray-400 hover:text-primary-600"><Copy size={16} /></button>
                 <button onClick={() => removeRule(r.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
               </div>
             ))}
@@ -390,7 +410,7 @@ export default function RabatteTab({ token }: { token: string }) {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={cancelEdit}>
           <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-gray-900">{editingId ? 'Regel bearbeiten' : 'Neue Regel'}</h3>
+              <h3 className="font-bold text-lg text-gray-900">{editingId ? 'Regel bearbeiten' : copying ? 'Regel kopieren' : 'Neue Regel'}</h3>
               <button onClick={cancelEdit}><X size={20} className="text-gray-400" /></button>
             </div>
 
@@ -721,7 +741,7 @@ export default function RabatteTab({ token }: { token: string }) {
             <div className="flex gap-3 mt-6">
               <button onClick={cancelEdit} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 font-semibold text-sm">Abbrechen</button>
               <button onClick={saveForm} disabled={saving} className="flex-1 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm disabled:opacity-50">
-                {saving ? 'Speichert…' : 'Speichern'}
+                {saving ? 'Speichert…' : copying ? 'Als neue Regel speichern' : 'Speichern'}
               </button>
             </div>
           </div>
