@@ -767,6 +767,7 @@ export async function initializeDatabase(): Promise<void> {
       ['auto_discount_countdown_enabled', '1'],
       ['auto_discount_banner_enabled', '0'],
       ['auto_discount_remaining_enabled', '1'],
+      ['auto_discount_vpn_as_unknown', '1'],
     ]) {
       try {
         await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);

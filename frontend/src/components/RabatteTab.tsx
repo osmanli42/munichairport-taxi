@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
@@ -84,6 +84,12 @@ const DISPLAY_SETTINGS = [
     title: 'Rabatt-Banner auf der Startseite',
     desc: 'Roter Hinweis über dem Suchformular. Zeigt die Regel, bei der „Im Startseiten-Banner zeigen“ aktiviert ist.',
     on: 'Startseiten-Banner aktiv ✓', off: 'Startseiten-Banner ausgeblendet ✓',
+  },
+  {
+    key: 'auto_discount_vpn_as_unknown', def: '1', icon: ShieldAlert,
+    title: 'VPN-Besucher als unbekannten Standort behandeln',
+    desc: 'Gilt nur für die Zielgruppe „Besucher-Entfernung“: Bei VPN- und Rechenzentrums-IPs entscheidet dann „Auch bei unbekanntem Standort gewähren“ der jeweiligen Regel. Preisberechnung und Pflichtgebiet-Bypass bleiben unberührt.',
+    on: 'VPN-Besucher gelten als unbekannter Standort ✓', off: 'VPN-Standort wird wie ein normaler Standort behandelt ✓',
   },
 ] as const;
 

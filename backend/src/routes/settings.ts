@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { invalidateVisitorDistanceCache } from '../services/visitorDistance';
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -47,7 +48,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
-      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled' || key === 'phone_validation_enabled' || key === 'portal_tracking_enabled' || key === 'b2b_applications_enabled' || key === 'auto_status_enabled' || key === 'auto_complete_include_company_charge' || key === 'auto_discounts_enabled' || key === 'auto_discount_ignore_pg_floor' || key === 'auto_discount_show_in_email' || key === 'auto_discount_red_badge_enabled' || key === 'auto_discount_countdown_enabled' || key === 'auto_discount_banner_enabled' || key === 'auto_discount_remaining_enabled') && !['0', '1'].includes(String(value))) {
+      if ((key === 'stadtfahrt_enabled' || key === 'zwischenstopp_enabled' || key === 'plz_surcharge_enabled' || key === 'night_confirm_enabled' || key === 'flight_validation_enabled' || key === 'phone_validation_enabled' || key === 'portal_tracking_enabled' || key === 'b2b_applications_enabled' || key === 'auto_status_enabled' || key === 'auto_complete_include_company_charge' || key === 'auto_discounts_enabled' || key === 'auto_discount_ignore_pg_floor' || key === 'auto_discount_show_in_email' || key === 'auto_discount_red_badge_enabled' || key === 'auto_discount_countdown_enabled' || key === 'auto_discount_banner_enabled' || key === 'auto_discount_remaining_enabled' || key === 'auto_discount_vpn_as_unknown') && !['0', '1'].includes(String(value))) {
         res.status(400).json({ error: `${key} must be 0 or 1` });
         return;
       }
@@ -97,6 +98,9 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         [key, String(value), String(value)]
       );
     }
+
+    // VPN-Schalter wirkt sofort, nicht erst nach Ablauf des 60-Sekunden-Caches.
+    invalidateVisitorDistanceCache();
 
     // Return updated settings
     const rows = await query<SettingRow>('SELECT setting_key, setting_value FROM settings');
