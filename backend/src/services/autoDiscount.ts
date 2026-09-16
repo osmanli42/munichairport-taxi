@@ -20,6 +20,10 @@ export interface AutoDiscountRule {
   show_in_banner: number;
   show_countdown: number;
   show_remaining: number;
+  price_basis: 'any' | 'pflichttarif' | 'normal'; // welchen Preis der Kunde gerade sieht
+  visitor_min_km: number | null; // Entfernung des Besuchers (IP) vom Betriebssitz
+  visitor_max_km: number | null;
+  visitor_unknown_ok: number; // 1 = gilt auch bei unbekanntem Standort (VPN o.ä.)
   weekday_mask: string | null; // '1,2,3' — 1=Montag … 7=Sonntag (ISO)
   booking_index_max: number | null;
   daily_max_uses: number | null;
@@ -45,6 +49,10 @@ export interface AutoDiscountInput {
   pickupRaw: string | null; // transfer zamanı "YYYY-MM-DDTHH:MM" (Berlin, rezervasyon anı değil)
   customerBookingCount: number | null; // null = bilinmiyor (önizleme) → booking_index koşulu geçer sayılır
   baseTotal: number;
+  // Preis, den der Kunde tatsächlich sieht: 'pflichttarif' = amtlicher Tarif angewendet,
+  // 'normal' = normale Preisberechnung (auch bei IP-Bypass des Pflichtgebiets).
+  priceBasis: 'pflichttarif' | 'normal';
+  visitorDistanceKm: number | null; // null = Standort unbekannt (VPN, lokale IP, Geo-Fehler)
 }
 
 export interface AutoDiscountResult {
@@ -243,6 +251,8 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (r.booking_index_max != null && input.customerBookingCount != null
         && input.customerBookingCount >= Number(r.booking_index_max)) return false;
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
+    if (!priceBasisMatches(r, input.priceBasis)) return false;
+    if (!visitorMatches(r, input.visitorDistanceKm)) return false;
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
@@ -285,6 +295,22 @@ function remainingSpots(r: AutoDiscountRule, dailyUsage: Record<number, number>)
   return rests.length ? Math.max(0, Math.min(...rests)) : null;
 }
 
+// Zielgruppe: Entfernung des Besuchers (IP-Standort) zum Betriebssitz.
+export function visitorMatches(r: AutoDiscountRule, distanceKm: number | null): boolean {
+  if (r.visitor_min_km == null && r.visitor_max_km == null) return true;
+  if (distanceKm == null) return Number(r.visitor_unknown_ok) === 1;
+  if (r.visitor_min_km != null && distanceKm < Number(r.visitor_min_km)) return false;
+  if (r.visitor_max_km != null && distanceKm > Number(r.visitor_max_km)) return false;
+  return true;
+}
+
+// Zielgruppe: Preisbasis. Fernbesucher sehen im Pflichtfahrgebiet dank IP-Bypass schon den
+// günstigeren Normalpreis — 'pflichttarif' schließt sie hier vom Rabatt aus.
+function priceBasisMatches(r: AutoDiscountRule, basis: 'pflichttarif' | 'normal'): boolean {
+  const want = r.price_basis || 'any';
+  return want === 'any' || want === basis;
+}
+
 // Bedingungen, die nur vom Buchungsmoment abhängen (nicht von Route/Fahrzeug/Kunde) —
 // gemeinsam genutzt von der Preisberechnung und dem Startseiten-Banner.
 function vehicleIndependentMatches(r: AutoDiscountRule, booking: LocalParts, dailyUsage: Record<number, number>): boolean {
@@ -305,7 +331,7 @@ export function ruleLabels(r: AutoDiscountRule): { de: string; en: string; tr: s
 
 // Startseiten-Banner: aktive Regel mit show_in_banner, die JETZT buchbar ist. Route-abhängige
 // Bedingungen (km, Zone, Fahrzeug, Fahrtdatum) prüft erst die Preisberechnung.
-export async function resolveBannerDiscount(): Promise<AutoDiscountResult | null> {
+export async function resolveBannerDiscount(visitorDistanceKm: number | null = null, bypassDistanceKm: number | null = null): Promise<AutoDiscountResult | null> {
   const { rules, enabled } = await loadRules();
   if (!enabled) return null;
   const candidates = rules.filter(r => Number(r.show_in_banner) === 1);
@@ -313,8 +339,13 @@ export async function resolveBannerDiscount(): Promise<AutoDiscountResult | null
   const now = new Date();
   const booking = berlinParts(now);
   const dailyUsage = await getDailyUsageCounts(candidates.filter(r => r.daily_max_uses != null).map(r => r.id));
+  // Beim Banner ist die Fahrt noch unbekannt — geprüft wird, was jetzt schon feststeht:
+  // Besucherstandort und (daraus ableitbar) ob dieser Besucher überhaupt Pflichttarife sieht.
+  const bypassed = bypassDistanceKm != null && visitorDistanceKm != null && visitorDistanceKm > bypassDistanceKm;
   const matching = candidates.filter(r => {
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
+    if (!visitorMatches(r, visitorDistanceKm)) return false;
+    if (r.price_basis === 'pflichttarif' && bypassed) return false;
     // Fahrtdatum komplett in der Vergangenheit → Aktion ist vorbei.
     const e = toDateOnlyStr(r.end_date);
     if (e && e < booking.dateStr) return false;

@@ -13,6 +13,7 @@ import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
 import { resolveAutoDiscount, countCustomerBookings, ruleLabels } from '../services/autoDiscount';
+import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 
@@ -412,6 +413,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         pickupRaw: pickup_datetime ? String(pickup_datetime) : null,
         customerBookingCount,
         baseTotal,
+        // pgFareFloor > 0 ⇒ der amtliche Tarif wurde angewendet; sonst sieht der Kunde den
+        // Normalpreis (auch wenn er wegen IP-Bypass nur für ihn normal ist).
+        priceBasis: pgFareFloor > 0 ? 'pflichttarif' : 'normal',
+        visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
       });
 
       if (adResult) {
@@ -862,6 +867,8 @@ export async function computeRoutePrice(
       pickupRaw: options?.pickupDatetime || null,
       customerBookingCount: customerCount,
       baseTotal: price,
+      priceBasis: pgFloorValue != null ? 'pflichttarif' : 'normal',
+      visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
     });
     if (result) {
       // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst

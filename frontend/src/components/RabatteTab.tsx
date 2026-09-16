@@ -37,7 +37,27 @@ const emptyForm = (): FormState => ({
   start_date: null, end_date: null, booking_start_date: null, booking_end_date: null,
   priority: 0, stackable_with_promo: 0,
   label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1, show_remaining: 1,
+  price_basis: 'any', visitor_min_km: null, visitor_max_km: null, visitor_unknown_ok: 1,
 });
+
+const PRICE_BASIS_OPTIONS = [
+  { v: 'any', label: 'Alle Besucher' },
+  { v: 'pflichttarif', label: 'Nur wenn der amtliche Tarif gilt' },
+  { v: 'normal', label: 'Nur bei normaler Preisberechnung' },
+] as const;
+
+const km = (v: number | null) => String(Number(v)).replace(/\.0$/, '').replace('.', ',');
+
+// "Besucher bis 100 km" / "Besucher ab 200 km" / "Besucher 20–100 km"
+const visitorRange = (min: number | null, max: number | null) => {
+  if (min == null && max == null) return null;
+  if (min == null) return `Besucher bis ${km(max)} km`;
+  if (max == null) return `Besucher ab ${km(min)} km`;
+  return `Besucher ${km(min)}–${km(max)} km`;
+};
+
+const priceBasisShort = (v: string) =>
+  v === 'pflichttarif' ? 'nur amtlicher Tarif' : v === 'normal' ? 'nur Normalpreis' : null;
 
 // Anzeige-Schalter (Einstellungen) — alle mit gleichem Kartenmuster im Tab.
 const DISPLAY_SETTINGS = [
@@ -347,6 +367,8 @@ export default function RabatteTab({ token }: { token: string }) {
                     {r.show_in_banner ? ' · 📣 Banner' : ''}
                     {r.show_countdown ? '' : ' · kein Countdown'}
                     {(r.daily_max_uses != null || r.max_uses != null) && !r.show_remaining ? ' · Restplätze ausgeblendet' : ''}
+                    {priceBasisShort(r.price_basis) ? ` · ${priceBasisShort(r.price_basis)}` : ''}
+                    {visitorRange(r.visitor_min_km, r.visitor_max_km) ? ` · ${visitorRange(r.visitor_min_km, r.visitor_max_km)}` : ''}
                   </p>
                 </div>
                 <button onClick={() => startEdit(r)} className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
@@ -594,6 +616,49 @@ export default function RabatteTab({ token }: { token: string }) {
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                 </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Preisbasis</label>
+                <p className="text-xs text-gray-400 mb-1">
+                  Weit entfernte Besucher sehen im Pflichtfahrgebiet dank IP-Bypass (Reiter Pflichtfahrgebiet,
+                  Standard ab 100 km) statt des amtlichen Tarifs den günstigeren Normalpreis. „Nur wenn der amtliche
+                  Tarif gilt“ verhindert, dass diese Besucher zusätzlich Rabatt bekommen.
+                </p>
+                <select value={editing.price_basis || 'any'}
+                  onChange={e => patch({ price_basis: e.target.value as 'any' | 'pflichttarif' | 'normal' })}
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                  {PRICE_BASIS_OPTIONS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Besucher-Entfernung</label>
+                <p className="text-xs text-gray-400 mb-1">
+                  Luftlinie zwischen dem IP-Standort des Besuchers und dem Betriebssitz. Leer = egal.
+                  Beispiel: „bis 100 km“ = nur Rabatt für Besucher aus der Region.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">ab (km)</label>
+                    <input type="number" min={0} value={editing.visitor_min_km ?? ''}
+                      onChange={e => patch({ visitor_min_km: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                      placeholder="egal"
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">bis (km)</label>
+                    <input type="number" min={0} value={editing.visitor_max_km ?? ''}
+                      onChange={e => patch({ visitor_max_km: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                      placeholder="egal"
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer mt-2">
+                  <input type="checkbox" checked={!!editing.visitor_unknown_ok}
+                    onChange={e => patch({ visitor_unknown_ok: e.target.checked ? 1 : 0 })} />
+                  Auch bei unbekanntem Standort gewähren (VPN, Firmennetz)
+                </label>
               </div>
 
               <div className="border-t border-gray-100 pt-4">

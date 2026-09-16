@@ -747,6 +747,10 @@ export async function initializeDatabase(): Promise<void> {
       ['show_in_banner', 'TINYINT(1) NOT NULL DEFAULT 0'],
       ['show_countdown', 'TINYINT(1) NOT NULL DEFAULT 1'],
       ['show_remaining', 'TINYINT(1) NOT NULL DEFAULT 1'],
+      ['price_basis', "ENUM('any','pflichttarif','normal') NOT NULL DEFAULT 'any'"],
+      ['visitor_min_km', 'DECIMAL(6,1) DEFAULT NULL'],
+      ['visitor_max_km', 'DECIMAL(6,1) DEFAULT NULL'],
+      ['visitor_unknown_ok', 'TINYINT(1) NOT NULL DEFAULT 1'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);

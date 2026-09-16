@@ -296,6 +296,10 @@ export interface AutoDiscount {
   show_in_banner: number;
   show_countdown: number;
   show_remaining: number;
+  price_basis: 'any' | 'pflichttarif' | 'normal';
+  visitor_min_km: number | null;
+  visitor_max_km: number | null;
+  visitor_unknown_ok: number;
   weekday_mask: string | null;
   booking_index_max: number | null;
   daily_max_uses: number | null;

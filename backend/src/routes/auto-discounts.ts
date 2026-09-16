@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { query, run } from '../db';
 import { authenticateAdmin } from '../middleware/auth';
 import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels } from '../services/autoDiscount';
+import { visitorDistanceToBase } from '../services/visitorDistance';
 
 const router = Router();
 
@@ -12,6 +13,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
     vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
+    price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -27,6 +29,11 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   }
   if (isEmpty(trip_time_from) !== isEmpty(trip_time_to)) return { error: 'Fahrtzeit: bitte "von" und "bis" setzen' };
   if (isEmpty(booking_time_from) !== isEmpty(booking_time_to)) return { error: 'Buchungszeit: bitte "von" und "bis" setzen' };
+  if (!isEmpty(price_basis) && !['any', 'pflichttarif', 'normal'].includes(String(price_basis))) {
+    return { error: 'price_basis ungültig' };
+  }
+  const kmOk = (v: any) => isEmpty(v) || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0);
+  if (!kmOk(visitor_min_km) || !kmOk(visitor_max_km)) return { error: 'Besucher-Entfernung muss eine positive Zahl sein' };
   const labelOk = (l: any) => isEmpty(l) || String(l).trim().length <= 80;
   if (![label_de, label_en, label_tr].every(labelOk)) return { error: 'Kundentext darf maximal 80 Zeichen lang sein' };
 
@@ -66,6 +73,10 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       show_in_banner ? 1 : 0,
       show_countdown === undefined ? 1 : (show_countdown ? 1 : 0),
       show_remaining === undefined ? 1 : (show_remaining ? 1 : 0),
+      isEmpty(price_basis) ? 'any' : String(price_basis),
+      numOrNull(visitor_min_km),
+      numOrNull(visitor_max_km),
+      visitor_unknown_ok === undefined ? 1 : (visitor_unknown_ok ? 1 : 0),
     ],
   };
 }
@@ -74,7 +85,8 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   trip_time_from, trip_time_to, booking_time_from, booking_time_to,
   weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
-  priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining`;
+  priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
+  price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -84,7 +96,8 @@ router.get('/public/banner', async (req: Request, res: Response): Promise<void> 
     );
     const s = Object.fromEntries(settings.map(r => [r.setting_key, r.setting_value]));
     if ((s.auto_discount_banner_enabled ?? '0') !== '1') { res.json(null); return; }
-    const result = await resolveBannerDiscount();
+    const visitor = await visitorDistanceToBase(req);
+    const result = await resolveBannerDiscount(visitor.distanceKm, visitor.bypassDistanceKm);
     if (!result) { res.json(null); return; }
     const { rule } = result;
     const locale = ['de', 'en', 'tr'].includes(String(req.query.locale)) ? String(req.query.locale) as 'de' | 'en' | 'tr' : 'de';
@@ -150,6 +163,7 @@ router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response):
         weekday_mask=?, booking_index_max=?, daily_max_uses=?, max_uses=?, max_discount_amount=?,
         vehicle_types=?, trip_types=?, start_date=?, end_date=?, booking_start_date=?, booking_end_date=?,
         priority=?, stackable_with_promo=?, label_de=?, label_en=?, label_tr=?, show_in_banner=?, show_countdown=?, show_remaining=?,
+        price_basis=?, visitor_min_km=?, visitor_max_km=?, visitor_unknown_ok=?,
         hour_from=NULL, hour_to=NULL,
         active=?
        WHERE id=?`,
