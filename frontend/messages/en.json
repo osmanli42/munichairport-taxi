@@ -312,7 +312,9 @@
     "manage_booking_title": "Manage Your Booking - Flughafen-muenchen.TAXI",
     "manage_booking_description": "View or cancel your booking for free – just enter your booking number and email. Free cancellation up to 3 hours before departure.",
     "meeting_point_title": "Munich Airport Meeting Point Guide - Flughafen-muenchen.TAXI",
-    "meeting_point_description": "Where does your driver wait? All meeting points for Terminal 1 (Modules A-F) and Terminal 2 at Munich Airport – incl. 60 min free waiting time and flight tracking."
+    "meeting_point_description": "Where does your driver wait? All meeting points for Terminal 1 (Modules A-F) and Terminal 2 at Munich Airport – incl. 60 min free waiting time and flight tracking.",
+    "oktoberfest_title": "Taxi to Oktoberfest 2026 – Fixed Price",
+    "oktoberfest_description": "Oktoberfest 2026: September 19 – October 4. Taxi from Munich Airport directly to the Theresienwiese – fixed price, 24/7, flight tracking. Book now."
   },
   "popularRoutes": {
     "sectionLabel": "Popular Routes",

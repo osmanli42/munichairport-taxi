@@ -312,7 +312,9 @@
     "manage_booking_title": "Rezervasyonu Yönet - Flughafen-muenchen.TAXI",
     "manage_booking_description": "Rezervasyonunuzu görüntüleyin veya ücretsiz iptal edin – sadece rezervasyon numaranızı ve e-postanızı girin. Kalkıştan 3 saat öncesine kadar ücretsiz iptal.",
     "meeting_point_title": "Münih Havalimanı Buluşma Noktası Rehberi - Flughafen-muenchen.TAXI",
-    "meeting_point_description": "Şoförünüz sizi nerede bekler? Terminal 1 (A-F Modülleri) ve Terminal 2 için tüm buluşma noktaları – 60 dk ücretsiz bekleme ve uçuş takibi dahil."
+    "meeting_point_description": "Şoförünüz sizi nerede bekler? Terminal 1 (A-F Modülleri) ve Terminal 2 için tüm buluşma noktaları – 60 dk ücretsiz bekleme ve uçuş takibi dahil.",
+    "oktoberfest_title": "Oktoberfest 2026 Taksi – Sabit Fiyat",
+    "oktoberfest_description": "Oktoberfest 2026: 19 Eylül – 4 Ekim. Münih Havalimanı'ndan Theresienwiese'ye doğrudan taksi – sabit fiyat, 7/24, uçuş takibi. Hemen rezervasyon yapın."
   },
   "popularRoutes": {
     "sectionLabel": "Popüler Güzergahlar",
