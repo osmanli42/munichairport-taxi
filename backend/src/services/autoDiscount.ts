@@ -331,7 +331,11 @@ export function ruleLabels(r: AutoDiscountRule): { de: string; en: string; tr: s
 
 // Startseiten-Banner: aktive Regel mit show_in_banner, die JETZT buchbar ist. Route-abhängige
 // Bedingungen (km, Zone, Fahrzeug, Fahrtdatum) prüft erst die Preisberechnung.
-export async function resolveBannerDiscount(visitorDistanceKm: number | null = null, bypassDistanceKm: number | null = null): Promise<AutoDiscountResult | null> {
+export async function resolveBannerDiscount(
+  visitorDistanceKm: number | null = null,
+  bypassDistanceKm: number | null = null,
+  rawDistanceKm: number | null = null,
+): Promise<AutoDiscountResult | null> {
   const { rules, enabled } = await loadRules();
   if (!enabled) return null;
   const candidates = rules.filter(r => Number(r.show_in_banner) === 1);
@@ -341,7 +345,10 @@ export async function resolveBannerDiscount(visitorDistanceKm: number | null = n
   const dailyUsage = await getDailyUsageCounts(candidates.filter(r => r.daily_max_uses != null).map(r => r.id));
   // Beim Banner ist die Fahrt noch unbekannt — geprüft wird, was jetzt schon feststeht:
   // Besucherstandort und (daraus ableitbar) ob dieser Besucher überhaupt Pflichttarife sieht.
-  const bypassed = bypassDistanceKm != null && visitorDistanceKm != null && visitorDistanceKm > bypassDistanceKm;
+  // Für die Bypass-Frage zählt die gemessene Entfernung (auch bei VPN), denn die Preislogik
+  // richtet sich unverändert danach.
+  const measured = rawDistanceKm ?? visitorDistanceKm;
+  const bypassed = bypassDistanceKm != null && measured != null && measured > bypassDistanceKm;
   const matching = candidates.filter(r => {
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
     if (!visitorMatches(r, visitorDistanceKm)) return false;

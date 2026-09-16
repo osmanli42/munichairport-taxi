@@ -12,11 +12,12 @@ export function isPrivateIp(ip: string): boolean {
   return !ip || PRIVATE_IP_RE.test(ip);
 }
 
-export async function geoFromIp(ip: string): Promise<{ country: string; city: string; lat: number | null; lng: number | null }> {
+export async function geoFromIp(ip: string): Promise<{ country: string; city: string; lat: number | null; lng: number | null; proxy: boolean }> {
   return new Promise((resolve) => {
-    const fallback = { country: '', city: '', lat: null, lng: null };
+    const fallback = { country: '', city: '', lat: null, lng: null, proxy: false };
     const timeout = setTimeout(() => resolve(fallback), 2000);
-    http.get(`http://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon`, (res) => {
+    // proxy/hosting = VPN- bzw. Rechenzentrums-IP. Kostet keinen zusätzlichen Aufruf.
+    http.get(`http://ip-api.com/json/${ip}?fields=countryCode,city,lat,lon,proxy,hosting`, (res) => {
       let data = '';
       res.on('data', (c: string) => data += c);
       res.on('end', () => {
@@ -28,6 +29,7 @@ export async function geoFromIp(ip: string): Promise<{ country: string; city: st
             city: j.city || '',
             lat: j.lat != null ? Number(j.lat) : null,
             lng: j.lon != null ? Number(j.lon) : null,
+            proxy: j.proxy === true || j.hosting === true,
           });
         } catch { resolve(fallback); }
       });
@@ -36,17 +38,17 @@ export async function geoFromIp(ip: string): Promise<{ country: string; city: st
 }
 
 // In-memory cache: IP → {lat, lng, ts}
-const cache = new Map<string, { lat: number | null; lng: number | null; ts: number }>();
+const cache = new Map<string, { lat: number | null; lng: number | null; proxy: boolean; ts: number }>();
 const CACHE_TTL = 3600_000; // 1 hour
 const CACHE_MAX = 10_000;
 
-export async function getVisitorCoords(req: Request): Promise<{ lat: number | null; lng: number | null }> {
+export async function getVisitorGeo(req: Request): Promise<{ lat: number | null; lng: number | null; proxy: boolean }> {
   const ip = getClientIp(req);
-  if (isPrivateIp(ip)) return { lat: null, lng: null };
+  if (isPrivateIp(ip)) return { lat: null, lng: null, proxy: false };
 
   const cached = cache.get(ip);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
-    return { lat: cached.lat, lng: cached.lng };
+    return { lat: cached.lat, lng: cached.lng, proxy: cached.proxy };
   }
 
   const geo = await geoFromIp(ip);
@@ -55,7 +57,14 @@ export async function getVisitorCoords(req: Request): Promise<{ lat: number | nu
     const oldest = cache.keys().next().value;
     if (oldest) cache.delete(oldest);
   }
-  cache.set(ip, { lat: geo.lat, lng: geo.lng, ts: Date.now() });
+  cache.set(ip, { lat: geo.lat, lng: geo.lng, proxy: geo.proxy, ts: Date.now() });
 
-  return { lat: geo.lat, lng: geo.lng };
+  return { lat: geo.lat, lng: geo.lng, proxy: geo.proxy };
+}
+
+// Unverändertes Verhalten für die Preislogik (Pflichtgebiet-Bypass): nur Koordinaten,
+// VPN-Erkennung bleibt hier bewusst außen vor.
+export async function getVisitorCoords(req: Request): Promise<{ lat: number | null; lng: number | null }> {
+  const { lat, lng } = await getVisitorGeo(req);
+  return { lat, lng };
 }

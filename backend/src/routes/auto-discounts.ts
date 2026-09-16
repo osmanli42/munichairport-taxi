@@ -97,7 +97,7 @@ router.get('/public/banner', async (req: Request, res: Response): Promise<void> 
     const s = Object.fromEntries(settings.map(r => [r.setting_key, r.setting_value]));
     if ((s.auto_discount_banner_enabled ?? '0') !== '1') { res.json(null); return; }
     const visitor = await visitorDistanceToBase(req);
-    const result = await resolveBannerDiscount(visitor.distanceKm, visitor.bypassDistanceKm);
+    const result = await resolveBannerDiscount(visitor.distanceKm, visitor.bypassDistanceKm, visitor.rawDistanceKm);
     if (!result) { res.json(null); return; }
     const { rule } = result;
     const locale = ['de', 'en', 'tr'].includes(String(req.query.locale)) ? String(req.query.locale) as 'de' | 'en' | 'tr' : 'de';

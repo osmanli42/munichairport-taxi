@@ -636,7 +636,8 @@ export default function RabatteTab({ token }: { token: string }) {
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Besucher-Entfernung</label>
                 <p className="text-xs text-gray-400 mb-1">
                   Luftlinie zwischen dem IP-Standort des Besuchers und dem Betriebssitz. Leer = egal.
-                  Beispiel: „bis 100 km“ = nur Rabatt für Besucher aus der Region.
+                  Beispiel: „bis 100 km“ = nur Rabatt für Besucher aus der Region. VPN- und
+                  Rechenzentrums-IPs gelten als unbekannter Standort — ihr Standort sagt nichts über den Kunden aus.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
