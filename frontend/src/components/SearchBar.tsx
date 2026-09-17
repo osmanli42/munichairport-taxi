@@ -112,6 +112,9 @@ function AddressField({
     onChange(t.address); onValidSelect(t.address); setFieldError('');
     setOpen(false); setShowAirport(false);
   };
+  // mousedown feuert vor dem Blur (Desktop), click fängt Taps ab, bei denen das
+  // Handy kein mousedown liefert.
+  const pickHandlers = (fn: () => void) => ({ onMouseDown: fn, onClick: fn });
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
@@ -138,7 +141,13 @@ function AddressField({
     }
   };
 
+  // Auf Touch-Geräten kommt nach dem Tippen sowohl mousedown als auch click an —
+  // die zweite Meldung würde denselben Ort erneut auflösen, deshalb kurz sperren.
+  const selectingRef = useRef('');
   const handleSelect = async (placeId: string, desc: string) => {
+    if (selectingRef.current === placeId) return;
+    selectingRef.current = placeId;
+    setTimeout(() => { if (selectingRef.current === placeId) selectingRef.current = ''; }, 800);
     onChange(desc); setPredictions([]); setOpen(false); setShowAirport(false); setValidating(true);
     try {
       const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=${locale}`);
@@ -182,7 +191,7 @@ function AddressField({
             Flughafen München — Terminal wählen
           </li>
           {AIRPORT_TERMINALS.map((t, ti) => (
-            <li key={t.id} onMouseDown={() => handleSelectTerminal(t)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${ti === highlightIdx ? 'bg-primary-50' : ''}`}>
+            <li key={t.id} {...pickHandlers(() => handleSelectTerminal(t))} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${ti === highlightIdx ? 'bg-primary-50' : ''}`}>
               <Plane size={12} className="text-primary-500 shrink-0" />
               {t.label}
             </li>
@@ -192,7 +201,7 @@ function AddressField({
       {open && !showAirport && predictions.length > 0 && (
         <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
           {predictions.map((p, pi) => (
-            <li key={p.place_id} onMouseDown={() => handleSelect(p.place_id, p.description)} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
+            <li key={p.place_id} {...pickHandlers(() => handleSelect(p.place_id, p.description))} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
               {p.types?.includes('lodging') ? (
                 <Hotel size={12} className="text-gray-400 shrink-0" />
               ) : p.types?.includes('airport') ? (
@@ -609,7 +618,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
     if (!pickupVal) { setFormError(l.errFrom); return; }
     if (!dropoffVal) { setFormError(l.errTo); return; }
     if (!date) { setFormError(l.errDate); return; }
-    if (isTooSoon(date, time)) return;
+    if (isTooSoon(date, time)) { setFormError(advanceWarning); return; }
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
     const isAirportTrip = isAirportArea(pickupVal) || isAirportArea(dropoffVal);
     if (!isAirportTrip && !stadtfahrtEnabled) {
@@ -880,14 +889,14 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 mt-3 px-4 py-2.5 bg-red-500/20 text-red-100 text-sm rounded-xl backdrop-blur-sm">
+        <div className="flex items-center gap-2 mt-3 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-xl">
           <AlertCircle size={14} /> {formError}
         </div>
       )}
 
       {/* Advance booking warning */}
       {advanceWarning && !formError && (
-        <div className="flex items-start gap-3 mt-3 px-4 py-3 bg-amber-500/20 text-amber-100 text-sm rounded-xl backdrop-blur-sm">
+        <div className="flex items-start gap-3 mt-3 px-4 py-3 bg-amber-50 text-amber-800 border border-amber-200 text-sm rounded-xl">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
           <span>
             {advanceWarning}{' '}

@@ -597,6 +597,9 @@ function ResultsContent() {
                 if (zw) sp.set('zwischenstopp_address', zw);
                 router.replace(`?${sp.toString()}`);
                 setShowSearchEdit(false);
+                // Mobil: nach dem Aktualisieren zurück nach oben, sonst steht man
+                // unterhalb der neu berechneten Preise.
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
               }}
             />
           </div>
