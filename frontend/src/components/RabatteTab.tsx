@@ -38,6 +38,7 @@ const emptyForm = (): FormState => ({
   priority: 0, stackable_with_promo: 0,
   label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1, show_remaining: 1,
   price_basis: 'any', visitor_min_km: null, visitor_max_km: null, visitor_unknown_ok: 1,
+  visit_min: null, allow_fixed_routes: 0,
 });
 
 const PRICE_BASIS_OPTIONS = [
@@ -397,6 +398,8 @@ export default function RabatteTab({ token }: { token: string }) {
                     {(r.daily_max_uses != null || r.max_uses != null) && !r.show_remaining ? ' · Restplätze ausgeblendet' : ''}
                     {priceBasisShort(r.price_basis) ? ` · ${priceBasisShort(r.price_basis)}` : ''}
                     {visitorRange(r.visitor_min_km, r.visitor_max_km) ? ` · ${visitorRange(r.visitor_min_km, r.visitor_max_km)}` : ''}
+                    {r.visit_min != null ? ` · ab ${r.visit_min}. Besuch` : ''}
+                    {r.allow_fixed_routes ? ' · auch Festpreisrouten' : ''}
                   </p>
                 </div>
                 <button onClick={() => startEdit(r)} title="Bearbeiten" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
@@ -678,6 +681,10 @@ export default function RabatteTab({ token }: { token: string }) {
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Besucher-Entfernung</label>
                 <p className="text-xs text-gray-400 mb-1">
+                  <span className="text-amber-700 font-semibold">Wichtig:</span> Sieht ein weit entfernter
+                  Besucher im Pflichtfahrgebiet dank IP-Bypass den günstigeren Besucherpreis, wird darauf
+                  serverseitig <strong>kein</strong> Rabatt gewährt — dieser Preis ist bereits die
+                  reduzierte Stufe.{' '}
                   Luftlinie zwischen dem IP-Standort des Besuchers und dem Betriebssitz. Leer = egal.
                   Beispiel: „bis 100 km“ = nur Rabatt für Besucher aus der Region. VPN- und
                   Rechenzentrums-IPs gelten als unbekannter Standort — ihr Standort sagt nichts über den Kunden aus.
@@ -703,6 +710,66 @@ export default function RabatteTab({ token }: { token: string }) {
                     onChange={e => patch({ visitor_unknown_ok: e.target.checked ? 1 : 0 })} />
                   Auch bei unbekanntem Standort gewähren (VPN, Firmennetz)
                 </label>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Wiederkehrende Besucher</label>
+                <p className="text-xs text-gray-400 mb-1">
+                  Regel greift erst ab diesem Besuch desselben Geräts. Leer = jeder Besuch.
+                  Hintergrund aus den eigenen Daten: 1. Besuch 4,6 % Buchungsquote, 2. Besuch 7,7 %,
+                  3. Besuch 10,7 %, 4. Besuch 13,6 % — wer wiederkommt, hat beim letzten Mal
+                  nicht gebucht und ist trotzdem interessiert. Die Besuche werden serverseitig
+                  gezählt; ohne erkennbares Gerät greift die Regel nicht.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">ab Besuch Nr.</label>
+                    <input type="number" min={2} max={20} value={editing.visit_min ?? ''}
+                      onChange={e => patch({ visit_min: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                      placeholder="egal"
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+
+                {/* Zwei Kombinationen, die in der Praxis nicht funktionieren — der Hinweis
+                    blockiert nichts, erinnert aber beim Anlegen der Regel daran. */}
+                {editing.visit_min != null && (editing.visitor_min_km != null || editing.visitor_max_km != null) && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
+                    <span>
+                      <strong>Besuch-Nr. zusammen mit Besucher-Entfernung:</strong> Wer aus der Ferne
+                      schaut, sieht im Pflichtfahrgebiet durch den IP-Bypass bereits den günstigeren
+                      Besucherpreis. Auf diesen Preis wird <strong>grundsätzlich kein Rabatt gewährt</strong>
+                      (serverseitig blockiert, damit kein zweiter Rabatt auf dieselbe Fahrt entsteht) —
+                      die Regel greift dort also gar nicht. Zudem wirkt eine Auswahl nach IP-Standort wie
+                      eine willkürliche Bevorzugung, während § 51 Abs. 5 PBefG gleiche Bedingungen für
+                      alle verlangt. Empfehlung: Entfernung leer lassen.
+                    </span>
+                  </div>
+                )}
+                <label className="flex items-start gap-2 text-sm cursor-pointer mt-3">
+                  <input type="checkbox" className="mt-0.5" checked={!!editing.allow_fixed_routes}
+                    onChange={e => patch({ allow_fixed_routes: e.target.checked ? 1 : 0 })} />
+                  <span>
+                    Auch auf <strong>Festpreisrouten</strong> gewähren
+                    <span className="block text-xs text-gray-400">
+                      Standard aus: Festpreise sind bereits eigenständig kalkuliert, ein automatischer
+                      Rabatt käme dort obendrauf — also ein zweiter Rabatt auf dieselbe Fahrt. Nur
+                      einschalten, wenn die Festpreise bewusst Raum dafür lassen.
+                    </span>
+                  </span>
+                </label>
+
+                {editing.visit_min != null && editing.zone_scope === 'inside' && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
+                    <span>
+                      <strong>Besuch-Nr. innerhalb des Pflichtfahrgebiets:</strong> Dort wird der Rabatt
+                      auf den Pflichttarif begrenzt und landet meist bei 0 € — der Kunde sieht nichts.
+                      Empfehlung: „Außerhalb Pflichtfahrgebiet“ wählen.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-gray-100 pt-4">

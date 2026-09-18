@@ -39,6 +39,24 @@ export interface AutoDiscountRule {
   active: number;
   priority: number;
   stackable_with_promo: number;
+  /**
+   * Mindestanzahl Besuche desselben Geräts, damit die Regel greift (null = egal).
+   *
+   * Hintergrund: Wiederkehrende Besucher konvertieren deutlich besser als Erstbesucher
+   * (2. Besuch 7,7 %, 3. 10,7 %, 4. 13,6 % gegenüber 4,6 % beim ersten), aber wer zum
+   * zweiten Mal kommt, hat beim ersten Mal nachweislich NICHT gebucht. Das ist ein
+   * belastbarerer Auslöser als die Verweildauer, denn lange Sitzungen sind gerade das
+   * Profil der Käufer — dort würde ein Rabatt vor allem Umsatz verschenken.
+   *
+   * Die Besuchszahl wird serverseitig aus visitor_sessions gezählt, nie aus dem Client
+   * übernommen.
+   */
+  visit_min: number | null;
+  /**
+   * 1 = Regel gilt auch auf Festpreisrouten. Standard 0: Festpreise sind bereits
+   * eigenständig kalkuliert, ein Rabatt darauf wäre ein zweiter Rabatt auf dieselbe Fahrt.
+   */
+  allow_fixed_routes: number;
 }
 
 export interface AutoDiscountInput {
@@ -53,6 +71,18 @@ export interface AutoDiscountInput {
   // 'normal' = normale Preisberechnung (auch bei IP-Bypass des Pflichtgebiets).
   priceBasis: 'pflichttarif' | 'normal';
   visitorDistanceKm: number | null; // null = Standort unbekannt (VPN, lokale IP, Geo-Fehler)
+  // Serverseitig gezählte Besuche dieses Geräts. null = unbekannt (kein visitor_id) →
+  // Regeln mit visit_min greifen dann NICHT: ohne Nachweis kein Rabatt.
+  visitCount: number | null;
+  /**
+   * true, wenn der Kunde den günstigeren Besucherpreis sieht, weil der IP-Bypass den
+   * Pflichttarif ersetzt hat (Fahrt läge im Pflichtfahrgebiet, Besucher sitzt aber weit
+   * entfernt). Dieser Preis IST bereits die reduzierte Stufe — ein Rabatt darauf wäre
+   * ein zweiter Rabatt auf denselben Fahrpreis.
+   */
+  visitorPriceByBypass: boolean;
+  /** true, wenn der Preis aus einer Festpreisroute stammt (nicht aus der km-Rechnung). */
+  fixedRouteApplied: boolean;
 }
 
 export interface AutoDiscountResult {
@@ -225,6 +255,13 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   const { rules, enabled } = await loadRules();
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
 
+  // Kein Rabatt auf den IP-Besucherpreis: dort wurde der Pflichttarif schon durch den
+  // günstigeren Besucherpreis ersetzt, ein Rabatt obendrauf ist ein zweiter Rabatt auf
+  // dieselbe Fahrt. Bewusst als harte Regel und nicht als Regel-Option — die Kombination
+  // entsteht sonst versehentlich (z. B. Zielgruppe "Besucher-Entfernung" plus Rabatt) und
+  // kostet bei jeder Fahrt Geld. Wer sie doch will, muss es hier bewusst ändern.
+  if (input.visitorPriceByBypass) return null;
+
   const dailyCapRuleIds = rules.filter(r => r.daily_max_uses != null).map(r => r.id);
   const dailyUsage = await getDailyUsageCounts(dailyCapRuleIds);
 
@@ -250,6 +287,11 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (!weekdayMatches(r, trip)) return false;
     if (r.booking_index_max != null && input.customerBookingCount != null
         && input.customerBookingCount >= Number(r.booking_index_max)) return false;
+    // Anders als booking_index_max: unbekannt heißt hier "greift nicht" (siehe visit_min)
+    if (r.visit_min != null
+        && (input.visitCount == null || input.visitCount < Number(r.visit_min))) return false;
+    // Festpreisroute: nur mit ausdrücklicher Freigabe der Regel
+    if (input.fixedRouteApplied && Number(r.allow_fixed_routes) !== 1) return false;
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
     if (!priceBasisMatches(r, input.priceBasis)) return false;
     if (!visitorMatches(r, input.visitorDistanceKm)) return false;
@@ -367,6 +409,27 @@ export async function resolveBannerDiscount(
 }
 
 // Müşterinin (iptal hariç) önceki rezervasyon sayısı — "ilk N rezervasyon" koşulu için.
+/**
+ * Wievielter Besuch dieses Geräts ist das? Zählt die Sitzungen zu einer visitor_id
+ * (Bots ausgenommen). Der laufende Besuch ist mitgezählt: beim ersten Besuch 1.
+ *
+ * Absichtlich serverseitig: der Wert entscheidet über Rabatte, und ein Client könnte
+ * localStorage beliebig hochzählen.
+ */
+export async function countVisitorSessions(visitorId: string | null | undefined): Promise<number | null> {
+  if (!visitorId) return null;
+  try {
+    const rows = await query<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt FROM visitor_sessions WHERE visitor_id = ? AND is_bot = 0`,
+      [visitorId]
+    );
+    return Number(rows[0]?.cnt || 0);
+  } catch {
+    // Tracking-Tabelle fehlt/fehlerhaft → kein Rabatt statt falschem Rabatt
+    return null;
+  }
+}
+
 export async function countCustomerBookings(params: {
   visitorId?: string | null;
   phoneE164?: string | null;

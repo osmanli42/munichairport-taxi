@@ -404,6 +404,35 @@ router.get('/admin/booking-drafts', authenticateAdmin, async (req: AuthRequest, 
   }
 });
 
+// GET /api/visitor/context?visitor_id=... — öffentlich, für die Startseite.
+//
+// Liefert, wievielter Besuch das ist und ob dieses Gerät schon einmal gebucht hat.
+// Serverseitig gezählt, damit die Anzeige (und später ein Rabatt) nicht über
+// localStorage manipulierbar ist. Keine personenbezogenen Daten in der Antwort.
+router.get('/visitor/context', async (req: Request, res: Response) => {
+  try {
+    await ensureTables();
+    const visitorId = String(req.query.visitor_id || '').slice(0, 64);
+    if (!visitorId) {
+      res.json({ visit_no: null, has_booking: false });
+      return;
+    }
+    const [row] = await query<{ visits: number; booked: number }>(
+      `SELECT
+         (SELECT COUNT(*) FROM visitor_sessions WHERE visitor_id = ? AND is_bot = 0) AS visits,
+         (SELECT COUNT(*) FROM bookings WHERE visitor_id = ? AND status <> 'cancelled') AS booked`,
+      [visitorId, visitorId]
+    );
+    res.json({
+      visit_no: Number(row?.visits || 0),
+      has_booking: Number(row?.booked || 0) > 0,
+    });
+  } catch (err: any) {
+    // Nie blockieren: im Zweifel wie ein Erstbesucher behandeln
+    res.json({ visit_no: null, has_booking: false });
+  }
+});
+
 // GET /api/admin/heatmap-pages — pages with most click data
 router.get('/admin/heatmap-pages', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {

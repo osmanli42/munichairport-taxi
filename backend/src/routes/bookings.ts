@@ -12,7 +12,7 @@ import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
-import { resolveAutoDiscount, countCustomerBookings, ruleLabels } from '../services/autoDiscount';
+import { resolveAutoDiscount, countCustomerBookings, countVisitorSessions, ruleLabels } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
@@ -278,6 +278,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // --- Pflichtfahrgebiet (mandatory tariff zone) — skipped if a fixed route already applied ---
     let pgFareFloor = 0;
+    // Kunde sieht den günstigeren Besucherpreis, weil der IP-Bypass den Pflichttarif
+    // umgangen hat? Dann ist der Preis bereits die reduzierte Stufe — ein Rabatt darauf
+    // wäre ein zweiter Rabatt (siehe resolveAutoDiscount).
+    let visitorPriceByBypass = false;
     try {
       const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
       if (pgCfg && pgCfg.enabled && !fixedRouteApplied) {
@@ -296,7 +300,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
           }
         }
 
-        if (!ipBypass && km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg)) {
+        // Bypass greift nur, wenn die Fahrt sonst im Pflichtfahrgebiet gelegen hätte —
+        // nur dann ersetzt der Besucherpreis tatsächlich den amtlichen Tarif.
+        const tripWouldBeInZone = km <= (pgCfg.radius_km || 50) && tripInZone(pickupCoords, dropoffCoords, pgCfg);
+        visitorPriceByBypass = ipBypass && tripWouldBeInZone;
+
+        if (!ipBypass && tripWouldBeInZone) {
           const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
           const excludedSet = new Set(excludedRows.map(r => r.plz));
           const pPlz = pickup_address?.match(/\b(\d{5})\b/)?.[1];
@@ -417,6 +426,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         // Normalpreis (auch wenn er wegen IP-Bypass nur für ihn normal ist).
         priceBasis: pgFareFloor > 0 ? 'pflichttarif' : 'normal',
         visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
+        // Besuchszahl serverseitig zählen — der Client könnte sie sonst hochsetzen und
+        // sich so einen Wiederkehrer-Rabatt selbst freischalten.
+        visitCount: await countVisitorSessions(visitor_id || null),
+        visitorPriceByBypass,
+        fixedRouteApplied,
       });
 
       if (adResult) {
@@ -793,6 +807,7 @@ export async function computeRoutePrice(
   // Pflichtfahrgebiet mandatory tariff floor/replace (one-way preview)
   let pflichtgebiet = false;
   let zoneInside = false; // geometrie — auto-discount motoru için, `pgCfg.enabled`'dan bağımsız
+  let visitorPriceByBypass = false; // IP-Bypass hat den Pflichttarif ersetzt → Preis ist schon reduziert
   let pgFloorValue: number | null = null; // mandatory tarife tabanı — auto-discount bunun altına inemez
   try {
     const [pgCfg] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
@@ -816,6 +831,8 @@ export async function computeRoutePrice(
             ipBypass2 = haversineKm(vc.lat, vc.lng, pgCfg.betriebssitz_lat, pgCfg.betriebssitz_lng) > (pgCfg.ip_bypass_distance_km || 100);
           }
         }
+
+        visitorPriceByBypass = ipBypass2 && zoneInside;
 
         if (!ipBypass2 && zoneInside) {
           const excludedRows = await query<{ plz: string }>('SELECT plz FROM pflichtgebiet_exclusions WHERE enabled = 1');
@@ -869,6 +886,10 @@ export async function computeRoutePrice(
       baseTotal: price,
       priceBasis: pgFloorValue != null ? 'pflichttarif' : 'normal',
       visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
+      // Besuchszahl serverseitig — siehe POST /api/bookings
+      visitCount: await countVisitorSessions(options?.visitorId || null),
+      visitorPriceByBypass,
+      fixedRouteApplied: fixedRouteMatch,
     });
     if (result) {
       // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst

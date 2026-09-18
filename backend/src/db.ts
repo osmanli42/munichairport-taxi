@@ -797,6 +797,13 @@ export async function initializeDatabase(): Promise<void> {
       ['visitor_min_km', 'DECIMAL(6,1) DEFAULT NULL'],
       ['visitor_max_km', 'DECIMAL(6,1) DEFAULT NULL'],
       ['visitor_unknown_ok', 'TINYINT(1) NOT NULL DEFAULT 1'],
+      // Mindest-Besuchsnummer des Geräts (NULL = egal). Wiederkehrende Besucher
+      // konvertieren 2–3× besser als Erstbesucher, haben aber beim letzten Mal nicht
+      // gebucht — ein belastbarerer Rabatt-Auslöser als die Verweildauer.
+      ['visit_min', 'INT DEFAULT NULL'],
+      // Festpreisrouten sind oft schon bewusst günstig kalkuliert. Standard 0: ein
+      // automatischer Rabatt kommt dort NICHT obendrauf; pro Regel bewusst freischaltbar.
+      ['allow_fixed_routes', 'TINYINT(1) NOT NULL DEFAULT 0'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);

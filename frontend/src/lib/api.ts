@@ -300,6 +300,10 @@ export interface AutoDiscount {
   visitor_min_km: number | null;
   visitor_max_km: number | null;
   visitor_unknown_ok: number;
+  /** Ab dem wievielten Besuch des Geräts die Regel greift (null = egal, min. 2) */
+  visit_min: number | null;
+  /** 1 = Rabatt gilt auch auf Festpreisrouten (Standard 0 — kein Rabatt auf Festpreise) */
+  allow_fixed_routes: number;
   weekday_mask: string | null;
   booking_index_max: number | null;
   daily_max_uses: number | null;

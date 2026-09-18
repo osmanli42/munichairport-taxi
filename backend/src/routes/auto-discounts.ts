@@ -13,10 +13,16 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
     vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
-    price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok,
+    price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
+  if (visit_min !== undefined && visit_min !== null && visit_min !== '') {
+    const v = Number(visit_min);
+    if (!Number.isFinite(v) || v < 2 || v > 20) {
+      return { error: 'Besuch-Nr. muss zwischen 2 und 20 liegen (1 wäre jeder Erstbesucher)' };
+    }
+  }
   if (!['percent', 'fixed'].includes(discount_type)) return { error: 'discount_type muss "percent" oder "fixed" sein' };
   const val = parseFloat(discount_value);
   if (isNaN(val) || val <= 0) return { error: 'discount_value muss größer als 0 sein' };
@@ -77,6 +83,8 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       numOrNull(visitor_min_km),
       numOrNull(visitor_max_km),
       visitor_unknown_ok === undefined ? 1 : (visitor_unknown_ok ? 1 : 0),
+      intOrNull(visit_min),
+      allow_fixed_routes ? 1 : 0,
     ],
   };
 }
@@ -86,7 +94,7 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
-  price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok`;
+  price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {

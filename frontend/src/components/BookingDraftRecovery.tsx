@@ -29,10 +29,22 @@ interface Draft {
   savedAt: number;
 }
 
-const T: Record<string, { title: string; cont: string }> = {
-  de: { title: 'Buchung fortsetzen', cont: 'Weiter' },
-  en: { title: 'Resume your booking', cont: 'Continue' },
-  tr: { title: 'Rezervasyona devam et', cont: 'Devam et' },
+const T: Record<string, { title: string; cont: string; backTitle: string; priceHold: string }> = {
+  de: {
+    title: 'Buchung fortsetzen', cont: 'Weiter',
+    backTitle: 'Willkommen zurück',
+    priceHold: 'Preis wie bei Ihrem letzten Besuch',
+  },
+  en: {
+    title: 'Resume your booking', cont: 'Continue',
+    backTitle: 'Welcome back',
+    priceHold: 'Same price as on your last visit',
+  },
+  tr: {
+    title: 'Rezervasyona devam et', cont: 'Devam et',
+    backTitle: 'Tekrar hoş geldiniz',
+    priceHold: 'Son ziyaretinizdeki fiyatla aynı',
+  },
 };
 
 function shortAddr(a: string): string {
@@ -52,6 +64,28 @@ export default function BookingDraftRecovery() {
   const pathname = usePathname() || '/';
   const locale = useLocale();
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Wiederkehrer-Erkennung serverseitig: die eigenen Daten zeigen beim 2.–4. Besuch
+  // eine 1,7–3× höhere Buchungsquote als beim ersten. Diese Besucher bekommen hier
+  // keinen Rabatt, sondern den gespeicherten Preis plus Telefon-Alternative.
+  const [returning, setReturning] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const visitorId = localStorage.getItem('mt_visitor_id');
+      if (!visitorId) return;
+      fetch(`${API_BASE}/visitor/context?visitor_id=${encodeURIComponent(visitorId)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (cancelled || !d) return;
+          setReturning(Number(d.visit_no || 0) >= 2 && !d.has_booking);
+        })
+        .catch(() => {});
+    } catch {
+      /* localStorage nicht verfügbar */
+    }
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const currentFull = typeof window !== 'undefined'
@@ -163,15 +197,20 @@ export default function BookingDraftRecovery() {
             <RotateCcw size={18} className="text-primary-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-gray-900">{t.title}</div>
+            <div className="text-sm font-bold text-gray-900">{returning ? t.backTitle : t.title}</div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-600">
               <span className="truncate">{shortAddr(draft.pickup)}</span>
               <ArrowRight size={12} className="shrink-0 text-gray-400" />
               <span className="truncate">{shortAddr(draft.dropoff)}</span>
             </div>
             {draft.price !== null && (
-              <div className="mt-1 text-sm font-bold text-primary-600">
-                {(Math.ceil(draft.price * 2) / 2).toFixed(2).replace('.', ',')} €
+              <div className="mt-1">
+                <div className="text-sm font-bold text-primary-600">
+                  {(Math.ceil(draft.price * 2) / 2).toFixed(2).replace('.', ',')} €
+                </div>
+                {returning && (
+                  <div className="text-[11px] text-green-700 font-medium">{t.priceHold}</div>
+                )}
               </div>
             )}
             <a
@@ -181,6 +220,7 @@ export default function BookingDraftRecovery() {
               {t.cont}
               <ArrowRight size={15} />
             </a>
+
           </div>
           <button
             onClick={dismiss}
