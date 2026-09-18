@@ -42,9 +42,9 @@ const emptyForm = (): FormState => ({
 });
 
 const PRICE_BASIS_OPTIONS = [
-  { v: 'any', label: 'Alle Besucher' },
-  { v: 'pflichttarif', label: 'Nur wenn der amtliche Tarif gilt' },
-  { v: 'normal', label: 'Nur bei normaler Preisberechnung' },
+  { v: 'any', label: 'Tüm ziyaretçiler' },
+  { v: 'pflichttarif', label: 'Yalnız amtlicher Tarif geçerliyse' },
+  { v: 'normal', label: 'Yalnız normal fiyat hesabında' },
 ] as const;
 
 const km = (v: number | null) => String(Number(v)).replace(/\.0$/, '').replace('.', ',');
@@ -52,45 +52,45 @@ const km = (v: number | null) => String(Number(v)).replace(/\.0$/, '').replace('
 // "Besucher bis 100 km" / "Besucher ab 200 km" / "Besucher 20–100 km"
 const visitorRange = (min: number | null, max: number | null) => {
   if (min == null && max == null) return null;
-  if (min == null) return `Besucher bis ${km(max)} km`;
-  if (max == null) return `Besucher ab ${km(min)} km`;
-  return `Besucher ${km(min)}–${km(max)} km`;
+  if (min == null) return `ziyaretçi ${km(max)} km ye kadar`;
+  if (max == null) return `ziyaretçi ${km(min)} km den itibaren`;
+  return `ziyaretçi ${km(min)}–${km(max)} km`;
 };
 
 const priceBasisShort = (v: string) =>
-  v === 'pflichttarif' ? 'nur amtlicher Tarif' : v === 'normal' ? 'nur Normalpreis' : null;
+  v === 'pflichttarif' ? 'yalnız amtlicher Tarif' : v === 'normal' ? 'yalnız normal fiyat' : null;
 
 // Anzeige-Schalter (Einstellungen) — alle mit gleichem Kartenmuster im Tab.
 const DISPLAY_SETTINGS = [
   {
     key: 'auto_discount_red_badge_enabled', def: '1', icon: Tag,
-    title: 'Rotes Rabatt-Label auf Fahrzeugkarten',
-    desc: 'Rote Ecke + roter Preis-Badge. Aus = dezente grüne Zeile wie bisher.',
-    on: 'Rotes Rabatt-Label aktiv ✓', off: 'Rotes Rabatt-Label ausgeblendet ✓',
+    title: 'Araç kartlarında kırmızı indirim etiketi',
+    desc: 'Kırmızı köşe + kırmızı fiyat etiketi. Kapalı = eskisi gibi sade yeşil satır.',
+    on: 'Kırmızı indirim etiketi aktif ✓', off: 'Kırmızı indirim etiketi gizlendi ✓',
   },
   {
     key: 'auto_discount_countdown_enabled', def: '1', icon: Timer,
-    title: 'Countdown anzeigen',
-    desc: 'Zeigt die Restzeit — nur bei Regeln mit echtem Buchungsende (Buchungsdatum bis / Buchungszeit bis). Pro Regel abschaltbar.',
-    on: 'Countdown aktiv ✓', off: 'Countdown ausgeblendet ✓',
+    title: 'Geri sayım göster',
+    desc: 'Kalan süreyi gösterir — yalnız gerçek bir rezervasyon bitişi olan kurallarda (rezervasyon tarihi/saati bitişi). Kural bazında kapatılabilir.',
+    on: 'Geri sayım aktif ✓', off: 'Geri sayım gizlendi ✓',
   },
   {
     key: 'auto_discount_remaining_enabled', def: '1', icon: Users,
-    title: 'Freie Rabattplätze anzeigen',
-    desc: '„Nur noch 2 Rabattplätze“ — nur bei Regeln mit Kontingent (Max. Buchungen pro Tag / Max. Nutzungen gesamt). Pro Regel abschaltbar.',
-    on: 'Freie Rabattplätze werden angezeigt ✓', off: 'Freie Rabattplätze ausgeblendet ✓',
+    title: 'Kalan indirim hakkını göster',
+    desc: 'Sadece 2 indirim hakkı kaldı gibi bir uyarı — yalnız kontenjanlı kurallarda (günlük ya da toplam limit). Kural bazında kapatılabilir.',
+    on: 'Kalan indirim hakkı gösteriliyor ✓', off: 'Kalan indirim hakkı gizlendi ✓',
   },
   {
     key: 'auto_discount_banner_enabled', def: '0', icon: Megaphone,
-    title: 'Rabatt-Banner auf der Startseite',
-    desc: 'Roter Hinweis über dem Suchformular. Zeigt die Regel, bei der „Im Startseiten-Banner zeigen“ aktiviert ist.',
-    on: 'Startseiten-Banner aktiv ✓', off: 'Startseiten-Banner ausgeblendet ✓',
+    title: 'Ana sayfada indirim banner',
+    desc: 'Arama formunun üstünde kırmızı uyarı. Banner seçeneği açık olan kuralı gösterir.',
+    on: 'Ana sayfa bannerı aktif ✓', off: 'Ana sayfa bannerı gizlendi ✓',
   },
   {
     key: 'auto_discount_vpn_as_unknown', def: '1', icon: ShieldAlert,
-    title: 'VPN-Besucher als unbekannten Standort behandeln',
-    desc: 'Gilt nur für die Zielgruppe „Besucher-Entfernung“: Bei VPN- und Rechenzentrums-IPs entscheidet dann „Auch bei unbekanntem Standort gewähren“ der jeweiligen Regel. Preisberechnung und Pflichtgebiet-Bypass bleiben unberührt.',
-    on: 'VPN-Besucher gelten als unbekannter Standort ✓', off: 'VPN-Standort wird wie ein normaler Standort behandelt ✓',
+    title: 'VPN ziyaretçisini bilinmeyen konum say',
+    desc: 'Yalnız ziyaretçi mesafesi hedeflemesi için geçerli: VPN ve veri merkezi IP lerinde kuralın bilinmeyen konumda da ver seçeneği karar verir. Fiyat hesabı ve Pflichtgebiet bypass etkilenmez.',
+    on: 'VPN ziyaretçisi bilinmeyen konum sayılıyor ✓', off: 'VPN konumu normal konum gibi işleniyor ✓',
   },
 ] as const;
 
@@ -127,7 +127,7 @@ export default function RabatteTab({ token }: { token: string }) {
       setDisplaySettings(Object.fromEntries(DISPLAY_SETTINGS.map(d => [d.key, (settings[d.key] ?? d.def) === '1'])));
       setErr('');
     } catch {
-      setErr('Regeln konnten nicht geladen werden');
+      setErr('Kurallar yüklenemedi');
     } finally {
       setLoading(false);
     }
@@ -141,25 +141,25 @@ export default function RabatteTab({ token }: { token: string }) {
     setSaving(true);
     try {
       await adminApi.updateSettings({ auto_discounts_enabled: next ? '1' : '0' });
-      flash(next ? 'Rabatte aktiviert ✓' : 'Rabatte deaktiviert — alle Regeln pausiert ✓');
+      flash(next ? 'İndirimler açıldı ✓' : 'İndirimler kapatıldı — tüm kurallar duraklatıldı ✓');
     } catch {
       setMasterEnabled(!next);
-      setErr('Konnte nicht gespeichert werden');
+      setErr('Kaydedilemedi');
     }
     setSaving(false);
   };
 
   const toggleIgnorePgFloor = async () => {
     const next = !ignorePgFloor;
-    if (next && !confirm('§51 Abs. 5 PBefG: Der Pflichttarif darf nicht unterschritten werden. Rabatte, die nicht jedermann unter gleichen Bedingungen zugutekommen, sind verboten und nichtig (LG/OLG Frankfurt). Wenn du fortfährst, können Rabatte im Pflichtfahrgebiet den Tarif unterschreiten — rechtliches Risiko liegt bei dir. Fortfahren?')) return;
+    if (next && !confirm('§51 Abs. 5 PBefG: Pflichttarif altına inilemez. Herkese eşit koşulda verilmeyen indirimler yasaktır ve geçersizdir (LG/OLG Frankfurt). Devam edersen Pflichtfahrgebiet içindeki indirimler tarifenin altına inebilir — hukuki risk sana ait. Devam edilsin mi?')) return;
     setIgnorePgFloor(next);
     setSaving(true);
     try {
       await adminApi.updateSettings({ auto_discount_ignore_pg_floor: next ? '1' : '0' });
-      flash(next ? 'Tarif-Untergrenze deaktiviert ⚠️' : 'Tarif-Untergrenze wieder aktiv ✓');
+      flash(next ? 'Tarife tabanı devre dışı ⚠️' : 'Tarife tabanı yeniden aktif ✓');
     } catch {
       setIgnorePgFloor(!next);
-      setErr('Konnte nicht gespeichert werden');
+      setErr('Kaydedilemedi');
     }
     setSaving(false);
   };
@@ -170,10 +170,10 @@ export default function RabatteTab({ token }: { token: string }) {
     setSaving(true);
     try {
       await adminApi.updateSettings({ auto_discount_show_in_email: next ? '1' : '0' });
-      flash(next ? 'Rabatt-Zeile wird in der Kunden-E-Mail angezeigt ✓' : 'Rabatt-Zeile in der Kunden-E-Mail ausgeblendet ✓');
+      flash(next ? 'İndirim satırı müşteri e-postasında gösteriliyor ✓' : 'İndirim satırı müşteri e-postasında gizlendi ✓');
     } catch {
       setShowInEmail(!next);
-      setErr('Konnte nicht gespeichert werden');
+      setErr('Kaydedilemedi');
     }
     setSaving(false);
   };
@@ -187,7 +187,7 @@ export default function RabatteTab({ token }: { token: string }) {
       flash(next ? d.on : d.off);
     } catch {
       setDisplaySettings(v => ({ ...v, [d.key]: !next }));
-      setErr('Konnte nicht gespeichert werden');
+      setErr('Kaydedilemedi');
     }
     setSaving(false);
   };
@@ -198,7 +198,7 @@ export default function RabatteTab({ token }: { token: string }) {
       await autoDiscountsApi.toggle(r.id, !r.active);
     } catch {
       setRules(arr => arr.map(x => x.id === r.id ? { ...x, active: r.active } : x));
-      setErr('Umschalten fehlgeschlagen');
+      setErr('Değiştirme başarısız');
     }
   };
 
@@ -207,9 +207,9 @@ export default function RabatteTab({ token }: { token: string }) {
     try {
       await autoDiscountsApi.remove(id);
       setRules(arr => arr.filter(x => x.id !== id));
-      flash('Regel gelöscht ✓');
+      flash('Kural silindi ✓');
     } catch {
-      setErr('Löschen fehlgeschlagen');
+      setErr('Silme başarısız');
     }
   };
 
@@ -249,7 +249,7 @@ export default function RabatteTab({ token }: { token: string }) {
 
   const saveForm = async () => {
     if (!editing) return;
-    if (!editing.name || !editing.discount_value) { setErr('Name und Rabattwert sind erforderlich'); return; }
+    if (!editing.name || !editing.discount_value) { setErr('Ad ve indirim değeri zorunlu'); return; }
     setSaving(true);
     try {
       if (editingId) {
@@ -259,9 +259,9 @@ export default function RabatteTab({ token }: { token: string }) {
       }
       await load();
       cancelEdit();
-      flash(copying ? 'Kopie angelegt ✓' : 'Gespeichert ✓');
+      flash(copying ? 'Kopya oluşturuldu ✓' : 'Kaydedildi ✓');
     } catch (e: any) {
-      setErr(e?.response?.data?.error || 'Speichern fehlgeschlagen');
+      setErr(e?.response?.data?.error || 'Kaydetme başarısız');
     }
     setSaving(false);
   };
@@ -282,7 +282,7 @@ export default function RabatteTab({ token }: { token: string }) {
     patch({ vehicle_types: next.length === 0 ? null : next.join(',') });
   };
 
-  if (loading) return <div className="text-center py-12 text-gray-500">Laden…</div>;
+  if (loading) return <div className="text-center py-12 text-gray-500">Yükleniyor…</div>;
 
   const zoneLabel = (z: string) => z === 'inside' ? 'INNERHALB' : z === 'outside' ? 'AUSSERHALB' : 'BEIDE';
   const zoneColor = (z: string) => z === 'inside' ? 'bg-amber-100 text-amber-800 border-amber-300' : z === 'outside' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-gray-100 text-gray-700 border-gray-300';
@@ -299,8 +299,8 @@ export default function RabatteTab({ token }: { token: string }) {
             <Percent size={18} className="text-green-700" />
           </div>
           <div>
-            <p className="font-bold text-gray-900">Automatische Rabatte</p>
-            <p className="text-sm text-gray-500">Hauptschalter — deaktiviert sofort alle Regeln, ohne sie zu löschen.</p>
+            <p className="font-bold text-gray-900">Otomatik indirimler</p>
+            <p className="text-sm text-gray-500">Ana şalter — tüm kuralları silmeden anında devre dışı bırakır.</p>
           </div>
         </div>
         <Toggle on={masterEnabled} onClick={toggleMaster} disabled={saving} />
@@ -313,10 +313,10 @@ export default function RabatteTab({ token }: { token: string }) {
             <AlertTriangle size={18} className={ignorePgFloor ? 'text-amber-600' : 'text-gray-400'} />
           </div>
           <div>
-            <p className="font-bold text-gray-900">Tarif-Untergrenze im Pflichtfahrgebiet</p>
+            <p className="font-bold text-gray-900">Pflichtfahrgebiet içinde tarife tabanı</p>
             <p className="text-sm text-gray-500 max-w-xl">
-              Standard: Rabatte dürfen den Pflichttarif (§51 Abs. 5 PBefG) nicht unterschreiten.
-              {ignorePgFloor && <span className="text-amber-700 font-semibold"> Deaktiviert — Rabatte können den Pflichttarif unterschreiten. Rechtliches Risiko.</span>}
+              Varsayılan: indirimler Pflichttarif (§51 Abs. 5 PBefG) altına inemez.
+              {ignorePgFloor && <span className="text-amber-700 font-semibold"> Devre dışı — indirimler Pflichttarif altına inebilir. Hukuki risk.</span>}
             </p>
           </div>
         </div>
@@ -330,10 +330,10 @@ export default function RabatteTab({ token }: { token: string }) {
             <Mail size={18} className="text-gray-500" />
           </div>
           <div>
-            <p className="font-bold text-gray-900">Rabatt-Zeile in Kunden-E-Mail zeigen</p>
+            <p className="font-bold text-gray-900">Müşteri e-postasında indirim satırını göster</p>
             <p className="text-sm text-gray-500 max-w-xl">
-              Standard: aus — die Bestätigungs-E-Mail zeigt nur den Endpreis, keine Rabatt-Zeile.
-              Aktionscodes (Rabattcode) werden davon unabhängig immer angezeigt.
+              Varsayılan kapalı — onay e-postası yalnız son fiyatı gösterir, indirim satırı yoktur.
+              Aksiyon kodları (indirim kodu) bundan bağımsız olarak her zaman gösterilir.
             </p>
           </div>
         </div>
@@ -365,11 +365,11 @@ export default function RabatteTab({ token }: { token: string }) {
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <p className="font-bold text-gray-900">Regeln</p>
           <button onClick={startCreate} className="flex items-center gap-1.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg">
-            <Plus size={15} /> Neue Regel
+            <Plus size={15} /> Yeni kural
           </button>
         </div>
         {rules.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Noch keine Regeln angelegt.</div>
+          <div className="p-8 text-center text-gray-400 text-sm">Henüz kural oluşturulmadı.</div>
         ) : (
           <div className="divide-y divide-gray-100">
             {rules.map(r => (
@@ -386,33 +386,33 @@ export default function RabatteTab({ token }: { token: string }) {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {r.min_km != null || r.max_km != null ? `${r.min_km ?? 0}–${r.max_km ?? '∞'} km · ` : ''}
-                    {timeRange(r.trip_time_from, r.trip_time_to) ? `Fahrtzeit ${timeRange(r.trip_time_from, r.trip_time_to)} · ` : ''}
-                    {timeRange(r.booking_time_from, r.booking_time_to) ? `Buchungszeit ${timeRange(r.booking_time_from, r.booking_time_to)} · ` : ''}
-                    {r.booking_index_max != null ? `erste ${r.booking_index_max} Buchungen · ` : ''}
-                    {r.daily_max_uses != null ? `max. ${r.daily_max_uses}/Tag · ` : ''}
-                    {(r.start_date || r.end_date) ? `Fahrt: ${(r.start_date ?? '…').slice(0, 10)}–${(r.end_date ?? '…').slice(0, 10)} · ` : ''}
-                    {(r.booking_start_date || r.booking_end_date) ? `Buchung: ${(r.booking_start_date ?? '…').slice(0, 10)}–${(r.booking_end_date ?? '…').slice(0, 10)} · ` : ''}
-                    Genutzt: {r.used_count}{r.max_uses != null ? `/${r.max_uses}` : ''}
+                    {timeRange(r.trip_time_from, r.trip_time_to) ? `yolculuk ${timeRange(r.trip_time_from, r.trip_time_to)} · ` : ''}
+                    {timeRange(r.booking_time_from, r.booking_time_to) ? `rezervasyon ${timeRange(r.booking_time_from, r.booking_time_to)} · ` : ''}
+                    {r.booking_index_max != null ? `ilk ${r.booking_index_max} rezervasyon · ` : ''}
+                    {r.daily_max_uses != null ? `günde maks. ${r.daily_max_uses} · ` : ''}
+                    {(r.start_date || r.end_date) ? `yolculuk: ${(r.start_date ?? '…').slice(0, 10)}–${(r.end_date ?? '…').slice(0, 10)} · ` : ''}
+                    {(r.booking_start_date || r.booking_end_date) ? `rezervasyon: ${(r.booking_start_date ?? '…').slice(0, 10)}–${(r.booking_end_date ?? '…').slice(0, 10)} · ` : ''}
+                    Kullanım: {r.used_count}{r.max_uses != null ? `/${r.max_uses}` : ''}
                     {r.show_in_banner ? ' · 📣 Banner' : ''}
-                    {r.show_countdown ? '' : ' · kein Countdown'}
-                    {(r.daily_max_uses != null || r.max_uses != null) && !r.show_remaining ? ' · Restplätze ausgeblendet' : ''}
+                    {r.show_countdown ? '' : ' · geri sayım yok'}
+                    {(r.daily_max_uses != null || r.max_uses != null) && !r.show_remaining ? ' · kalan hak gizli' : ''}
                     {priceBasisShort(r.price_basis) ? ` · ${priceBasisShort(r.price_basis)}` : ''}
                     {visitorRange(r.visitor_min_km, r.visitor_max_km) ? ` · ${visitorRange(r.visitor_min_km, r.visitor_max_km)}` : ''}
-                    {r.visit_min != null ? ` · ab ${r.visit_min}. Besuch` : ''}
-                    {r.allow_fixed_routes ? ' · auch Festpreisrouten' : ''}
+                    {r.visit_min != null ? ` · ${r.visit_min}. ziyaretten itibaren` : ''}
+                    {r.allow_fixed_routes ? ' · sabit fiyatlara da' : ''}
                   </p>
                 </div>
-                <button onClick={() => startEdit(r)} title="Bearbeiten" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
-                <button onClick={() => startCopy(r)} title="Kopieren — gleiche Einstellungen als neue Regel" className="p-2 text-gray-400 hover:text-primary-600"><Copy size={16} /></button>
+                <button onClick={() => startEdit(r)} title="Düzenle" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
+                <button onClick={() => startCopy(r)} title="Kopyala — aynı ayarlarla yeni kural" className="p-2 text-gray-400 hover:text-primary-600"><Copy size={16} /></button>
                 {confirmDeleteId === r.id ? (
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => removeRule(r.id)}
                       className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold">
-                      Wirklich löschen
+                      Gerçekten sil
                     </button>
                     <button onClick={() => setConfirmDeleteId(null)}
                       className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold">
-                      Abbrechen
+                      İptal
                     </button>
                   </div>
                 ) : (
@@ -430,7 +430,7 @@ export default function RabatteTab({ token }: { token: string }) {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={cancelEdit}>
           <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg text-gray-900">{editingId ? 'Regel bearbeiten' : copying ? 'Regel kopieren' : 'Neue Regel'}</h3>
+              <h3 className="font-bold text-lg text-gray-900">{editingId ? 'Kuralı düzenle' : copying ? 'Kuralı kopyala' : 'Yeni kural'}</h3>
               <button onClick={cancelEdit}><X size={20} className="text-gray-400" /></button>
             </div>
 
@@ -438,20 +438,20 @@ export default function RabatteTab({ token }: { token: string }) {
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Name</label>
                 <input value={editing.name || ''} onChange={e => patch({ name: e.target.value })}
-                  placeholder="z.B. Fernstrecken-Rabatt"
+                  placeholder="örn. Uzun mesafe indirimi"
                   className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Rabatt-Art</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">İndirim türü</label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => patch({ discount_type: 'percent' })}
                     className={cn('py-2 rounded-lg text-sm font-bold border', editing.discount_type === 'percent' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-500 border-gray-200')}>
-                    Prozent %
+                    Yüzde %
                   </button>
                   <button type="button" onClick={() => patch({ discount_type: 'fixed' })}
                     className={cn('py-2 rounded-lg text-sm font-bold border', editing.discount_type === 'fixed' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-500 border-gray-200')}>
-                    Fester Betrag €
+                    Sabit tutar €
                   </button>
                 </div>
               </div>
@@ -459,7 +459,7 @@ export default function RabatteTab({ token }: { token: string }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    {editing.discount_type === 'fixed' ? 'Rabatt €' : 'Rabatt %'}
+                    {editing.discount_type === 'fixed' ? 'İndirim €' : 'İndirim %'}
                   </label>
                   <input type="number" min={0} max={editing.discount_type === 'fixed' ? undefined : 100} step={0.5}
                     value={editing.discount_value ?? ''}
@@ -467,7 +467,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Max. Rabatt €</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Maks. indirim €</label>
                   <input type="number" min={0} step={0.5} value={editing.max_discount_amount ?? ''}
                     onChange={e => patch({ max_discount_amount: e.target.value === '' ? null : parseFloat(e.target.value) })}
                     placeholder="unbegrenzt"
@@ -477,25 +477,25 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Geltungsbereich</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Geçerlilik alanı</label>
                 <div className="mt-1 grid grid-cols-1 gap-2">
                   <label className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-pointer">
                     <input type="radio" checked={editing.zone_scope === 'outside'} onChange={() => patch({ zone_scope: 'outside' })} />
-                    Außerhalb Pflichtfahrgebiet (empfohlen)
+                    Pflichtfahrgebiet dışı (önerilen)
                   </label>
                   <label className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-pointer">
                     <input type="radio" checked={editing.zone_scope === 'inside'} onChange={() => patch({ zone_scope: 'inside' })} />
-                    Innerhalb Pflichtfahrgebiet
+                    Pflichtfahrgebiet içi
                   </label>
                   <label className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-pointer">
                     <input type="radio" checked={editing.zone_scope === 'any'} onChange={() => patch({ zone_scope: 'any' })} />
-                    Beide
+                    İkisi de
                   </label>
                 </div>
                 {(editing.zone_scope === 'inside' || editing.zone_scope === 'any') && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex gap-2">
                     <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                    <span>§ 51 Abs. 5 PBefG: Der amtliche Tarif darf innerhalb des Pflichtfahrgebiets nicht unterschritten werden und muss gleichmäßig angewendet werden. Der Rabatt wird automatisch auf den Pflichttarif begrenzt.</span>
+                    <span>§ 51 Abs. 5 PBefG: Pflichtfahrgebiet içinde amtlicher Tarif altına inilemez ve tarife eşit uygulanmalıdır. İndirim otomatik olarak Pflichttarif ile sınırlanır.</span>
                   </div>
                 )}
               </div>
@@ -509,7 +509,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Max. km</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Maks. km</label>
                   <input type="number" min={0} value={editing.max_km ?? ''}
                     onChange={e => patch({ max_km: e.target.value === '' ? null : parseFloat(e.target.value) })}
                     placeholder="unbegrenzt"
@@ -518,7 +518,7 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrzeuge (leer = alle)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Araçlar (boş = hepsi)</label>
                 <div className="mt-1 flex gap-1.5">
                   {VEHICLES.map(v => {
                     const active = (editing.vehicle_types || '').split(',').includes(v.v);
@@ -534,14 +534,14 @@ export default function RabatteTab({ token }: { token: string }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Erste [N] Buchungen des Kunden</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Müşterinin ilk [N] rezervasyonu</label>
                   <input type="number" min={1} value={editing.booking_index_max ?? ''}
                     onChange={e => patch({ booking_index_max: e.target.value === '' ? null : parseInt(e.target.value) })}
                     placeholder="alle Kunden"
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Max. Nutzungen gesamt</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Toplam maks. kullanım</label>
                   <input type="number" min={1} value={editing.max_uses ?? ''}
                     onChange={e => patch({ max_uses: e.target.value === '' ? null : parseInt(e.target.value) })}
                     placeholder="unbegrenzt"
@@ -550,9 +550,9 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Max. Buchungen pro Tag</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Günlük maks. rezervasyon</label>
                 <p className="text-xs text-gray-400 mb-1">
-                  Für "erste 2-3 Bestellungen am Morgen": setzt sich automatisch jede Nacht um 00:00 zurück — kein Reset-Knopf nötig.
+                  Sabahın ilk 2-3 siparişi gibi kullanımlar için: her gece 00:00 da otomatik sıfırlanır, elle sıfırlama gerekmez.
                 </p>
                 <input type="number" min={1} value={editing.daily_max_uses ?? ''}
                   onChange={e => patch({ daily_max_uses: e.target.value === '' ? null : parseInt(e.target.value) })}
@@ -562,16 +562,16 @@ export default function RabatteTab({ token }: { token: string }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Trip-Typ</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuk tipi</label>
                   <select value={editing.trip_types || ''} onChange={e => patch({ trip_types: e.target.value || null })}
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Beide</option>
-                    <option value="oneway">Nur einfache Fahrt</option>
-                    <option value="roundtrip">Nur Hin- & Rückfahrt</option>
+                    <option value="">İkisi de</option>
+                    <option value="oneway">Sadece tek yön</option>
+                    <option value="roundtrip">Sadece gidiş-dönüş</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Priorität</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Öncelik</label>
                   <input type="number" value={editing.priority ?? 0}
                     onChange={e => patch({ priority: parseInt(e.target.value) || 0 })}
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
@@ -579,16 +579,16 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div className="border-t border-gray-100 pt-4">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtdatum</label>
-                <p className="text-xs text-gray-400 mb-1">Datum der Fahrt selbst. Für einen einzelnen Tag (z.B. 30.07.2026) beide Felder auf dasselbe Datum setzen.</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuk tarihi</label>
+                <p className="text-xs text-gray-400 mb-1">Yolculuğun kendi tarihi. Tek bir gün için (örn. 30.07.2026) iki alana da aynı tarihi yaz.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400">Gültig ab</label>
+                    <label className="text-xs text-gray-400">Başlangıç</label>
                     <input type="date" value={editing.start_date || ''} onChange={e => patch({ start_date: e.target.value || null })}
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400">Gültig bis</label>
+                    <label className="text-xs text-gray-400">Bitiş</label>
                     <input type="date" value={editing.end_date || ''} onChange={e => patch({ end_date: e.target.value || null })}
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
@@ -596,8 +596,8 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Fahrtzeit (leer = ganztägig)</label>
-                <p className="text-xs text-gray-400 mb-1">Uhrzeit der Abholung. Über Mitternacht möglich, z.B. 22:00–06:00. „bis“ zählt nicht mehr mit — bis Mitternacht: 00:00.</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuk saati (boş = tüm gün)</label>
+                <p className="text-xs text-gray-400 mb-1">Alış saati. Gece yarısını geçebilir, örn. 22:00–06:00. Bitiş saati dahil değildir — gece yarısına kadar: 00:00.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400">von</label>
@@ -614,7 +614,7 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Wochentage der Fahrt (leer = alle)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuğun haftanın günleri (boş = hepsi)</label>
                 <div className="mt-1 flex gap-1.5">
                   {WEEKDAYS.map(d => {
                     const active = (editing.weekday_mask || '').split(',').map(Number).includes(d.v);
@@ -629,16 +629,16 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div className="border-t border-gray-100 pt-4">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Buchungsdatum</label>
-                <p className="text-xs text-gray-400 mb-1">Datum, an dem gebucht wird (unabhängig vom Fahrtdatum oben — beide Bereiche können gleichzeitig aktiv sein).</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Rezervasyon tarihi</label>
+                <p className="text-xs text-gray-400 mb-1">Rezervasyonun yapıldığı tarih (yukarıdaki yolculuk tarihinden bağımsız — ikisi aynı anda da aktif olabilir).</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400">Gültig ab</label>
+                    <label className="text-xs text-gray-400">Başlangıç</label>
                     <input type="date" value={editing.booking_start_date || ''} onChange={e => patch({ booking_start_date: e.target.value || null })}
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400">Gültig bis</label>
+                    <label className="text-xs text-gray-400">Bitiş</label>
                     <input type="date" value={editing.booking_end_date || ''} onChange={e => patch({ booking_end_date: e.target.value || null })}
                       className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
@@ -646,8 +646,8 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Buchungszeit (leer = ganztägig)</label>
-                <p className="text-xs text-gray-400 mb-1">Uhrzeit, zu der der Kunde bucht (deutsche Zeit) — z.B. „Abendaktion 18:00–00:00“. Unabhängig von der Fahrtzeit.</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Rezervasyon saati (boş = tüm gün)</label>
+                <p className="text-xs text-gray-400 mb-1">Müşterinin rezervasyon yaptığı saat (Almanya saati) — örn. akşam aksiyonu 18:00–00:00. Yolculuk saatinden bağımsız.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400">von</label>
@@ -665,11 +665,12 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div className="border-t border-gray-100 pt-4">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Preisbasis</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Hedef kitle: Fiyat tabanı</label>
                 <p className="text-xs text-gray-400 mb-1">
-                  Weit entfernte Besucher sehen im Pflichtfahrgebiet dank IP-Bypass (Reiter Pflichtfahrgebiet,
-                  Standard ab 100 km) statt des amtlichen Tarifs den günstigeren Normalpreis. „Nur wenn der amtliche
-                  Tarif gilt“ verhindert, dass diese Besucher zusätzlich Rabatt bekommen.
+                  Uzaktan bakan ziyaretçiler Pflichtfahrgebiet içinde IP-Bypass sayesinde (Pflichtfahrgebiet
+                  sekmesi, varsayılan 100 km üstü) amtlicher Tarif yerine daha ucuz normal fiyatı görür.
+                  „Yalnız amtlicher Tarif geçerliyse“ seçeneği, bu ziyaretçilerin üstüne bir de indirim
+                  almasını engeller.
                 </p>
                 <select value={editing.price_basis || 'any'}
                   onChange={e => patch({ price_basis: e.target.value as 'any' | 'pflichttarif' | 'normal' })}
@@ -679,15 +680,15 @@ export default function RabatteTab({ token }: { token: string }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Besucher-Entfernung</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Hedef kitle: Ziyaretçi mesafesi</label>
                 <p className="text-xs text-gray-400 mb-1">
-                  <span className="text-amber-700 font-semibold">Wichtig:</span> Sieht ein weit entfernter
-                  Besucher im Pflichtfahrgebiet dank IP-Bypass den günstigeren Besucherpreis, wird darauf
-                  serverseitig <strong>kein</strong> Rabatt gewährt — dieser Preis ist bereits die
-                  reduzierte Stufe.{' '}
-                  Luftlinie zwischen dem IP-Standort des Besuchers und dem Betriebssitz. Leer = egal.
-                  Beispiel: „bis 100 km“ = nur Rabatt für Besucher aus der Region. VPN- und
-                  Rechenzentrums-IPs gelten als unbekannter Standort — ihr Standort sagt nichts über den Kunden aus.
+                  <span className="text-amber-700 font-semibold">Önemli:</span> Uzaktan bakan ziyaretçi
+                  Pflichtfahrgebiet içinde IP-Bypass sayesinde daha ucuz ziyaretçi fiyatını görüyorsa,
+                  o fiyata sunucu tarafında <strong>indirim verilmez</strong> — bu fiyat zaten indirilmiş
+                  kademedir.{' '}
+                  Ziyaretçinin IP konumu ile işletme merkezi arasındaki kuş uçuşu mesafe. Boş = fark etmez.
+                  Örnek: 100 km ye kadar = yalnız bölgeden bakan ziyaretçilere indirim. VPN ve veri merkezi
+                  IP leri bilinmeyen konum sayılır — konumları müşteri hakkında bir şey söylemez.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -708,22 +709,28 @@ export default function RabatteTab({ token }: { token: string }) {
                 <label className="flex items-center gap-2 text-sm cursor-pointer mt-2">
                   <input type="checkbox" checked={!!editing.visitor_unknown_ok}
                     onChange={e => patch({ visitor_unknown_ok: e.target.checked ? 1 : 0 })} />
-                  Auch bei unbekanntem Standort gewähren (VPN, Firmennetz)
+                  Bilinmeyen konumda da ver (VPN, şirket ağı)
                 </label>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Zielgruppe: Wiederkehrende Besucher</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Hedef kitle: Tekrar gelen ziyaretçi</label>
                 <p className="text-xs text-gray-400 mb-1">
-                  Regel greift erst ab diesem Besuch desselben Geräts. Leer = jeder Besuch.
-                  Hintergrund aus den eigenen Daten: 1. Besuch 4,6 % Buchungsquote, 2. Besuch 7,7 %,
-                  3. Besuch 10,7 %, 4. Besuch 13,6 % — wer wiederkommt, hat beim letzten Mal
-                  nicht gebucht und ist trotzdem interessiert. Die Besuche werden serverseitig
-                  gezählt; ohne erkennbares Gerät greift die Regel nicht.
+                  Kural, aynı cihazın bu ziyaretinden itibaren geçerli olur. Boş = her ziyaret.
+                  Ziyaretler sunucuda sayılır; cihaz tanınamıyorsa kural çalışmaz.
+                  <br />
+                  <span className="text-gray-500">
+                    Neden tekrar gelen? Son 60 günün kendi oturumlarında 1. ziyarette yaklaşık her 22
+                    oturumdan biri rezervasyona dönüyor (2979 oturumda 136), 2. ziyarette her 13'te bir
+                    (598'de 46), 3. ziyarette her 9'da bir (234'te 25), 4. ziyarette her 7'de bir
+                    (118'de 16). Yani geri gelen kişi son seferde rezervasyon yapmamış ama hâlâ ilgili.
+                    <strong> Bunlar dönüşüm oranı, indirim oranı değil</strong> — ne kadar indirim
+                    verileceğini yukarıdaki „İndirim türü“ ve „Wert“ alanlarına sen yazıyorsun.
+                  </span>
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400">ab Besuch Nr.</label>
+                    <label className="text-xs text-gray-400">kaçıncı ziyaretten itibaren</label>
                     <input type="number" min={2} max={20} value={editing.visit_min ?? ''}
                       onChange={e => patch({ visit_min: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
                       placeholder="egal"
@@ -731,19 +738,19 @@ export default function RabatteTab({ token }: { token: string }) {
                   </div>
                 </div>
 
-                {/* Zwei Kombinationen, die in der Praxis nicht funktionieren — der Hinweis
-                    blockiert nichts, erinnert aber beim Anlegen der Regel daran. */}
+                {/* Pratikte işe yaramayan iki kombinasyon — uyarı hiçbir şeyi engellemez,
+                    ama kuralı kurarken hatırlatır. */}
                 {editing.visit_min != null && (editing.visitor_min_km != null || editing.visitor_max_km != null) && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
                     <span>
-                      <strong>Besuch-Nr. zusammen mit Besucher-Entfernung:</strong> Wer aus der Ferne
-                      schaut, sieht im Pflichtfahrgebiet durch den IP-Bypass bereits den günstigeren
-                      Besucherpreis. Auf diesen Preis wird <strong>grundsätzlich kein Rabatt gewährt</strong>
-                      (serverseitig blockiert, damit kein zweiter Rabatt auf dieselbe Fahrt entsteht) —
-                      die Regel greift dort also gar nicht. Zudem wirkt eine Auswahl nach IP-Standort wie
-                      eine willkürliche Bevorzugung, während § 51 Abs. 5 PBefG gleiche Bedingungen für
-                      alle verlangt. Empfehlung: Entfernung leer lassen.
+                      <strong>Ziyaret sayısı ile ziyaretçi mesafesi birlikte:</strong> Uzaktan bakan
+                      ziyaretçi, Pflichtfahrgebiet içinde IP-Bypass sayesinde zaten daha ucuz olan
+                      ziyaretçi fiyatını görüyor. Bu fiyata <strong>hiçbir şekilde indirim verilmiyor</strong>
+                      (aynı yolculuğa ikinci indirim binmesin diye sunucuda engelli) — yani kural orada
+                      hiç çalışmaz. Ayrıca kimin indirim alacağını IP konumuna göre seçmek keyfi
+                      kayırma görünümü verir; § 51 Abs. 5 PBefG herkese eşit koşul şartı koyuyor.
+                      Öneri: mesafe alanını boş bırak.
                     </span>
                   </div>
                 )}
@@ -751,11 +758,11 @@ export default function RabatteTab({ token }: { token: string }) {
                   <input type="checkbox" className="mt-0.5" checked={!!editing.allow_fixed_routes}
                     onChange={e => patch({ allow_fixed_routes: e.target.checked ? 1 : 0 })} />
                   <span>
-                    Auch auf <strong>Festpreisrouten</strong> gewähren
+                    <strong>Sabit fiyatlı güzergâhlara</strong> da indirim uygula
                     <span className="block text-xs text-gray-400">
-                      Standard aus: Festpreise sind bereits eigenständig kalkuliert, ein automatischer
-                      Rabatt käme dort obendrauf — also ein zweiter Rabatt auf dieselbe Fahrt. Nur
-                      einschalten, wenn die Festpreise bewusst Raum dafür lassen.
+                      Varsayılan kapalı: sabit fiyatlar zaten ayrıca hesaplanmış, otomatik indirim
+                      üstüne binerdi — yani aynı yolculuğa ikinci indirim. Sadece sabit fiyatlarını
+                      bilerek indirime yer bırakacak şekilde belirlediysen aç.
                     </span>
                   </span>
                 </label>
@@ -764,17 +771,17 @@ export default function RabatteTab({ token }: { token: string }) {
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
                     <span>
-                      <strong>Besuch-Nr. innerhalb des Pflichtfahrgebiets:</strong> Dort wird der Rabatt
-                      auf den Pflichttarif begrenzt und landet meist bei 0 € — der Kunde sieht nichts.
-                      Empfehlung: „Außerhalb Pflichtfahrgebiet“ wählen.
+                      <strong>Pflichtfahrgebiet içinde ziyaret sayısı kuralı:</strong> Orada indirim
+                      Pflichttarif tabanına kırpılır ve çoğunlukla 0 €'ya düşer — müşteri hiçbir şey
+                      görmez. Öneri: „Außerhalb Pflichtfahrgebiet“ seç.
                     </span>
                   </div>
                 )}
               </div>
 
               <div className="border-t border-gray-100 pt-4">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Kundentext (leer = Name)</label>
-                <p className="text-xs text-gray-400 mb-1">So heißt die Aktion für Kunden auf Fahrzeugkarte, Buchung und Banner. Max. 80 Zeichen.</p>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Müşteri metni (boş = kural adı)</label>
+                <p className="text-xs text-gray-400 mb-1">Aksiyonun müşteriye araç kartında, rezervasyonda ve bannerda görünen adı. En fazla 80 karakter.</p>
                 <div className="space-y-2">
                   {(['de', 'en', 'tr'] as const).map(l => {
                     const key = `label_${l}` as const;
@@ -790,7 +797,7 @@ export default function RabatteTab({ token }: { token: string }) {
                   })}
                 </div>
                 <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-400">Vorschau:</span>
+                  <span className="text-xs text-gray-400">Önizleme:</span>
                   <span className="inline-flex items-center gap-1 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                     <Tag size={11} /> {formatDiscountValue(editing.discount_type || 'percent', Number(editing.discount_value) || 0, 'de')} · {editing.label_de || editing.name || 'Rabatt'}
                   </span>
@@ -801,31 +808,31 @@ export default function RabatteTab({ token }: { token: string }) {
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={!!editing.show_in_banner}
                     onChange={e => patch({ show_in_banner: e.target.checked ? 1 : 0 })} />
-                  Im Startseiten-Banner zeigen
+                  Ana sayfa bannerında göster
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={!!editing.show_countdown}
                     onChange={e => patch({ show_countdown: e.target.checked ? 1 : 0 })} />
-                  Countdown zeigen (nur wenn Buchungsdatum/-zeit ein Ende hat)
+                  Geri sayım göster (yalnız rezervasyon tarihi ya da saati bitişi varsa)
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={!!editing.show_remaining}
                     onChange={e => patch({ show_remaining: e.target.checked ? 1 : 0 })} />
-                  Freie Rabattplätze zeigen (nur mit Max. Buchungen pro Tag / Max. Nutzungen gesamt)
+                  Kalan indirim hakkını göster (yalnız günlük ya da toplam limit varsa)
                 </label>
               </div>
 
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={!!editing.stackable_with_promo}
                   onChange={e => patch({ stackable_with_promo: e.target.checked ? 1 : 0 })} />
-                Kombinierbar mit Aktionscode
+                Aksiyon kodu ile birleşebilir
               </label>
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button onClick={cancelEdit} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 font-semibold text-sm">Abbrechen</button>
+              <button onClick={cancelEdit} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-600 font-semibold text-sm">İptal</button>
               <button onClick={saveForm} disabled={saving} className="flex-1 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm disabled:opacity-50">
-                {saving ? 'Speichert…' : copying ? 'Als neue Regel speichern' : 'Speichern'}
+                {saving ? 'Speichert…' : copying ? 'Yeni kural olarak kaydet' : 'Speichern'}
               </button>
             </div>
           </div>
