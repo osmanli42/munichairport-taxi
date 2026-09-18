@@ -164,14 +164,12 @@ router.put('/admin/:id', authenticateAdmin, async (req: Request, res: Response):
   const parsed = parseRuleBody(req.body);
   if (parsed.error) { res.status(400).json({ error: parsed.error }); return; }
   try {
+    // SET-Liste aus RULE_COLS ableiten, nicht doppelt pflegen: eine handgeschriebene
+    // Liste lief beim Hinzufügen von visit_min/allow_fixed_routes aus dem Takt, die
+    // Platzhalter passten nicht mehr zu parsed.values und jedes Speichern schlug fehl.
+    const setClause = RULE_COLS.split(',').map(c => `${c.trim()}=?`).join(', ');
     await run(
-      `UPDATE auto_discounts SET
-        name=?, discount_type=?, discount_value=?, zone_scope=?, min_km=?, max_km=?,
-        trip_time_from=?, trip_time_to=?, booking_time_from=?, booking_time_to=?,
-        weekday_mask=?, booking_index_max=?, daily_max_uses=?, max_uses=?, max_discount_amount=?,
-        vehicle_types=?, trip_types=?, start_date=?, end_date=?, booking_start_date=?, booking_end_date=?,
-        priority=?, stackable_with_promo=?, label_de=?, label_en=?, label_tr=?, show_in_banner=?, show_countdown=?, show_remaining=?,
-        price_basis=?, visitor_min_km=?, visitor_max_km=?, visitor_unknown_ok=?,
+      `UPDATE auto_discounts SET ${setClause},
         hour_from=NULL, hour_to=NULL,
         active=?
        WHERE id=?`,
