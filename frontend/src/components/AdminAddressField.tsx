@@ -21,7 +21,18 @@ const AIRPORT_TERMINALS = [
 const AIRPORT_KEYWORDS = ['flughafen', 'airport', 'terminal 1', 'terminal 2', 'terminal1', 'terminal2', 'muc ', '(muc', 'münchen flug', 'munchen flug', 'münih hava', 'munih hava', 'havalimanı', 'havaalanı'];
 const AIRPORT_FILTER_KEYWORDS = ['flughafen münchen', 'flughafen munchen', 'munich airport', 'munich international airport', '(muc)', 'münchen airport'];
 
+// "muc" und "eddm" sind eigenständige Flughafencodes. Sie dürfen NICHT als Teilstring
+// geprüft werden ("Schmuckstraße" enthält "muc"), deshalb Prüfung als ganzes Wort.
+// Vorher stand nur 'muc ' (mit Leerzeichen) in AIRPORT_KEYWORDS — durch das .trim()
+// konnte die Eingabe "muc" den Treffer nie erreichen und der Kunde bekam keinen
+// Vorschlag, sondern die Fehlermeldung "Bitte Abholadresse auswählen".
+const AIRPORT_CODES = ['muc', 'eddm'];
+function hasAirportCode(input: string): boolean {
+  const words = input.toLowerCase().trim().split(/[^a-z0-9äöüß]+/);
+  return AIRPORT_CODES.some(code => words.includes(code));
+}
 function isAirportSearch(input: string): boolean {
+  if (hasAirportCode(input)) return true;
   return AIRPORT_KEYWORDS.some(kw => input.toLowerCase().trim().includes(kw));
 }
 function isAirportResult(description: string): boolean {
