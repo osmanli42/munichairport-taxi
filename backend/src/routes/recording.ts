@@ -171,6 +171,8 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
            WHERE ve.session_id = r.session_id AND ve.type = 'field_focus') AS fields_touched,
         (SELECT COUNT(*) FROM visitor_events ve
            WHERE ve.session_id = r.session_id AND ve.type = 'call_click') AS call_clicks,
+        (SELECT COUNT(*) FROM callback_requests cr
+           WHERE cr.session_id = r.session_id) AS callback_requests,
         (SELECT COUNT(*) FROM visitor_events ve
            WHERE ve.session_id = r.session_id AND ve.type = 'field_error') AS field_errors,
         (SELECT COUNT(*) FROM visitor_events ve
@@ -246,7 +248,9 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         row.booked_id ? 'session'
         : Number(row.visitor_booking_count || 0) > 0 ? 'visitor'
         : 'none';
-      const callClicks = Number(row.call_clicks || 0);
+      // Rückruf-Anfrage zählt wie ein Telefonkontakt: der Kunde hat nicht abgebrochen,
+      // er hat den Kanal gewechselt.
+      const callClicks = Number(row.call_clicks || 0) + Number(row.callback_requests || 0);
       const fieldErrors = Number(row.field_errors || 0);
       const techErrors = Number(row.tech_errors || 0);
       const compareSignals = Number(row.compare_signals || 0);
@@ -286,6 +290,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         opened_form: openedForm,
         visitor_booking_count: Number(row.visitor_booking_count || 0),
         call_clicks: callClicks,
+        callback_requests: Number(row.callback_requests || 0),
         field_errors: fieldErrors,
         tech_errors: techErrors,
         compare_signals: compareSignals,

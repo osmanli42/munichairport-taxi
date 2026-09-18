@@ -107,6 +107,39 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE prices ADD COLUMN min_price_km DOUBLE NOT NULL DEFAULT 15`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Rückruf-Anfragen. Wird hier beim Start angelegt (nicht erst beim ersten Request),
+    // damit Abfragen anderer Routen — z. B. das Replay-Signal in recording.ts — sich auf
+    // die Existenz der Tabelle verlassen können.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS callback_requests (
+        id INT NOT NULL AUTO_INCREMENT,
+        phone VARCHAR(40) NOT NULL,
+        name VARCHAR(120) DEFAULT NULL,
+        pickup VARCHAR(255) DEFAULT NULL,
+        dropoff VARCHAR(255) DEFAULT NULL,
+        price DECIMAL(10,2) DEFAULT NULL,
+        distance_km DECIMAL(10,2) DEFAULT NULL,
+        vehicle VARCHAR(40) DEFAULT NULL,
+        trip_datetime VARCHAR(50) DEFAULT NULL,
+        passengers INT DEFAULT NULL,
+        duration_min INT DEFAULT NULL,
+        trip_type VARCHAR(10) DEFAULT NULL,
+        return_datetime VARCHAR(50) DEFAULT NULL,
+        prices_seen VARCHAR(255) DEFAULT NULL,
+        source_url VARCHAR(500) DEFAULT NULL,
+        locale VARCHAR(5) DEFAULT NULL,
+        session_id VARCHAR(64) DEFAULT NULL,
+        visitor_id VARCHAR(64) DEFAULT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'open',
+        note TEXT DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        handled_at DATETIME DEFAULT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_status_created (status, created_at),
+        INDEX idx_session_id (session_id)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // Settings table for global configuration
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS settings (

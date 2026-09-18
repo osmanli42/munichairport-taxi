@@ -11,6 +11,7 @@ import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon 
 import SocialProofToast from '@/components/SocialProofToast';
 import SearchBar, { DateTimeField } from '@/components/SearchBar';
 import Countdown from '@/components/discount/Countdown';
+import CallbackRequest from '@/components/CallbackRequest';
 import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -95,6 +96,10 @@ type DesignText = {
   tags: Record<TagKey, string>;
   trustTop: { title: string; text: string }[];
   trustBottom: { title: string; text: string }[];
+  // Entscheidungspunkt-Texte direkt an der Preisspalte (Vertrauen statt Rabatt)
+  rating: string;          // "4,9 ★ · 100.000+ Fahrgäste"
+  perPerson: string;       // "pro Person bei 7 Personen"
+  groupHint: string;       // Hinweis auf ein Fahrzeug für die ganze Gruppe
 };
 
 const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
@@ -116,6 +121,9 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'Pünktlich am Ziel', text: 'Wir überwachen Ihren Flug' },
       { title: 'Persönlicher Service', text: 'Wir sind 24/7 für Sie da' },
     ],
+    rating: '4,9 ★ · über 100.000 Fahrgäste',
+    perPerson: 'pro Person',
+    groupHint: 'Ein Fahrzeug für die ganze Gruppe – kein Umsteigen, kein zweites Taxi',
   },
   en: {
     eyebrow: 'Your booking', titleA: 'Choose your', titleB: 'vehicle',
@@ -135,6 +143,9 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'On time', text: 'We monitor your flight' },
       { title: 'Personal service', text: 'We are here for you 24/7' },
     ],
+    rating: '4.9 ★ · over 100,000 passengers',
+    perPerson: 'per person',
+    groupHint: 'One vehicle for the whole group – no transfers, no second taxi',
   },
   tr: {
     eyebrow: 'Rezervasyonunuz', titleA: 'Araç', titleB: 'seçin',
@@ -154,6 +165,9 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'Zamanında varış', text: 'Uçuşunuzu takip ediyoruz' },
       { title: 'Kişisel hizmet', text: '7/24 yanınızdayız' },
     ],
+    rating: '4,9 ★ · 100.000+ yolcu',
+    perPerson: 'kişi başı',
+    groupHint: 'Tüm grup için tek araç – aktarma yok, ikinci taksi yok',
   },
 };
 
@@ -853,6 +867,12 @@ function ResultsContent() {
 
                   {/* Price + CTA */}
                   <div className="flex flex-col items-stretch md:items-end border-t border-gray-100 pt-4 md:border-0 md:pt-0">
+                    {/* Bewertung direkt am Preis: Vertrauen genau dort, wo entschieden wird */}
+                    <div className="flex items-center gap-1 md:justify-end mb-1">
+                      <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md whitespace-nowrap">
+                        {dz.rating}
+                      </span>
+                    </div>
                     <div className="flex items-baseline justify-between md:justify-end gap-3 w-full">
                       <span className="text-sm text-gray-500">{isRoundtrip ? t.roundtrip_price : t.total}</span>
                       {isRoundtrip ? (
@@ -862,6 +882,14 @@ function ResultsContent() {
                       ) : null}
                     </div>
                     <div className="text-[32px] leading-tight font-extrabold text-primary-800 mt-0.5 md:text-right">{formatPrice(finalPrice)}</div>
+
+                    {/* Gruppenfahrzeuge: Preis pro Person ist hier das starke Argument
+                        (ein Fahrzeug statt zwei Taxis) — nur wenn die Kapazität > 4 ist. */}
+                    {maxPax > 4 && finalPrice > 0 && (
+                      <div className="text-xs text-gray-600 mt-0.5 md:text-right">
+                        {formatPrice(finalPrice / maxPax)} {dz.perPerson} ({maxPax} {t.persons})
+                      </div>
+                    )}
 
                     {isRoundtrip && (
                       <div className="flex items-center gap-1 md:justify-end mt-0.5">
@@ -926,6 +954,37 @@ function ResultsContent() {
               </div>
             );
           })}
+        </div>
+
+        {/* Telefon-Segment abfangen: wer den Preis sieht und lieber sprechen will,
+            bekommt hier eine Alternative zum vollständigen Buchungsformular. */}
+        <div className="mt-6 rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4" style={{ background: '#fbfbfd', borderColor: '#e5e7eb' }}>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-gray-900">
+              {locale === 'de' ? 'Lieber telefonisch buchen?' : locale === 'en' ? 'Prefer to book by phone?' : 'Telefonla rezervasyon mu?'}
+            </div>
+            <p className="text-xs text-gray-600 mt-0.5">
+              {locale === 'de'
+                ? 'Nummer hinterlassen – wir rufen zurück und buchen gemeinsam. Ihre Strecke ist bereits hinterlegt.'
+                : locale === 'en'
+                ? 'Leave your number – we call back and book together. Your route is already saved.'
+                : 'Numaranızı bırakın – sizi arayıp birlikte rezervasyon yapalım. Güzergâhınız zaten kayıtlı.'}
+            </p>
+          </div>
+          <div className="w-full sm:w-[280px] shrink-0">
+            <CallbackRequest
+              locale={locale}
+              context={{
+                pickup, dropoff,
+                distance_km: distanceKm || null,
+                passengers,
+                trip_datetime: date && time ? `${date} ${time}` : null,
+                duration_min: duration || null,
+                trip_type: tripType || null,
+                return_datetime: isRoundtrip && returnDate ? `${returnDate} ${returnTime}` : null,
+              }}
+            />
+          </div>
         </div>
 
         {/* Price note */}

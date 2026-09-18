@@ -7,10 +7,23 @@ import {
   Users, Eye, Smartphone, Monitor, Tablet, RefreshCw,
   TrendingUp, MousePointerClick, ArrowRight, Globe, Clock,
   Bell, BellOff, Activity, Zap, ShoppingCart, Euro,
-  BarChart3, CheckCircle2, XCircle, AlertCircle,
+  BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
+
+interface CallbackRow {
+  id: number;
+  phone: string;
+  name: string | null;
+  pickup: string | null;
+  dropoff: string | null;
+  distance_km: number | null;
+  trip_datetime: string | null;
+  passengers: number | null;
+  status: string;
+  minutes_ago: number;
+}
 
 interface LiveSession {
   session_id: string;
@@ -438,7 +451,43 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     } catch {}
   }, [token, showMilestone, sendNotification]);
 
-  useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); loadActivityFeed(); }, [loadLive, loadStats, loadTodayKpi, loadActivityFeed]);
+  // Rückruf-Anfragen: operativ, muss sofort sichtbar sein (zusätzlich zur E-Mail)
+  const [callbacks, setCallbacks] = useState<CallbackRow[]>([]);
+  // Sofort-Hinweis im Browser, sobald eine neue Rückruf-Anfrage eintrifft — unabhängig
+  // von E-Mail/WhatsApp, solange dieser Tab offen ist (Benachrichtigungen müssen im
+  // Kopfbereich einmal erlaubt werden).
+  const seenCallbackIdsRef = useRef<Set<number> | null>(null);
+  const loadCallbacks = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/admin/callback-requests?days=7`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) return;
+      const open: CallbackRow[] = ((await r.json()).requests || []).filter((c: CallbackRow) => c.status === 'open');
+      setCallbacks(open);
+
+      // Beim ersten Laden nicht benachrichtigen, sonst klingelt es für Altbestand
+      if (seenCallbackIdsRef.current === null) {
+        seenCallbackIdsRef.current = new Set(open.map(c => c.id));
+        return;
+      }
+      for (const c of open) {
+        if (seenCallbackIdsRef.current.has(c.id)) continue;
+        seenCallbackIdsRef.current.add(c.id);
+        const route = [c.pickup, c.dropoff].filter(Boolean).join(' → ');
+        sendNotification('📞 Geri arama talebi', `${c.phone}${c.name ? ` · ${c.name}` : ''}${route ? `\n${route}` : ''}`);
+      }
+    } catch {}
+  }, [token, sendNotification]);
+
+  const markCallbackDone = async (id: number) => {
+    try {
+      await fetch(`${API_BASE}/admin/callback-requests/${id}/done`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      setCallbacks(prev => prev.filter(c => c.id !== id));
+    } catch {}
+  };
+
+  useEffect(() => { loadLive(); loadStats(); loadTodayKpi(); loadActivityFeed(); loadCallbacks(); }, [loadLive, loadStats, loadTodayKpi, loadActivityFeed, loadCallbacks]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -447,8 +496,9 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     // Slightly slower than loadLive — it re-derives the whole day from several
     // tables per call, which doesn't need 5s freshness on a dashboard.
     const t3 = setInterval(loadActivityFeed, 10000);
-    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3); };
-  }, [autoRefresh, loadLive, loadTodayKpi, loadActivityFeed]);
+    const t4 = setInterval(loadCallbacks, 20000);
+    return () => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4); };
+  }, [autoRefresh, loadLive, loadTodayKpi, loadActivityFeed, loadCallbacks]);
 
   const totals = stats?.totals || { total_sessions: 0, unique_visitors: 0, total_pageviews: 0, bounces: 0 };
   const bounceRate = totals.total_sessions > 0 ? Math.round((Number(totals.bounces) / Number(totals.total_sessions)) * 100) : 0;
@@ -458,6 +508,47 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
+
+      {/* ─── Offene Rückruf-Anfragen ─── */}
+      {callbacks.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border-2 border-green-300 overflow-hidden">
+          <div className="px-4 py-2.5 bg-green-50 border-b border-green-200 flex items-center gap-2">
+            <PhoneCall size={15} className="text-green-700" />
+            <span className="text-sm font-bold text-green-900">
+              Geri arama bekleyen {callbacks.length} müşteri
+            </span>
+            <span className="text-[11px] text-green-700">· müşteri geri arama bekliyor</span>
+          </div>
+          <div className="divide-y">
+            {callbacks.map(c => (
+              <div key={c.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                <a href={`tel:${c.phone}`} className="font-bold text-primary-800 hover:underline whitespace-nowrap">
+                  {c.phone}
+                </a>
+                {c.name && <span className="text-sm text-gray-700">{c.name}</span>}
+                <span className="text-xs text-gray-600 min-w-0 flex-1 truncate">
+                  {[c.pickup, c.dropoff].filter(Boolean).join(' → ') || '—'}
+                  {c.distance_km ? ` · ${Number(c.distance_km).toFixed(0)} km` : ''}
+                  {c.trip_datetime ? ` · ${c.trip_datetime}` : ''}
+                  {c.passengers ? ` · ${c.passengers} kişi` : ''}
+                </span>
+                {/* 15 Minuten als interne Zielzeit — ohne Versprechen an den Kunden */}
+                <span className={`text-xs font-semibold whitespace-nowrap ${Number(c.minutes_ago) > 15 ? 'text-red-600' : 'text-gray-500'}`}>
+                  {Number(c.minutes_ago) < 60
+                    ? `${Number(c.minutes_ago)} dk önce`
+                    : `${Math.round(Number(c.minutes_ago) / 60)} sa önce`}
+                </span>
+                <button
+                  onClick={() => markCallbackDone(c.id)}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium whitespace-nowrap"
+                >
+                  Arandı ✓
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── KPI Strip ─── */}
       <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-5 shadow-lg">

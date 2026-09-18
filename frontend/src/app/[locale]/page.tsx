@@ -3,7 +3,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
+import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, UsersRound, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
@@ -301,6 +301,7 @@ export default function HomePage() {
                 model: 'Mercedes Viano',
                 persons: tVehicles('van.persons'),
                 features: f.van,
+                group: true,
               },
               {
                 image: '/images/grossraumtaxi.webp',
@@ -308,12 +309,24 @@ export default function HomePage() {
                 model: 'Mercedes Vito',
                 persons: tVehicles('grossraumtaxi.persons'),
                 features: f.gross,
+                group: true,
               },
             ];
             return (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {vehicles.map((v) => (
-                  <div key={v.name} className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col">
+                  <div
+                    key={v.name}
+                    /* Gruppenfahrzeuge tragen nur einen Kapazitätshinweis. Absichtlich KEIN
+                       hervorgehobener Rahmen: zusammen mit dem Band sah es wie ein teures
+                       Upgrade aus, und auf dieser Seite steht kein Preis, der das relativiert. */
+                    className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow text-center flex flex-col relative"
+                  >
+                    {v.group && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-50 text-primary-700 border border-primary-200 text-[11px] font-bold uppercase px-3 py-1 rounded-full whitespace-nowrap">
+                        {locale === 'en' ? 'For groups 5–8' : locale === 'tr' ? '5–8 kişilik gruplar' : 'Für Gruppen 5–8'}
+                      </span>
+                    )}
                     <div className="w-full h-36 overflow-hidden rounded-lg mb-3">
                       <img src={v.image} alt={v.name} loading="lazy" width={400} height={240} className="w-full h-full object-cover" />
                     </div>
@@ -333,6 +346,29 @@ export default function HomePage() {
               </div>
             );
           })()}
+
+          {/* Gruppen-Argument: ein Fahrzeug für alle statt zwei Taxis — der Preis pro
+              Person ist hier das stärkste Verkaufsargument. Absichtlich ohne Nennung
+              von Wettbewerbern (vergleichende Preiswerbung wäre rechtlich angreifbar). */}
+          <div className="mt-8 rounded-2xl bg-white shadow-md px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <UsersRound size={28} className="text-gold-500 shrink-0 mx-auto sm:mx-0" />
+            <div className="flex-1 text-center sm:text-left">
+              <div className="font-bold text-primary-700">
+                {locale === 'en' ? 'Travelling as a group of 5 to 8?' : locale === 'tr' ? '5–8 kişilik grup mu?' : 'Zu 5 bis 8 Personen unterwegs?'}
+              </div>
+              {/* Ohne Preisaussage: auf dieser Seite steht kein Preis, deshalb würde ein
+                  "pro Person günstiger" hier nur den Gedanken "teuer" wecken. Der
+                  Pro-Person-Preis steht dort, wo er hingehört — neben dem echten Preis
+                  auf /ergebnisse. */}
+              <p className="text-sm text-gray-600 mt-0.5">
+                {locale === 'en'
+                  ? 'One vehicle for everyone — no second taxi, no transfers. All luggage and child seats included.'
+                  : locale === 'tr'
+                  ? 'Herkes için tek araç — ikinci taksi yok, aktarma yok. Tüm bagaj ve çocuk koltuğu dahil.'
+                  : 'Ein Fahrzeug für alle — kein zweites Taxi, kein Umsteigen. Gepäck und Kindersitze komplett inklusive.'}
+              </p>
+            </div>
+          </div>
 
           <div className="text-center mt-8">
             <Link href="/vehicles" className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block">

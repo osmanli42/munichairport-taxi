@@ -15,6 +15,7 @@ import driverTrackingRouter from './routes/driver-tracking';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import adsRouter from './routes/ads';
+import callbacksRouter from './routes/callbacks';
 import plzSurchargesRouter from './routes/plz-surcharges';
 import pflichtgebietRouter from './routes/pflichtgebiet';
 import fixedRoutesRouter from './routes/fixed-routes';
@@ -81,6 +82,7 @@ app.get('/api/smtp-test', async (req, res) => {
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/ads', adsRouter);
+app.use('/api', callbacksRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/settings', settingsRouter);
