@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { query } from '../db';
 
 const JWT_SECRET: string = (() => {
   const secret = process.env.JWT_SECRET;
@@ -10,6 +11,29 @@ const JWT_SECRET: string = (() => {
 export interface AuthRequest extends Request {
   adminId?: number;
   adminUsername?: string;
+}
+
+// Cache of the per-admin token_version so we don't hit the DB on every admin
+// request. Short TTL plus an explicit bust on password change, so a revoked
+// session can survive at most CACHE_TTL_MS.
+const CACHE_TTL_MS = 15_000;
+const tokenVersionCache = new Map<number, { tv: number; exp: number }>();
+
+export function bustTokenVersionCache(adminId: number): void {
+  tokenVersionCache.delete(adminId);
+}
+
+async function currentTokenVersion(adminId: number): Promise<number | null> {
+  const hit = tokenVersionCache.get(adminId);
+  if (hit && Date.now() < hit.exp) return hit.tv;
+  const [row] = await query<{ token_version: number }>(
+    'SELECT token_version FROM admin_users WHERE id = ?',
+    [adminId]
+  );
+  if (!row) return null;
+  const tv = Number(row.token_version) || 0;
+  tokenVersionCache.set(adminId, { tv, exp: Date.now() + CACHE_TTL_MS });
+  return tv;
 }
 
 // Only these download-link routes may pass the token in the query string
@@ -41,7 +65,28 @@ export function resetAdminLoginAttempts(ip: string): void {
   loginAttempts.delete(ip);
 }
 
-export function authenticateAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
+// Password changes get their own, tighter budget: an attacker with a stolen
+// token should not be able to brute-force the current password.
+const pwChangeAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_PW_CHANGE_ATTEMPTS = 5;
+const PW_CHANGE_WINDOW_MS = 15 * 60 * 1000;
+
+export function checkPasswordChangeRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = pwChangeAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    pwChangeAttempts.set(key, { count: 1, resetAt: now + PW_CHANGE_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= MAX_PW_CHANGE_ATTEMPTS;
+}
+
+export function resetPasswordChangeAttempts(key: string): void {
+  pwChangeAttempts.delete(key);
+}
+
+export async function authenticateAdmin(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   const queryToken = req.query.token as string | undefined;
 
@@ -63,6 +108,16 @@ export function authenticateAdmin(req: AuthRequest, res: Response, next: NextFun
       res.status(401).json({ error: 'Invalid token type' });
       return;
     }
+    // Reject tokens minted before the last password change.
+    const tv = await currentTokenVersion(decoded.id);
+    if (tv === null) {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return;
+    }
+    if ((decoded.tv ?? 0) !== tv) {
+      res.status(401).json({ error: 'Session beendet – bitte erneut anmelden.', code: 'TOKEN_REVOKED' });
+      return;
+    }
     req.adminId = decoded.id;
     req.adminUsername = decoded.username;
     next();
@@ -71,6 +126,6 @@ export function authenticateAdmin(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
-export function generateToken(id: number, username: string): string {
-  return jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '24h' });
+export function generateToken(id: number, username: string, tokenVersion = 0): string {
+  return jwt.sign({ id, username, tv: tokenVersion }, JWT_SECRET, { expiresIn: '24h' });
 }

@@ -400,6 +400,19 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Migration: admin account security columns.
+    // token_version invalidates every issued JWT when the password changes,
+    // so a stolen session cannot survive a password reset.
+    for (const ddl of [
+      `ALTER TABLE admin_users ADD COLUMN token_version INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE admin_users ADD COLUMN password_changed_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN last_login_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN last_login_ip VARCHAR(64) DEFAULT NULL`,
+    ]) {
+      try { await conn.execute(ddl); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
     // ── B2B Firmenkundenportal ──────────────────────────────────────────
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS companies (

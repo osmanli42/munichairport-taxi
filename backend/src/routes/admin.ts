@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import { validatePassword, MIN_LENGTH, MAX_LENGTH } from '../utils/passwordPolicy';
 import PDFDocument from 'pdfkit';
 import Stripe from 'stripe';
 import { query, run } from '../db';
-import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest } from '../middleware/auth';
+import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest , checkPasswordChangeRateLimit, resetPasswordChangeAttempts, bustTokenVersionCache } from '../middleware/auth';
 import { decrypt } from './bookings';
 import { signToken } from '../utils/trackingToken';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
@@ -43,6 +44,9 @@ interface AdminUser {
   id: number;
   username: string;
   password_hash: string;
+  token_version?: number;
+  password_changed_at?: string | null;
+  last_login_at?: string | null;
 }
 
 interface BookingRow {
@@ -52,6 +56,10 @@ interface BookingRow {
   price: number;
   created_at: string;
 }
+
+// Constant-cost comparison target for unknown usernames (bcrypt of a random
+// value; never matches a real password).
+const DUMMY_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEe.7Rj.Q1wZ8nq0kq3mYF0mF0mF0mF0mFa';
 
 // POST /api/admin/login
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
@@ -69,19 +77,20 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE username = ?', [username]);
-  if (!admin) {
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
-  }
 
-  const valid = bcrypt.compareSync(password, admin.password_hash);
-  if (!valid) {
+  // Always run a bcrypt comparison, even for an unknown username, so response
+  // time does not reveal whether the account exists.
+  const hash = admin?.password_hash || DUMMY_HASH;
+  const valid = await bcrypt.compare(String(password), hash);
+
+  if (!admin || !valid) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
 
   resetAdminLoginAttempts(ip);
-  const token = generateToken(admin.id, admin.username);
+  await run('UPDATE admin_users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?', [ip.slice(0, 64), admin.id]);
+  const token = generateToken(admin.id, admin.username, Number(admin.token_version) || 0);
   res.json({ token, username: admin.username });
 });
 
@@ -906,31 +915,67 @@ router.post('/change-password', authenticateAdmin, async (req: AuthRequest, res:
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
-    res.status(400).json({ error: 'Both passwords required' });
+    res.status(400).json({ error: 'Bitte beide Passwörter ausfüllen.' });
     return;
   }
 
-  if (newPassword.length < 8) {
-    res.status(400).json({ error: 'New password must be at least 8 characters' });
+  // Tight budget keyed on the account, so a stolen token cannot be used to
+  // brute-force the current password.
+  const rlKey = `admin:${req.adminId}`;
+  if (!checkPasswordChangeRateLimit(rlKey)) {
+    res.status(429).json({ error: 'Zu viele Versuche. Bitte in 15 Minuten erneut versuchen.' });
     return;
   }
 
   const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE id = ?', [req.adminId]);
   if (!admin) {
-    res.status(404).json({ error: 'Admin not found' });
+    res.status(404).json({ error: 'Konto nicht gefunden.' });
     return;
   }
 
-  const valid = bcrypt.compareSync(currentPassword, admin.password_hash);
+  const valid = await bcrypt.compare(String(currentPassword), admin.password_hash);
   if (!valid) {
-    res.status(401).json({ error: 'Current password is incorrect' });
+    res.status(401).json({ error: 'Das aktuelle Passwort ist falsch.' });
     return;
   }
 
-  const newHash = bcrypt.hashSync(newPassword, 10);
-  await run('UPDATE admin_users SET password_hash = ? WHERE id = ?', [newHash, req.adminId]);
+  const policy = validatePassword(String(newPassword), admin.username);
+  if (!policy.ok) {
+    res.status(400).json({ error: policy.error });
+    return;
+  }
 
-  res.json({ success: true, message: 'Password changed successfully' });
+  if (await bcrypt.compare(String(newPassword), admin.password_hash)) {
+    res.status(400).json({ error: 'Das neue Passwort muss sich vom aktuellen unterscheiden.' });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(String(newPassword), 12);
+  const nextVersion = (Number(admin.token_version) || 0) + 1;
+
+  // Bumping token_version invalidates every token issued so far — any other
+  // session (including a stolen one) is logged out immediately.
+  await run(
+    'UPDATE admin_users SET password_hash = ?, token_version = ?, password_changed_at = NOW() WHERE id = ?',
+    [newHash, nextVersion, admin.id]
+  );
+  bustTokenVersionCache(admin.id);
+  resetPasswordChangeAttempts(rlKey);
+
+  console.log(`[security] admin password changed: user=${admin.username} ip=${getClientIp(req)} at=${new Date().toISOString()}`);
+
+  // Hand the caller a fresh token so the current tab stays signed in.
+  const token = generateToken(admin.id, admin.username, nextVersion);
+  res.json({
+    success: true,
+    token,
+    message: 'Passwort geändert. Alle anderen Sitzungen wurden abgemeldet.',
+  });
+});
+
+// GET /api/admin/password-policy — rules for the UI hint text
+router.get('/password-policy', authenticateAdmin, (_req: AuthRequest, res: Response): void => {
+  res.json({ minLength: MIN_LENGTH, maxLength: MAX_LENGTH, requiredClasses: 3 });
 });
 
 // POST /api/admin/import-db — one-time data import (admin protected)

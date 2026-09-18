@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import PasswordChangeCard from './PasswordChangeCard';
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
@@ -483,6 +484,8 @@ export default function SystemTab({ token }: { token: string }) {
           <div className="mt-3 text-sm text-gray-700">{testEmailStatus}</div>
         )}
       </div>
+
+      <PasswordChangeCard />
     </div>
   );
 }
