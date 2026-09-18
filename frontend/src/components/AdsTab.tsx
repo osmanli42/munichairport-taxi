@@ -9,6 +9,18 @@ import {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
+interface SuspiciousClicks {
+  days: number;
+  criteria: { min_sessions: number; max_seconds: number; max_pageviews: number };
+  groups: {
+    day: string; sessions: number; campaign: string | null; device: string | null;
+    city: string | null; avg_seconds: number; estimated_cpc: number; estimated_loss: number;
+  }[];
+  suspicious_sessions: number;
+  estimated_loss: number;
+  note: string;
+}
+
 interface Kpi { value: number; prev: number; change: number | null }
 interface DailyPoint { date: string; visitors: number; bookings: number; revenue: number }
 interface Campaign { name: string; visitors: number; bookings: number; revenue: number; cvr: number }
@@ -247,6 +259,10 @@ export default function AdsTab({ token }: { token: string }) {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvMsg, setCsvMsg] = useState('');
 
+  // Şüpheli tıklama (boşa giden bütçe) — tahmin, kesin iddia değil
+  const [suspicious, setSuspicious] = useState<SuspiciousClicks | null>(null);
+  const [showSuspicious, setShowSuspicious] = useState(false);
+
   const load = useCallback(async (p: Preset) => {
     setLoading(true);
     setError('');
@@ -263,6 +279,17 @@ export default function AdsTab({ token }: { token: string }) {
       }
       if (!res.ok) throw new Error(`Sunucu hatası (${res.status})`);
       setData(await res.json());
+
+      // Şüpheli tıklama analizi ayrı endpoint — hata verirse ana ekranı bozmaz
+      try {
+        const days = p === 'today' || p === 'yesterday' ? 7 : Number(p);
+        const sr = await fetch(`${API_BASE}/admin/ads/suspicious-clicks?days=${days}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuspicious(sr.ok ? await sr.json() : null);
+      } catch {
+        setSuspicious(null);
+      }
     } catch (e: any) {
       setError(e.message || 'Veri yüklenemedi');
     } finally {
@@ -348,6 +375,57 @@ export default function AdsTab({ token }: { token: string }) {
           </button>
         </div>
       </div>
+
+      {/* Şüpheli tıklama — boşa giden bütçe adayları */}
+      {suspicious && suspicious.groups.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden">
+          <button
+            onClick={() => setShowSuspicious((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-amber-50/50"
+          >
+            <span className="text-sm font-semibold text-gray-900">
+              ⚠️ Şüpheli tıklama: {suspicious.suspicious_sessions} oturum
+              {suspicious.estimated_loss > 0 && ` · ~${suspicious.estimated_loss.toFixed(2)} € tahmini kayıp`}
+            </span>
+            <span className="text-xs text-gray-500">{showSuspicious ? 'Kapat' : 'Detay'}</span>
+          </button>
+
+          {showSuspicious && (
+            <div className="px-4 pb-4 border-t pt-3">
+              <p className="text-xs text-gray-500 mb-3">
+                Aynı (hash'li) IP'den aynı gün içinde {suspicious.criteria.min_sessions}+ kez,{' '}
+                {suspicious.criteria.max_seconds} saniyeden kısa, tek sayfalık reklam tıklaması.
+                Rezervasyona dönen oturumlar hariç tutulur. <strong>{suspicious.note}</strong>{' '}
+                Tahmini CPC, o günün harcaması ÷ o günün reklam oturumu ile hesaplanır.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 text-xs">
+                      <th className="py-1">Gün</th><th>Oturum</th><th>Ort. süre</th>
+                      <th>Kampanya</th><th>Cihaz</th><th>Şehir</th><th>Tahmini CPC</th><th>Tahmini kayıp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {suspicious.groups.slice(0, 30).map((g, i) => (
+                      <tr key={i} className="border-t">
+                        <td className="py-1.5 whitespace-nowrap">{g.day}</td>
+                        <td className="font-medium">{g.sessions}</td>
+                        <td className="whitespace-nowrap">{g.avg_seconds} sn</td>
+                        <td className="text-gray-600">{g.campaign || '—'}</td>
+                        <td className="text-gray-600">{g.device || '—'}</td>
+                        <td className="text-gray-600">{g.city || '—'}</td>
+                        <td className="whitespace-nowrap">{g.estimated_cpc > 0 ? `${g.estimated_cpc.toFixed(2)} €` : '—'}</td>
+                        <td className="whitespace-nowrap font-medium">{g.estimated_loss > 0 ? `${g.estimated_loss.toFixed(2)} €` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Spend entry */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">

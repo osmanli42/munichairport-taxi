@@ -889,7 +889,14 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
 
       {/* Error */}
       {formError && (
-        <div className="flex items-center gap-2 mt-3 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-xl">
+        /* data-field / data-field-error yalnız ölçüm içindir: BookingFunnelTracker bu iki
+           attribute'u görünce field_error olayı yazar (arama kutusunda takılıp vazgeçen
+           müşteriler ölçülebilsin). Hata mantığı değişmez. */
+        <div
+          data-field="Suche"
+          data-field-error={formError}
+          className="flex items-center gap-2 mt-3 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-xl"
+        >
           <AlertCircle size={14} /> {formError}
         </div>
       )}

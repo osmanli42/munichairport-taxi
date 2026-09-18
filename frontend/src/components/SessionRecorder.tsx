@@ -10,13 +10,25 @@ const MAX_BUFFER = 500;
 // We use a conservative limit and fall back to fetch for large payloads.
 const BEACON_SIZE_LIMIT = 60_000; // 60 KB
 
+// Same shape as VisitorTracker's uuid() so both components produce interchangeable IDs.
+function newSessionId(): string {
+  if (typeof crypto !== 'undefined' && (crypto as any).randomUUID) {
+    return (crypto as any).randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 /**
  * Records the user's session using rrweb and sends events to backend.
  *
- * Privacy / GDPR:
- * - All <input>, <textarea>, <select> values are masked by default
- * - Elements with class 'sensitive' / data-mask are masked
- * - Password fields fully blocked
+ * Privacy / GDPR (must match the copy shown in the admin Replay tab):
+ * - Password inputs and card-number fields are masked
+ * - Text nodes inside '.sensitive' / '[data-mask]' are masked
+ * - Everything else, including name / phone / email inputs, IS recorded
+ *   (maskAllInputs is deliberately false — see the record() options below)
  * - Skipped on /admin paths
  *
  * Key design: the rrweb FullSnapshot (~200 KB) is sent immediately via
@@ -35,10 +47,17 @@ export default function SessionRecorder() {
     if (typeof window === 'undefined' || !pathname) return;
     if (pathname.startsWith('/admin')) return;
 
-    // Use the same session/visitor IDs as VisitorTracker
-    const sessionId = sessionStorage.getItem('mt_session_id');
+    // Use the same session/visitor IDs as VisitorTracker. Previously we bailed out when
+    // VisitorTracker hadn't written mt_session_id yet, which meant the very first pageview
+    // of every session — the landing behaviour we most want to see — was never recorded.
+    // Creating the ID here with the same keys is safe: whichever component runs first wins
+    // and the other reads the same value back.
+    let sessionId = sessionStorage.getItem('mt_session_id');
+    if (!sessionId) {
+      sessionId = newSessionId();
+      try { sessionStorage.setItem('mt_session_id', sessionId); } catch { return; }
+    }
     const visitorId = localStorage.getItem('mt_visitor_id');
-    if (!sessionId) return; // VisitorTracker hasn't initialised yet — will run on next nav
     sessionIdRef.current = sessionId;
     visitorIdRef.current = visitorId || '';
 
@@ -98,7 +117,10 @@ export default function SessionRecorder() {
             flush(false);
           }
         },
-        // Privacy options — only mask passwords and card numbers
+        // Privacy options — only mask passwords and card numbers.
+        // NOTE: maskAllInputs stays false on purpose (deliberate product decision); the
+        // admin Replay banner text must keep saying so.
+        // maskTextSelector masks TEXT NODES, not input values.
         maskAllInputs: false,
         maskInputOptions: {
           password: true,

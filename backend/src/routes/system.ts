@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import { Resend } from 'resend';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
+import { query } from '../db';
 
 const router = Router();
 
@@ -109,6 +110,20 @@ const THRESHOLDS = {
   disk_pct: 85,
   load1_pct: 150, // load > 1.5x cores
   pm2_offline: true,
+};
+
+// Dönüşüm uyarıları — sunucu sağlığı değil, ticari kayıp uyarıları.
+// Resend anahtarının 11 gün sessizce ölüp müşteri kaybettirdiği olayın tekrarını önlemek için.
+const CONVERSION_THRESHOLDS = {
+  // "trafik var ama hiç rezervasyon yok" için gereken en az oturum sayısı (3 saat içinde)
+  dry_spell_min_sessions: 20,
+  dry_spell_hours: 3,
+  // son 1 saatteki hata sayısı, 7 günlük saatlik ortalamanın kaç katı olursa uyarı
+  error_spike_factor: 5,
+  error_spike_min: 5,
+  // /buchen ortalama yükleme süresi (ms) — bunun üstü müşteri kaybettirir
+  slow_page_ms: 4000,
+  slow_page_min_views: 5,
 };
 
 // Per-alert cooldown — configurable, default 4 hours
@@ -254,12 +269,141 @@ ssh ile bağlanıp 'pm2 restart all' çalıştırman gerekebilir.`
   }
 }
 
+// ---------------------------------------------------------------------------
+// Dönüşüm uyarıları + günlük özet
+// ---------------------------------------------------------------------------
+async function checkConversionAlerts(): Promise<void> {
+  // 1) Trafik var ama rezervasyon yok
+  const h = CONVERSION_THRESHOLDS.dry_spell_hours;
+  const [dry] = await query<any>(
+    `SELECT
+       (SELECT COUNT(*) FROM visitor_sessions
+         WHERE is_bot = 0 AND first_seen >= NOW() - INTERVAL ${h} HOUR) AS sessions,
+       (SELECT COUNT(*) FROM bookings
+         WHERE status <> 'cancelled' AND source = 'web'
+           AND created_at >= NOW() - INTERVAL ${h} HOUR) AS bookings`
+  );
+  const sessions = Number(dry?.sessions || 0);
+  const bookings = Number(dry?.bookings || 0);
+  if (sessions >= CONVERSION_THRESHOLDS.dry_spell_min_sessions && bookings === 0 && shouldFire('no_conversions')) {
+    await sendAlert(
+      `${h} saatte ${sessions} ziyaretçi, 0 rezervasyon`,
+      `Son ${h} saatte ${sessions} oturum açıldı ama tek bir web rezervasyonu gelmedi.
+
+Olası sebepler: form/ödeme hatası, e-posta gönderimi kırık, fiyat API'si cevap vermiyor.
+Admin → Replay sekmesindeki "Neden vazgeçiyorlar" panelinden son oturumlara bak.`
+    );
+  }
+
+  // 2) Hata patlaması — son 1 saat vs 7 günün saatlik ortalaması
+  const [spike] = await query<any>(
+    `SELECT
+       (SELECT COUNT(*) FROM visitor_events
+         WHERE type IN ('field_error', 'js_error', 'api_error')
+           AND occurred_at >= NOW() - INTERVAL 1 HOUR) AS last_hour,
+       (SELECT COUNT(*) / 168 FROM visitor_events
+         WHERE type IN ('field_error', 'js_error', 'api_error')
+           AND occurred_at >= NOW() - INTERVAL 7 DAY) AS hourly_avg`
+  );
+  const lastHour = Number(spike?.last_hour || 0);
+  const hourlyAvg = Number(spike?.hourly_avg || 0);
+  if (
+    lastHour >= CONVERSION_THRESHOLDS.error_spike_min &&
+    hourlyAvg > 0 &&
+    lastHour >= hourlyAvg * CONVERSION_THRESHOLDS.error_spike_factor &&
+    shouldFire('error_spike')
+  ) {
+    const top = await query<any>(
+      `SELECT type, target, COUNT(*) AS n FROM visitor_events
+        WHERE type IN ('field_error', 'js_error', 'api_error')
+          AND occurred_at >= NOW() - INTERVAL 1 HOUR
+        GROUP BY type, target ORDER BY n DESC LIMIT 5`
+    );
+    await sendAlert(
+      `Hata patlaması: son 1 saatte ${lastHour} hata`,
+      `Son 1 saat: ${lastHour} hata (7 günlük saatlik ortalama: ${hourlyAvg.toFixed(1)})
+
+En sık görülenler:
+${top.map((t: any) => `  - [${t.type}] ${t.target} × ${t.n}`).join('\n')}`
+    );
+  }
+
+  // 3) /buchen sayfası yavaş
+  const [slow] = await query<any>(
+    `SELECT COUNT(*) AS views, AVG(load_time_ms) AS avg_ms
+       FROM visitor_pageviews
+      WHERE path LIKE '%/buchen%' AND load_time_ms IS NOT NULL
+        AND viewed_at >= NOW() - INTERVAL 2 HOUR`
+  );
+  const views = Number(slow?.views || 0);
+  const avgMs = Number(slow?.avg_ms || 0);
+  if (
+    views >= CONVERSION_THRESHOLDS.slow_page_min_views &&
+    avgMs > CONVERSION_THRESHOLDS.slow_page_ms &&
+    shouldFire('slow_booking_page')
+  ) {
+    await sendAlert(
+      `Rezervasyon sayfası yavaş: ${Math.round(avgMs)} ms`,
+      `/buchen son 2 saatte ${views} kez açıldı, ortalama yükleme ${Math.round(avgMs)} ms.
+
+${CONVERSION_THRESHOLDS.slow_page_ms} ms üstü yüklemeler doğrudan rezervasyon kaybettirir.`
+    );
+  }
+}
+
+// Günlük özet — günde bir kez, Berlin saatiyle sabah
+const SUMMARY_HOUR = 8;
+let lastSummaryDay = '';
+
+async function sendDailySummary(): Promise<void> {
+  const berlin = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+  const dayKey = berlin.toISOString().slice(0, 10);
+  if (berlin.getHours() < SUMMARY_HOUR || lastSummaryDay === dayKey) return;
+  lastSummaryDay = dayKey;
+
+  const [t] = await query<any>(
+    `SELECT
+       (SELECT COUNT(*) FROM visitor_sessions
+         WHERE is_bot = 0 AND DATE(first_seen) = CURDATE() - INTERVAL 1 DAY) AS sessions,
+       (SELECT COUNT(*) FROM bookings
+         WHERE status <> 'cancelled' AND source = 'web'
+           AND DATE(created_at) = CURDATE() - INTERVAL 1 DAY) AS bookings,
+       (SELECT COUNT(DISTINCT session_id) FROM visitor_events
+         WHERE type = 'call_click' AND DATE(occurred_at) = CURDATE() - INTERVAL 1 DAY) AS calls,
+       (SELECT COUNT(*) FROM visitor_events
+         WHERE type IN ('js_error', 'api_error') AND DATE(occurred_at) = CURDATE() - INTERVAL 1 DAY) AS tech_errors`
+  );
+
+  const fields = await query<any>(
+    `SELECT target, COUNT(*) AS n FROM visitor_events
+      WHERE type = 'field_focus' AND DATE(occurred_at) = CURDATE() - INTERVAL 1 DAY
+      GROUP BY target ORDER BY n DESC LIMIT 3`
+  );
+
+  const sessions = Number(t?.sessions || 0);
+  const bookings = Number(t?.bookings || 0);
+  const rate = sessions > 0 ? `${((bookings / sessions) * 100).toFixed(1)}%` : '—';
+
+  await sendAlert(
+    `Günlük özet — ${sessions} oturum, ${bookings} rezervasyon`,
+    `Dün (${dayKey}):
+  Oturum:       ${sessions}
+  Rezervasyon:  ${bookings}  (dönüşüm ${rate})
+  Telefona dönen: ${Number(t?.calls || 0)}
+  Teknik hata:  ${Number(t?.tech_errors || 0)}
+
+En çok dokunulan form alanları:
+${fields.length ? fields.map((f: any) => `  - ${f.target} × ${f.n}`).join('\n') : '  (veri yok)'}`
+  );
+}
+
 // Run check every 5 minutes
 let alertJobStarted = false;
 export function startSystemAlertJob(): void {
   if (alertJobStarted) return;
   alertJobStarted = true;
   const intervalMs = 5 * 60 * 1000;
+  let tick = 0;
   setInterval(() => {
     try {
       const s = collectStats();
@@ -267,9 +411,65 @@ export function startSystemAlertJob(): void {
     } catch (e: any) {
       console.error('[system-alerts] check failed:', e.message);
     }
+    // Dönüşüm/özet kontrolleri DB'ye gittiği için 30 dakikada bir yeter
+    // (uyarıların kendi cooldown'ı ayrıca var).
+    tick++;
+    if (tick % 6 === 0) {
+      checkConversionAlerts().catch((e) => console.error('[conversion-alerts] failed:', e.message));
+      sendDailySummary().catch((e) => console.error('[daily-summary] failed:', e.message));
+    }
   }, intervalMs);
   console.log('[system-alerts] Job started — checks every 5 minutes, alerts cooldown 1h');
 }
+
+// GET /api/admin/conversion-health — dönüşüm uyarılarının baktığı ham sayılar.
+// E-posta göndermez; System sekmesinde göstermek ve eşikleri doğrulamak için.
+router.get('/admin/conversion-health', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const h = CONVERSION_THRESHOLDS.dry_spell_hours;
+    const [dry] = await query<any>(
+      `SELECT
+         (SELECT COUNT(*) FROM visitor_sessions
+           WHERE is_bot = 0 AND first_seen >= NOW() - INTERVAL ${h} HOUR) AS sessions,
+         (SELECT COUNT(*) FROM bookings
+           WHERE status <> 'cancelled' AND source = 'web'
+             AND created_at >= NOW() - INTERVAL ${h} HOUR) AS bookings`
+    );
+    const [spike] = await query<any>(
+      `SELECT
+         (SELECT COUNT(*) FROM visitor_events
+           WHERE type IN ('field_error', 'js_error', 'api_error')
+             AND occurred_at >= NOW() - INTERVAL 1 HOUR) AS last_hour,
+         (SELECT COUNT(*) / 168 FROM visitor_events
+           WHERE type IN ('field_error', 'js_error', 'api_error')
+             AND occurred_at >= NOW() - INTERVAL 7 DAY) AS hourly_avg`
+    );
+    const [slow] = await query<any>(
+      `SELECT COUNT(*) AS views, AVG(load_time_ms) AS avg_ms
+         FROM visitor_pageviews
+        WHERE path LIKE '%/buchen%' AND load_time_ms IS NOT NULL
+          AND viewed_at >= NOW() - INTERVAL 2 HOUR`
+    );
+    res.json({
+      thresholds: CONVERSION_THRESHOLDS,
+      dry_spell: { hours: h, sessions: Number(dry?.sessions || 0), bookings: Number(dry?.bookings || 0) },
+      errors: { last_hour: Number(spike?.last_hour || 0), hourly_avg_7d: Number(spike?.hourly_avg || 0) },
+      booking_page: { views_2h: Number(slow?.views || 0), avg_load_ms: Math.round(Number(slow?.avg_ms || 0)) },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// POST /api/admin/conversion-health/run — kontrolleri hemen çalıştır (cooldown'a tabi)
+router.post('/admin/conversion-health/run', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    await checkConversionAlerts();
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
 
 // GET /api/admin/health — latest health status + 24h trend
 router.get('/admin/health', authenticateAdmin, async (req: AuthRequest, res: Response) => {

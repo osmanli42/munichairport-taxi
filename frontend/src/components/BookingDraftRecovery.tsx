@@ -1,11 +1,15 @@
 'use client';
 
 /**
- * Abandoned-booking recovery — first-party, no contact data, no server call.
+ * Abandoned-booking recovery — first-party, no contact data.
  * On the results/booking pages it saves the visitor's in-progress route + price
  * into localStorage. On the home page, if a fresh draft exists and no booking
  * has been completed since, it shows a "resume" card so the visitor can pick up
  * where they left off without re-typing the route.
+ *
+ * Aynı taslak sunucuya da yazılır (POST /api/track/draft) — admin "Yarım kalan
+ * rezervasyonlar" listesini görebilsin. Yalnız güzergâh/fiyat/araç gönderilir;
+ * ad, telefon, e-posta ASLA gönderilmez.
  */
 
 import { useEffect, useState } from 'react';
@@ -13,6 +17,7 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { ArrowRight, X, RotateCcw } from 'lucide-react';
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const DRAFT_KEY = 'mt_booking_draft';
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // drafts expire after 7 days
 
@@ -69,6 +74,32 @@ export default function BookingDraftRecovery() {
             savedAt: Date.now(),
           };
           localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+
+          // Sunucuya da bildir (beacon — sayfa kapanırken de gider, UX'i bloklamaz).
+          // session_id VisitorTracker/SessionRecorder tarafından yazılır; yoksa atlanır.
+          try {
+            const sessionId = sessionStorage.getItem('mt_session_id');
+            if (sessionId) {
+              const payload = JSON.stringify({
+                session_id: sessionId,
+                visitor_id: localStorage.getItem('mt_visitor_id') || undefined,
+                path: currentFull,
+                pickup, dropoff,
+                price: d.price ?? undefined,
+                distance_km: Number(sp.get('distance_km')) || undefined,
+                vehicle: sp.get('vehicle') || undefined,
+                last_stage: pathname.includes('/buchen') ? 'form' : 'prices',
+              });
+              const url = `${API_BASE}/track/draft`;
+              if (navigator.sendBeacon) {
+                navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+              } else {
+                fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+              }
+            }
+          } catch {
+            /* izleme asla UX'i bozmamalı */
+          }
         }
       } catch {
         /* localStorage unavailable — skip silently */

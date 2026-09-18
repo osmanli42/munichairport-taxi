@@ -795,6 +795,10 @@ function ResultsContent() {
             return (
               <div
                 key={vehicle.type}
+                /* Yalnız ölçüm: BookingFunnelTracker müşterinin GÖRDÜĞÜ fiyatı buradan okur
+                   (fiyat mantığı burada yeniden hesaplanmaz — katmanlı tarifede sapma olmasın). */
+                data-price={finalPrice.toFixed(2)}
+                data-vehicle={vehicle.type}
                 className={cn(
                   'relative bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(15,27,45,.05)] overflow-hidden transition-all duration-200',
                   tooMany ? 'opacity-60' : 'hover:shadow-[0_8px_24px_rgba(15,27,45,.10)]'

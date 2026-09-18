@@ -49,7 +49,10 @@ function FieldBox({ icon: Icon, label, required, error, hasError, as = 'div', ch
 }) {
   const Tag = as;
   return (
-    <div>
+    // data-field / data-field-error yalnız ölçüm içindir: BookingFunnelTracker bu iki
+    // attribute'tan hangi alanda takılındığını ve hangi hatanın göründüğünü okur.
+    // Girilen değerler asla gönderilmez, form mantığı bunlardan etkilenmez.
+    <div data-field={label} data-field-error={error || undefined}>
       <Tag className={cn(
         'flex items-center gap-3.5 bg-white border rounded-xl px-4 py-2.5 min-h-[64px] transition-colors',
         'focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-400/30',

@@ -76,6 +76,36 @@ async function ensureTables(): Promise<void> {
       INDEX idx_session_id (session_id)
     )
   `);
+  // Yarım kalan rezervasyonlar: müşterinin girdiği güzergâh + gördüğü fiyat.
+  // KİŞİSEL VERİ YAZILMAZ (ad/telefon/e-posta yok) — amaç admin'in "hangi güzergâhlarda
+  // kaybediyoruz" sorusunu görebilmesi. Oturum başına tek satır (session_id UNIQUE).
+  await run(`
+    CREATE TABLE IF NOT EXISTS booking_drafts (
+      id INT NOT NULL AUTO_INCREMENT,
+      session_id VARCHAR(64) NOT NULL UNIQUE,
+      visitor_id VARCHAR(64) DEFAULT NULL,
+      path VARCHAR(500) NOT NULL,
+      pickup VARCHAR(255) NOT NULL,
+      dropoff VARCHAR(255) NOT NULL,
+      price DECIMAL(10,2) DEFAULT NULL,
+      distance_km DECIMAL(10,2) DEFAULT NULL,
+      vehicle VARCHAR(40) DEFAULT NULL,
+      last_stage VARCHAR(20) DEFAULT NULL,
+      saved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      INDEX idx_saved_at (saved_at),
+      INDEX idx_visitor_id (visitor_id)
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  // Collation'ı açıkça veriyoruz: bu proje tabloları utf8mb4_unicode_ci, ama MySQL 8'de
+  // veritabanı varsayılanı utf8mb4_0900_ai_ci. Aksi halde session_id/visitor_id üzerinden
+  // bookings/visitor_sessions ile JOIN "Illegal mix of collations" hatası verir.
+  // (Tablo yanlış collation ile oluşmuşsa düzeltilir — idempotent.)
+  try {
+    await run(`ALTER TABLE booking_drafts CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  } catch { /* yetki yok ya da zaten doğru */ }
+
   // Add columns if they don't exist yet (safe for existing installs)
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN city VARCHAR(100) AFTER country`); } catch {}
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN screen_w SMALLINT DEFAULT NULL AFTER ua_device`); } catch {}
@@ -257,6 +287,16 @@ router.post('/track/heartbeat', async (req: Request, res: Response) => {
 
 // POST /api/track/event — clicks + scroll events (batched array)
 // Body: { session_id, path, events: [{type, x_pct, y_pct, scroll_depth, target, viewport_w, viewport_h, device}] }
+// Kabul edilen olay tipleri. Liste dışındakiler 'other' olarak yazılır — böylece
+// visitor_events.type üzerinden yapılan huni/terk sorguları rastgele değerlerle kirlenmez.
+const ALLOWED_EVENT_TYPES = new Set([
+  // mevcut (VisitorTracker)
+  'click', 'scroll', 'form_focus',
+  // vazgeçme analizi (BookingFunnelTracker)
+  'field_focus', 'field_error', 'js_error', 'api_error',
+  'price_shown', 'call_click', 'tab_away', 'price_copy', 'address_unverified',
+]);
+
 router.post('/track/event', async (req: Request, res: Response) => {
   try {
     await ensureTables();
@@ -273,7 +313,7 @@ router.post('/track/event', async (req: Request, res: Response) => {
       placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       values.push(
         trunc(session_id, 64),
-        trunc(e.type || 'click', 20),
+        ALLOWED_EVENT_TYPES.has(e.type) ? e.type : (e.type ? 'other' : 'click'),
         trunc(path, 500),
         e.x_pct != null ? Number(e.x_pct) : null,
         e.y_pct != null ? Number(e.y_pct) : null,
@@ -296,6 +336,71 @@ router.post('/track/event', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('track/event error:', err.message);
     res.status(500).json({ error: 'failed' });
+  }
+});
+
+// POST /api/track/draft — yarım kalan rezervasyon taslağı (kişisel veri içermez)
+router.post('/track/draft', async (req: Request, res: Response) => {
+  try {
+    await ensureTables();
+    const { session_id, visitor_id, path, pickup, dropoff, price, distance_km, vehicle, last_stage } = req.body || {};
+    if (!session_id || !pickup || !dropoff) {
+      res.status(400).json({ error: 'missing fields' });
+      return;
+    }
+    const num = (v: any) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    await run(
+      `INSERT INTO booking_drafts
+         (session_id, visitor_id, path, pickup, dropoff, price, distance_km, vehicle, last_stage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         path = VALUES(path), pickup = VALUES(pickup), dropoff = VALUES(dropoff),
+         price = COALESCE(VALUES(price), price),
+         distance_km = COALESCE(VALUES(distance_km), distance_km),
+         vehicle = COALESCE(VALUES(vehicle), vehicle),
+         last_stage = VALUES(last_stage)`,
+      [
+        trunc(session_id, 64), trunc(visitor_id, 64) || null, trunc(path, 500) || '/',
+        trunc(pickup, 255), trunc(dropoff, 255),
+        num(price), num(distance_km), trunc(vehicle, 40) || null, trunc(last_stage, 20) || null,
+      ]
+    );
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error('track/draft error:', err.message);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// GET /api/admin/booking-drafts — tamamlanmamış taslaklar
+// Not: Bu listeye pazarlama e-postası göndermek için değil, admin görünürlüğü ve
+// (telefon varsa) manuel geri arama için vardır — Almanya'da izinsiz e-posta riskli.
+router.get('/admin/booking-drafts', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTables();
+    const days = Math.min(Math.max(parseInt((req.query.days as string) || '7', 10) || 7, 1), 90);
+    const rows = await query<any>(
+      `SELECT d.*,
+              TIMESTAMPDIFF(MINUTE, d.updated_at, NOW()) AS minutes_ago,
+              s.ua_device, s.city, s.gclid, s.utm_campaign
+         FROM booking_drafts d
+         LEFT JOIN visitor_sessions s ON s.session_id = d.session_id
+        WHERE d.saved_at >= NOW() - INTERVAL ${days} DAY
+          AND NOT EXISTS (SELECT 1 FROM bookings b
+                           WHERE b.status <> 'cancelled'
+                             AND (b.session_id = d.session_id
+                                  OR (d.visitor_id IS NOT NULL AND b.visitor_id = d.visitor_id
+                                      AND b.created_at >= d.saved_at)))
+        ORDER BY d.updated_at DESC
+        LIMIT 200`
+    );
+    res.json({ days, drafts: rows });
+  } catch (err: any) {
+    console.error('booking-drafts error:', err.message);
+    res.status(500).json({ error: 'failed', detail: err.message });
   }
 });
 

@@ -10,6 +10,7 @@ import CookieBanner from '@/components/CookieBanner';
 import PromoBanner from '@/components/PromoBanner';
 import VisitorTracker from '@/components/VisitorTracker';
 import SessionRecorder from '@/components/SessionRecorder';
+import BookingFunnelTracker from '@/components/BookingFunnelTracker';
 import BookingDraftRecovery from '@/components/BookingDraftRecovery';
 import { assignVariant } from '@/lib/experiment';
 
@@ -59,6 +60,7 @@ export default function SiteChrome({
       <CookieBanner />
       <VisitorTracker />
       <SessionRecorder />
+      <BookingFunnelTracker />
       <BookingDraftRecovery />
     </>
   );

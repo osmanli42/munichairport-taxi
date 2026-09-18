@@ -705,6 +705,99 @@ router.get('/overview', authenticateAdmin, async (req: AuthRequest, res: Respons
   }
 });
 
+// GET /api/admin/ads/suspicious-clicks — boşa giden bütçe adayları.
+//
+// Sinyal: aynı ip_hash'ten (günlük döner tuzla hash'li, tracking.ts getDailySalt)
+// aynı gün içinde birden fazla, çok kısa, tek sayfalık gclid'li oturum.
+// Bu KESİN bir sahtekârlık iddiası DEĞİLDİR — incelenecek listedir; yanlış pozitif
+// olabilir (paylaşılan mobil IP, kazara tıklama, geri gelen ziyaretçi).
+router.get('/suspicious-clicks', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    await ensureSpendTable();
+    const days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 1), 180);
+    const minSessions = Math.min(Math.max(parseInt(String(req.query.min_sessions || '3'), 10) || 3, 2), 20);
+    const maxSeconds = Math.min(Math.max(parseInt(String(req.query.max_seconds || '10'), 10) || 10, 3), 60);
+
+    const groups = await query<any>(
+      `SELECT
+         DATE(s.first_seen) AS day,
+         s.ip_hash,
+         COUNT(*) AS sessions,
+         MAX(s.utm_campaign) AS campaign,
+         MAX(s.ua_device) AS device,
+         MAX(s.city) AS city,
+         AVG(TIMESTAMPDIFF(SECOND, s.first_seen, s.last_seen)) AS avg_seconds,
+         MIN(s.first_seen) AS first_seen,
+         MAX(s.last_seen) AS last_seen
+       FROM visitor_sessions s
+       WHERE s.is_bot = 0
+         AND s.ip_hash IS NOT NULL AND s.ip_hash <> ''
+         AND s.first_seen >= NOW() - INTERVAL ${days} DAY
+         AND (COALESCE(s.gclid, '') <> '' OR LOWER(COALESCE(s.utm_medium, '')) IN ('cpc','ppc','paid'))
+         AND TIMESTAMPDIFF(SECOND, s.first_seen, s.last_seen) <= ${maxSeconds}
+         AND COALESCE(s.pageview_count, 1) <= 1
+         -- rezervasyona dönen oturumlar asla şüpheli sayılmaz
+         AND NOT EXISTS (SELECT 1 FROM bookings b
+                          WHERE b.session_id = s.session_id AND b.status <> 'cancelled')
+       GROUP BY day, s.ip_hash
+       HAVING sessions >= ${minSessions}
+       ORDER BY sessions DESC, day DESC
+       LIMIT 100`
+    );
+
+    const suspiciousSessions = groups.reduce((n: number, g: any) => n + Number(g.sessions || 0), 0);
+
+    // Tahmini kayıp: o günün toplam harcaması / o günün toplam ad tıklaması × şüpheli oturum.
+    // Gerçek CPC bilinmediği için bu bir TAHMİNDİR.
+    const perDay = await query<any>(
+      `SELECT DATE(s.first_seen) AS day, COUNT(*) AS ad_sessions
+         FROM visitor_sessions s
+        WHERE s.is_bot = 0 AND s.first_seen >= NOW() - INTERVAL ${days} DAY
+          AND (COALESCE(s.gclid, '') <> '' OR LOWER(COALESCE(s.utm_medium, '')) IN ('cpc','ppc','paid'))
+        GROUP BY day`
+    );
+    const spendRows = await query<any>(
+      `SELECT DATE_FORMAT(spend_date, '%Y-%m-%d') AS d, amount
+         FROM ads_spend WHERE spend_date >= CURDATE() - INTERVAL ${days} DAY`
+    );
+    const spendByDay = new Map<string, number>(spendRows.map((r: any) => [r.d, Number(r.amount) || 0]));
+    const adSessionsByDay = new Map<string, number>(
+      perDay.map((r: any) => [new Date(r.day).toISOString().slice(0, 10), Number(r.ad_sessions) || 0])
+    );
+
+    let estimatedLoss = 0;
+    const rows = groups.map((g: any) => {
+      const dayKey = new Date(g.day).toISOString().slice(0, 10);
+      const spend = spendByDay.get(dayKey) || 0;
+      const adSessions = adSessionsByDay.get(dayKey) || 0;
+      const cpc = adSessions > 0 ? spend / adSessions : 0;
+      const loss = Math.round(cpc * Number(g.sessions || 0) * 100) / 100;
+      estimatedLoss += loss;
+      return {
+        day: dayKey,
+        sessions: Number(g.sessions || 0),
+        campaign: g.campaign,
+        device: g.device,
+        city: g.city,
+        avg_seconds: Math.round(Number(g.avg_seconds || 0)),
+        estimated_cpc: Math.round(cpc * 100) / 100,
+        estimated_loss: loss,
+      };
+    });
+
+    res.json({
+      days,
+      criteria: { min_sessions: minSessions, max_seconds: maxSeconds, max_pageviews: 1 },
+      groups: rows,
+      suspicious_sessions: suspiciousSessions,
+      estimated_loss: Math.round(estimatedLoss * 100) / 100,
+      note: 'Tahmindir — kesin sahtekârlık iddiası değil, incelenecek liste.',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List daily ad spend in a date range.
 router.get('/spend', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
