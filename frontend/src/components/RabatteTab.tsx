@@ -492,12 +492,6 @@ export default function RabatteTab({ token }: { token: string }) {
                     İkisi de
                   </label>
                 </div>
-                {(editing.zone_scope === 'inside' || editing.zone_scope === 'any') && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex gap-2">
-                    <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                    <span>§ 51 Abs. 5 PBefG: Pflichtfahrgebiet içinde amtlicher Tarif altına inilemez ve tarife eşit uygulanmalıdır. İndirim otomatik olarak Pflichttarif ile sınırlanır.</span>
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -767,13 +761,27 @@ export default function RabatteTab({ token }: { token: string }) {
                   </span>
                 </label>
 
-                {editing.visit_min != null && editing.zone_scope === 'inside' && (
+                {/* Uyarı, yukarıdaki „Pflichtfahrgebiet içinde tarife tabanı“ şalterine bağlı:
+                    taban açıkken bölge içi indirim gerçekten 0 €'ya kırpılır, kapalıyken tam
+                    uygulanır. Sabit metin, şalter kapatıldığında yanlış bilgi verirdi. */}
+                {editing.visit_min != null && editing.zone_scope === 'inside' && !ignorePgFloor && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                     <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
                     <span>
-                      <strong>Pflichtfahrgebiet içinde ziyaret sayısı kuralı:</strong> Orada indirim
-                      Pflichttarif tabanına kırpılır ve çoğunlukla 0 €'ya düşer — müşteri hiçbir şey
-                      görmez. Öneri: „Außerhalb Pflichtfahrgebiet“ seç.
+                      <strong>Pflichtfahrgebiet içinde ziyaret sayısı kuralı:</strong> Tarife tabanı
+                      şu an açık olduğu için indirim orada Pflichttarif tabanına kırpılır ve
+                      çoğunlukla 0 €'ya düşer — müşteri hiçbir şey görmez. Ya „Pflichtfahrgebiet
+                      dışı“ seç, ya da yukarıdaki tarife tabanı şalterini kapat (hukuki risk sende).
+                    </span>
+                  </div>
+                )}
+                {editing.visit_min != null && editing.zone_scope !== 'outside' && ignorePgFloor && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5 text-gray-400" />
+                    <span>
+                      Tarife tabanı şalteri <strong>kapalı</strong> olduğu için bu indirim
+                      Pflichtfahrgebiet içinde de tam değeriyle uygulanır — Pflichttarif altına
+                      inebilir. Hukuki değerlendirme sende (§ 51 Abs. 5 PBefG).
                     </span>
                   </div>
                 )}
