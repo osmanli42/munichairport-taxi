@@ -696,6 +696,31 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE company_invoices ADD COLUMN project_name VARCHAR(255) DEFAULT NULL`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // ─── Kalender-Rechnungen (Eingangskorb im Kalender-Tab) ─────────────
+    // Rechnungs-E-Mail des Kunden, zuletzt beim Versand benutzt. companies.email bleibt
+    // bewusst die eigene Adresse (keine automatischen Mails an Kalender-Kunden).
+    try {
+      await conn.execute(`ALTER TABLE companies ADD COLUMN invoice_email VARCHAR(200) DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    // Nachtragsrechnung: eine Fahrt, die erst nach der Monatsrechnung eingetragen wurde,
+    // bekommt eine zweite Rechnung (SR-202607-6-2). Dafür darf es mehrere Rechnungen je
+    // Firma und Monat geben; die Rechnungsnummer selbst bleibt UNIQUE.
+    try {
+      await conn.execute(`ALTER TABLE company_invoices ADD INDEX idx_ci_company_period (company_id, period_month)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) throw e; }
+    try {
+      await conn.execute(`ALTER TABLE company_invoices DROP INDEX uq_ci_period`);
+    } catch (e: any) { if (!e.message?.includes("check that column/key exists") && !e.message?.includes("check that it exists")) throw e; }
+    // Rechnungsfahrten, die der Admin bewusst nicht über das System abrechnet
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS calendar_invoice_ignored (
+        uid VARCHAR(191) NOT NULL,
+        note VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (uid)
+      )
+    `);
+
     // ─── Automatische Rabatte (Rabatte-Tab) ─────────────────────────────
     try {
       await conn.execute(`
