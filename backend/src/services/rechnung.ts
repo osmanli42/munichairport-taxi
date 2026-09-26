@@ -527,6 +527,14 @@ export function buildRechnungEmail(opts: {
 
 // ─── SAMMELRECHNUNG (COLLECTIVE INVOICE) PDF ─────────────────────────────────
 
+// "Start - Ziel" wie bisher; mit Zwischenstopps (zwischenstopp_address, mehrere als "A → B")
+// steht jede Station in einer eigenen Zeile, damit auf der Rechnung die ganze Fahrt steht.
+function sammelRoute(b: any): string {
+  const stops = String(b.zwischenstopp_address || '').split(/\s*→\s*/).map((x) => x.trim()).filter(Boolean);
+  if (stops.length === 0) return `${b.pickup_address || ''} - ${b.dropoff_address || ''}`;
+  return [b.pickup_address || '', ...stops, b.dropoff_address || ''].join('\n→ ');
+}
+
 export function generateSammelrechnungPdf(opts: {
   company: { company_name: string; contact_name: string; address: string; ust_idnr?: string };
   invoiceNumber: string;
@@ -641,31 +649,38 @@ export function generateSammelrechnungPdf(opts: {
     doc.text('Betrag (Netto)', colX.price, tableTop + 4.5, { width: colWidths.price, align: 'right', lineBreak: false });
 
     let curY = tableTop + 16;
-    const ROW_H = 26;
+    const ROW_H = 26; // Mindesthöhe — lange Strecken und Gästelisten machen die Zeile höher statt abgeschnitten zu werden
     const pageBottom = doc.page.height - 120;
 
     for (let i = 0; i < bookings.length; i++) {
-      if (curY + ROW_H > pageBottom) {
+      const b = bookings[i];
+      const route = sammelRoute(b);
+      const guest = b.name || '';
+      doc.fontSize(6.5).font('WorkSans');
+      const rowH = Math.max(
+        ROW_H,
+        Math.ceil(doc.heightOfString(route, { width: colWidths.route })) + 8,
+        Math.ceil(doc.heightOfString(guest, { width: colWidths.guest })) + 8,
+      );
+      if (curY + rowH > pageBottom) {
         doc.addPage();
         curY = 50;
       }
-      const b = bookings[i];
       const bg = i % 2 === 0 ? LIGHTGRAY : '#ffffff';
-      doc.rect(marginL, curY, pageW, ROW_H).fill(bg);
+      doc.rect(marginL, curY, pageW, rowH).fill(bg);
       doc.fontSize(6.5).font('WorkSans').fillColor('#111827');
-      const cellH = ROW_H - 6;
+      const cellH = rowH - 6;
       doc.text(String(i + 1), colX.pos, curY + 4, { width: colWidths.pos, height: cellH, ellipsis: true });
       doc.text(b.pickup_datetime ? fmtDate(b.pickup_datetime, 'de') : '', colX.date, curY + 4, { width: colWidths.date, height: cellH, ellipsis: true });
       doc.text(b.booking_number || '', colX.nr, curY + 4, { width: colWidths.nr, height: cellH, ellipsis: true });
-      const route = `${b.pickup_address || ''} - ${b.dropoff_address || ''}`;
       doc.text(route, colX.route, curY + 4, { width: colWidths.route, height: cellH, ellipsis: true });
-      doc.text(b.name || '', colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
+      doc.text(guest, colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
       doc.text((b.cost_center || ''), colX.kst, curY + 4, { width: colWidths.kst, height: cellH, ellipsis: true });
       const rowGross = roundGrossPrice(Number(b.price) || 0, b.source === 'calendar');
       const rowRate = (b.steuersatz !== null && b.steuersatz !== undefined && [0, 7, 19].includes(Number(b.steuersatz))) ? Number(b.steuersatz) : mwst;
       const rowNet = rowRate > 0 ? rowGross / (1 + rowRate / 100) : rowGross;
       doc.font('WorkSans-Bold').text(fmtPrice(rowNet), colX.price, curY + 4, { width: colWidths.price, height: cellH, align: 'right', ellipsis: true });
-      curY += ROW_H;
+      curY += rowH;
     }
 
     // Table bottom border

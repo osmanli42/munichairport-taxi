@@ -57,7 +57,7 @@ export interface ParsedRide {
   price_source: string | null;
   price_conflict: number | null; // abweichender Preis in der Beschreibung
   round_trip_hint: boolean; // "(H+R)" — Preis gilt evtl. für Hin- und Rückfahrt
-  stopover: string | null;
+  via: string[]; // Zwischenstopps in Fahrtreihenfolge (ohne Start und Ziel)
 }
 
 const BERLIN_TZ = 'Europe/Berlin';
@@ -379,7 +379,7 @@ function extractPickup(desc: string): string | null {
   return null;
 }
 
-function extractDropoff(desc: string): { dropoff: string | null; stopover: string | null } {
+function extractDropoff(desc: string): { dropoff: string | null; via: string[] } {
   const ls = lines(desc);
   const hits: { n: number | null; value: string }[] = [];
   for (let i = 0; i < ls.length; i++) {
@@ -391,12 +391,13 @@ function extractDropoff(desc: string): { dropoff: string | null; stopover: strin
     hits.push({ n, value: valueWithContinuation(ls, i, value) });
     if (n === null) break; // erstes unnummeriertes Ziel gewinnt (spätere stammen oft aus E-Mail-Zitaten)
   }
-  if (hits.length === 0) return { dropoff: null, stopover: null };
+  if (hits.length === 0) return { dropoff: null, via: [] };
+  // Akar-Format "1. Ziel …", "2. Ziel.: …": letztes Ziel = Ziel, davor = Zwischenstopps
   if (hits.length > 1 && hits[0].n !== null) {
     const last = hits[hits.length - 1];
-    return { dropoff: last.value, stopover: hits.slice(0, -1).map((h) => h.value).join(' · ') };
+    return { dropoff: last.value, via: hits.slice(0, -1).map((h) => h.value) };
   }
-  return { dropoff: hits[0].value, stopover: null };
+  return { dropoff: hits[0].value, via: [] };
 }
 
 function airportLabel(desc: string): string {
@@ -595,15 +596,15 @@ export function parseInvoiceRide(ev: CalEvent, companies: CompanyRef[], aliases:
     if (adr) pickup = cleanValue(adr[1]);
   }
 
-  let { dropoff, stopover } = extractDropoff(desc);
+  let { dropoff, via } = extractDropoff(desc);
   if (!dropoff && /abflug|departure|zum flughafen|ankunft flughafen/i.test(desc)) dropoff = airportLabel(desc);
-  // Mehrere Abholadressen ("1. Abholung … Adresse: …", "2. Abholung … Adresse: …") → Zwischenstopp
-  if (!stopover) {
+  // Mehrere Abholadressen ("1. Abholung … Adresse: …", "2. Abholung … Adresse: …") → weitere Abholungen als Zwischenstopps
+  if (!via.length) {
     const addrs = [...desc.matchAll(/^\s*adresse\s*:\s*(.+)$/gim)].map((m) => cleanValue(m[1]));
-    if (addrs.length > 1) stopover = addrs.slice(1).join(' · ');
+    if (addrs.length > 1) via = addrs.slice(1);
   }
   const zs = ev.summary.match(/zwischenstopp:\s*(.+)$/i);
-  if (!stopover && zs) stopover = cleanValue(zs[1]);
+  if (!via.length && zs) via = [cleanValue(zs[1])];
 
   const avoid = [tag || '', billing?.name || ''];
   const guest = extractGuest(desc, avoid);
@@ -632,7 +633,7 @@ export function parseInvoiceRide(ev: CalEvent, companies: CompanyRef[], aliases:
     price_source: priceSource,
     price_conflict: priceConflict,
     round_trip_hint: roundTrip,
-    stopover,
+    via: via.map((v) => normalizeAddress(v)).filter((v): v is string => !!v),
   };
 }
 

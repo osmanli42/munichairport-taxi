@@ -354,13 +354,13 @@ async function loadOpenState(calendarId: string, from: string, to: string) {
   const [{ events, accessRole }, importedRows, ignoredRows, invoiced, unbilledCandidates] = await Promise.all([
     fetchEventsRange(calendarId, from, to),
     query(`SELECT id, booking_number, calendar_event_uid, company_id, pickup_datetime, pickup_address,
-                  dropoff_address, name, price, steuersatz
+                  dropoff_address, zwischenstopp_address, name, price, steuersatz
            FROM bookings WHERE calendar_event_uid IS NOT NULL`),
     query('SELECT uid, note, created_at FROM calendar_invoice_ignored'),
     invoicedBookingMap(),
     // Bereits übernommene Firmenfahrten ohne Rechnung (z.B. Rechnung gelöscht)
-    query(`SELECT id, booking_number, company_id, pickup_datetime, pickup_address, dropoff_address, name, price,
-                  steuersatz, source, calendar_event_uid
+    query(`SELECT id, booking_number, company_id, pickup_datetime, pickup_address, dropoff_address, zwischenstopp_address,
+                  name, price, steuersatz, source, calendar_event_uid
            FROM bookings
            WHERE company_id IS NOT NULL AND status <> 'cancelled' AND payment_method IN ('invoice', 'rechnung')
              AND pickup_datetime >= ? AND pickup_datetime <= ?`, [from, `${to}T23:59`]),
@@ -407,6 +407,34 @@ router.get('/open-count', authenticateAdmin, async (req: AuthRequest, res: Respo
   }
 });
 
+// Zwischenstopps werden als "A → B" in bookings.zwischenstopp_address gespeichert
+// (dieselbe Spalte wie bei Web-Buchungen mit Zwischenstopp)
+const VIA_SEPARATOR = ' → ';
+function splitVia(v: unknown): string[] {
+  return String(v || '').split(/\s*→\s*/).map((x) => x.trim()).filter(Boolean);
+}
+
+// Strecke über alle Stationen (MwSt-Grenze 50 km gilt für die ganze Fahrt); null, wenn ein Abschnitt fehlt
+async function routeDistanceKm(points: string[]): Promise<number | null> {
+  const clean = points.map((x) => x.trim()).filter(Boolean);
+  if (clean.length < 2) return null;
+  const legs = await Promise.all(clean.slice(1).map((to, i) => drivingDistanceKm(geoQuery(clean[i]), geoQuery(to))));
+  if (legs.some((km) => km === null)) return null;
+  return Math.round((legs as number[]).reduce((a, b) => a + b, 0) * 10) / 10;
+}
+
+// ─── POST /route-distance — Neuberechnung nach Änderung der Stationen im Korb ─
+
+router.post('/route-distance', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const points = Array.isArray(req.body?.points) ? req.body.points.map(String).slice(0, 12) : [];
+    const km = await routeDistanceKm(points);
+    res.json({ km, steuersatz: km === null ? null : steuersatzForDistance(km) });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Entfernung konnte nicht berechnet werden' });
+  }
+});
+
 // ─── GET /inbox?from=YYYY-MM-DD&to=YYYY-MM-DD — offene + kommende Rechnungsfahrten ─
 
 router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -439,7 +467,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
       const p = parseInvoiceRide(ev, matchData.companies, matchData.aliases);
       const warnings: string[] = [];
       const km = p.pickup_address && p.dropoff_address
-        ? await drivingDistanceKm(geoQuery(p.pickup_address), geoQuery(p.dropoff_address))
+        ? await routeDistanceKm([p.pickup_address, ...p.via, p.dropoff_address])
         : null;
       let steuersatz: number;
       let mwstSource: 'distance' | 'default';
@@ -449,9 +477,8 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
       if (!p.price) warnings.push('price_missing');
       if (!p.pickup_address || !p.dropoff_address) warnings.push('route_missing');
       if (p.price_conflict) warnings.push('price_conflict');
-      if (p.stopover) warnings.push(km !== null && km > 35 && km <= 50 ? 'stopover_mwst' : 'stopover');
       // Google nimmt die schnellste Route — knapp um 50 km kann die gefahrene Strecke anders liegen
-      else if (km !== null && km >= 48 && km <= 53) warnings.push('mwst_borderline');
+      if (km !== null && km >= 48 && km <= 53) warnings.push('mwst_borderline');
       if (km === null && p.pickup_address && p.dropoff_address) warnings.push('no_distance');
       if (!p.company_id) warnings.push(p.billing ? 'new_customer' : 'customer_missing');
 
@@ -516,7 +543,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
           price_source: 'Buchung',
           price_conflict: null,
           round_trip_hint: false,
-          stopover: null,
+          via: splitVia(b.zwischenstopp_address),
           steuersatz: b.steuersatz ?? defaults.get(Number(b.company_id)) ?? 7,
           distance_km: null,
           mwst_source: 'booking',
@@ -541,6 +568,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
         pickup_datetime: toLocalDateTime(b.pickup_datetime),
         pickup_address: b.pickup_address,
         dropoff_address: b.dropoff_address,
+        via: splitVia(b.zwischenstopp_address),
         guest_name: b.name,
         price: Number(b.price),
         company_id: b.company_id ? Number(b.company_id) : null,
@@ -590,6 +618,7 @@ interface InvoiceRideInput {
   pickup_datetime: string;
   pickup_address: string;
   dropoff_address: string;
+  via?: string[]; // Zwischenstopps zwischen Start und Ziel
   guest_name?: string;
   price: number;
   steuersatz: number;
@@ -725,6 +754,7 @@ function rideAsBooking(r: InvoiceRideInput, bookingNumber: string) {
     pickup_datetime: r.pickup_datetime,
     pickup_address: r.pickup_address.trim(),
     dropoff_address: r.dropoff_address.trim(),
+    zwischenstopp_address: (Array.isArray(r.via) ? r.via : []).map((v) => String(v).trim()).filter(Boolean).join(VIA_SEPARATOR) || null,
     name: r.guest_name?.trim() || '',
     price: round2(Number(r.price)),
     steuersatz: Number(r.steuersatz),
@@ -796,15 +826,15 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
       const b = rideAsBooking(r, await uniqueBookingNumber());
       const result = await run(
         `INSERT INTO bookings (
-          booking_number, status, pickup_address, dropoff_address, pickup_datetime,
+          booking_number, status, pickup_address, dropoff_address, zwischenstopp_address, pickup_datetime,
           vehicle_type, passengers, name, phone, email, notes, price, payment_method,
           language, trip_type, steuersatz, company_id,
           source, calendar_event_uid, imported_at
-        ) VALUES (?, ?, ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', 'de', 'oneway', ?, ?, 'calendar', ?, NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', 'de', 'oneway', ?, ?, 'calendar', ?, NOW())`,
         [
           // Vorab abgerechnete Fahrt bleibt "confirmed", bis sie gefahren ist (autoStatusJob schließt sie ab)
           b.booking_number, b.pickup_datetime <= berlinNow() ? 'completed' : 'confirmed',
-          b.pickup_address, b.dropoff_address, b.pickup_datetime,
+          b.pickup_address, b.dropoff_address, b.zwischenstopp_address, b.pickup_datetime,
           b.name || company.contact_name || company.company_name,
           company.phone || '', company.email || '',
           r.notes?.slice(0, 1000) || null,

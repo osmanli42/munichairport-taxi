@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   CalendarDays, RefreshCw, Settings, Check, AlertTriangle, FileText, Send, X,
   ExternalLink, Eye, ChevronDown, ChevronUp, Pencil, EyeOff, Undo2, UserPlus,
-  Download, Info, Building2, Inbox as InboxIcon, CalendarCheck, Copy,
+  Download, Info, Building2, Inbox as InboxIcon, CalendarCheck, Copy, Plus, ArrowUp,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -48,7 +48,7 @@ interface Ride {
   price: number | null;
   price_source: string | null;
   price_conflict: number | null;
-  stopover: string | null;
+  via: string[]; // Zwischenstopps zwischen Nereden und dem letzten Ziel, in Fahrtreihenfolge
   steuersatz: number;
   distance_km: number | null;
   mwst_source: 'distance' | 'default' | 'booking';
@@ -82,6 +82,7 @@ interface DoneRide {
   pickup_datetime: string;
   pickup_address: string;
   dropoff_address: string;
+  via?: string[];
   guest_name: string;
   price: number;
   company_id: number | null;
@@ -123,9 +124,10 @@ interface Alias {
   company_name: string | null;
 }
 
-type RideEdit = Partial<Pick<Ride, 'pickup_datetime' | 'pickup_address' | 'dropoff_address' | 'guest_name' | 'price' | 'steuersatz'>> & {
+type RideEdit = Partial<Pick<Ride, 'pickup_datetime' | 'pickup_address' | 'dropoff_address' | 'via' | 'guest_name' | 'price' | 'steuersatz' | 'distance_km' | 'mwst_source'>> & {
   // null = "Yeni müşteri (fatura adresinden)", Zahl = bestehende Firma
   customer?: number | 'new' | null;
+  mwst_manual?: boolean; // MwSt von Hand gewählt → Neuberechnung der Strecke überschreibt sie nicht
 };
 
 interface NewCustomerForm {
@@ -215,15 +217,19 @@ const RANGE_PRESETS: { label: string; range: () => DateRange }[] = [
 ];
 
 function rideValid(r: Ride): boolean {
-  return !!(r.pickup_datetime && r.pickup_address?.trim() && r.dropoff_address?.trim() && Number(r.price) > 0 && [0, 7, 19].includes(Number(r.steuersatz)));
+  return !!(
+    r.pickup_datetime && r.pickup_address?.trim() && r.dropoff_address?.trim() && r.via.every((v) => v.trim()) &&
+    Number(r.price) > 0 && [0, 7, 19].includes(Number(r.steuersatz))
+  );
 }
+
+const routePoints = (r: Pick<Ride, 'pickup_address' | 'via' | 'dropoff_address'>) =>
+  [r.pickup_address || '', ...r.via, r.dropoff_address || ''];
 
 const WARNING_TEXT: Record<string, (r: Ride) => string> = {
   price_missing: () => 'Fiyat bulunamadı — lütfen gir',
   route_missing: () => 'Nereden / Nereye eksik',
   price_conflict: (r) => `Ort'taki fiyat ile açıklamadaki fiyat farklı (açıklama: ${fmtEur(r.price_conflict || 0)})`,
-  stopover: (r) => `Ara durak: ${r.stopover}`,
-  stopover_mwst: (r) => `Ara durak (${r.stopover}) ile yol 50 km'yi geçebilir — MwSt'yi kontrol et`,
   no_distance: () => 'Mesafe hesaplanamadı — MwSt varsayılan değer, kontrol et',
   mwst_borderline: (r) => `Mesafe 50 km sınırında (${String(r.distance_km).replace('.', ',')} km, Google en hızlı rota) — MwSt'yi kontrol et`,
   new_customer: () => 'Yeni müşteri — fatura adresi açıklamadan alındı',
@@ -235,12 +241,18 @@ const WARNING_TEXT: Record<string, (r: Ride) => string> = {
 
 // Warnungen, die nach einer manuellen Korrektur nicht mehr zutreffen
 function activeWarnings(r: Ride, edit: RideEdit | undefined): string[] {
-  return r.warnings.filter((w) => {
+  const list = r.warnings.filter((w) => {
     if (w === 'price_missing') return !(Number(r.price) > 0);
     if (w === 'route_missing') return !(r.pickup_address?.trim() && r.dropoff_address?.trim());
     if ((w === 'customer_missing' || w === 'new_customer') && edit?.customer !== undefined) return false;
-    return true;
+    // Entfernungshinweise hängen von der aktuellen (ggf. neu berechneten) Strecke ab
+    return w !== 'mwst_borderline' && w !== 'no_distance';
   });
+  if (r.kind === 'calendar') {
+    if (r.distance_km !== null && r.distance_km >= 48 && r.distance_km <= 53) list.push('mwst_borderline');
+    if (r.distance_km === null && r.pickup_address?.trim() && r.dropoff_address?.trim()) list.push('no_distance');
+  }
+  return list;
 }
 
 async function api(path: string, token: string, opts?: RequestInit) {
@@ -397,7 +409,35 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     });
   }, [groups, edits]);
 
-  const updateRide = (key: string, patch: RideEdit) => setEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  // Nach Änderung der Stationen Strecke neu berechnen (MwSt: bis 50 km 7 %) — kurz warten, bis fertig getippt ist
+  const ridesRef = useRef<Map<string, Ride>>(new Map());
+  ridesRef.current = new Map(rides.map((r) => [r.key, r]));
+  const distanceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const scheduleDistance = (key: string) => {
+    clearTimeout(distanceTimers.current[key]);
+    distanceTimers.current[key] = setTimeout(async () => {
+      const r = ridesRef.current.get(key);
+      if (!r || r.kind !== 'calendar') return;
+      const points = routePoints(r).map((x) => x.trim());
+      if (points.some((x) => !x)) return; // noch unvollständig
+      try {
+        const res = await api('/admin/calendar/route-distance', token, { method: 'POST', body: JSON.stringify({ points }) });
+        if (!res.ok) return;
+        const d = await res.json();
+        setEdits((prev) => {
+          const cur = prev[key] || {};
+          const next: RideEdit = { ...cur, distance_km: d.km ?? null, mwst_source: d.km != null ? 'distance' : 'default' };
+          if (d.steuersatz != null && !cur.mwst_manual) next.steuersatz = d.steuersatz;
+          return { ...prev, [key]: next };
+        });
+      } catch { /* Entfernung ist nur eine Hilfe */ }
+    }, 900);
+  };
+
+  const updateRide = (key: string, patch: RideEdit) => {
+    setEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+    if ('pickup_address' in patch || 'dropoff_address' in patch || 'via' in patch) scheduleDistance(key);
+  };
   const toggle = (set: Set<string>, key: string) => { const n = new Set(set); if (n.has(key)) n.delete(key); else n.add(key); return n; };
 
   const groupTitle = (g: Group) => {
@@ -439,6 +479,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
         pickup_datetime: r.pickup_datetime,
         pickup_address: r.pickup_address,
         dropoff_address: r.dropoff_address,
+        via: r.via.map((v) => v.trim()).filter(Boolean),
         guest_name: r.guest_name || '',
         price: Number(r.price),
         steuersatz: Number(r.steuersatz),
@@ -1014,7 +1055,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                         <tr key={d.booking_id} className="border-b border-gray-50">
                           <td className="py-2 pr-3 whitespace-nowrap text-gray-600">{fmtDateTime(d.pickup_datetime)}</td>
                           <td className="py-2 pr-3 text-gray-800">{(d.company_id && companiesById.get(d.company_id)?.company_name) || '—'}</td>
-                          <td className="py-2 pr-3 text-gray-600 max-w-[340px] truncate" title={`${d.pickup_address} → ${d.dropoff_address}`}>{d.pickup_address} → {d.dropoff_address}</td>
+                          <td className="py-2 pr-3 text-gray-600 max-w-[340px] truncate" title={[d.pickup_address, ...(d.via || []), d.dropoff_address].join(' → ')}>{[d.pickup_address, ...(d.via || []), d.dropoff_address].join(' → ')}</td>
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtEur(d.price)}</td>
                           <td className="py-2 whitespace-nowrap">
                             {d.invoice ? (
@@ -1112,6 +1153,67 @@ function CalendarWriteStatus({ status, calendarId, marking, onMark, onCopied }: 
   );
 }
 
+// ─── Nereye: ein oder mehrere Ziele (Zwischenstopps) ─────────────────────────
+// Letzte Zeile = Endziel, alle davor = Zwischenstopps; so erscheinen sie auch auf der Rechnung.
+
+function StopsEditor({ stops, disabled, onChange }: { stops: string[]; disabled: boolean; onChange: (stops: string[]) => void }) {
+  const set = (i: number, value: string) => onChange(stops.map((s, j) => (j === i ? value : s)));
+  const remove = (i: number) => onChange(stops.filter((_, j) => j !== i));
+  const moveUp = (i: number) => {
+    const next = [...stops];
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    onChange(next);
+  };
+  const multi = stops.length > 1;
+
+  return (
+    <div>
+      <span className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+        Nereye{multi && <span className="normal-case tracking-normal font-normal text-gray-400"> — duraklar sırayla, son satır varış</span>}
+      </span>
+      <div className="space-y-1.5">
+        {stops.map((stop, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            {multi && <span className="w-5 shrink-0 text-right text-xs font-medium text-gray-400">{i + 1}.</span>}
+            <input
+              value={stop}
+              disabled={disabled}
+              onChange={(e) => set(i, e.target.value)}
+              placeholder={i === stops.length - 1 ? 'Varış adresi' : 'Ara durak adresi'}
+              className={`${inputCls} ${!stop.trim() ? 'border-amber-400' : ''}`}
+            />
+            {!disabled && multi && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => moveUp(i)}
+                  disabled={i === 0}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30"
+                  title="Yukarı taşı"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button type="button" onClick={() => remove(i)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50" title="Satırı sil">
+                  <X size={14} />
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      {!disabled && (
+        <button
+          type="button"
+          onClick={() => onChange([...stops, ''])}
+          className="mt-1.5 flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+        >
+          <Plus size={14} /> Durak ekle
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Einzelne Fahrt ──────────────────────────────────────────────────────────
 
 const inputCls = 'w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30';
@@ -1168,6 +1270,9 @@ function RideRow({
             </span>
             <span className="text-sm text-gray-700 min-w-0">
               {r.pickup_address || <span className="text-amber-700">Nereden?</span>}
+              {r.via.map((v, i) => (
+                <span key={i}><span className="text-gray-400 mx-1.5">→</span>{v || <span className="text-amber-700">Durak?</span>}</span>
+              ))}
               <span className="text-gray-400 mx-1.5">→</span>
               {r.dropoff_address || <span className="text-amber-700">Nereye?</span>}
             </span>
@@ -1180,7 +1285,7 @@ function RideRow({
           {warnings.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {warnings.map((w) => (
-                <span key={w} className={`text-[11px] leading-snug px-2 py-0.5 rounded-md ${['price_missing', 'route_missing', 'customer_missing', 'price_conflict', 'hr', 'stopover_mwst', 'no_distance', 'mwst_borderline'].includes(w) ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>
+                <span key={w} className={`text-[11px] leading-snug px-2 py-0.5 rounded-md ${['price_missing', 'route_missing', 'customer_missing', 'price_conflict', 'hr', 'no_distance', 'mwst_borderline'].includes(w) ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>
                   {(WARNING_TEXT[w] || (() => w))(r)}
                 </span>
               ))}
@@ -1220,9 +1325,11 @@ function RideRow({
               </Field>
             </div>
             <div className="col-span-2">
-              <Field label="Nereye">
-                <input value={r.dropoff_address || ''} disabled={readOnly} onChange={(e) => onChange({ dropoff_address: e.target.value })} className={`${inputCls} ${!r.dropoff_address?.trim() ? 'border-amber-400' : ''}`} />
-              </Field>
+              <StopsEditor
+                stops={[...r.via, r.dropoff_address || '']}
+                disabled={readOnly}
+                onChange={(stops) => onChange({ via: stops.slice(0, -1), dropoff_address: stops[stops.length - 1] })}
+              />
             </div>
             <Field label="Fiyat € (brüt)">
               <input
@@ -1234,7 +1341,7 @@ function RideRow({
               />
             </Field>
             <Field label="MwSt">
-              <select value={r.steuersatz} disabled={readOnly} onChange={(e) => onChange({ steuersatz: Number(e.target.value) })} className={inputCls}>
+              <select value={r.steuersatz} disabled={readOnly} onChange={(e) => onChange({ steuersatz: Number(e.target.value), mwst_manual: true })} className={inputCls}>
                 <option value={7}>7% (≤ 50 km)</option>
                 <option value={19}>19% (&gt; 50 km)</option>
                 <option value={0}>0%</option>
