@@ -16,6 +16,11 @@ import {
   parseInvoiceRide,
   drivingDistanceKm,
   steuersatzForDistance,
+  calendarWriteEnabled,
+  markEventsInvoiced,
+  serviceAccountEmail,
+  CalendarPermissionError,
+  CalEvent,
 } from '../services/calendarInvoice';
 import { generateSammelrechnungPdf, fetchBankSettings, roundGrossPrice } from '../services/rechnung';
 
@@ -246,6 +251,7 @@ router.get('/settings', authenticateAdmin, async (req: AuthRequest, res: Respons
     res.json({
       calendar_id: setting?.setting_value || '',
       service_account_configured: hasServiceAccount(),
+      service_account_email: serviceAccountEmail(),
     });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch settings' });
@@ -314,46 +320,122 @@ function geoQuery(addr: string): string {
   return addr;
 }
 
-// ─── GET /inbox?months=4 — offene Rechnungsfahrten + zuletzt erledigte ───────
+// Standard-Zeitraum: 3 Monate zurück bis 2 Monate voraus — offene UND kommende Rechnungsfahrten
+function defaultRange(): { from: string; to: string } {
+  const month = berlinNow().slice(0, 7);
+  const [y, m] = addMonths(month, 3).split('-').map(Number);
+  const lastDay = new Date(Date.UTC(y, m - 1, 0)).toISOString().slice(0, 10); // letzter Tag von Monat+2
+  return { from: `${addMonths(month, -3)}-01`, to: lastDay };
+}
+
+const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_RANGE_DAYS = 731;
+
+// from/to aus Query oder Body ('YYYY-MM-DD'); fehlt etwas → Standard-Zeitraum
+function parseRange(src: any): { from: string; to: string } | { error: string } {
+  const def = defaultRange();
+  const from = RE_DATE.test(String(src?.from || '')) ? String(src.from) : def.from;
+  const to = RE_DATE.test(String(src?.to || '')) ? String(src.to) : def.to;
+  if (from > to) return { error: 'Startdatum liegt nach dem Enddatum' };
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > MAX_RANGE_DAYS) return { error: 'Zeitraum höchstens 2 Jahre' };
+  return { from, to };
+}
+
+async function calendarIdSetting(): Promise<string | null> {
+  const [setting] = await query('SELECT setting_value FROM settings WHERE setting_key = ?', [CALENDAR_ID_KEY]);
+  return setting?.setting_value || null;
+}
+
+// Was ist offen? Gemeinsame Grundlage für den Korb und die Zahl am Kalender-Tab.
+// Enthält auch kommende Fahrten — ob eine Fahrt schon gefahren ist, entscheidet der Aufrufer (start <= now).
+async function loadOpenState(calendarId: string, from: string, to: string) {
+  const now = berlinNow();
+
+  const [{ events, accessRole }, importedRows, ignoredRows, invoiced, unbilledCandidates] = await Promise.all([
+    fetchEventsRange(calendarId, from, to),
+    query(`SELECT id, booking_number, calendar_event_uid, company_id, pickup_datetime, pickup_address,
+                  dropoff_address, name, price, steuersatz
+           FROM bookings WHERE calendar_event_uid IS NOT NULL`),
+    query('SELECT uid, note, created_at FROM calendar_invoice_ignored'),
+    invoicedBookingMap(),
+    // Bereits übernommene Firmenfahrten ohne Rechnung (z.B. Rechnung gelöscht)
+    query(`SELECT id, booking_number, company_id, pickup_datetime, pickup_address, dropoff_address, name, price,
+                  steuersatz, source, calendar_event_uid
+           FROM bookings
+           WHERE company_id IS NOT NULL AND status <> 'cancelled' AND payment_method IN ('invoice', 'rechnung')
+             AND pickup_datetime >= ? AND pickup_datetime <= ?`, [from, `${to}T23:59`]),
+  ]);
+
+  const importedUids = new Set(importedRows.map((b: any) => b.calendar_event_uid));
+  const ignoredUids = new Set(ignoredRows.map((r: any) => r.uid));
+  // Rechnungsfahrten ohne Rechnung im System (gefahren oder kommend)
+  const openEvents = events.filter((e) =>
+    classifyEvent(e) === 'open' && !importedUids.has(e.uid) && !ignoredUids.has(e.uid)
+  );
+  const unbilledRows = unbilledCandidates.filter((b: any) => !invoiced.has(Number(b.id)));
+  // Im System abgerechnet, im Kalender steht aber noch kein "gön"
+  const invoicedUids = new Set(importedRows.filter((b: any) => invoiced.has(Number(b.id))).map((b: any) => b.calendar_event_uid));
+  const unmarkedUids = events.filter((e) => invoicedUids.has(e.uid) && classifyEvent(e) === 'open').map((e) => e.uid);
+
+  return { now, from, to, events, accessRole, importedRows, ignoredRows, invoiced, openEvents, unbilledRows, unmarkedUids };
+}
+
+// Zahl am Kalender-Tab: jeder Admin-Aufruf fragt sie ab — 10 Minuten zwischenspeichern,
+// nach Rechnung/Ausblenden sofort verwerfen.
+const OPEN_COUNT_TTL_MS = 10 * 60 * 1000;
+let openCountCache: { count: number; at: number } | null = null;
+const invalidateOpenCount = () => { openCountCache = null; };
+
+router.get('/open-count', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (openCountCache && Date.now() - openCountCache.at < OPEN_COUNT_TTL_MS) {
+      res.json({ count: openCountCache.count });
+      return;
+    }
+    const calendarId = hasServiceAccount() ? await calendarIdSetting() : null;
+    if (!calendarId) { res.json({ count: null }); return; }
+    const state = await loadOpenState(calendarId, defaultRange().from, berlinNow().slice(0, 10));
+    // Nur fällige Rechnungen zählen: bereits gefahrene Fahrten
+    const count = state.openEvents.filter((e) => (e.start || '') <= state.now).length
+      + state.unbilledRows.filter((b: any) => toLocalDateTime(b.pickup_datetime) <= state.now).length;
+    openCountCache = { count, at: Date.now() };
+    res.json({ count });
+  } catch (error: any) {
+    // Die Zahl ist nur ein Hinweis — der Admin darf daran nie scheitern
+    console.error('Calendar open-count error:', error.message);
+    res.json({ count: null });
+  }
+});
+
+// ─── GET /inbox?from=YYYY-MM-DD&to=YYYY-MM-DD — offene + kommende Rechnungsfahrten ─
 
 router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const months = Math.min(12, Math.max(1, Number(req.query.months) || 4));
-    const now = berlinNow();
-    const toMonth = now.slice(0, 7);
-    const fromMonth = addMonths(toMonth, -(months - 1));
+    const range = parseRange(req.query);
+    if ('error' in range) { res.status(400).json({ error: range.error }); return; }
 
     if (!hasServiceAccount()) {
       res.status(400).json({ error: 'GOOGLE_SERVICE_ACCOUNT_JSON ist nicht konfiguriert.' });
       return;
     }
-    const [setting] = await query('SELECT setting_value FROM settings WHERE setting_key = ?', [CALENDAR_ID_KEY]);
-    const calendarId = setting?.setting_value;
+    const calendarId = await calendarIdSetting();
     if (!calendarId) { res.status(400).json({ error: 'Keine Kalender-ID hinterlegt (Einstellungen).' }); return; }
 
-    const [events, matchData, companies, importedRows, ignoredRows, invoices, defaults, invoiced] = await Promise.all([
-      fetchEventsRange(calendarId, fromMonth, toMonth),
+    const [state, matchData, companies, defaults] = await Promise.all([
+      loadOpenState(calendarId, range.from, range.to),
       loadMatchData(),
       query(`SELECT id, company_name, contact_name, address, ust_idnr, invoice_email, payment_term_days
              FROM companies WHERE status = 'active' ORDER BY company_name`),
-      query(`SELECT id, booking_number, calendar_event_uid, company_id, pickup_datetime, pickup_address,
-                    dropoff_address, name, price, steuersatz
-             FROM bookings WHERE calendar_event_uid IS NOT NULL`),
-      query('SELECT uid, note, created_at FROM calendar_invoice_ignored'),
-      query(`SELECT id, company_id, invoice_number, period_month, total, status, manual_sent_at
-             FROM company_invoices WHERE period_month >= ? ORDER BY invoice_number`, [fromMonth]),
       loadDefaultSteuersaetze(),
-      invoicedBookingMap(),
     ]);
-
-    const importedUids = new Set(importedRows.map((b: any) => b.calendar_event_uid));
-    const ignoredUids = new Set(ignoredRows.map((r: any) => r.uid));
-
-    // 1) Offene Rechnungsfahrten aus dem Kalender (nur bereits gefahrene)
-    const openEvents = events.filter((e) =>
-      (e.start || '') <= now && classifyEvent(e) === 'open' && !importedUids.has(e.uid) && !ignoredUids.has(e.uid)
+    const { from, to, now, events, importedRows, ignoredRows, invoiced, openEvents, unbilledRows } = state;
+    const invoices = await query(
+      `SELECT id, company_id, invoice_number, period_month, total, status, manual_sent_at
+       FROM company_invoices WHERE period_month >= ? ORDER BY invoice_number`, [from.slice(0, 7)]
     );
-    const rides = await Promise.all(openEvents.map(async (ev) => {
+
+    // 1) Offene Rechnungsfahrten aus dem Kalender
+    const rides = await Promise.all(openEvents.map(async (ev: CalEvent) => {
       const p = parseInvoiceRide(ev, matchData.companies, matchData.aliases);
       const warnings: string[] = [];
       const km = p.pickup_address && p.dropoff_address
@@ -384,6 +466,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
         mwst_source: mwstSource,
         price_note: null as string | null,
         warnings,
+        future: (p.pickup_datetime || '') > now, // noch nicht gefahren
       };
     }));
 
@@ -407,17 +490,8 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
       }
     }
 
-    // 2) Bereits übernommene Firmenfahrten ohne Rechnung (z.B. Rechnung gelöscht)
-    const unbilledRows = await query(
-      `SELECT id, booking_number, company_id, pickup_datetime, pickup_address, dropoff_address, name, price,
-              steuersatz, source, calendar_event_uid
-       FROM bookings
-       WHERE company_id IS NOT NULL AND status <> 'cancelled' AND payment_method IN ('invoice', 'rechnung')
-         AND pickup_datetime >= ? AND pickup_datetime <= ?`,
-      [`${fromMonth}-01`, now]
-    );
+    // 2) Bereits übernommene Firmenfahrten ohne Rechnung
     const unbilled = unbilledRows
-      .filter((b: any) => !invoiced.has(Number(b.id)))
       .map((b: any) => {
         const dt = toLocalDateTime(b.pickup_datetime);
         return {
@@ -448,6 +522,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
           mwst_source: 'booking',
           price_note: null,
           warnings: ['unbilled_booking'],
+          future: dt > now,
         };
       });
 
@@ -455,7 +530,10 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
 
     // 3) Erledigt: im Zeitraum übernommene Kalenderfahrten mit Rechnungsnummer
     const done = importedRows
-      .filter((b: any) => b.company_id && toLocalDateTime(b.pickup_datetime) >= `${fromMonth}-01`)
+      .filter((b: any) => {
+        const dt = toLocalDateTime(b.pickup_datetime);
+        return b.company_id && dt >= from && dt <= `${to}T23:59`;
+      })
       .map((b: any) => ({
         booking_id: Number(b.id),
         booking_number: b.booking_number,
@@ -478,8 +556,13 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
         return { uid: r.uid, note: r.note, pickup_datetime: e.start, summary: e.summary, location: e.location, html_link: e.htmlLink };
       });
 
+    // Deckt der Zeitraum den Tab-Zähler ab (Standard-Start bis heute), ihn gleich mit aktualisieren
+    if (from === defaultRange().from && to >= now.slice(0, 10)) {
+      openCountCache = { count: open.filter((r) => !r.future).length, at: Date.now() };
+    }
+
     res.json({
-      window: { from: fromMonth, to: toMonth, months },
+      window: { from, to, today: now.slice(0, 10), default: defaultRange() },
       fetched_at: new Date().toISOString(),
       calendar_events: events.length,
       open,
@@ -487,6 +570,12 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
       ignored,
       companies,
       invoices,
+      calendar: {
+        access: state.accessRole, // "reader" → "gön" kann nicht geschrieben werden
+        writeback: calendarWriteEnabled(),
+        service_account: serviceAccountEmail(),
+        unmarked: state.unmarkedUids.length,
+      },
     });
   } catch (error: any) {
     console.error('Calendar inbox error:', error);
@@ -711,9 +800,11 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
           vehicle_type, passengers, name, phone, email, notes, price, payment_method,
           language, trip_type, steuersatz, company_id,
           source, calendar_event_uid, imported_at
-        ) VALUES (?, 'completed', ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', 'de', 'oneway', ?, ?, 'calendar', ?, NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', 'de', 'oneway', ?, ?, 'calendar', ?, NOW())`,
         [
-          b.booking_number, b.pickup_address, b.dropoff_address, b.pickup_datetime,
+          // Vorab abgerechnete Fahrt bleibt "confirmed", bis sie gefahren ist (autoStatusJob schließt sie ab)
+          b.booking_number, b.pickup_datetime <= berlinNow() ? 'completed' : 'confirmed',
+          b.pickup_address, b.dropoff_address, b.pickup_datetime,
           b.name || company.contact_name || company.company_name,
           company.phone || '', company.email || '',
           r.notes?.slice(0, 1000) || null,
@@ -753,7 +844,28 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
     }
 
     const [invoice] = await query('SELECT * FROM company_invoices WHERE invoice_number = ?', [invoiceNumber]);
-    res.json({ invoice, company: { id: company.id, company_name: company.company_name, created: !!createdCompanyId } });
+    invalidateOpenCount();
+
+    // "gön" in die Kalendertermine schreiben — ein Fehler hier darf die Rechnung nicht zurückrollen
+    const uids = [...draft.rides.map((r) => r.uid), ...draft.existingBookings.map((b) => b.calendar_event_uid).filter(Boolean)];
+    let calendar: { status: 'marked' | 'no_permission' | 'disabled' | 'error' | 'none'; marked?: number; total?: number } = { status: 'none' };
+    if (uids.length) {
+      if (!calendarWriteEnabled()) {
+        calendar = { status: 'disabled', total: uids.length };
+      } else {
+        try {
+          const calendarId = await calendarIdSetting();
+          const result = calendarId ? await markEventsInvoiced(calendarId, uids) : {};
+          const marked = Object.values(result).filter((v) => v === 'marked' || v === 'already').length;
+          calendar = { status: 'marked', marked, total: uids.length };
+        } catch (e: any) {
+          if (!(e instanceof CalendarPermissionError)) console.error('Kalender "gön" fehlgeschlagen:', e.message);
+          calendar = { status: e instanceof CalendarPermissionError ? 'no_permission' : 'error', total: uids.length };
+        }
+      }
+    }
+
+    res.json({ invoice, company: { id: company.id, company_name: company.company_name, created: !!createdCompanyId }, calendar });
   } catch (error: any) {
     // Nichts halb angelegt zurücklassen
     if (createdBookingIds.length) {
@@ -780,6 +892,7 @@ router.post('/ignore', authenticateAdmin, async (req: AuthRequest, res: Response
       `INSERT INTO calendar_invoice_ignored (uid, note) VALUES (?, ?) ON DUPLICATE KEY UPDATE note = VALUES(note)`,
       [uid.slice(0, 191), note?.trim().slice(0, 255) || null]
     );
+    invalidateOpenCount();
     res.json({ ok: true });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to ignore ride' });
@@ -789,9 +902,36 @@ router.post('/ignore', authenticateAdmin, async (req: AuthRequest, res: Response
 router.delete('/ignore/:uid', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     await run('DELETE FROM calendar_invoice_ignored WHERE uid = ?', [req.params.uid]);
+    invalidateOpenCount();
     res.json({ ok: true });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to restore ride' });
+  }
+});
+
+// ─── POST /mark-invoiced — "gön" für alle abgerechneten Fahrten nachtragen ───
+// Für Rechnungen, die vor der Schreibfreigabe des Kalenders erstellt wurden.
+
+router.post('/mark-invoiced', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!calendarWriteEnabled()) { res.status(409).json({ error: 'disabled' }); return; }
+    const calendarId = hasServiceAccount() ? await calendarIdSetting() : null;
+    if (!calendarId) { res.status(400).json({ error: 'Keine Kalender-ID hinterlegt (Einstellungen).' }); return; }
+    const range = parseRange(req.body);
+    if ('error' in range) { res.status(400).json({ error: range.error }); return; }
+    const state = await loadOpenState(calendarId, range.from, range.to);
+    const result = await markEventsInvoiced(calendarId, state.unmarkedUids);
+    const values = Object.values(result);
+    res.json({
+      total: state.unmarkedUids.length,
+      marked: values.filter((v) => v === 'marked').length,
+      already: values.filter((v) => v === 'already').length,
+      not_found: values.filter((v) => v === 'not_found').length,
+    });
+  } catch (error: any) {
+    if (error instanceof CalendarPermissionError) { res.status(403).json({ error: 'no_permission' }); return; }
+    console.error('Calendar mark-invoiced error:', error);
+    res.status(500).json({ error: error.message || 'Kalender konnte nicht aktualisiert werden' });
   }
 });
 

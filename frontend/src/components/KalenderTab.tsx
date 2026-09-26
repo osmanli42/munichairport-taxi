@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   CalendarDays, RefreshCw, Settings, Check, AlertTriangle, FileText, Send, X,
   ExternalLink, Eye, ChevronDown, ChevronUp, Pencil, EyeOff, Undo2, UserPlus,
-  Download, Info, Building2, Inbox as InboxIcon,
+  Download, Info, Building2, Inbox as InboxIcon, CalendarCheck, Copy,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -19,7 +19,13 @@ interface Billing {
   project: string | null;
 }
 
+interface DateRange {
+  from: string; // YYYY-MM-DD
+  to: string;
+}
+
 interface Ride {
+  future: boolean; // noch nicht gefahren — standardmäßig nicht in der Rechnung
   key: string;
   kind: 'calendar' | 'booking';
   uid: string | null;
@@ -91,8 +97,16 @@ interface IgnoredRide {
   html_link: string | null;
 }
 
+interface CalendarStatus {
+  access: string | null; // Recht des Service-Accounts: reader | writer | owner
+  writeback: boolean; // false = Testumgebung, dort wird nie in den echten Kalender geschrieben
+  service_account: string | null;
+  unmarked: number; // abgerechnet, aber im Kalender noch ohne "gön"
+}
+
 interface Inbox {
-  window: { from: string; to: string; months: number };
+  calendar?: CalendarStatus;
+  window: { from: string; to: string; today: string; default: DateRange };
   fetched_at: string;
   calendar_events: number;
   open: Ride[];
@@ -131,7 +145,14 @@ interface Group {
   tag: string | null;
 }
 
+interface CalendarWriteResult {
+  status: 'marked' | 'no_permission' | 'disabled' | 'error' | 'none';
+  marked?: number;
+  total?: number;
+}
+
 interface CreatedInvoice {
+  calendar?: CalendarWriteResult;
   title: string;
   month: string;
   rideCount: number;
@@ -166,6 +187,32 @@ function currentMonth(): string {
 }
 
 const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+// Datumsrechnung in Europe/Berlin, ohne Zeitzonen-Überraschungen: nur mit 'YYYY-MM-DD'-Strings
+function berlinToday(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+function shiftDays(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+}
+function monthBounds(date: string, offsetMonths: number): DateRange {
+  const [y, m] = date.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + offsetMonths, 1));
+  const last = new Date(Date.UTC(y, m + offsetMonths, 0));
+  return { from: first.toISOString().slice(0, 10), to: last.toISOString().slice(0, 10) };
+}
+// Standard wie im Backend: 3 Monate zurück bis Ende übernächster Monat
+function defaultRange(): DateRange {
+  const t = berlinToday();
+  return { from: monthBounds(t, -3).from, to: monthBounds(t, 2).to };
+}
+
+const RANGE_PRESETS: { label: string; range: () => DateRange }[] = [
+  { label: 'Varsayılan', range: defaultRange },
+  { label: 'Bu ay', range: () => monthBounds(berlinToday(), 0) },
+  { label: 'Geçen ay', range: () => monthBounds(berlinToday(), -1) },
+  { label: 'Gelecek 30 gün', range: () => ({ from: berlinToday(), to: shiftDays(berlinToday(), 30) }) },
+];
 
 function rideValid(r: Ride): boolean {
   return !!(r.pickup_datetime && r.pickup_address?.trim() && r.dropoff_address?.trim() && Number(r.price) > 0 && [0, 7, 19].includes(Number(r.steuersatz)));
@@ -205,11 +252,12 @@ async function api(path: string, token: string, opts?: RequestInit) {
 
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function KalenderTab({ token }: { token: string }) {
+// onOpenCountChange: die Zahl am Kalender-Tab neu laden (nach Laden, Rechnung, Ausblenden)
+export default function KalenderTab({ token, onOpenCountChange }: { token: string; onOpenCountChange?: () => void }) {
   const [inbox, setInbox] = useState<Inbox | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [months, setMonths] = useState(4);
+  const [range, setRange] = useState<DateRange>(defaultRange);
   const [edits, setEdits] = useState<Record<string, RideEdit>>({});
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -222,6 +270,13 @@ export default function KalenderTab({ token }: { token: string }) {
   const [sendTo, setSendTo] = useState<Record<string, string>>({});
   const [sentTo, setSentTo] = useState<Record<string, string>>({});
   const [showDone, setShowDone] = useState(false);
+  const [marking, setMarking] = useState(false);
+  // Ref statt Dependency: eine neue Callback-Identität des Elternteils darf loadInbox nicht neu auslösen
+  const countChanged = useRef(onOpenCountChange);
+  countChanged.current = onOpenCountChange;
+  // Nur die Antwort der zuletzt gestarteten Abfrage zählt — bei schnellem Wechsel des Zeitraums
+  // kann eine ältere (langsamere) Antwort sonst die neuere überschreiben.
+  const requestSeq = useRef(0);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
 
   // Einstellungen (Kalender-ID, Aliasse)
@@ -235,20 +290,25 @@ export default function KalenderTab({ token }: { token: string }) {
     setTimeout(() => setToast(null), error ? 7000 : 4000);
   };
 
-  const loadInbox = useCallback(async (m: number) => {
+  const loadInbox = useCallback(async (r: DateRange) => {
+    const seq = ++requestSeq.current;
     setLoading(true);
     setLoadError('');
     try {
-      const res = await api(`/admin/calendar/inbox?months=${m}`, token);
+      const res = await api(`/admin/calendar/inbox?from=${r.from}&to=${r.to}`, token);
       const d = await res.json().catch(() => ({}));
+      if (seq !== requestSeq.current) return; // inzwischen neuer Zeitraum gewählt
       if (!res.ok) { setLoadError(d.error || 'Takvim yüklenemedi'); }
       else {
         setInbox(d as Inbox);
         setEdits({});
-        setExcluded(new Set());
+        // Kommende Fahrten sichtbar, aber nicht vorausgewählt — abgerechnet wird nach der Fahrt
+        setExcluded(new Set((d as Inbox).open.filter((x) => x.future).map((x) => x.key)));
         setGroupError({});
+        countChanged.current?.();
       }
     } catch (e: any) {
+      if (seq !== requestSeq.current) return;
       setLoadError(e.message || 'Ağ hatası');
     }
     setLoading(false);
@@ -266,7 +326,11 @@ export default function KalenderTab({ token }: { token: string }) {
     } catch { /* Einstellungen sind optional */ }
   }, [token]);
 
-  useEffect(() => { loadInbox(months); }, [loadInbox, months]);
+  useEffect(() => {
+    if (!range.from || !range.to || range.from > range.to) return;
+    const t = setTimeout(() => loadInbox(range), 400);
+    return () => clearTimeout(t);
+  }, [loadInbox, range]);
   useEffect(() => { loadSettings(); }, [loadSettings]);
 
   const companiesById = useMemo(() => new Map((inbox?.companies || []).map((c) => [c.id, c])), [inbox]);
@@ -347,7 +411,9 @@ export default function KalenderTab({ token }: { token: string }) {
   const groupProblems = (g: Group): string[] => {
     const inc = includedRides(g);
     const problems: string[] = [];
-    if (inc.length === 0) problems.push('En az bir fahrt seç');
+    if (inc.length === 0) {
+      problems.push(g.rides.every((r) => r.future) ? 'Fahrt henüz yapılmadı — önceden kesmek istersen fahrt\'ı seç' : 'En az bir fahrt seç');
+    }
     const invalid = inc.filter((r) => !rideValid(r)).length;
     if (invalid) problems.push(`${invalid} fahrt eksik (fiyat/adres)`);
     if (!g.companyId && !(g.customerKey.startsWith('n:') && newForms[g.customerKey]?.company_name.trim())) problems.push('Müşteri seç veya yeni müşteri adı gir');
@@ -424,6 +490,7 @@ export default function KalenderTab({ token }: { token: string }) {
             invoice: d.invoice,
             company: d.company,
             emailDefault,
+            calendar: d.calendar,
           },
         }));
         setSendTo((s) => ({ ...s, [d.invoice.invoice_number]: emailDefault }));
@@ -439,6 +506,7 @@ export default function KalenderTab({ token }: { token: string }) {
           }],
         });
         flash(`${d.invoice.invoice_number} oluşturuldu ✓`);
+        countChanged.current?.();
       }
     } catch (e: any) {
       setGroupError((err) => ({ ...err, [g.key]: e.message || 'Ağ hatası' }));
@@ -478,16 +546,32 @@ export default function KalenderTab({ token }: { token: string }) {
       ignored: [...prev.ignored, { uid: r.uid!, note: null, pickup_datetime: r.pickup_datetime, summary: r.summary, location: r.location, html_link: r.html_link }],
     });
     flash('Fahrt listeden çıkarıldı');
+    countChanged.current?.();
   };
 
   const restoreRide = async (uid: string) => {
     const res = await api(`/admin/calendar/ignore/${encodeURIComponent(uid)}`, token, { method: 'DELETE' });
-    if (res.ok) { flash('Geri alındı — listeyi yeniliyorum'); loadInbox(months); }
+    if (res.ok) { flash('Geri alındı — listeyi yeniliyorum'); loadInbox(range); }
+  };
+
+  // Abgerechnete Fahrten, deren Kalendertermin noch kein "gön" hat (z.B. vor der Freigabe erstellt)
+  const markInvoiced = async () => {
+    setMarking(true);
+    try {
+      const res = await api('/admin/calendar/mark-invoiced', token, { method: 'POST', body: JSON.stringify(range) });
+      const d = await res.json().catch(() => ({}));
+      if (res.status === 403) flash('Takvime yazma izni yok — yukarıdaki adımı uygula', true);
+      else if (!res.ok) flash(d.error === 'disabled' ? 'Test ortamında takvime yazılmaz' : d.error || 'İşaretlenemedi', true);
+      else { flash(`${d.marked + d.already} takvim kaydına "gön" yazıldı ✓`); loadInbox(range); }
+    } catch (e: any) {
+      flash(e.message || 'İşaretlenemedi', true);
+    }
+    setMarking(false);
   };
 
   const saveSettings = async () => {
     const res = await api('/admin/calendar/settings', token, { method: 'PUT', body: JSON.stringify({ calendar_id: calendarId }) });
-    if (res.ok) { flash('Ayarlar kaydedildi'); setSettingsOpen(false); loadInbox(months); }
+    if (res.ok) { flash('Ayarlar kaydedildi'); setSettingsOpen(false); loadInbox(range); }
     else flash('Kaydedilemedi', true);
   };
 
@@ -496,7 +580,9 @@ export default function KalenderTab({ token }: { token: string }) {
     if (res.ok) { setAliases((a) => a.filter((x) => x.id !== id)); flash('Kısaltma silindi'); }
   };
 
-  const openTotal = rides.reduce((s, r) => s + (Number(r.price) || 0), 0);
+  const dueRides = rides.filter((r) => !r.future);
+  const upcomingRides = rides.filter((r) => r.future);
+  const openTotal = dueRides.reduce((s, r) => s + (Number(r.price) || 0), 0);
   const createdList = Object.entries(created);
   const thisMonth = currentMonth();
 
@@ -519,19 +605,12 @@ export default function KalenderTab({ token }: { token: string }) {
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">
               Google Takvim&apos;de <b>Ort</b> alanında <span className="font-mono text-gray-700">Rechnung</span> yazan ve henüz faturası kesilmemiş fahrt&apos;lar.
               {' '}<span className="font-mono text-gray-700">gön</span>, <span className="font-mono text-gray-700">ödendi</span>, <span className="font-mono text-gray-700">iptal</span> yazanlar gösterilmez.
+              {' '}Yaklaşan fahrt&apos;lar da listelenir ama faturaya otomatik eklenmez.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <select
-              value={months}
-              onChange={(e) => setMonths(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
-              title="Takvimde ne kadar geriye bakılsın"
-            >
-              {[2, 3, 4, 6, 12].map((m) => <option key={m} value={m}>Son {m} ay</option>)}
-            </select>
             <button
-              onClick={() => loadInbox(months)}
+              onClick={() => loadInbox(range)}
               disabled={loading}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-medium disabled:opacity-50"
             >
@@ -547,17 +626,69 @@ export default function KalenderTab({ token }: { token: string }) {
           </div>
         </div>
 
+        {/* Zeitraum: Schnellauswahl oder beliebige Daten */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {RANGE_PRESETS.map((p) => {
+            const r = p.range();
+            const active = r.from === range.from && r.to === range.to;
+            return (
+              <button
+                key={p.label}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+          <div className="flex items-center gap-1.5 ml-auto text-sm text-gray-600">
+            <input
+              type="date"
+              value={range.from}
+              max={range.to}
+              onChange={(e) => e.target.value && setRange((r) => ({ ...r, from: e.target.value }))}
+              className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
+              aria-label="Başlangıç tarihi"
+            />
+            <span>–</span>
+            <input
+              type="date"
+              value={range.to}
+              min={range.from}
+              onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))}
+              className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
+              aria-label="Bitiş tarihi"
+            />
+          </div>
+        </div>
+
+        {inbox && loading && (
+          <p className="mt-4 text-sm text-gray-500 flex items-center gap-2">
+            <RefreshCw size={14} className="animate-spin text-primary-600" /> Seçilen tarih aralığı yükleniyor…
+          </p>
+        )}
+
         {inbox && !loading && (
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat label="Açık fahrt" value={String(rides.length)} tone={rides.length ? 'amber' : 'green'} />
-            <Stat label="Faturalanacak" value={fmtEur(openTotal)} tone={rides.length ? 'amber' : 'green'} />
-            <Stat label="Hazırlanacak fatura" value={String(groups.length)} />
+            <Stat label="Faturası bekleyen" value={`${dueRides.length} fahrt`} sub="yapılmış, fatura kesilmemiş" tone={dueRides.length ? 'amber' : 'green'} />
+            <Stat label="Tutar" value={fmtEur(openTotal)} tone={dueRides.length ? 'amber' : 'green'} />
+            <Stat label="Yaklaşan" value={`${upcomingRides.length} fahrt`} sub="henüz yapılmadı" tone={upcomingRides.length ? 'blue' : undefined} />
             <Stat
               label="Taranan takvim"
               value={`${inbox.calendar_events} termin`}
-              sub={`${monthLabel(inbox.window.from)} – ${monthLabel(inbox.window.to)} · ${new Date(inbox.fetched_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}
+              sub={`${fmtDate(inbox.window.from)} – ${fmtDate(inbox.window.to)} · ${new Date(inbox.fetched_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}
             />
           </div>
+        )}
+
+        {inbox?.calendar && !loading && (
+          <CalendarWriteStatus
+            status={inbox.calendar}
+            calendarId={calendarId}
+            marking={marking}
+            onMark={markInvoiced}
+            onCopied={() => flash('E-posta kopyalandı')}
+          />
         )}
 
         {settingsOpen && (
@@ -636,6 +767,15 @@ export default function KalenderTab({ token }: { token: string }) {
               <Download size={15} /> PDF aç
             </a>
           </div>
+          {c.calendar && c.calendar.status !== 'none' && (
+            <div className={`mt-2 text-xs flex items-center gap-1.5 ${c.calendar.status === 'marked' ? 'text-green-800' : c.calendar.status === 'disabled' ? 'text-gray-500' : 'text-amber-800'}`}>
+              <CalendarCheck size={13} />
+              {c.calendar.status === 'marked' && `Google Takvim'de "gön" yazıldı (${c.calendar.marked}/${c.calendar.total})`}
+              {c.calendar.status === 'no_permission' && 'Takvime "gön" yazılamadı: servis hesabının düzenleme izni yok (yukarıya bak). İzin verince "Takvime işaretle" ile tamamlanır.'}
+              {c.calendar.status === 'error' && 'Takvime "gön" yazılamadı (geçici hata) — sonra "Takvime işaretle" ile tekrar dene.'}
+              {c.calendar.status === 'disabled' && 'Test ortamı: gerçek takvime yazılmadı (canlıda otomatik yazılır).'}
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {sentTo[number] ? (
               <span className="flex items-center gap-1.5 text-sm text-green-800"><Send size={14} /> {sentTo[number]} adresine gönderildi</span>
@@ -674,6 +814,8 @@ export default function KalenderTab({ token }: { token: string }) {
       )}
 
       {/* ── Gruppen: je Kunde + Monat eine Rechnung ─────────────────────── */}
+      {/* Während ein anderer Zeitraum lädt, alte Liste abgeblendet und nicht bedienbar */}
+      <div className={`space-y-5 transition-opacity ${loading && inbox ? 'opacity-40 pointer-events-none' : ''}`}>
       {groups.map((g) => {
         const inc = includedRides(g);
         const total = inc.reduce((s, r) => s + (Number(r.price) || 0), 0);
@@ -697,6 +839,11 @@ export default function KalenderTab({ token }: { token: string }) {
                   <span className="text-sm text-gray-500">· {monthLabel(g.month)}</span>
                   {isNew && <span className="text-[11px] font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">Yeni müşteri</span>}
                   {g.month === thisMonth && <span className="text-[11px] font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Ay devam ediyor</span>}
+                  {g.rides.some((r) => r.future) && (
+                    <span className="text-[11px] font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                      {g.rides.filter((r) => r.future).length} yaklaşan
+                    </span>
+                  )}
                 </div>
                 {company && (company.address || company.invoice_email) && (
                   <div className="text-xs text-gray-500 mt-1">{[company.address, company.invoice_email && `✉ ${company.invoice_email}`].filter(Boolean).join(' · ')}</div>
@@ -808,7 +955,12 @@ export default function KalenderTab({ token }: { token: string }) {
 
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {problems.length > 0 && <span className="text-xs text-amber-700 mr-auto">⚠ {problems.join(' · ')}</span>}
-                {problems.length === 0 && g.month === thisMonth && (
+                {problems.length === 0 && inc.some((r) => r.future) && (
+                  <span className="text-xs text-blue-700 mr-auto">
+                    Seçilenlerden {inc.filter((r) => r.future).length} fahrt henüz yapılmadı — fatura önceden kesilir.
+                  </span>
+                )}
+                {problems.length === 0 && !inc.some((r) => r.future) && g.month === thisMonth && (
                   <span className="text-xs text-gray-500 mr-auto">Ay henüz bitmedi — aylık toplu fatura istiyorsan ay sonunu bekleyebilirsin.</span>
                 )}
                 <button
@@ -831,6 +983,7 @@ export default function KalenderTab({ token }: { token: string }) {
           </div>
         );
       })}
+      </div>
 
       {/* ── Erledigt / ausgeblendet ─────────────────────────────────────── */}
       {inbox && (inbox.done.length > 0 || inbox.ignored.length > 0) && (
@@ -898,6 +1051,67 @@ export default function KalenderTab({ token }: { token: string }) {
   );
 }
 
+// ─── Kalender-Schreibrecht: "gön" automatisch eintragen ──────────────────────
+
+function CalendarWriteStatus({ status, calendarId, marking, onMark, onCopied }: {
+  status: CalendarStatus;
+  calendarId: string;
+  marking: boolean;
+  onMark: () => void;
+  onCopied: () => void;
+}) {
+  const canWrite = status.access === 'writer' || status.access === 'owner';
+  const copy = () => {
+    if (status.service_account) navigator.clipboard?.writeText(status.service_account).then(onCopied).catch(() => {});
+  };
+
+  return (
+    <div className="mt-3 space-y-2">
+      {!status.writeback ? (
+        <p className="text-xs text-gray-500 flex items-center gap-1.5">
+          <CalendarCheck size={13} /> Test ortamı: gerçek takvime yazılmaz — canlıda fatura kesilince &quot;gön&quot; otomatik yazılır.
+        </p>
+      ) : canWrite ? (
+        <p className="text-xs text-green-700 flex items-center gap-1.5">
+          <CalendarCheck size={13} /> Fatura kesilince Google Takvim&apos;de Ort alanına otomatik &quot;gön&quot; yazılıyor.
+        </p>
+      ) : (
+        <div className="text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3">
+          <div className="font-medium flex items-center gap-1.5"><AlertTriangle size={15} /> Takvime &quot;gön&quot; yazmak için izin gerekiyor</div>
+          <ol className="mt-1.5 ml-5 list-decimal space-y-0.5 text-[13px]">
+            <li>Google Takvim&apos;i aç ({calendarId || 'takvim'}) → sol listede takvimin yanındaki ⋮ → <b>Ayarlar ve paylaşım</b> <span className="text-amber-700">(Einstellungen und Freigabe)</span></li>
+            <li><b>Belirli kişilerle veya gruplarla paylaş</b> <span className="text-amber-700">(Für bestimmte Personen oder Gruppen freigeben)</span> bölümünde şu adresi bul:
+              {status.service_account && (
+                <span className="inline-flex items-center gap-1 ml-1">
+                  <span className="font-mono text-xs bg-white border border-amber-200 rounded px-1.5 py-0.5 break-all">{status.service_account}</span>
+                  <button onClick={copy} className="p-0.5 text-amber-700 hover:text-amber-900" title="Kopyala"><Copy size={13} /></button>
+                </span>
+              )}
+            </li>
+            <li>İzni <b>Etkinliklerde değişiklik yapma</b> <span className="text-amber-700">(Änderungen an Terminen vornehmen)</span> olarak değiştir, sonra burada <b>Yenile</b>&apos;ye bas.</li>
+          </ol>
+        </div>
+      )}
+
+      {status.unmarked > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm bg-blue-50 border border-blue-100 text-blue-900 rounded-xl px-3 py-2">
+          <Info size={15} className="shrink-0" />
+          <span>{status.unmarked} faturalanmış fahrt&apos;ın takvim kaydında henüz &quot;gön&quot; yok.</span>
+          {status.writeback && canWrite && (
+            <button
+              onClick={onMark}
+              disabled={marking}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+            >
+              {marking ? <RefreshCw size={13} className="animate-spin" /> : <CalendarCheck size={13} />} Takvime işaretle
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Einzelne Fahrt ──────────────────────────────────────────────────────────
 
 const inputCls = 'w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30';
@@ -911,8 +1125,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'amber' | 'green' }) {
-  const color = tone === 'amber' ? 'text-amber-700' : tone === 'green' ? 'text-green-700' : 'text-gray-900';
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'amber' | 'green' | 'blue' }) {
+  const color = tone === 'amber' ? 'text-amber-700' : tone === 'green' ? 'text-green-700' : tone === 'blue' ? 'text-blue-700' : 'text-gray-900';
   return (
     <div className="bg-gray-50 rounded-xl px-3.5 py-2.5">
       <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{label}</div>
@@ -948,7 +1162,10 @@ function RideRow({
         <input type="checkbox" checked={included} onChange={onToggleInclude} className="mt-1.5 shrink-0" title="Bu faturaya dahil et" />
         <button onClick={onToggleExpand} className="flex-1 min-w-0 text-left">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{fmtDateTime(r.pickup_datetime)}</span>
+            <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
+              {fmtDateTime(r.pickup_datetime)}
+              {r.future && <span className="ml-1.5 align-middle text-[11px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md">Yaklaşan</span>}
+            </span>
             <span className="text-sm text-gray-700 min-w-0">
               {r.pickup_address || <span className="text-amber-700">Nereden?</span>}
               <span className="text-gray-400 mx-1.5">→</span>

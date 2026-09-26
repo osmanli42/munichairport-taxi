@@ -71,37 +71,51 @@ function toBerlinLocal(date: Date): string {
   return s.replace(' ', 'T');
 }
 
-// ─── Google Calendar: mehrere Monate in einem Durchgang ─────────────────────
+// ─── Google Calendar: frei wählbarer Zeitraum in einem Durchgang ────────────
 
-function monthStartUtc(month: string, offsetMonths = 0): number {
-  const [y, m] = month.split('-').map(Number);
-  return Date.UTC(y, m - 1 + offsetMonths, 1);
-}
-
-export async function fetchEventsRange(calendarId: string, fromMonth: string, toMonth: string): Promise<CalEvent[]> {
+function serviceAccount(): { client_email: string; private_key: string } {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured');
-  const sa = JSON.parse(raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+  return JSON.parse(raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+}
 
+// Adresse, mit der der Kalender geteilt sein muss (für die Anleitung im Admin)
+export function serviceAccountEmail(): string | null {
+  try { return serviceAccount().client_email || null; } catch { return null; }
+}
+
+async function calendarApi(write = false) {
+  const sa = serviceAccount();
   const { google } = await import('googleapis');
   const auth = new google.auth.JWT({
     email: sa.client_email,
     key: sa.private_key,
-    scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+    scopes: [write ? 'https://www.googleapis.com/auth/calendar.events' : 'https://www.googleapis.com/auth/calendar.readonly'],
   });
-  const calendar = google.calendar({ version: 'v3', auth });
+  return google.calendar({ version: 'v3', auth });
+}
 
-  // ±1 Tag Puffer wegen Zeitzonen, danach exakt auf Berliner Monate filtern
-  const timeMin = new Date(monthStartUtc(fromMonth) - 24 * 3600 * 1000).toISOString();
-  const timeMax = new Date(monthStartUtc(toMonth, 1) + 24 * 3600 * 1000).toISOString();
+// fromDate/toDate: 'YYYY-MM-DD' (Europe/Berlin, beide Tage einschließlich).
+// accessRole = Recht des Service-Accounts auf den Kalender ("reader" | "writer" | "owner" …)
+export async function fetchEventsRange(
+  calendarId: string, fromDate: string, toDate: string
+): Promise<{ events: CalEvent[]; accessRole: string | null }> {
+  const calendar = await calendarApi();
+
+  // ±1 Tag Puffer wegen Zeitzonen, danach exakt auf Berliner Tage filtern
+  const day = 24 * 3600 * 1000;
+  const timeMin = new Date(Date.parse(`${fromDate}T00:00:00Z`) - day).toISOString();
+  const timeMax = new Date(Date.parse(`${toDate}T00:00:00Z`) + 2 * day).toISOString();
 
   const events: CalEvent[] = [];
+  let accessRole: string | null = null;
   let pageToken: string | undefined;
   do {
     const res = await calendar.events.list({
       calendarId, timeMin, timeMax,
       singleEvents: true, orderBy: 'startTime', maxResults: 2500, pageToken,
     });
+    accessRole = accessRole ?? res.data.accessRole ?? null;
     for (const ev of res.data.items || []) {
       if (ev.status === 'cancelled') continue;
       let start: string | null = null;
@@ -119,8 +133,10 @@ export async function fetchEventsRange(calendarId: string, fromMonth: string, to
     pageToken = res.data.nextPageToken || undefined;
   } while (pageToken);
 
-  const lastDay = `${toMonth}-31T23:59`;
-  return events.filter((e) => e.uid && e.start && e.start >= `${fromMonth}-01T00:00` && e.start <= lastDay);
+  return {
+    events: events.filter((e) => e.uid && e.start && e.start >= `${fromDate}T00:00` && e.start <= `${toDate}T23:59`),
+    accessRole,
+  };
 }
 
 // ─── Status aus Ort/Titel ────────────────────────────────────────────────────
@@ -140,6 +156,62 @@ export function classifyEvent(ev: CalEvent): EventState {
   if (RE_PAID.test(markers)) return 'paid';
   if (RE_SENT.test(markers) && !RE_NOT_SENT.test(markers)) return 'sent';
   return 'open';
+}
+
+// ─── "gön" nach der Rechnung zurück in den Kalender schreiben ────────────────
+// Der Betreiber hat bisher nach dem Versand von Hand "gön" ins Ort-Feld geschrieben
+// ("Bohr.de Rechnung gön 116,60€ Zeki"). Das übernimmt jetzt das System.
+
+// Nur in Produktion: lokal läuft die Test-DB gegen den ECHTEN Kalender — ein "gön" aus
+// einem Test würde die Fahrt im Live-Korb verschwinden lassen, ohne dass es dort eine
+// Rechnung gibt. CALENDAR_WRITEBACK=1/0 übersteuert das bei Bedarf.
+export function calendarWriteEnabled(): boolean {
+  if (process.env.CALENDAR_WRITEBACK === '0') return false;
+  return process.env.CALENDAR_WRITEBACK === '1' || process.env.NODE_ENV === 'production';
+}
+
+export function isMarkedSent(summary: string, location: string): boolean {
+  const markers = `${summary}\n${location}`;
+  return RE_SENT.test(markers) && !RE_NOT_SENT.test(markers);
+}
+
+// "Sprachcaffe Rechnung 121,90€ M.ALi" → "Sprachcaffe Rechnung gön 121,90€ M.ALi"
+export function withSentMarker(text: string): string | null {
+  const m = text.match(/(?<![\p{L}])rechnung(?![\p{L}])/iu);
+  if (!m || m.index === undefined) return null;
+  const end = m.index + m[0].length;
+  return `${text.slice(0, end)} gön${text.slice(end)}`;
+}
+
+export class CalendarPermissionError extends Error {}
+
+export type MarkResult = 'marked' | 'already' | 'not_found';
+
+// calendarId: Kalender des Betreibers; uid = bookings.calendar_event_uid (iCalUID)
+export async function markEventsInvoiced(calendarId: string, uids: string[]): Promise<Record<string, MarkResult>> {
+  const out: Record<string, MarkResult> = {};
+  if (!uids.length) return out;
+  const api = await calendarApi(true);
+  for (const uid of uids) {
+    const res = await api.events.list({ calendarId, iCalUID: uid, maxResults: 5 });
+    const ev = (res.data.items || []).find((e) => e.status !== 'cancelled');
+    if (!ev?.id) { out[uid] = 'not_found'; continue; }
+    const summary = ev.summary || '';
+    const location = ev.location || '';
+    if (isMarkedSent(summary, location)) { out[uid] = 'already'; continue; }
+    const loc = withSentMarker(location);
+    const sum = loc ? null : withSentMarker(summary);
+    const requestBody = loc ? { location: loc } : sum ? { summary: sum } : { location: `${location} Rechnung gön`.trim() };
+    try {
+      // sendUpdates 'none': Gäste des Termins bekommen keine Änderungsmail
+      await api.events.patch({ calendarId, eventId: ev.id, sendUpdates: 'none', requestBody });
+    } catch (e: any) {
+      if (e?.code === 403 || e?.response?.status === 403) throw new CalendarPermissionError('Keine Schreibrechte auf den Kalender');
+      throw e;
+    }
+    out[uid] = 'marked';
+  }
+  return out;
 }
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
@@ -359,9 +431,13 @@ function extractGuest(desc: string, avoid: string[]): string | null {
   const ls = lines(desc);
   const names: string[] = [];
   for (let i = 0; i < ls.length; i++) {
-    const m = ls[i].match(/^\s*(?:\d+\.\s*)?(fahrgast|fahrgäste|passagier|passenger|passengers)\s*:?\s*(.*)$/i);
+    const m = ls[i].match(/^\s*(?:\d+\.\s*)?(fahrgast|fahrgäste|passagiere?|passengers?)(?![\p{L}])\s*:?\s*(.*)$/iu);
     if (!m) continue;
-    if (cleanValue(m[2])) {
+    // "Passagiere: 6 (Rahmi Mert, Özcan Cikmaz, …)" → Namen aus der Klammer
+    const counted = m[2].match(/^\s*\d+\s*\((.+)\)\s*$/);
+    if (counted) {
+      names.push(...counted[1].split(/\s*,\s*/).map(cleanGuest));
+    } else if (cleanValue(m[2]) && !/^\s*\d/.test(m[2])) { // "Passagiere: 6" ist keine Namensangabe
       names.push(cleanGuest(m[2]));
     } else {
       // Liste: "Fahrgäste:" + "- MCQUILLEN, APRIL (CA)"

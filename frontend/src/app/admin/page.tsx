@@ -93,6 +93,7 @@ export default function AdminPage() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [kalenderOpenCount, setKalenderOpenCount] = useState<number | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
@@ -245,6 +246,24 @@ export default function AdminPage() {
       setIsLoggedIn(true);
     }
   }, []);
+
+  // Offene Rechnungsfahrten aus dem Kalender → Zahl am Kalender-Tab, damit keine Rechnung vergessen wird
+  const refreshKalenderCount = useCallback(() => {
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/calendar/open-count`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setKalenderOpenCount(typeof d?.count === 'number' ? d.count : null))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    refreshKalenderCount();
+    const timer = setInterval(refreshKalenderCount, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [isLoggedIn, refreshKalenderCount]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -903,12 +922,20 @@ export default function AdminPage() {
               onClick={() => setActiveTab(id)}
               title={label}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors',
+                'relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors',
                 activeTab === id ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
               )}
             >
               <Icon size={16} />
               <span className="hidden sm:inline">{label}</span>
+              {id === 'kalender' && !!kalenderOpenCount && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
+                  title={`${kalenderOpenCount} faturalanmamış Rechnung fahrt'ı`}
+                >
+                  {kalenderOpenCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -938,7 +965,7 @@ export default function AdminPage() {
         {activeTab === 'b2b' && <B2BTab token={token} />}
 
         {/* Kalender-Import (Sammelrechnung für Telefon/E-Mail-Fahrten) */}
-        {activeTab === 'kalender' && <KalenderTab token={token} />}
+        {activeTab === 'kalender' && <KalenderTab token={token} onOpenCountChange={refreshKalenderCount} />}
 
         {/* Automatische Rabatte */}
         {activeTab === 'rabatte' && <RabatteTab token={token} />}
