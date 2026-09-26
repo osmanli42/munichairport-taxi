@@ -76,6 +76,17 @@ const proformaDueDate = (pickup?: string | null): Date => {
   return due.getTime() < today.getTime() ? today : due;
 };
 
+// When autoRechnungJob will mail the invoice for a booking. Mirrors the cron's own rule
+// (services/autoRechnungJob.ts): pickup + estimated ride duration + a 15 min buffer.
+// pickup_datetime is Berlin wall-clock text, so it is parsed as local time — the same way
+// formatDateTime renders every other time in this panel.
+function autoRechnungSendAt(booking: Booking): Date | null {
+  const raw = String(booking.pickup_datetime || '').replace(' ', 'T');
+  const pickup = new Date(raw);
+  if (isNaN(pickup.getTime())) return null;
+  return new Date(pickup.getTime() + ((Number(booking.duration_minutes) || 0) + 15) * 60000);
+}
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
@@ -158,6 +169,12 @@ export default function AdminPage() {
   // The same dialog serves both documents; 'proforma' hides the Zahlungsart picker
   // (a proforma is always the bank-transfer document) and shows the payment deadline.
   const [rechnungMode, setRechnungMode] = useState<'rechnung' | 'proforma'>('rechnung');
+  // "Automatische Rechnung" block in the booking detail modal: arms the same
+  // autoRechnungJob the booking form's tickbox arms, for customers who asked for an
+  // invoice afterwards or never noticed the box.
+  const [vormerkenAdresse, setVormerkenAdresse] = useState('');
+  const [vormerkenSaving, setVormerkenSaving] = useState(false);
+  const [vormerkenError, setVormerkenError] = useState('');
   const [ueberweisungSaving, setUeberweisungSaving] = useState(false);
   // Marketing
   const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>(() => {
@@ -321,6 +338,32 @@ export default function AdminPage() {
       setLoading(false);
     }
   }, [filters]);
+
+  // Arms (or disarms) the automatic invoice for the open booking. The response carries
+  // the updated row, so the detail modal and the list badge stay in step without a reload.
+  const saveVormerken = async (enabled: boolean) => {
+    if (!selectedBooking) return;
+    setVormerkenSaving(true);
+    setVormerkenError('');
+    try {
+      const r = await adminApi.setRechnungVormerken(selectedBooking.id, enabled, vormerkenAdresse);
+      setSelectedBooking(r.booking);
+      setVormerkenAdresse(r.booking.rechnung_adresse || '');
+      loadBookings(pagination.page);
+    } catch (err: any) {
+      setVormerkenError(err.response?.data?.error || err.message || 'Konnte nicht gespeichert werden.');
+    } finally {
+      setVormerkenSaving(false);
+    }
+  };
+
+  // Seed the address field whenever a different booking is opened, so the existing
+  // detail-modal open handlers stay untouched.
+  useEffect(() => {
+    setVormerkenAdresse(selectedBooking?.rechnung_adresse || '');
+    setVormerkenError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBooking?.id]);
 
   const loadPrices = useCallback(async () => {
     try {
@@ -3477,6 +3520,81 @@ export default function AdminPage() {
                   Rechnung senden
                 </button>
               </div>
+              {/* Automatische Rechnung — for customers who asked for an invoice afterwards
+                  or never noticed the tickbox at booking time. Storing the address here
+                  sets the same rechnung_required flag the tickbox sets, so autoRechnungJob
+                  mails the invoice on its own once the ride is over; nobody has to watch
+                  the calendar and press "Rechnung senden" on the day. Hidden once an
+                  invoice exists — there is nothing left to arm. */}
+              {!selectedBooking.rechnung_number && (
+                <div className={cn(
+                  'mt-3 rounded-xl border p-3',
+                  selectedBooking.rechnung_required ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'
+                )}>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                    <CalendarDays size={15} />
+                    Automatische Rechnung
+                  </div>
+                  {selectedBooking.rechnung_required ? (
+                    <p className="mt-1 text-xs font-medium text-emerald-700">
+                      {(() => {
+                        const at = autoRechnungSendAt(selectedBooking);
+                        if (!at) return '✓ Wird nach der Fahrt automatisch gesendet.';
+                        return at.getTime() <= Date.now()
+                          ? '✓ Fahrt ist vorbei — die Rechnung geht in Kürze automatisch raus.'
+                          : `✓ Wird automatisch gesendet — ca. ${formatDateTime(at.toISOString())}`;
+                      })()}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Adresse eintragen und aktivieren — die Rechnung geht dann nach der Fahrt von selbst raus.
+                    </p>
+                  )}
+
+                  {!selectedBooking.email ? (
+                    <p className="mt-2 text-xs text-amber-700">
+                      Diese Buchung hat keine E-Mail-Adresse — eine Rechnung kann nicht automatisch versendet werden.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-2 text-[11px] text-gray-500">
+                        Jede Angabe in eine eigene Zeile — genau so erscheint sie auf der Rechnung.
+                      </p>
+                      <textarea
+                        value={vormerkenAdresse}
+                        onChange={(e) => setVormerkenAdresse(e.target.value)}
+                        rows={5}
+                        maxLength={500}
+                        placeholder={'Firmenname\nVor- und Nachname\nStraße und Hausnummer\nPLZ Ort\nLand'}
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-2 text-sm focus:border-primary-500 focus:outline-none"
+                      />
+                      {vormerkenError && (
+                        <p className="mt-1 text-xs text-red-600">{vormerkenError}</p>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => saveVormerken(true)}
+                          disabled={vormerkenSaving || !vormerkenAdresse.trim()}
+                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-2 rounded-xl text-sm font-medium transition-colors"
+                        >
+                          {vormerkenSaving
+                            ? <><RefreshCw size={15} className="animate-spin" /> Speichern...</>
+                            : <><CheckCircle2 size={15} /> {selectedBooking.rechnung_required ? 'Adresse speichern' : 'Automatisch senden aktivieren'}</>}
+                        </button>
+                        {!!selectedBooking.rechnung_required && (
+                          <button
+                            onClick={() => saveVormerken(false)}
+                            disabled={vormerkenSaving}
+                            className="px-3 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 border border-gray-300 py-2 rounded-xl text-sm font-medium transition-colors"
+                          >
+                            Deaktivieren
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               {/* Proforma: only for bank-transfer rides. Sent BEFORE the ride so the money
                   is on the account in time; the real invoice still goes out automatically
                   afterwards via autoRechnungJob. */}

@@ -515,6 +515,15 @@ export const adminApi = {
     return response.data;
   },
 
+  // Arm the automatic invoice for a booking whose customer never ticked the box: the
+  // address is stored now, the cron mails the invoice once the ride is over. Pass
+  // enabled: false to switch the automation off again.
+  setRechnungVormerken: async (bookingId: number, enabled: boolean, empfaenger_adresse?: string): Promise<{ success: boolean; booking: Booking }> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
+    const response = await api.post(`/admin/bookings/${bookingId}/rechnung-vormerken`, { enabled, empfaenger_adresse }, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data;
+  },
+
   // ─── Proforma (bank transfer, sent before the ride) ───
   sendProforma: async (bookingId: number, proformanummer: string, mwst_satz: 0 | 7 | 19, sprache: 'de' | 'en', empfaenger_adresse?: string, force?: boolean): Promise<{ success: boolean; proformanummer: string; due_date: string }> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';

@@ -1758,6 +1758,76 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
   }
 });
 
+// POST /api/admin/bookings/:id/rechnung-vormerken — arm the automatic invoice for a
+// booking without sending anything yet.
+//
+// The tickbox in the booking form is the only way a customer can arm autoRechnungJob,
+// and many of them miss it and ask for an invoice on the phone instead. Sending one by
+// hand then means remembering the ride date and pressing "Rechnung senden" at the right
+// moment. This writes the billing address and flips rechnung_required, so the existing
+// cron mails the invoice once the ride is over — exactly as it does for customers who
+// did tick the box, however far in the future the pickup is.
+//
+// No invoice number is drawn here: the WEB-… sequence has to stay gapless (GoBD), so
+// the number is only taken at send time.
+router.post('/bookings/:id/rechnung-vormerken', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const enabled = req.body?.enabled !== false;
+
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+
+    if (!enabled) {
+      // rechnung_adresse stays as it is — switching the automation off should not throw
+      // away an address the office typed in, so it can be re-armed with one click.
+      await run('UPDATE bookings SET rechnung_required = 0 WHERE id = ?', [req.params.id]);
+      const [updated] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+      res.json({ success: true, booking: decryptBooking(updated) });
+      return;
+    }
+
+    if (booking.rechnung_number) {
+      res.status(409).json({ error: `Für diese Buchung wurde bereits eine Rechnung gesendet (${booking.rechnung_number}).` });
+      return;
+    }
+    if (!booking.email) {
+      res.status(400).json({ error: 'Buchung hat keine E-Mail-Adresse — die Rechnung kann nicht automatisch versendet werden.' });
+      return;
+    }
+    if (booking.status === 'cancelled') {
+      res.status(400).json({ error: 'Stornierte Buchungen werden vom automatischen Versand übersprungen.' });
+      return;
+    }
+
+    // Same normalisation the public booking form applies (routes/bookings.ts): one entry
+    // per line, no blank lines, capped at 500 chars — that is what the PDF prints.
+    const raw = typeof req.body?.empfaenger_adresse === 'string' ? req.body.empfaenger_adresse : '';
+    const adresse = raw.replace(/\r/g, '').split('\n').map((l: string) => l.trim()).filter(Boolean).join('\n').slice(0, 500);
+    if (!adresse) {
+      res.status(400).json({ error: 'Rechnungsadresse ist erforderlich' });
+      return;
+    }
+
+    // Attempts and the last error are reset so a booking that already burned its three
+    // retries (wrong address, dead API key) is picked up again instead of staying stuck.
+    await run(
+      `UPDATE bookings
+         SET rechnung_required = 1, rechnung_adresse = ?, rechnung_attempts = 0, rechnung_error = NULL
+       WHERE id = ?`,
+      [adresse, req.params.id]
+    );
+
+    const [updated] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    res.json({ success: true, booking: decryptBooking(updated) });
+  } catch (error: any) {
+    console.error('Rechnung vormerken error:', error);
+    res.status(500).json({ error: error.message || 'Failed to schedule invoice' });
+  }
+});
+
 // GET /api/admin/bookings/:id/rechnung.pdf — re-render the invoice that was sent.
 // Nothing is archived, so the PDF is rebuilt from the stored render params; the
 // persisted rechnung_sent_at keeps Datum/Zahlungsziel identical to the customer's copy.
