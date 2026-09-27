@@ -10,7 +10,7 @@ import {
   BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall,
 } from 'lucide-react';
 
-import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive } from './LiveAssistAdmin';
+import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakTr } from './LiveAssistAdmin';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
@@ -320,6 +320,21 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const MILESTONES = useRef([1, 2, 5, 10, 15, 20, 25, 30, 50]);
   // Canlı Asistan: Nachrichten an Live-Besucher, Status, Alarm-Töne (siehe LiveAssistAdmin.tsx)
   const liveAssist = useLiveAssistAdmin(token, live.map(s => s.session_id));
+  // Yeni gelen ziyaretçiyi sesli anons et (Canlı Asistan ayarı; ilk yüklemede eskiler için konuşmaz)
+  const voiceRef = useRef(false);
+  voiceRef.current = liveAssist.settings?.voice_new_visitor === '1';
+  const announcedRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const humans = live.filter(s => s.is_bot === 0);
+    if (announcedRef.current === null) { announcedRef.current = new Set(humans.map(s => s.session_id)); return; }
+    const fresh = humans.filter(s => !announcedRef.current!.has(s.session_id));
+    fresh.forEach(s => announcedRef.current!.add(s.session_id));
+    if (!voiceRef.current || !fresh.length) return;
+    if (fresh.length > 1) { speakTr(`${fresh.length} yeni ziyaretçi`); return; }
+    const s = fresh[0];
+    const src = sourceLabel(s).label.replace(/[^\p{L}\p{N} ]/gu, '').trim();
+    speakTr(['Yeni ziyaretçi', s.city ? `${s.city}'den` : '', src].filter(Boolean).join(', '));
+  }, [live]);
 
   const sendNotification = useCallback((title: string, body: string) => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {

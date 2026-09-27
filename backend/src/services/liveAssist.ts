@@ -29,6 +29,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   wa_prefill_enabled: '1',
   agent_name: 'Osman',
   ai_draft_enabled: '1',
+  voice_new_visitor: '1',
   hesitate_min: '2',
   email_to: '',            // leer = ADMIN_EMAIL
   email_max_per_hour: '10',
@@ -43,7 +44,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
 };
 
 const BOOL_KEYS = new Set([
-  'enabled', 'auto_enabled', 'wa_prefill_enabled', 'ai_draft_enabled',
+  'enabled', 'auto_enabled', 'wa_prefill_enabled', 'ai_draft_enabled', 'voice_new_visitor',
   ...ALERT_KINDS.flatMap((k) => [`notify_${k}_sound`, `notify_${k}_email`]),
 ]);
 const INT_RANGES: Record<string, [number, number]> = {

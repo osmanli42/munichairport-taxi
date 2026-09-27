@@ -346,6 +346,8 @@ export function LiveAssistPanel({ la }: { la: LiveAssistState }) {
             </label>
             <Toggle checked={s.wa_prefill_enabled === '1'} onChange={(v) => set('wa_prefill_enabled', v ? '1' : '0')}
               label="WhatsApp mesajı hazır dolu gelsin" hint="Fiyat / buchen sayfasında rota, tarih, araç, fiyat ve Ref kodu" />
+            <Toggle checked={s.voice_new_visitor === '1'} onChange={(v) => set('voice_new_visitor', v ? '1' : '0')}
+              label="Yeni ziyaretçide sesli anons" hint="Live sekmesi açıkken: &quot;Yeni ziyaretçi, München'den, Google Ads&quot; (botlar hariç)" />
             <Toggle checked={s.ai_draft_enabled === '1'} onChange={(v) => set('ai_draft_enabled', v ? '1' : '0')}
               label="Yapay zekâ cevap taslağı" hint={la.aiConfigured
                 ? 'Müşteri yazınca cevap taslağı otomatik mesaj kutusuna yazılır — sen kontrol edip Gönder\'e basarsın'
@@ -953,4 +955,17 @@ export function LiveAssistArchive({ la }: { la: LiveAssistState }) {
       )}
     </div>
   );
+}
+
+/** Sesli anons (Türkçe, tarayıcının konuşma sentezi). Stille, wenn der Browser keine Stimme hat. */
+export function speakTr(text: string): void {
+  try {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'tr-TR';
+    const voice = window.speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('tr'));
+    if (voice) u.voice = voice;
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  } catch { /* ignore */ }
 }
