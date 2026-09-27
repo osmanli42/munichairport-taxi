@@ -49,6 +49,56 @@ async function visitSummary(sessionId: string): Promise<string> {
   return row ? describeVisit(row) : '';
 }
 
+/**
+ * Fahrtdaten des Besuchers für den Kopf des Admin-Chats: aus der letzten Preis-/Buchungsseite
+ * (URL-Parameter) plus allen angezeigten Preisen (price_shown) — damit der Admin vor der
+ * Antwort Strecke, Termin, Personen und Preis kennt.
+ */
+async function tripContext(sessionId: string): Promise<any> {
+  const [row] = await query<any>(
+    `SELECT s.city, s.country, s.ua_device, s.utm_source, s.gclid, s.referrer,
+       (SELECT p.path FROM visitor_pageviews p WHERE p.session_id = s.session_id
+          AND (p.path LIKE '%/ergebnisse%' OR p.path LIKE '%/buchen%') ORDER BY p.id DESC LIMIT 1) AS path,
+       (SELECT GROUP_CONCAT(e.target ORDER BY e.id DESC SEPARATOR ';') FROM visitor_events e
+          WHERE e.session_id = s.session_id AND e.type = 'price_shown') AS prices,
+       (SELECT b.booking_number FROM bookings b WHERE b.session_id = s.session_id ORDER BY b.id DESC LIMIT 1) AS booking_number
+     FROM visitor_sessions s WHERE s.session_id = ?`,
+    [sessionId]
+  );
+  if (!row) return null;
+  const qs = new URLSearchParams(row.path && row.path.includes('?') ? row.path.slice(row.path.indexOf('?') + 1) : '');
+  // price_shown: "preis|km|fahrzeug" — je Fahrzeug den neuesten Wert
+  const prices: Record<string, number> = {};
+  let km: number | null = null;
+  for (const p of String(row.prices || '').split(';').filter(Boolean)) {
+    const [price, dist, vehicle] = p.split('|');
+    const n = Number(price);
+    if (vehicle && !(vehicle in prices) && Number.isFinite(n) && n > 0) prices[vehicle] = Math.ceil(n * 2) / 2;
+    if (km == null && Number(dist) > 0) km = Number(dist);
+  }
+  const selPrice = Number(qs.get('price'));
+  if (qs.get('vehicle') && selPrice > 0) prices[qs.get('vehicle')!] = Math.ceil(selPrice * 2) / 2;
+  return {
+    pickup: qs.get('pickup'),
+    dropoff: qs.get('dropoff'),
+    date: qs.get('date'),
+    time: qs.get('time'),
+    passengers: qs.get('passengers') ? Number(qs.get('passengers')) : null,
+    trip_type: qs.get('trip_type'),
+    return_date: qs.get('return_date'),
+    return_time: qs.get('return_time'),
+    zwischenstopp: qs.get('zwischenstopp_address'),
+    vehicle: qs.get('vehicle'),
+    distance_km: Number(qs.get('distance_km')) || km,
+    duration_min: Number(qs.get('duration')) || null,
+    prices,
+    page: row.path ? (row.path.includes('/buchen') ? 'buchen' : 'ergebnisse') : null,
+    city: row.city, country: row.country, device: row.ua_device,
+    source: row.gclid || row.utm_source === 'google_ads' ? 'Google Ads' : row.utm_source || (row.referrer ? 'Referral' : 'Direct'),
+    booking_number: row.booking_number,
+  };
+}
+
 // ── Öffentlich ────────────────────────────────────────────────────────────
 
 // GET /api/live-assist/config — nur, was die Seite braucht (keine E-Mail-Adresse o. Ä.)
@@ -317,7 +367,7 @@ router.get('/admin/live-assist/thread', authenticateAdmin, async (req: AuthReque
       `UPDATE live_messages SET seen_at = NOW() WHERE session_id = ? AND source = 'visitor' AND seen_at IS NULL`,
       [sessionId]
     );
-    res.json({ messages: rows });
+    res.json({ messages: rows, context: await tripContext(sessionId) });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }

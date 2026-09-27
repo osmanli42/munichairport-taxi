@@ -466,44 +466,95 @@ function routeFrom(s: RowSession): { pickup: string; dropoff: string } | null {
 
 const fmtEur = (n: number) => `${n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 
-type TemplateId = 'price' | 'question' | 'whatsapp' | 'callback';
-const TEMPLATE_LABEL: Record<TemplateId, string> = {
-  price: 'Selam + fiyat',
-  question: 'Sorunuz var mı?',
-  whatsapp: "WhatsApp'a davet",
-  callback: 'Geri arama teklifi',
-};
+// Hazır taslaklar — gruplu. {name} {route} {price} {code} {discount} tıklanınca doldurulur.
+type Lang2 = 'de' | 'en';
+interface Tpl { id: string; label: string; promo?: boolean; de: string; en: string }
+const TEMPLATE_GROUPS: { id: string; label: string; items: Tpl[] }[] = [
+  { id: 'greet', label: 'Karşılama', items: [
+    { id: 'price', label: 'Selam + fiyat',
+      de: 'Hallo 👋 Ich bin {name} von Munich Airport Taxi. Ihre Fahrt {route} kostet {price} Festpreis – inkl. Gepäck und Maut. Haben Sie Fragen?',
+      en: "Hi 👋 I'm {name} from Munich Airport Taxi. Your ride {route} is a fixed price of {price} – luggage and tolls included. Any questions?" },
+    { id: 'question', label: 'Sorunuz var mı?',
+      de: 'Hallo! Kann ich Ihnen bei Ihrer Buchung helfen? Ich bin gerade online.',
+      en: "Hi! Can I help you with your booking? I'm online right now." },
+    { id: 'fixed', label: 'Sabit fiyat garantisi',
+      de: 'Der Preis ist ein Festpreis – kein Taxameter, keine Zuschläge bei Stau oder Wartezeit am Flughafen.',
+      en: 'This is a fixed price – no meter, no extra charge for traffic or waiting at the airport.' },
+  ] },
+  { id: 'promo', label: 'İndirim', items: [
+    { id: 'promo_send', label: 'İndirim gönderiyorum', promo: true,
+      de: 'Gute Nachricht: Ich schicke Ihnen einen Online-Rabatt von {discount}! Tippen Sie einfach unten auf „Rabatt sichern & buchen“.',
+      en: 'Good news: I\'m sending you an online discount of {discount}! Just tap "Claim discount & book" below.' },
+    { id: 'promo_today', label: 'Sadece bugün', promo: true,
+      de: 'Nur heute für Sie: {discount} Rabatt mit dem Code {code}. Der Rabatt wird bei der Buchung automatisch abgezogen.',
+      en: "Today only: {discount} off with code {code}. It's deducted automatically when you book." },
+  ] },
+  { id: 'info', label: 'Bilgi', items: [
+    { id: 'luggage', label: 'Bagaj',
+      de: 'Kein Problem – Gepäck ist im Preis inbegriffen. Bei viel Gepäck empfehle ich den Van.',
+      en: "No problem – luggage is included. For a lot of luggage I'd recommend the van." },
+    { id: 'childseat', label: 'Çocuk koltuğu',
+      de: 'Kindersitze stellen wir kostenlos. Geben Sie bei der Buchung einfach Alter oder Größe des Kindes an.',
+      en: "Child seats are free of charge. Just add your child's age or size when booking." },
+    { id: 'meet', label: 'Buluşma',
+      de: 'So treffen wir uns: Sobald Sie Ihr gesamtes Gepäck abgeholt haben, schreiben Sie uns bitte kurz per WhatsApp (+49 151 41620000). Unser Fahrer wartet dann direkt am Ausgang mit einem Abholschild auf Sie.',
+      en: "Here's how we meet: once you've collected all your luggage, please send us a quick WhatsApp message (+49 151 41620000). Our driver will then be waiting for you right at the exit with a pickup sign." },
+    { id: 'payment', label: 'Ödeme',
+      de: 'Sie zahlen bequem bar beim Fahrer oder per Karte – keine Vorauszahlung nötig.',
+      en: 'You can pay the driver in cash or by card – no prepayment needed.' },
+    { id: 'cancel', label: 'Ücretsiz iptal',
+      de: 'Sie können bis 3 Stunden vor der Abholung kostenlos stornieren.',
+      en: 'You can cancel free of charge up to 3 hours before pickup.' },
+    { id: 'group', label: 'Büyük grup',
+      de: 'Für Ihre Gruppe passt unser Großraumtaxi mit bis zu 8 Plätzen und viel Gepäckraum.',
+      en: 'Our large taxi fits your group – up to 8 seats and plenty of luggage space.' },
+    { id: 'night', label: '7/24',
+      de: 'Wir fahren rund um die Uhr – auch sehr früh morgens oder spät nachts.',
+      en: 'We operate 24/7 – including very early mornings and late nights.' },
+  ] },
+  { id: 'book', label: 'Rezervasyon', items: [
+    { id: 'howto', label: 'Nasıl rezerve edilir',
+      de: 'Die Buchung dauert nur 1 Minute: Wählen Sie oben das Fahrzeug und klicken Sie auf „Dieses Fahrzeug buchen“.',
+      en: 'Booking takes just a minute: choose your vehicle above and click "Book this vehicle".' },
+    { id: 'form', label: 'Formda yardım',
+      de: 'Ich sehe, Sie sind im Buchungsformular – kann ich bei einem Feld helfen?',
+      en: "I see you're on the booking form – can I help with anything?" },
+    { id: 'confirm', label: 'Onay e-postası',
+      de: 'Nach der Buchung erhalten Sie sofort eine Bestätigung per E-Mail mit allen Details.',
+      en: "Right after booking you'll get a confirmation email with all the details." },
+    { id: 'callback', label: 'Geri arama',
+      de: 'Lieber telefonisch? Hinterlassen Sie Ihre Nummer – ich rufe Sie in wenigen Minuten zurück.',
+      en: "Prefer to talk? Leave your number – I'll call you back within a few minutes." },
+  ] },
+  { id: 'close', label: 'Kapanış', items: [
+    { id: 'check', label: 'Kontrol ediyorum',
+      de: 'Einen Moment bitte, ich prüfe das kurz für Sie.',
+      en: 'One moment please, let me quickly check that for you.' },
+    { id: 'thanks', label: 'Teşekkür',
+      de: 'Vielen Dank für Ihre Buchung! Wir freuen uns, Sie zu fahren. Gute Reise!',
+      en: 'Thank you for your booking! We look forward to driving you. Have a good trip!' },
+    { id: 'bye', label: 'Veda',
+      de: 'Gerne! Wenn noch etwas ist, schreiben Sie mir einfach hier. Schönen Tag noch!',
+      en: "You're welcome! If anything comes up, just message me here. Have a great day!" },
+  ] },
+];
 
-function templateText(id: TemplateId, lang: 'de' | 'en' | 'tr', name: string, route: { pickup: string; dropoff: string } | null, price: number | null): string {
-  const r = route ? `${route.pickup} → ${route.dropoff}` : '';
-  const p = price ? fmtEur(price) : '';
-  const T = {
-    de: {
-      price: route && p
-        ? `Hallo 👋 Ich bin ${name} von Munich Airport Taxi. Ihre Fahrt ${r} kostet ${p} Festpreis – inkl. Gepäck und Maut, ohne versteckte Kosten. Haben Sie noch Fragen? Ich bin gerade online.`
-        : `Hallo 👋 Ich bin ${name} von Munich Airport Taxi. Kann ich Ihnen bei Ihrer Buchung helfen? Ich bin gerade online.`,
-      question: 'Hallo 👋 Haben Sie Fragen zu Ihrer Fahrt oder zum Preis? Schreiben Sie mir einfach – ich antworte sofort.',
-      whatsapp: 'Hallo! Am schnellsten geht es per WhatsApp: Tippen Sie unten auf „Auf WhatsApp antworten“ – Ihre Strecke ist schon eingetragen.',
-      callback: 'Hallo! Lieber telefonisch? Hinterlassen Sie unten Ihre Nummer – ich rufe Sie in wenigen Minuten zurück.',
-    },
-    en: {
-      price: route && p
-        ? `Hi 👋 I'm ${name} from Munich Airport Taxi. Your ride ${r} is a fixed price of ${p} – luggage and tolls included, no hidden costs. Any questions? I'm online right now.`
-        : `Hi 👋 I'm ${name} from Munich Airport Taxi. Can I help you with your booking? I'm online right now.`,
-      question: 'Hi 👋 Any questions about your ride or the price? Just message me – I reply right away.',
-      whatsapp: 'Hi! The fastest way is WhatsApp: tap "Reply on WhatsApp" below – your route is already filled in.',
-      callback: "Hi! Prefer to talk? Leave your number below – I'll call you back within a few minutes.",
-    },
-    tr: {
-      price: route && p
-        ? `Merhaba 👋 Ben Munich Airport Taxi'den ${name}. ${r} yolculuğunuz ${p} sabit fiyat – bagaj ve otoyol ücreti dahil, gizli maliyet yok. Sorunuz var mı? Şu an çevrimiçiyim.`
-        : `Merhaba 👋 Ben Munich Airport Taxi'den ${name}. Rezervasyonunuzda yardımcı olabilir miyim? Şu an çevrimiçiyim.`,
-      question: 'Merhaba 👋 Yolculuğunuz ya da fiyat hakkında sorunuz var mı? Yazmanız yeterli – hemen cevaplıyorum.',
-      whatsapp: "Merhaba! En hızlısı WhatsApp: aşağıdaki \"WhatsApp'tan yanıtla\"ya dokunun – güzergâhınız zaten yazılı.",
-      callback: 'Merhaba! Telefonla mı konuşmak istersiniz? Aşağıya numaranızı bırakın – birkaç dakika içinde sizi arıyorum.',
-    },
-  } as const;
-  return T[lang][id];
+function fillTemplate(t: Tpl, lang: 'de' | 'en' | 'tr', name: string, route: { pickup: string; dropoff: string } | null, price: number | null, promo: Promo | null): string {
+  const l: Lang2 = lang === 'de' ? 'de' : 'en'; // türkische Seite → Englisch
+  let text = t[l];
+  // "Selam + fiyat" ohne Route/Preis → allgemeine Begrüßung
+  if (t.id === 'price' && !(route && price)) {
+    text = l === 'de'
+      ? `Hallo 👋 Ich bin ${name} von Munich Airport Taxi. Kann ich Ihnen bei Ihrer Buchung helfen? Ich bin gerade online.`
+      : `Hi 👋 I'm ${name} from Munich Airport Taxi. Can I help you with your booking? I'm online right now.`;
+  }
+  const discount = promo ? (promo.type === 'percent' ? `${promo.value} %` : fmtEur(promo.value)) : '{discount}';
+  return text
+    .replace(/\{name\}/g, name)
+    .replace(/\{route\}/g, route ? `${route.pickup} → ${route.dropoff}` : '')
+    .replace(/\{price\}/g, price ? fmtEur(price) : '')
+    .replace(/\{code\}/g, promo?.code || '{code}')
+    .replace(/\{discount\}/g, discount);
 }
 
 function statusBadge(info: SessionInfo | undefined): { text: string; cls: string } | null {
@@ -550,14 +601,67 @@ interface ThreadMsg {
 
 const fmtTime = (v: string) => new Date(v).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
+interface TripCtx {
+  pickup: string | null; dropoff: string | null; date: string | null; time: string | null;
+  passengers: number | null; trip_type: string | null; return_date: string | null; return_time: string | null;
+  zwischenstopp: string | null; vehicle: string | null; distance_km: number | null; duration_min: number | null;
+  prices: Record<string, number>; page: string | null; city: string | null; country: string | null;
+  device: string | null; source: string | null; booking_number: string | null;
+}
+
+const VEHICLE_TR: Record<string, string> = { kombi: 'Kombi', van: 'Van', grossraumtaxi: 'Büyük taksi' };
+const dmy = (d: string | null, t: string | null) => (d ? `${d.split('-').reverse().join('.')}${t ? ` ${t}` : ''}` : '');
+
+/** Kopf des Admin-Chats: alles, was der Kunde gesucht/gesehen hat — vor der Antwort. */
+function TripCard({ t }: { t: TripCtx }) {
+  const hasRoute = t.pickup || t.dropoff;
+  const priceEntries = Object.entries(t.prices || {});
+  return (
+    <div className="px-3 py-2.5 bg-amber-50 border-b border-amber-200 text-sm">
+      {hasRoute ? (
+        <div className="font-semibold text-gray-900 break-words">
+          📍 {t.pickup || '?'} <span className="text-amber-600">→</span> {t.dropoff || '?'}
+          {t.zwischenstopp && <span className="font-normal text-gray-600"> (ara durak: {t.zwischenstopp})</span>}
+        </div>
+      ) : (
+        <div className="text-gray-500 text-xs">Müşteri henüz rota aramadı.</div>
+      )}
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-700">
+        {t.date && <span>📅 {dmy(t.date, t.time)}</span>}
+        {t.passengers != null && <span>👥 {t.passengers} kişi</span>}
+        {t.trip_type === 'roundtrip'
+          ? <span>🔁 gidiş-dönüş{t.return_date ? ` · dönüş ${dmy(t.return_date, t.return_time)}` : ''}</span>
+          : t.trip_type ? <span>➡️ tek yön</span> : null}
+        {t.distance_km ? <span>🛣 {Number(t.distance_km).toFixed(1).replace('.', ',')} km{t.duration_min ? ` · ~${t.duration_min} dk` : ''}</span> : null}
+        {t.page === 'buchen' && <span className="text-orange-700 font-semibold">🛒 rezervasyon formunda</span>}
+        {t.booking_number && <span className="text-emerald-700 font-semibold">✅ rezervasyon {t.booking_number}</span>}
+      </div>
+      {priceEntries.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {priceEntries.map(([v, p]) => (
+            <span key={v} className={`text-xs px-2 py-0.5 rounded-full border ${t.vehicle === v ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-800 border-amber-300'}`}>
+              {VEHICLE_TR[v] || v}: <b>{fmtEur(p)}</b>{t.vehicle === v ? ' · seçti' : ''}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="text-[11px] text-gray-500 mt-1">
+        {[t.city, t.device === 'mobile' ? '📱 mobil' : t.device === 'desktop' ? '💻 masaüstü' : t.device, t.source].filter(Boolean).join(' · ')}
+      </div>
+    </div>
+  );
+}
+
 /** Gesprächsverlauf (Live und Archiv). `live` = Besucher ist gerade da → Senden möglich. */
 export function ChatThread({ la, sessionId, live, lang, route, price }: {
   la: LiveAssistState; sessionId: string; live: boolean;
   lang: 'de' | 'en' | 'tr'; route: { pickup: string; dropoff: string } | null; price: number | null;
 }) {
   const [msgs, setMsgs] = useState<ThreadMsg[]>([]);
+  const [trip, setTrip] = useState<TripCtx | null>(null);
   const [body, setBody] = useState('');
-  const [tpl, setTpl] = useState<TemplateId | 'custom'>('custom');
+  const [tpl, setTpl] = useState<string>('custom');
+  const [group, setGroup] = useState<string | null>(null);
   const [promo, setPromo] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
@@ -593,7 +697,7 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
       const r = await fetch(`${API_BASE}/admin/live-assist/thread?session_id=${encodeURIComponent(sessionId)}`, {
         headers: { Authorization: `Bearer ${la.token}` },
       });
-      if (r.ok) setMsgs((await r.json()).messages || []);
+      if (r.ok) { const j = await r.json(); setMsgs(j.messages || []); setTrip(j.context || null); }
     } catch { /* nächster Versuch */ }
   }, [sessionId, la.token]);
 
@@ -636,6 +740,7 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-white overflow-hidden">
+      {trip && <TripCard t={trip} />}
       <div ref={listRef} className="max-h-72 overflow-y-auto bg-gray-50 px-3 py-2 space-y-1.5">
         {msgs.length === 0 && <p className="text-xs text-gray-400 py-3 text-center">Henüz mesaj yok — ilk mesajı sen yaz.</p>}
         {msgs.map((m) => {
@@ -661,11 +766,10 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
       {live ? (
         <div className="border-t p-2 space-y-2">
           <div className="flex flex-wrap gap-1">
-            {(Object.keys(TEMPLATE_LABEL) as TemplateId[]).map((id) => (
-              <button key={id} type="button"
-                onClick={() => { setTpl(id); setBody(templateText(id, lang, name, route, price)); }}
-                className={`text-[11px] px-2 py-0.5 rounded-full border ${tpl === id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400'}`}>
-                {TEMPLATE_LABEL[id]}
+            {TEMPLATE_GROUPS.map((g) => (
+              <button key={g.id} type="button" onClick={() => setGroup(group === g.id ? null : g.id)}
+                className={`text-[11px] px-2 py-0.5 rounded-full border ${group === g.id ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'}`}>
+                {g.label} {group === g.id ? '▴' : '▾'}
               </button>
             ))}
             {aiOn && (
@@ -677,6 +781,26 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
             )}
             <span className="text-[11px] text-gray-400 ml-auto">dil: {lang.toUpperCase()}</span>
           </div>
+          {group && (
+            <div className="flex flex-wrap gap-1 bg-gray-50 rounded-lg p-1.5">
+              {TEMPLATE_GROUPS.find((g) => g.id === group)!.items.map((t) => (
+                <button key={t.id} type="button"
+                  onClick={() => {
+                    let chosen = la.promos.find((p) => p.code === promo) || null;
+                    if (t.promo && !chosen) {
+                      chosen = la.promos[0] || null;
+                      if (chosen) setPromo(chosen.code);
+                      else setErr('Şu an geçerli indirim kodu yok — önce Aktionen sekmesinden oluştur');
+                    }
+                    setTpl(t.id);
+                    setBody(fillTemplate(t, lang, name, route, price, chosen));
+                  }}
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${tpl === t.id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-1.5">
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
             <button type="button" onClick={() => fileRef.current?.click()} disabled={sending} title="Resim gönder" className="p-2 text-gray-500 hover:text-emerald-700">
