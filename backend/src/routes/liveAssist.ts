@@ -9,6 +9,7 @@ import {
   createAlert, describeVisit, reactionDetail, ADMIN_EMAIL_DEFAULT, ALERT_KINDS,
   markAdminOnline, isAdminOnline, saveChatImage,
 } from '../services/liveAssist';
+import { draftReply, isAiConfigured } from '../services/liveAssistAi';
 
 /**
  * Canlı Asistan — siehe services/liveAssist.ts für das Warum.
@@ -231,7 +232,7 @@ router.get('/live-assist/file/:id', async (req: Request, res: Response) => {
 router.get('/admin/live-assist/settings', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const s = await getLiveAssistSettings();
-    res.json({ settings: s, admin_email_default: ADMIN_EMAIL_DEFAULT, email_configured: !!process.env.RESEND_API_KEY });
+    res.json({ settings: s, admin_email_default: ADMIN_EMAIL_DEFAULT, email_configured: !!process.env.RESEND_API_KEY, ai_configured: isAiConfigured() });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }
@@ -370,6 +371,22 @@ router.get('/admin/live-assist/conversations', authenticateAdmin, async (req: Au
   } catch (err: any) {
     console.error('live-assist conversations error:', err.message);
     res.status(500).json({ error: 'failed', conversations: [] });
+  }
+});
+
+// POST /api/admin/live-assist/suggest — { session_id } → KI-Entwurf (wird nicht gesendet)
+router.post('/admin/live-assist/suggest', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const s = await getLiveAssistSettings();
+    if (s.ai_draft_enabled !== '1') { res.status(409).json({ error: 'Yapay zekâ taslağı kapalı' }); return; }
+    if (!isAiConfigured()) { res.status(503).json({ error: 'ANTHROPIC_API_KEY tanımlı değil' }); return; }
+    const sessionId = validSession(req.body?.session_id);
+    if (!sessionId) { res.status(400).json({ error: 'session_id gerekli' }); return; }
+    const text = await draftReply(sessionId, s.agent_name);
+    res.json({ text: text.slice(0, 500) });
+  } catch (err: any) {
+    console.error('live-assist suggest error:', err.message);
+    res.status(502).json({ error: err.message === 'refusal' ? 'Yapay zekâ bu mesaja taslak üretmedi' : 'Taslak oluşturulamadı' });
   }
 });
 

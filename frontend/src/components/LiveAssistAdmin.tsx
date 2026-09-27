@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Settings2, Volume2, VolumeX, Send, X, ChevronDown, ChevronUp, Loader2, ImagePlus, Archive, Search } from 'lucide-react';
+import { Sparkles, MessageCircle, Settings2, Volume2, VolumeX, Send, X, ChevronDown, ChevronUp, Loader2, ImagePlus, Archive, Search } from 'lucide-react';
 import { imageToDataUrl } from '@/lib/liveAssist';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
@@ -44,6 +44,7 @@ export interface LiveAssistState {
   settings: Record<string, string> | null;
   adminEmailDefault: string;
   emailConfigured: boolean;
+  aiConfigured: boolean;
   promos: Promo[];
   overview: Overview | null;
   soundReady: boolean;
@@ -90,6 +91,7 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
   const [settings, setSettings] = useState<Record<string, string> | null>(null);
   const [adminEmailDefault, setAdminEmailDefault] = useState('');
   const [emailConfigured, setEmailConfigured] = useState(true);
+  const [aiConfigured, setAiConfigured] = useState(false);
   const [promos, setPromos] = useState<Promo[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [soundReady, setSoundReady] = useState(false);
@@ -139,6 +141,7 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
       setSettings(j.settings);
       setAdminEmailDefault(j.admin_email_default || '');
       setEmailConfigured(!!j.email_configured);
+      setAiConfigured(!!j.ai_configured);
     } catch { /* nächster Versuch beim Speichern */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -226,7 +229,7 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, loadOverview]);
 
-  return { settings, adminEmailDefault, emailConfigured, promos, overview, soundReady, unlockSound, testSound, save, send, token };
+  return { settings, adminEmailDefault, emailConfigured, aiConfigured, promos, overview, soundReady, unlockSound, testSound, save, send, token };
 }
 
 // ── Einstellungen + KPI ────────────────────────────────────────────────────
@@ -338,6 +341,10 @@ export function LiveAssistPanel({ la }: { la: LiveAssistState }) {
             </label>
             <Toggle checked={s.wa_prefill_enabled === '1'} onChange={(v) => set('wa_prefill_enabled', v ? '1' : '0')}
               label="WhatsApp mesajı hazır dolu gelsin" hint="Fiyat / buchen sayfasında rota, tarih, araç, fiyat ve Ref kodu" />
+            <Toggle checked={s.ai_draft_enabled === '1'} onChange={(v) => set('ai_draft_enabled', v ? '1' : '0')}
+              label="Yapay zekâ cevap taslağı" hint={la.aiConfigured
+                ? 'Müşteri yazınca cevap taslağı otomatik mesaj kutusuna yazılır — sen kontrol edip Gönder\'e basarsın'
+                : 'Sunucuda ANTHROPIC_API_KEY yok — anahtar eklenince çalışır'} />
             <label className="block text-sm text-gray-700 py-1.5">
               Balonda görünen isim
               <input type="text" maxLength={40} value={s.agent_name}
@@ -552,6 +559,29 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
   const listRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const name = la.settings?.agent_name || 'Osman';
+  const [drafting, setDrafting] = useState(false);
+  const aiOn = la.settings?.ai_draft_enabled === '1';
+  const bodyRef = useRef(body);
+  bodyRef.current = body;
+  const draftedForRef = useRef<number>(0);
+
+  const draft = useCallback(async () => {
+    setDrafting(true);
+    setErr('');
+    try {
+      const r = await fetch(`${API_BASE}/admin/live-assist/suggest`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${la.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error || 'Taslak oluşturulamadı'); return; }
+      // Nur einsetzen, wenn der Admin inzwischen nichts selbst getippt hat
+      if (!bodyRef.current.trim()) { setBody(j.text || ''); setTpl('custom'); }
+    } finally {
+      setDrafting(false);
+    }
+  }, [sessionId, la.token]);
 
   const load = useCallback(async () => {
     try {
@@ -570,6 +600,15 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
   }, [load, live]);
 
   useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [msgs.length]);
+
+  // Neue Kundennachricht → Entwurf automatisch vorbereiten (nur live, nur wenn Feld leer)
+  useEffect(() => {
+    if (!live || !aiOn || !la.aiConfigured || !msgs.length) return;
+    const last = msgs[msgs.length - 1];
+    if (last.source !== 'visitor' || draftedForRef.current >= last.id || bodyRef.current.trim()) return;
+    draftedForRef.current = last.id;
+    draft();
+  }, [msgs, live, aiOn, la.aiConfigured, draft]);
 
   const submit = async (image?: string) => {
     if (!body.trim() && !image && !promo) return;
@@ -624,6 +663,13 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
                 {TEMPLATE_LABEL[id]}
               </button>
             ))}
+            {aiOn && (
+              <button type="button" onClick={draft} disabled={drafting || !la.aiConfigured}
+                title={la.aiConfigured ? 'Konuşmaya göre cevap taslağı yaz' : 'Sunucuda ANTHROPIC_API_KEY yok'}
+                className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-50">
+                {drafting ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />} Yapay zekâ taslağı
+              </button>
+            )}
             <span className="text-[11px] text-gray-400 ml-auto">dil: {lang.toUpperCase()}</span>
           </div>
           <div className="flex items-end gap-1.5">
@@ -634,7 +680,7 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
             <textarea value={body} maxLength={500} rows={2}
               onChange={(e) => { setBody(e.target.value); setErr(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-              placeholder="Mesaj yaz… (Enter = gönder)"
+              placeholder={drafting ? "Yapay zekâ taslak yazıyor…" : "Mesaj yaz… (Enter = gönder)"}
               className="flex-1 border rounded-lg px-2.5 py-1.5 text-sm resize-none" />
             <button type="button" onClick={() => submit()} disabled={sending || (!body.trim() && !promo)}
               className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg">
