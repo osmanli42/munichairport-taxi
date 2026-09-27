@@ -186,7 +186,12 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  useEffect(() => { loadSettings(); loadPromos(); }, [loadSettings, loadPromos]);
+  useEffect(() => {
+    loadSettings(); loadPromos();
+    // Serverseitige Änderungen (z. B. neu hinterlegter API-Schlüssel) ohne Neuladen übernehmen
+    const iv = setInterval(loadSettings, 60_000);
+    return () => clearInterval(iv);
+  }, [loadSettings, loadPromos]);
   useEffect(() => {
     loadOverview();
     const iv = setInterval(loadOverview, 5000);
