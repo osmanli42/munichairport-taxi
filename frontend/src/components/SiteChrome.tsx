@@ -12,6 +12,7 @@ import VisitorTracker from '@/components/VisitorTracker';
 import SessionRecorder from '@/components/SessionRecorder';
 import BookingFunnelTracker from '@/components/BookingFunnelTracker';
 import BookingDraftRecovery from '@/components/BookingDraftRecovery';
+import LiveAssist from '@/components/LiveAssist';
 import { assignVariant } from '@/lib/experiment';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -62,6 +63,7 @@ export default function SiteChrome({
       <SessionRecorder />
       <BookingFunnelTracker />
       <BookingDraftRecovery />
+      <LiveAssist />
     </>
   );
 }

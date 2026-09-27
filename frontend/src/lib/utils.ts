@@ -123,6 +123,56 @@ export const CONTACT_INFO = {
   website: 'www.flughafen-muenchen.taxi',
 };
 
+export interface WhatsAppContext {
+  pickup?: string | null;
+  dropoff?: string | null;
+  date?: string | null;      // YYYY-MM-DD
+  time?: string | null;      // HH:mm
+  passengers?: number | string | null;
+  vehicle?: string | null;   // kombi | van | grossraumtaxi
+  price?: number | null;
+  ref?: string | null;
+}
+
+const WA_VEHICLE: Record<string, [string, string, string]> = {
+  kombi: ['Kombi', 'Sedan', 'Kombi'],
+  van: ['Van / Minibus', 'Van / Minibus', 'Van / Minibüs'],
+  grossraumtaxi: ['Großraumtaxi', 'Large Taxi', 'Büyük Taksi'],
+};
+
+/** Kurzer Referenzcode aus der Session-ID — derselbe steht im Admin-Live-Tab. */
+export function liveRef(sessionId: string | null | undefined): string {
+  return (sessionId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+}
+
+/**
+ * WhatsApp-Link mit vorausgefüllter Nachricht (Strecke, Termin, Fahrzeug, Preis, Ref).
+ * Der Kunde muss nur noch "Senden" tippen, wir sehen sofort, worum es geht.
+ */
+export function buildWhatsAppLink(ctx: WhatsAppContext, locale: string): string {
+  const i = locale === 'en' ? 1 : locale === 'tr' ? 2 : 0;
+  const clean = (a?: string | null) => (a || '').replace(/,\s*(Deutschland|Germany|Almanya)\s*$/i, '').trim().slice(0, 90);
+  const lines: string[] = [];
+  lines.push(['Hallo, ich möchte eine Fahrt buchen:', 'Hello, I would like to book a ride:', 'Merhaba, bir yolculuk rezerve etmek istiyorum:'][i]);
+  const pickup = clean(ctx.pickup);
+  const dropoff = clean(ctx.dropoff);
+  if (pickup || dropoff) lines.push(`${pickup || '?'} → ${dropoff || '?'}`);
+  const when: string[] = [];
+  if (ctx.date) {
+    const [y, m, d] = ctx.date.split('-');
+    if (y && m && d) when.push(`${d}.${m}.${y}${ctx.time ? ` ${[' um ', ' at ', ' saat '][i].trim()} ${ctx.time}` : ''}`);
+  }
+  if (ctx.passengers) when.push(`${ctx.passengers} ${['Pers.', 'pax', 'kişi'][i]}`);
+  if (when.length) lines.push(when.join(' · '));
+  const what: string[] = [];
+  if (ctx.vehicle) what.push(WA_VEHICLE[ctx.vehicle]?.[i] || ctx.vehicle);
+  if (ctx.price && ctx.price > 0) what.push(formatPrice(ctx.price));
+  if (what.length) lines.push(what.join(' · '));
+  if (lines.length === 1) lines[0] = ['Hallo, ich habe eine Frage zu einer Fahrt.', 'Hello, I have a question about a ride.', 'Merhaba, bir yolculuk hakkında sorum var.'][i];
+  if (ctx.ref) lines.push(`(Ref: ${ctx.ref})`);
+  return `${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
 // Display-only icon prefix for addresses (airport ✈️ / hotel 🏨) — never part of the stored value
 export function addressIcon(addr: string): string {
   if (/flughafen|airport|terminal/i.test(addr)) return '✈️ ';

@@ -10,6 +10,8 @@ import {
   BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall,
 } from 'lucide-react';
 
+import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow } from './LiveAssistAdmin';
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
 interface CallbackRow {
@@ -316,6 +318,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const prevBookingCountRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const MILESTONES = useRef([1, 2, 5, 10, 15, 20, 25, 30, 50]);
+  // Canlı Asistan: Nachrichten an Live-Besucher, Status, Alarm-Töne (siehe LiveAssistAdmin.tsx)
+  const liveAssist = useLiveAssistAdmin(token, live.map(s => s.session_id));
 
   const sendNotification = useCallback((title: string, body: string) => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -623,6 +627,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
         )}
       </div>
 
+      <LiveAssistPanel la={liveAssist} />
+
       {/* ─── Main Panel: Visitor List + Activity Feed ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
@@ -810,6 +816,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                         </span>
                       )}
                     </div>
+
+                    <LiveAssistRow la={liveAssist} s={s} />
                   </div>
                 );
               })}

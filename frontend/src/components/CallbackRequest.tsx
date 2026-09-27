@@ -125,13 +125,18 @@ export default function CallbackRequest({
   locale,
   context,
   className = '',
+  defaultOpen = false,
+  onSubmitted,
 }: {
   locale: string;
   context: CallbackContext;
   className?: string;
+  /** Formular sofort zeigen (Sprechblase des Canlı Asistan) statt erst des CTA-Buttons. */
+  defaultOpen?: boolean;
+  onSubmitted?: () => void;
 }) {
   const t = T[(locale as 'de' | 'en' | 'tr')] || T.de;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [sending, setSending] = useState(false);
@@ -168,6 +173,7 @@ export default function CallbackRequest({
         return;
       }
       setDone(true);
+      onSubmitted?.();
     } catch {
       setError(t.errGeneric);
     } finally {

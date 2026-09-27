@@ -24,11 +24,13 @@ import companyRouter from './routes/company';
 import adminCompaniesRouter from './routes/admin-companies';
 import adminCalendarRouter from './routes/admin-calendar';
 import popularRoutesRouter from './routes/popular-routes';
+import liveAssistRouter from './routes/liveAssist';
 import { startReminderJob } from './services/reminderJob';
 import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
 import { startAutoStatusJob } from './services/autoStatusJob';
 import { startAutoRechnungJob } from './services/autoRechnungJob';
+import { startLiveAssistAlertJob } from './services/liveAssistAlertJob';
 
 dotenv.config();
 
@@ -100,6 +102,7 @@ app.use('/api/tracking', driverTrackingRouter);
 app.use('/api', trackingRouter);
 app.use('/api', recordingRouter);
 app.use('/api', systemRouter);
+app.use('/api', liveAssistRouter);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -119,6 +122,7 @@ app.listen(PORT, () => {
       startAdsAlertJob();
       startAutoStatusJob();
       startAutoRechnungJob();
+      startLiveAssistAlertJob();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });

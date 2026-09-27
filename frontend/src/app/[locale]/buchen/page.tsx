@@ -14,6 +14,7 @@ import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
 import Countdown from '@/components/discount/Countdown';
 import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
+import { LIVE_PROMO_KEY } from '@/lib/liveAssist';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const caveat = Caveat({ subsets: ['latin'], weight: ['600'], display: 'swap' });
@@ -362,6 +363,31 @@ function BuchenContent() {
   const autoDiscountRed = !!autoDiscount && autoDiscount.badge !== 'classic';
   const autoDiscountRemaining = autoDiscount ? formatRemainingSpots(autoDiscount.remaining, locale) : null;
   const onAutoDiscountExpire = () => setDiscountRefresh(n => n + 1);
+
+  // Canlı Asistan: Code aus der Live-Nachricht einmal automatisch einlösen — nur wenn er
+  // mehr bringt als ein bereits greifender Auto-Rabatt (der Server nimmt ohnehin den größeren).
+  const livePromoTried = useRef(false);
+  useEffect(() => {
+    if (livePromoTried.current || appliedPromo || !price || price <= 0 || !autoDiscountReady) return;
+    let code: string | null = null;
+    try { code = sessionStorage.getItem(LIVE_PROMO_KEY); } catch { /* ignore */ }
+    if (!code) return;
+    livePromoTried.current = true;
+    fetch(`${API_URL}/promotions/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, base_price: price, lang: locale }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.valid) return;
+        if (!data.kombinierbar && tripType === 'roundtrip' && roundtripDiscount > 0) return;
+        if (autoDiscount && data.discount_amount <= autoDiscount.amount) return;
+        setPromoInput(data.code);
+        setAppliedPromo({ code: data.code, discountAmount: data.discount_amount, promoBase: price });
+      })
+      .catch(() => {});
+  }, [price, autoDiscountReady, appliedPromo, autoDiscount, tripType, roundtripDiscount, locale]);
 
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: 'Barzahlung', card: 'Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: 'Einfache Fahrt', roundtrip: 'Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich!', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: 'Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: 'Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },

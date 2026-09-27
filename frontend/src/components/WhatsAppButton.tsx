@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CONTACT_INFO } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
+import { useLocale } from 'next-intl';
+import { CONTACT_INFO, buildWhatsAppLink } from '@/lib/utils';
+import { useLiveAssistConfig, isPricePage, isBookingPage, readTripContext } from '@/lib/liveAssist';
 
 const DISMISSED_KEY = 'mt_wa_bubble_dismissed';
 const SHOW_DELAY = 30_000;
@@ -10,8 +13,14 @@ const SUPPRESS_MS = 24 * 60 * 60 * 1000;
 
 export default function WhatsAppButton() {
   const [bubble, setBubble] = useState(false);
+  const pathname = usePathname() || '';
+  const locale = useLocale();
+  const liveAssist = useLiveAssistConfig();
+  // Auf Preis-/Buchungsseite übernimmt der Canlı Asistan die Sprechblase — nicht doppelt.
+  const onFunnel = isPricePage(pathname) || isBookingPage(pathname);
 
   useEffect(() => {
+    if (onFunnel) { setBubble(false); return; }
     try {
       const raw = localStorage.getItem(DISMISSED_KEY);
       if (raw && Date.now() - Number(raw) < SUPPRESS_MS) return;
@@ -23,7 +32,7 @@ export default function WhatsAppButton() {
     }, SHOW_DELAY);
 
     return () => clearTimeout(show);
-  }, []);
+  }, [onFunnel]);
 
   function dismiss() {
     setBubble(false);
@@ -45,7 +54,14 @@ export default function WhatsAppButton() {
         href={CONTACT_INFO.whatsapp}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={dismiss}
+        onClick={(e) => {
+          // Strecke und Preis erst beim Klick lesen — die Preiskarten laden nach.
+          // Die Komponente bleibt über Seitenwechsel gemountet: href deshalb immer neu setzen.
+          e.currentTarget.href = onFunnel && liveAssist?.wa_prefill_enabled
+            ? buildWhatsAppLink(readTripContext(pathname), locale)
+            : CONTACT_INFO.whatsapp;
+          dismiss();
+        }}
         className="w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 animate-pulse-slow shrink-0"
         aria-label="WhatsApp Chat"
       >
