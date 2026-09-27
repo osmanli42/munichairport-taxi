@@ -198,14 +198,14 @@ export default function SystemTab({ token }: { token: string }) {
 
   const ramC = statusColor(stats.ram.pct);
   const swapUsedMB = stats.swap.used / 1024 / 1024;
-  // Swap: yüzdeye göre — %75+ kırmızı, %50+ sarı (sabit MB eşiği 2 GB swap'ta erken alarm veriyordu)
-  const swapC = statusColor(stats.swap.pct, 75, 50);
+  // Swap: 1500 MB+ kırmızı, 1000 MB+ sarı (2 GB swap)
+  const swapC = statusColor(swapUsedMB, 1500, 1000);
   const diskC = statusColor(stats.disk.pct);
   const cpuC = statusColor(stats.cpu.load1_pct, 150, 100);
 
   const overallWarnings: string[] = [];
   if (stats.ram.pct >= 85) overallWarnings.push(`RAM kritik: %${stats.ram.pct}`);
-  if (stats.swap.pct >= 75) overallWarnings.push(`Swap çok kullanılıyor: %${stats.swap.pct} (${Math.round(swapUsedMB)} MB)`);
+  if (swapUsedMB >= 1500) overallWarnings.push(`Swap çok kullanılıyor: ${Math.round(swapUsedMB)} MB`);
   if (stats.disk.pct >= 85) overallWarnings.push(`Disk doluyor: %${stats.disk.pct}`);
   if (stats.cpu.load1_pct >= 150) overallWarnings.push(`CPU yükü yüksek: ${stats.cpu.load1.toFixed(2)}`);
   const offlinePm2 = stats.pm2.filter((p) => p.status !== 'online');
@@ -355,7 +355,7 @@ export default function SystemTab({ token }: { token: string }) {
           <ProgressBar pct={stats.swap.pct} color={swapC.bar} />
           <div className="text-sm text-gray-600 mt-2">
             {fmtBytes(stats.swap.used)} / {fmtGB(stats.swap.total)}
-            {stats.swap.pct >= 50 && <span className="ml-2 text-yellow-600">⚠ RAM dolup swap kullanılıyor</span>}
+            {swapUsedMB >= 1000 && <span className="ml-2 text-yellow-600">⚠ RAM dolup swap kullanılıyor</span>}
           </div>
         </div>
 
@@ -470,7 +470,7 @@ export default function SystemTab({ token }: { token: string }) {
 
         <div className="grid sm:grid-cols-2 gap-2 text-sm mb-4">
           <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 RAM kullanımı &gt; %85</div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Swap &gt; 500 MB</div>
+          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Swap &gt; 1500 MB</div>
           <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Disk &gt; %85</div>
           <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 CPU load &gt; 1.5× core</div>
           <div className="bg-gray-50 rounded-lg px-3 py-2 sm:col-span-2">🔴 Bir PM2 servisi çökerse</div>
