@@ -10,7 +10,7 @@ import {
   BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall,
 } from 'lucide-react';
 
-import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow } from './LiveAssistAdmin';
+import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive } from './LiveAssistAdmin';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
@@ -628,6 +628,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       </div>
 
       <LiveAssistPanel la={liveAssist} />
+      <LiveAssistArchive la={liveAssist} />
 
       {/* ─── Main Panel: Visitor List + Activity Feed ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

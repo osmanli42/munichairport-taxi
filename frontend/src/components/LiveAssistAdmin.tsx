@@ -9,17 +9,22 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Settings2, Volume2, VolumeX, Send, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { MessageCircle, Settings2, Volume2, VolumeX, Send, X, ChevronDown, ChevronUp, Loader2, ImagePlus, Archive, Search } from 'lucide-react';
+import { imageToDataUrl } from '@/lib/liveAssist';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
-type Kind = 'reaction' | 'price_view' | 'hesitating';
-const KINDS: Kind[] = ['reaction', 'price_view', 'hesitating'];
+type Kind = 'chat' | 'reaction' | 'price_view' | 'hesitating';
+const KINDS: Kind[] = ['chat', 'reaction', 'price_view', 'hesitating'];
+// Chat-Alarme heißen in der DB "chat:<id>" (einer pro Nachricht)
+const kindOf = (k: string): Kind => (k.startsWith('chat') ? 'chat' : (k as Kind));
 
 interface Promo { code: string; type: 'fixed' | 'percent'; value: number; end_date: string }
 interface SessionInfo {
   messages: number;
   auto_shown: boolean;
+  unread?: number;
+  visitor_msgs?: number;
   last: null | {
     id: number; source: 'admin' | 'auto'; template: string | null; promo_code: string | null;
     created_at: string; delivered_at: string | null; seen_at: string | null; action: string | null;
@@ -29,8 +34,8 @@ interface SessionInfo {
 interface Overview {
   enabled: boolean;
   sessions: Record<string, SessionInfo>;
-  kpi: { sent: number; auto_shown: number; seen: number; clicks: number; bookings: number };
-  alerts: { id: number; session_id: string; kind: Kind; detail: string; created_at: string }[];
+  kpi: { sent: number; auto_shown: number; seen: number; clicks: number; bookings: number; chats?: number };
+  alerts: { id: number; session_id: string; kind: string; detail: string; created_at: string }[];
   last_alert_id: number;
   sound: Record<Kind, boolean>;
 }
@@ -45,11 +50,13 @@ export interface LiveAssistState {
   unlockSound: () => void;
   testSound: (kind: Kind) => void;
   save: (s: Record<string, string>) => Promise<string | null>;
-  send: (sessionId: string, template: string, body: string, promo: string) => Promise<string | null>;
+  send: (sessionId: string, template: string, body: string, promo: string, image?: string) => Promise<string | null>;
+  token: string;
 }
 
 // ── Töne (Web Audio, keine Datei nötig) ───────────────────────────────────
 const TONES: Record<Kind, [number, number][]> = {
+  chat: [[784, 0], [988, 0.12], [1319, 0.24]],   // drei Töne — Nachricht im Chat
   reaction: [[880, 0], [1320, 0.16]],           // aufsteigend — "jemand reagiert"
   price_view: [[660, 0]],                       // kurzer, leiser Ton
   hesitating: [[520, 0], [520, 0.22]],          // doppelt — "jetzt eingreifen"
@@ -73,6 +80,7 @@ function playTone(ctx: AudioContext, kind: Kind) {
 }
 
 const ALERT_TITLE: Record<Kind, string> = {
+  chat: '💬 Yeni chat mesajı',
   reaction: '💬 Ziyaretçi mesaja tepki verdi',
   price_view: '👀 Yeni ziyaretçi fiyat gördü',
   hesitating: '⏳ Ziyaretçi kararsız',
@@ -161,13 +169,14 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
       const played = new Set<Kind>();
       const ctx = audioRef.current;
       for (const a of j.alerts) {
-        if (!j.sound[a.kind]) continue;
-        if (ctx && ctx.state === 'running' && !played.has(a.kind)) {
-          played.add(a.kind);
-          playTone(ctx, a.kind);
+        const kind = kindOf(a.kind);
+        if (!j.sound[kind]) continue;
+        if (ctx && ctx.state === 'running' && !played.has(kind)) {
+          played.add(kind);
+          playTone(ctx, kind);
         }
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(ALERT_TITLE[a.kind], { body: a.detail || '', icon: '/favicon.ico', tag: `la-${a.id}` });
+          new Notification(ALERT_TITLE[kind], { body: a.detail || '', icon: '/favicon.ico', tag: `la-${a.id}` });
         }
       }
     } catch { /* nächster Versuch in 5 s */ }
@@ -200,12 +209,12 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, loadOverview]);
 
-  const send = useCallback(async (sessionId: string, template: string, body: string, promo: string): Promise<string | null> => {
+  const send = useCallback(async (sessionId: string, template: string, body: string, promo: string, image?: string): Promise<string | null> => {
     try {
       const r = await fetch(`${API_BASE}/admin/live-assist/messages`, {
         method: 'POST',
         headers: { ...auth, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, template, body, promo_code: promo || undefined }),
+        body: JSON.stringify({ session_id: sessionId, template, body, promo_code: promo || undefined, image }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) return j.error || 'Gönderilemedi';
@@ -217,7 +226,7 @@ export function useLiveAssistAdmin(token: string, sessionIds: string[]): LiveAss
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, loadOverview]);
 
-  return { settings, adminEmailDefault, emailConfigured, promos, overview, soundReady, unlockSound, testSound, save, send };
+  return { settings, adminEmailDefault, emailConfigured, promos, overview, soundReady, unlockSound, testSound, save, send, token };
 }
 
 // ── Einstellungen + KPI ────────────────────────────────────────────────────
@@ -243,6 +252,7 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
 }
 
 const KIND_LABEL: Record<Kind, [string, string]> = {
+  chat: ["Ziyaretçi chat'e yazdı", 'Her yeni mesaj / resim'],
   reaction: ['Ziyaretçi balona tepki verdi', "WhatsApp'a / geri aramaya / rezervasyona tıkladı"],
   price_view: ['Yeni ziyaretçi fiyat gördü', 'Mesaj atma fırsatı'],
   hesitating: ['Fiyat gören ziyaretçi kararsız', 'X dakikadır sitede, rezervasyon yok'],
@@ -290,7 +300,7 @@ export function LiveAssistPanel({ la }: { la: LiveAssistState }) {
         )}
         {kpi && (
           <span className="text-xs text-gray-600">
-            Bugün: <b>{kpi.sent}</b> mesaj · <b>{kpi.seen}</b> görüldü · <b>{kpi.clicks}</b> tıklama ·{' '}
+            Bugün: <b>{kpi.chats ?? 0}</b> chat · <b>{kpi.sent}</b> mesaj · <b>{kpi.seen}</b> görüldü · <b>{kpi.clicks}</b> tıklama ·{' '}
             <b className="text-emerald-700">{kpi.bookings}</b> rezervasyon · 🤖 {kpi.auto_shown} otomatik balon
           </span>
         )}
@@ -489,6 +499,7 @@ function statusBadge(info: SessionInfo | undefined): { text: string; cls: string
   if (!m) return null;
   const auto = m.source === 'auto';
   const prefix = auto ? '🤖 ' : '';
+  if (m.action === 'chat') return { text: `${prefix}💬 chat'e yazdı`, cls: 'bg-green-100 text-green-800 border-green-300' };
   if (m.action === 'whatsapp') return { text: `${prefix}💬 WhatsApp'a tıkladı`, cls: 'bg-green-100 text-green-800 border-green-300' };
   if (m.action === 'callback') return { text: `${prefix}📞 geri arama istedi`, cls: 'bg-green-100 text-green-800 border-green-300' };
   if (m.action === 'book') return { text: `${prefix}🛒 rezervasyona geçti`, cls: 'bg-green-100 text-green-800 border-green-300' };
@@ -499,58 +510,177 @@ function statusBadge(info: SessionInfo | undefined): { text: string; cls: string
   return { text: '📨 gönderildi, bekleniyor', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
 }
 
-export function LiveAssistRow({ la, s }: { la: LiveAssistState; s: RowSession }) {
-  const [open, setOpen] = useState(false);
-  const [tpl, setTpl] = useState<TemplateId>('price');
+// Bild aus dem Chat mit Admin-Token laden (img-Tags können keinen Header senden)
+function AdminImage({ id, token }: { id: number; token: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let revoke: string | null = null;
+    fetch(`${API_BASE}/admin/live-assist/file/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((b) => { if (b) { revoke = URL.createObjectURL(b); setUrl(revoke); } })
+      .catch(() => {});
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [id, token]);
+  if (!url) return <div className="w-40 h-28 rounded-lg bg-gray-200 animate-pulse" />;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="rounded-lg max-h-48 w-auto" />
+    </a>
+  );
+}
+
+interface ThreadMsg {
+  id: number; source: 'admin' | 'auto' | 'visitor'; template: string | null; body: string | null;
+  promo_code: string | null; attachment_id: number | null; created_at: string;
+  delivered_at: string | null; seen_at: string | null; action: string | null;
+}
+
+const fmtTime = (v: string) => new Date(v).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/** Gesprächsverlauf (Live und Archiv). `live` = Besucher ist gerade da → Senden möglich. */
+export function ChatThread({ la, sessionId, live, lang, route, price }: {
+  la: LiveAssistState; sessionId: string; live: boolean;
+  lang: 'de' | 'en' | 'tr'; route: { pickup: string; dropoff: string } | null; price: number | null;
+}) {
+  const [msgs, setMsgs] = useState<ThreadMsg[]>([]);
   const [body, setBody] = useState('');
+  const [tpl, setTpl] = useState<TemplateId | 'custom'>('custom');
   const [promo, setPromo] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState('');
-
-  const enabled = la.settings?.enabled === '1';
-  const info = la.overview?.sessions?.[s.session_id];
-  const price = info?.price_shown?.price ?? null;
-  const lang = visitorLocale(s);
-  const route = routeFrom(s);
-  const ref = s.session_id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
-  const badge = statusBadge(info);
+  const listRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const name = la.settings?.agent_name || 'Osman';
 
-  const pick = (id: TemplateId) => {
-    setTpl(id);
-    setBody(templateText(id, lang, name, route, price));
-    setErr('');
-  };
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/admin/live-assist/thread?session_id=${encodeURIComponent(sessionId)}`, {
+        headers: { Authorization: `Bearer ${la.token}` },
+      });
+      if (r.ok) setMsgs((await r.json()).messages || []);
+    } catch { /* nächster Versuch */ }
+  }, [sessionId, la.token]);
 
-  const openComposer = () => {
-    setOpen(true);
-    setPromo('');
-    pick('price');
-  };
+  useEffect(() => {
+    load();
+    if (!live) return;
+    const iv = setInterval(load, 3000);
+    return () => clearInterval(iv);
+  }, [load, live]);
 
-  const submit = async () => {
+  useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [msgs.length]);
+
+  const submit = async (image?: string) => {
+    if (!body.trim() && !image && !promo) return;
     setSending(true);
-    const e = await la.send(s.session_id, tpl, body.trim(), promo);
+    const e = await la.send(sessionId, tpl, image ? '' : body.trim(), image ? '' : promo, image);
     setSending(false);
     if (e) { setErr(e); return; }
-    setOpen(false);
+    setErr('');
+    if (!image) { setBody(''); setPromo(''); setTpl('custom'); }
+    load();
+  };
+
+  const onFile = async (f?: File) => {
+    if (!f) return;
+    try { await submit(await imageToDataUrl(f)); } catch { setErr('Resim okunamadı'); }
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   const promoText = (p: Promo) => `${p.code} (${p.type === 'percent' ? `−${p.value} %` : `−${fmtEur(p.value)}`})`;
 
   return (
+    <div className="rounded-xl border border-emerald-200 bg-white overflow-hidden">
+      <div ref={listRef} className="max-h-72 overflow-y-auto bg-gray-50 px-3 py-2 space-y-1.5">
+        {msgs.length === 0 && <p className="text-xs text-gray-400 py-3 text-center">Henüz mesaj yok — ilk mesajı sen yaz.</p>}
+        {msgs.map((m) => {
+          if (m.source === 'auto') {
+            return <p key={m.id} className="text-[11px] text-center text-sky-600">🤖 otomatik yardım balonu gösterildi · {fmtTime(m.created_at)}</p>;
+          }
+          const mine = m.source === 'admin';
+          return (
+            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm whitespace-pre-line break-words ${mine ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md'}`}>
+                {m.attachment_id && <AdminImage id={m.attachment_id} token={la.token} />}
+                {m.body}
+                {m.promo_code && <div className={`mt-1 text-xs font-bold ${mine ? 'text-yellow-200' : 'text-amber-700'}`}>🎁 {m.promo_code}{m.action === 'book' ? ' · ✓ müşteri aldı' : ''}</div>}
+                <div className={`text-[10px] mt-0.5 ${mine ? 'text-emerald-100' : 'text-gray-400'}`}>
+                  {fmtTime(m.created_at)}{mine ? (m.seen_at ? ' · ✓✓ görüldü' : m.delivered_at ? ' · ✓ iletildi' : ' · gönderildi') : ''}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {live ? (
+        <div className="border-t p-2 space-y-2">
+          <div className="flex flex-wrap gap-1">
+            {(Object.keys(TEMPLATE_LABEL) as TemplateId[]).map((id) => (
+              <button key={id} type="button"
+                onClick={() => { setTpl(id); setBody(templateText(id, lang, name, route, price)); }}
+                className={`text-[11px] px-2 py-0.5 rounded-full border ${tpl === id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400'}`}>
+                {TEMPLATE_LABEL[id]}
+              </button>
+            ))}
+            <span className="text-[11px] text-gray-400 ml-auto">dil: {lang.toUpperCase()}</span>
+          </div>
+          <div className="flex items-end gap-1.5">
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={sending} title="Resim gönder" className="p-2 text-gray-500 hover:text-emerald-700">
+              <ImagePlus size={18} />
+            </button>
+            <textarea value={body} maxLength={500} rows={2}
+              onChange={(e) => { setBody(e.target.value); setErr(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+              placeholder="Mesaj yaz… (Enter = gönder)"
+              className="flex-1 border rounded-lg px-2.5 py-1.5 text-sm resize-none" />
+            <button type="button" onClick={() => submit()} disabled={sending || (!body.trim() && !promo)}
+              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg">
+              {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Gönder
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <select value={promo} onChange={(e) => setPromo(e.target.value)} className="text-xs border rounded-lg px-2 py-1 bg-white">
+              <option value="">🎁 İndirim ekleme</option>
+              {la.promos.map((p) => <option key={p.code} value={p.code}>{promoText(p)}</option>)}
+            </select>
+            <span className="text-[11px] text-gray-400">
+              {la.promos.length === 0 ? '(şu an geçerli promo kodu yok — Aktionen sekmesinden oluştur)' : 'Müşteri "İndirimi al & rezerve et"e basınca rezervasyona otomatik eklenir'}
+            </span>
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+      ) : (
+        <p className="border-t text-[11px] text-gray-500 px-3 py-2">Ziyaretçi şu an sitede değil — kayıt sadece görüntüleniyor.</p>
+      )}
+    </div>
+  );
+}
+
+export function LiveAssistRow({ la, s }: { la: LiveAssistState; s: RowSession }) {
+  const [open, setOpen] = useState(false);
+  const enabled = la.settings?.enabled === '1';
+  const info = la.overview?.sessions?.[s.session_id];
+  const price = info?.price_shown?.price ?? null;
+  const unread = info?.unread || 0;
+  const ref = s.session_id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+  const badge = statusBadge(info);
+
+  // Ziyaretçi yazınca chat kendiliğinden açılır
+  useEffect(() => { if (unread > 0) setOpen(true); }, [unread]);
+
+  return (
     <div className="mt-2">
       <div className="flex flex-wrap items-center gap-2">
         {enabled && s.is_bot === 0 && (
-          <button
-            type="button"
-            onClick={() => (open ? setOpen(false) : openComposer())}
-            className="flex items-center gap-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg"
-          >
-            <MessageCircle size={12} /> Mesaj
+          <button type="button" onClick={() => setOpen((o) => !o)}
+            className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-white ${unread > 0 ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+            <MessageCircle size={12} /> {unread > 0 ? `${unread} yeni mesaj` : open ? 'Chat\'i kapat' : 'Chat'}
           </button>
         )}
-        <span className="text-[11px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded" title="Müşterinin WhatsApp mesajında (Ref: …) olarak görünür">
+        <span className="text-[11px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded" title="Chat arşivinde bu kodla aranabilir">
           Ref {ref}
         </span>
         {price != null && (
@@ -559,53 +689,91 @@ export function LiveAssistRow({ la, s }: { la: LiveAssistState; s: RowSession })
           </span>
         )}
         {badge && <span className={`text-xs px-2 py-0.5 rounded-full border ${badge.cls}`}>{badge.text}</span>}
-        {info && info.messages > 1 && <span className="text-[11px] text-gray-400">{info.messages} mesaj</span>}
       </div>
-
       {open && (
-        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-600">
-              Ziyaretçinin dili: <b>{lang.toUpperCase()}</b> · balon ≤10 sn içinde açılır
-            </span>
-            <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+        <div className="mt-2">
+          <ChatThread la={la} sessionId={s.session_id} live lang={visitorLocale(s)} route={routeFrom(s)} price={price} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Chat-Archiv: alle gespeicherten Gespräche, durchsuchbar ─────────────────
+
+interface Conversation {
+  session_id: string; started_at: string; last_at: string; agent_msgs: number; visitor_msgs: number;
+  images: number; promos: string | null; last_body: string | null; booking_number: string | null; visitor: string | null;
+}
+
+export function LiveAssistArchive({ la }: { la: LiveAssistState }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [days, setDays] = useState('30');
+  const [rows, setRows] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = new URLSearchParams({ days, q });
+      const r = await fetch(`${API_BASE}/admin/live-assist/conversations?${qs}`, { headers: { Authorization: `Bearer ${la.token}` } });
+      if (r.ok) setRows((await r.json()).conversations || []);
+    } finally { setLoading(false); }
+  }, [days, q, la.token]);
+
+  useEffect(() => { if (open) load(); }, [open, days]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full px-5 py-3 flex items-center gap-2 text-left">
+        <Archive size={16} className="text-gray-500" />
+        <span className="font-semibold text-sm">Chat arşivi</span>
+        <span className="text-xs text-gray-500">— tüm konuşmalar resimleriyle kayıtlı, Ref / metin ile ara</span>
+        <span className="ml-auto">{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+      </button>
+      {open && (
+        <div className="border-t px-5 py-4 grid gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <div className="flex gap-2 mb-3">
+              <div className="flex-1 flex items-center gap-1 border rounded-lg px-2">
+                <Search size={14} className="text-gray-400" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+                  placeholder="Ref (ör. 6757) veya kelime" className="flex-1 py-1.5 text-sm outline-none" />
+              </div>
+              <select value={days} onChange={(e) => setDays(e.target.value)} className="text-sm border rounded-lg px-2">
+                <option value="7">7 gün</option><option value="30">30 gün</option><option value="365">1 yıl</option><option value="3650">Tümü</option>
+              </select>
+              <button type="button" onClick={load} className="text-sm bg-gray-100 hover:bg-gray-200 px-3 rounded-lg">Ara</button>
+            </div>
+            <div className="divide-y border rounded-xl max-h-[420px] overflow-y-auto">
+              {loading && <p className="text-xs text-gray-400 p-3">Yükleniyor…</p>}
+              {!loading && rows.length === 0 && <p className="text-xs text-gray-400 p-3">Kayıt yok.</p>}
+              {rows.map((c) => {
+                const ref = c.session_id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+                return (
+                  <button key={c.session_id} type="button" onClick={() => setSel(c.session_id)}
+                    className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${sel === c.session_id ? 'bg-emerald-50' : ''}`}>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-mono bg-gray-100 px-1 rounded">Ref {ref}</span>
+                      <span className="text-gray-500">{fmtTime(c.last_at)}</span>
+                      {c.booking_number && <span className="text-emerald-700 font-semibold">✅ {c.booking_number}</span>}
+                    </div>
+                    <div className="text-sm text-gray-800 truncate mt-0.5">{c.last_body || (Number(c.images) ? '📷 Resim' : '—')}</div>
+                    <div className="text-[11px] text-gray-500">
+                      {Number(c.visitor_msgs)} müşteri · {Number(c.agent_msgs)} sen{Number(c.images) ? ` · 📷 ${c.images}` : ''}{c.promos ? ` · 🎁 ${c.promos}` : ''}{c.visitor ? ` · ${c.visitor}` : ''}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {(Object.keys(TEMPLATE_LABEL) as TemplateId[]).map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => pick(id)}
-                className={`text-xs px-2.5 py-1 rounded-full border ${tpl === id ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-gray-200 hover:border-emerald-400'}`}
-              >
-                {TEMPLATE_LABEL[id]}
-              </button>
-            ))}
+          <div className="lg:col-span-3">
+            {sel
+              ? <ChatThread key={sel} la={la} sessionId={sel} live={false} lang="de" route={null} price={null} />
+              : <p className="text-sm text-gray-400 pt-8 text-center">Soldan bir konuşma seç.</p>}
           </div>
-          <textarea
-            value={body}
-            maxLength={500}
-            rows={3}
-            onChange={(e) => { setBody(e.target.value); setErr(''); }}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-          />
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <select value={promo} onChange={(e) => setPromo(e.target.value)} className="text-xs border rounded-lg px-2 py-1.5 bg-white">
-              <option value="">🎁 Promo kodu yok</option>
-              {la.promos.map((p) => <option key={p.code} value={p.code}>{promoText(p)}</option>)}
-            </select>
-            {la.promos.length === 0 && <span className="text-[11px] text-gray-400">(şu an geçerli promo kodu yok)</span>}
-            <span className="text-[11px] text-gray-400 ml-auto">{body.length}/500</span>
-            <button
-              type="button"
-              disabled={sending || !body.trim()}
-              onClick={submit}
-              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
-            >
-              {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Gönder
-            </button>
-          </div>
-          {err && <p className="text-xs text-red-600 mt-1.5">{err}</p>}
         </div>
       )}
     </div>

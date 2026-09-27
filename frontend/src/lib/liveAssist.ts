@@ -12,6 +12,7 @@ export interface LiveAssistConfig {
   auto_delay_sec: number;
   wa_prefill_enabled: boolean;
   agent_name: string;
+  agent_online?: boolean;
 }
 
 const OFF: LiveAssistConfig = { enabled: false, auto_enabled: false, auto_delay_sec: 40, wa_prefill_enabled: false, agent_name: '' };
@@ -108,3 +109,35 @@ export function ackLiveAssist(event: string, id?: number | null): Promise<number
 }
 
 export const LIVE_PROMO_KEY = 'mt_live_promo';
+
+// Chat-Status für andere Komponenten (WhatsApp-Button blendet sich aus, solange wir im Chat erreichbar sind)
+export const LA_ONLINE_EVENT = 'la:online';
+export const LA_PROMO_EVENT = 'la:promo';
+
+/**
+ * Bild vor dem Hochladen verkleinern (max. 1600 px, JPEG) — Handyfotos haben sonst 5–10 MB.
+ * GIFs bleiben unverändert (Animation).
+ */
+export function imageToDataUrl(file: File, maxSide = 1600): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { reject(new Error('type')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read'));
+    reader.onload = () => {
+      const src = String(reader.result);
+      if (file.type === 'image/gif') { resolve(src); return; }
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode'));
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  });
+}

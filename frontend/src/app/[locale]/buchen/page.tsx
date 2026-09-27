@@ -14,7 +14,7 @@ import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
 import Countdown from '@/components/discount/Countdown';
 import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
-import { LIVE_PROMO_KEY } from '@/lib/liveAssist';
+import { LIVE_PROMO_KEY, LA_PROMO_EVENT } from '@/lib/liveAssist';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const caveat = Caveat({ subsets: ['latin'], weight: ['600'], display: 'swap' });
@@ -367,6 +367,13 @@ function BuchenContent() {
   // Canlı Asistan: Code aus der Live-Nachricht einmal automatisch einlösen — nur wenn er
   // mehr bringt als ein bereits greifender Auto-Rabatt (der Server nimmt ohnehin den größeren).
   const livePromoTried = useRef(false);
+  const [livePromoTick, setLivePromoTick] = useState(0);
+  useEffect(() => {
+    // Rabatt im Chat auf dieser Seite angenommen → erneut versuchen
+    const on = () => { livePromoTried.current = false; setLivePromoTick(n => n + 1); };
+    window.addEventListener(LA_PROMO_EVENT, on);
+    return () => window.removeEventListener(LA_PROMO_EVENT, on);
+  }, []);
   useEffect(() => {
     if (livePromoTried.current || appliedPromo || !price || price <= 0 || !autoDiscountReady) return;
     let code: string | null = null;
@@ -387,7 +394,7 @@ function BuchenContent() {
         setAppliedPromo({ code: data.code, discountAmount: data.discount_amount, promoBase: price });
       })
       .catch(() => {});
-  }, [price, autoDiscountReady, appliedPromo, autoDiscount, tripType, roundtripDiscount, locale]);
+  }, [price, autoDiscountReady, appliedPromo, autoDiscount, tripType, roundtripDiscount, locale, livePromoTick]);
 
   const t: Record<string, Record<string, string>> = {
     de: { title: 'Ihre Angaben', summary: 'Buchungsübersicht', name: 'Name *', phone: 'Handynummer *', email: 'E-Mail *', flight: 'Flugnummer (optional)', flightRequired: 'Flugnummer *', flightChecking: 'Flug wird geprüft...', flightConfirmed: 'Flug bestätigt', flightNotFound: 'Flug nicht gefunden – bitte Flugnummer prüfen', flightWrongAirport: 'Dieser Flug landet laut Daten nicht in München (MUC) – bitte Flugnummer prüfen', flightArrival: 'Ankunft', luggage: 'Gepäckstücke', notes: 'Anmerkungen', payment: 'Zahlungsmethode', cash: 'Barzahlung', card: 'Kreditkarte', cardHolder: 'Karteninhaber', cardNumber: 'Kartennummer', cardExpiry: 'Gültig bis', cardCvv: 'CVV', oneway: 'Einfache Fahrt', roundtrip: 'Hin & Rückfahrt', returnDate: 'Rückfahrtdatum', returnTime: 'Rückfahrtzeit', submit: 'Weiter zur Überprüfung', submitting: 'Wird gebucht...', success_title: 'Buchung erfolgreich!', success_msg: 'Ihre Buchung wurde bestätigt. Sie erhalten in Kürze eine Bestätigungs-E-Mail an', new_booking: 'Neue Buchung', back: 'Zurück zur Fahrzeugauswahl', err_name: 'Name erforderlich', err_phone: 'Telefon erforderlich', err_email: 'Gültige E-Mail erforderlich', err_card: 'Kartendetails erforderlich', err_submit: 'Fehler beim Senden. Bitte versuchen Sie es erneut.', review_title: 'Buchung überprüfen', review_subtitle: 'Bitte überprüfen Sie Ihre Angaben, bevor Sie die Buchung bestätigen.', review_route: 'Strecke', review_datetime: 'Datum & Uhrzeit', review_vehicle: 'Fahrzeug', review_contact: 'Kontaktdaten', review_payment_label: 'Zahlung', review_confirm: 'Jetzt verbindlich buchen', review_edit: 'Angaben bearbeiten', review_persons: 'Personen', review_luggage_label: 'Gepäck', review_notes_label: 'Anmerkungen', review_flight_label: 'Flugnummer' },

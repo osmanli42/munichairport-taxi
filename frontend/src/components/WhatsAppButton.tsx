@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { CONTACT_INFO, buildWhatsAppLink } from '@/lib/utils';
-import { useLiveAssistConfig, isPricePage, isBookingPage, readTripContext } from '@/lib/liveAssist';
+import { useLiveAssistConfig, isPricePage, isBookingPage, readTripContext, LA_ONLINE_EVENT } from '@/lib/liveAssist';
 
 const DISMISSED_KEY = 'mt_wa_bubble_dismissed';
 const SHOW_DELAY = 30_000;
@@ -18,6 +18,13 @@ export default function WhatsAppButton() {
   const liveAssist = useLiveAssistConfig();
   // Auf Preis-/Buchungsseite übernimmt der Canlı Asistan die Sprechblase — nicht doppelt.
   const onFunnel = isPricePage(pathname) || isBookingPage(pathname);
+  // Solange wir im Live-Chat erreichbar sind, ersetzt der Chat-Button diesen Button.
+  const [chatOnline, setChatOnline] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setChatOnline(!!(e as CustomEvent).detail);
+    window.addEventListener(LA_ONLINE_EVENT, on);
+    return () => window.removeEventListener(LA_ONLINE_EVENT, on);
+  }, []);
 
   useEffect(() => {
     if (onFunnel) { setBubble(false); return; }
@@ -38,6 +45,8 @@ export default function WhatsAppButton() {
     setBubble(false);
     try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch { /* ignore */ }
   }
+
+  if (chatOnline) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">

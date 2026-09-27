@@ -18,8 +18,8 @@ const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 export const ADMIN_EMAIL_DEFAULT = process.env.ADMIN_EMAIL || FROM_EMAIL;
 const SITE_URL = (process.env.SITE_URL || 'https://flughafen-muenchen.taxi').replace(/\/$/, '');
 
-export type AlertKind = 'reaction' | 'price_view' | 'hesitating';
-export const ALERT_KINDS: AlertKind[] = ['reaction', 'price_view', 'hesitating'];
+export type AlertKind = 'chat' | 'reaction' | 'price_view' | 'hesitating';
+export const ALERT_KINDS: AlertKind[] = ['chat', 'reaction', 'price_view', 'hesitating'];
 
 // Alle Schalter als Strings — gleiche Konvention wie die `settings`-Tabelle ('0'/'1').
 export const SETTING_DEFAULTS: Record<string, string> = {
@@ -31,6 +31,8 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   hesitate_min: '2',
   email_to: '',            // leer = ADMIN_EMAIL
   email_max_per_hour: '10',
+  notify_chat_sound: '1',
+  notify_chat_email: '1',
   notify_reaction_sound: '1',
   notify_reaction_email: '1',
   notify_price_view_sound: '1',
@@ -92,7 +94,36 @@ export async function ensureLiveAssistTables(): Promise<void> {
       INDEX idx_created (created_at)
     ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  // Bilder im Chat (beide Richtungen). In der DB statt auf der Platte: überlebt Deploys,
+  // und der Chatverlauf bleibt samt Anhängen als Nachweis vollständig.
+  await run(`
+    CREATE TABLE IF NOT EXISTS live_chat_files (
+      id INT NOT NULL AUTO_INCREMENT,
+      session_id VARCHAR(64) NOT NULL,
+      mime VARCHAR(50) NOT NULL,
+      bytes INT NOT NULL,
+      data MEDIUMBLOB NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      INDEX idx_session (session_id)
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  try { await run(`ALTER TABLE live_messages ADD COLUMN attachment_id INT DEFAULT NULL`); } catch { /* existiert */ }
   tablesReady = true;
+}
+
+export const CHAT_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+export const CHAT_MAX_BYTES = 4 * 1024 * 1024;
+
+/** data:image/...;base64,... speichern → Datei-ID oder Fehlertext */
+export async function saveChatImage(sessionId: string, dataUrl: unknown): Promise<number | string> {
+  const m = /^data:([a-z/+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m || !CHAT_MIME.has(m[1])) return 'Nur Bilder (JPG, PNG, WebP, GIF)';
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length || buf.length > CHAT_MAX_BYTES) return 'Bild zu groß (max. 4 MB)';
+  await ensureLiveAssistTables();
+  const r = await run(`INSERT INTO live_chat_files (session_id, mime, bytes, data) VALUES (?, ?, ?, ?)`, [sessionId, m[1], buf.length, buf]);
+  return r.insertId;
 }
 
 // Öffentliche Endpunkte (config/inbox) lesen die Einstellungen bei jedem Aufruf —
@@ -195,6 +226,7 @@ export function describeVisit(v: {
 }
 
 const KIND_SUBJECT: Record<AlertKind, string> = {
+  chat: '💬 Ziyaretçi chat\'e yazdı',
   reaction: '💬 Ziyaretçi mesajına tepki verdi',
   price_view: '👀 Yeni ziyaretçi fiyat gördü',
   hesitating: '⏳ Ziyaretçi fiyat sayfasında kararsız',
@@ -210,11 +242,12 @@ const ACTION_LABEL: Record<string, string> = {
  * Alarm anlegen (einmal pro Besuch und Art) und ggf. E-Mail senden.
  * Gibt die neue ID zurück oder null, wenn es den Alarm schon gab.
  */
-export async function createAlert(sessionId: string, kind: AlertKind, detail: string, opts: { skipEmail?: boolean } = {}): Promise<number | null> {
+export async function createAlert(sessionId: string, kind: AlertKind, detail: string, opts: { skipEmail?: boolean; key?: string } = {}): Promise<number | null> {
   await ensureLiveAssistTables();
+  // Chat-Alarme gibt es pro Nachricht: der Schlüssel "chat:<id>" umgeht das UNIQUE(session, kind).
   const result = await run(
     `INSERT IGNORE INTO live_assist_alerts (session_id, kind, detail) VALUES (?, ?, ?)`,
-    [sessionId, kind, detail.slice(0, 500)]
+    [sessionId, opts.key || kind, detail.slice(0, 500)]
   );
   if (!result.affectedRows) return null;
   const id = result.insertId;
@@ -265,3 +298,9 @@ async function sendAlertEmail(id: number, kind: AlertKind, detail: string, s: Re
 export function reactionDetail(action: string, visit: string): string {
   return [ACTION_LABEL[action] || action, visit].filter(Boolean).join(' · ');
 }
+
+// ── Anwesenheit: Admin "online", solange der Live-Tab offen ist ──────────────
+// Nur im Speicher — ein Prozess, und nach einem Neustart meldet sich der Tab in 5 s wieder.
+let adminSeenAt = 0;
+export function markAdminOnline(): void { adminSeenAt = Date.now(); }
+export function isAdminOnline(): boolean { return Date.now() - adminSeenAt < 30_000; }

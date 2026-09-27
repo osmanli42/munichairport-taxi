@@ -7,6 +7,7 @@ import { berlinMidnightUtcSql } from '../utils/berlinTime';
 import {
   ensureLiveAssistTables, getLiveAssistSettings, saveLiveAssistSettings, validCodePromos,
   createAlert, describeVisit, reactionDetail, ADMIN_EMAIL_DEFAULT, ALERT_KINDS,
+  markAdminOnline, isAdminOnline, saveChatImage,
 } from '../services/liveAssist';
 
 /**
@@ -59,6 +60,7 @@ router.get('/live-assist/config', async (_req: Request, res: Response) => {
       auto_delay_sec: parseInt(s.auto_delay_sec, 10) || 40,
       wa_prefill_enabled: s.wa_prefill_enabled === '1',
       agent_name: s.agent_name,
+      agent_online: s.enabled === '1' && isAdminOnline(),
     });
   } catch (err: any) {
     console.error('live-assist config error:', err.message);
@@ -66,26 +68,29 @@ router.get('/live-assist/config', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/live-assist/inbox?session_id= — neue Admin-Nachrichten abholen
+// GET /api/live-assist/inbox?session_id=&after_id= — Chatverlauf ab after_id
+// (Admin- und eigene Nachrichten; die automatische Blase ist kein Chat-Eintrag).
 router.get('/live-assist/inbox', async (req: Request, res: Response) => {
   try {
-    if (limited(req, 'inbox', 120)) { res.status(429).json({ messages: [] }); return; }
+    if (limited(req, 'inbox', 180)) { res.status(429).json({ messages: [] }); return; }
     const sessionId = validSession(req.query.session_id);
     if (!sessionId) { res.status(400).json({ messages: [] }); return; }
     const s = await getLiveAssistSettings();
     if (s.enabled !== '1') { res.json({ enabled: false, messages: [] }); return; }
+    const afterId = Math.max(0, parseInt(String(req.query.after_id ?? '0'), 10) || 0);
 
     const rows = await query<any>(
-      `SELECT id, template, body, promo_code FROM live_messages
-        WHERE session_id = ? AND source = 'admin' AND delivered_at IS NULL
-          AND created_at >= NOW() - INTERVAL 30 MINUTE
-        ORDER BY id`,
-      [sessionId]
+      `SELECT id, source, template, body, promo_code, attachment_id, created_at FROM live_messages
+        WHERE session_id = ? AND source IN ('admin', 'visitor') AND id > ?
+          AND created_at >= NOW() - INTERVAL 6 HOUR
+        ORDER BY id LIMIT 100`,
+      [sessionId, afterId]
     );
-    if (rows.length) {
+    const undelivered = rows.filter((r) => r.source === 'admin').map((r) => r.id);
+    if (undelivered.length) {
       await run(
-        `UPDATE live_messages SET delivered_at = NOW() WHERE id IN (${rows.map(() => '?').join(',')})`,
-        rows.map((r) => r.id)
+        `UPDATE live_messages SET delivered_at = COALESCE(delivered_at, NOW()) WHERE id IN (${undelivered.map(() => '?').join(',')})`,
+        undelivered
       );
     }
     const messages = [];
@@ -96,12 +101,49 @@ router.get('/live-assist/inbox', async (req: Request, res: Response) => {
         const [p] = await validCodePromos(r.promo_code);
         if (p) promo = { code: p.code, type: p.type, value: Number(p.value) };
       }
-      messages.push({ id: r.id, template: r.template, body: r.body, promo });
+      messages.push({ id: r.id, from: r.source === 'visitor' ? 'visitor' : 'agent', body: r.body, promo, attachment_id: r.attachment_id, created_at: r.created_at });
     }
-    res.json({ enabled: true, agent_name: s.agent_name, messages });
+    res.json({ enabled: true, agent_name: s.agent_name, agent_online: isAdminOnline(), messages });
   } catch (err: any) {
     console.error('live-assist inbox error:', err.message);
     res.status(500).json({ messages: [] });
+  }
+});
+
+// POST /api/live-assist/reply — { session_id, body } — Besucher schreibt im Chat
+router.post('/live-assist/reply', async (req: Request, res: Response) => {
+  try {
+    if (limited(req, 'reply', 20)) { res.status(429).json({ ok: false }); return; }
+    const sessionId = validSession(req.body?.session_id);
+    const body = String(req.body?.body || '').trim().slice(0, 1000);
+    if (!sessionId || (!body && !req.body?.image)) { res.status(400).json({ ok: false }); return; }
+    const s = await getLiveAssistSettings();
+    if (s.enabled !== '1') { res.status(409).json({ ok: false }); return; }
+    await ensureLiveAssistTables();
+    let attachmentId: number | null = null;
+    if (req.body?.image) {
+      const saved = await saveChatImage(sessionId, req.body.image);
+      if (typeof saved === 'string') { res.status(400).json({ ok: false, error: saved }); return; }
+      attachmentId = saved;
+    }
+    const r = await run(
+      `INSERT INTO live_messages (session_id, source, template, body, attachment_id, delivered_at) VALUES (?, 'visitor', 'chat', ?, ?, NOW())`,
+      [sessionId, body, attachmentId]
+    );
+    res.json({ ok: true, id: r.insertId });
+
+    // Antwort auf Admin-Nachricht / Auto-Blase als Reaktion vermerken (Status im Live-Tab)
+    await run(
+      `UPDATE live_messages SET action = 'chat', action_at = NOW(), seen_at = COALESCE(seen_at, NOW())
+        WHERE session_id = ? AND source IN ('admin', 'auto') AND (action IS NULL OR action = 'dismiss')`,
+      [sessionId]
+    );
+    const visit = await visitSummary(sessionId);
+    createAlert(sessionId, 'chat', `${body ? `"${body.slice(0, 160)}"` : '📷 Bild'} · ${visit}`, { key: `chat:${r.insertId}` })
+      .catch((err) => console.error('[live-assist] chat alert failed:', err.message));
+  } catch (err: any) {
+    console.error('live-assist reply error:', err.message);
+    if (!res.headersSent) res.status(500).json({ ok: false });
   }
 });
 
@@ -166,6 +208,24 @@ router.post('/live-assist/ack', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/live-assist/file/:id?session_id= — Bild aus dem eigenen Chat
+router.get('/live-assist/file/:id', async (req: Request, res: Response) => {
+  try {
+    const sessionId = validSession(req.query.session_id);
+    const id = parseInt(req.params.id, 10);
+    if (!sessionId || !Number.isFinite(id)) { res.status(400).end(); return; }
+    await ensureLiveAssistTables();
+    const [f] = await query<any>(`SELECT mime, data FROM live_chat_files WHERE id = ? AND session_id = ?`, [id, sessionId]);
+    if (!f) { res.status(404).end(); return; }
+    res.setHeader('Content-Type', f.mime);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(f.data);
+  } catch {
+    res.status(500).end();
+  }
+});
+
 // ── Admin ─────────────────────────────────────────────────────────────────
 
 router.get('/admin/live-assist/settings', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
@@ -209,7 +269,7 @@ router.post('/admin/live-assist/messages', authenticateAdmin, async (req: AuthRe
     const body = String(req.body?.body || '').trim().slice(0, 500);
     const template = String(req.body?.template || 'custom').slice(0, 40);
     const promoCode = String(req.body?.promo_code || '').trim() || null;
-    if (!sessionId || !body) { res.status(400).json({ error: 'session_id ve mesaj gerekli' }); return; }
+    if (!sessionId || (!body && !req.body?.image && !promoCode)) { res.status(400).json({ error: 'session_id ve mesaj gerekli' }); return; }
 
     const [session] = await query<any>(
       `SELECT session_id FROM visitor_sessions WHERE session_id = ? AND last_seen >= NOW() - INTERVAL 2 MINUTE`,
@@ -222,9 +282,16 @@ router.post('/admin/live-assist/messages', authenticateAdmin, async (req: AuthRe
       if (!promo) { res.status(400).json({ error: 'Bu kod şu an geçerli değil' }); return; }
     }
 
+    let attachmentId: number | null = null;
+    if (req.body?.image) {
+      const saved = await saveChatImage(sessionId, req.body.image);
+      if (typeof saved === 'string') { res.status(400).json({ error: saved }); return; }
+      attachmentId = saved;
+    }
+    markAdminOnline();
     const r = await run(
-      `INSERT INTO live_messages (session_id, source, template, body, promo_code) VALUES (?, 'admin', ?, ?, ?)`,
-      [sessionId, template, body, promoCode]
+      `INSERT INTO live_messages (session_id, source, template, body, promo_code, attachment_id) VALUES (?, 'admin', ?, ?, ?, ?)`,
+      [sessionId, template, body, promoCode, attachmentId]
     );
     res.json({ ok: true, id: r.insertId });
   } catch (err: any) {
@@ -233,10 +300,84 @@ router.post('/admin/live-assist/messages', authenticateAdmin, async (req: AuthRe
   }
 });
 
+// GET /api/admin/live-assist/thread?session_id= — ganzer Chat, markiert Besucher-Nachrichten als gelesen
+router.get('/admin/live-assist/thread', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureLiveAssistTables();
+    markAdminOnline();
+    const sessionId = validSession(req.query.session_id);
+    if (!sessionId) { res.status(400).json({ messages: [] }); return; }
+    const rows = await query<any>(
+      `SELECT id, source, template, body, promo_code, attachment_id, created_at, delivered_at, seen_at, action
+         FROM live_messages WHERE session_id = ? ORDER BY id LIMIT 500`,
+      [sessionId]
+    );
+    await run(
+      `UPDATE live_messages SET seen_at = NOW() WHERE session_id = ? AND source = 'visitor' AND seen_at IS NULL`,
+      [sessionId]
+    );
+    res.json({ messages: rows });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// GET /api/admin/live-assist/file/:id — Bild für den Admin (per fetch mit Token)
+router.get('/admin/live-assist/file/:id', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const [f] = await query<any>(`SELECT mime, data FROM live_chat_files WHERE id = ?`, [id]);
+    if (!f) { res.status(404).end(); return; }
+    res.setHeader('Content-Type', f.mime);
+    res.send(f.data);
+  } catch {
+    res.status(500).end();
+  }
+});
+
+// GET /api/admin/live-assist/conversations?q=&days= — Chat-Archiv (alle Gespräche mit Besucher-Nachricht
+// oder Admin-Nachricht), damit man bei Streitfällen den Verlauf wiederfindet.
+router.get('/admin/live-assist/conversations', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureLiveAssistTables();
+    const days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 1), 3650);
+    const q = String(req.query.q || '').trim().slice(0, 80);
+    const params: any[] = [days];
+    let filter = '';
+    if (q) {
+      // Ref-Code (erste 4 Zeichen der Session) oder Text
+      filter = ` AND (m.session_id LIKE ? OR m.session_id IN (SELECT session_id FROM live_messages WHERE body LIKE ?))`;
+      params.push(`${q.toLowerCase()}%`, `%${q}%`);
+    }
+    const rows = await query<any>(
+      `SELECT m.session_id,
+              MIN(m.created_at) AS started_at, MAX(m.created_at) AS last_at,
+              SUM(m.source = 'admin') AS agent_msgs, SUM(m.source = 'visitor') AS visitor_msgs,
+              SUM(m.attachment_id IS NOT NULL) AS images,
+              GROUP_CONCAT(DISTINCT m.promo_code) AS promos,
+              (SELECT body FROM live_messages x WHERE x.session_id = m.session_id AND x.body IS NOT NULL AND x.body <> ''
+                 ORDER BY x.id DESC LIMIT 1) AS last_body,
+              (SELECT b.booking_number FROM bookings b WHERE b.session_id = m.session_id ORDER BY b.id DESC LIMIT 1) AS booking_number,
+              (SELECT CONCAT_WS(' · ', s.city, s.ua_device) FROM visitor_sessions s WHERE s.session_id = m.session_id) AS visitor
+         FROM live_messages m
+        WHERE m.source IN ('admin', 'visitor') AND m.created_at >= NOW() - INTERVAL ? DAY${filter}
+        GROUP BY m.session_id
+        ORDER BY last_at DESC
+        LIMIT 200`,
+      params
+    );
+    res.json({ conversations: rows });
+  } catch (err: any) {
+    console.error('live-assist conversations error:', err.message);
+    res.status(500).json({ error: 'failed', conversations: [] });
+  }
+});
+
 // GET /api/admin/live-assist/overview?session_ids=a,b&since_alert_id=N
 router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureLiveAssistTables();
+    markAdminOnline(); // Live-Tab offen = im Chat erreichbar
     const s = await getLiveAssistSettings();
     const ids = String(req.query.session_ids || '')
       .split(',').map((v) => validSession(v)).filter((v): v is string => !!v).slice(0, 100);
@@ -253,7 +394,12 @@ router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthReq
         ids
       );
       for (const m of msgs) {
-        const cur = sessions[m.session_id] || (sessions[m.session_id] = { messages: 0, auto_shown: false, last: null });
+        const cur = sessions[m.session_id] || (sessions[m.session_id] = { messages: 0, auto_shown: false, last: null, unread: 0, visitor_msgs: 0 });
+        if (m.source === 'visitor') {
+          cur.visitor_msgs = (cur.visitor_msgs || 0) + 1;
+          if (!m.seen_at) cur.unread = (cur.unread || 0) + 1;
+          continue;
+        }
         // Admin-Nachricht hat Vorrang vor der automatischen Blase — deren Status zählt.
         if (m.source === 'auto') {
           cur.auto_shown = true;
@@ -282,7 +428,8 @@ router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthReq
          SUM(source = 'admin') AS sent,
          SUM(source = 'auto') AS auto_shown,
          SUM(source = 'admin' AND seen_at IS NOT NULL) AS seen,
-         SUM(action IN ('whatsapp', 'callback', 'book')) AS clicks
+         SUM(action IN ('whatsapp', 'callback', 'book', 'chat')) AS clicks,
+         COUNT(DISTINCT CASE WHEN source = 'visitor' THEN session_id END) AS chats
        FROM live_messages WHERE created_at >= ?`,
       [since]
     );
@@ -313,10 +460,12 @@ router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthReq
         auto_shown: Number(kpi?.auto_shown || 0),
         seen: Number(kpi?.seen || 0),
         clicks: Number(kpi?.clicks || 0),
+        chats: Number(kpi?.chats || 0),
         bookings: Number(booked?.n || 0),
       },
       alerts,
       last_alert_id: lastAlertId,
+      online: s.enabled === '1',
       sound: Object.fromEntries(ALERT_KINDS.map((k) => [k, s[`notify_${k}_sound`] === '1'])),
     });
   } catch (err: any) {
