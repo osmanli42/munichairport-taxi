@@ -198,13 +198,14 @@ export default function SystemTab({ token }: { token: string }) {
 
   const ramC = statusColor(stats.ram.pct);
   const swapUsedMB = stats.swap.used / 1024 / 1024;
-  const swapC = swapUsedMB >= 500 ? statusColor(100) : swapUsedMB >= 100 ? statusColor(75) : statusColor(0);
+  // Swap: yüzdeye göre — %75+ kırmızı, %50+ sarı (sabit MB eşiği 2 GB swap'ta erken alarm veriyordu)
+  const swapC = statusColor(stats.swap.pct, 75, 50);
   const diskC = statusColor(stats.disk.pct);
   const cpuC = statusColor(stats.cpu.load1_pct, 150, 100);
 
   const overallWarnings: string[] = [];
   if (stats.ram.pct >= 85) overallWarnings.push(`RAM kritik: %${stats.ram.pct}`);
-  if (swapUsedMB >= 500) overallWarnings.push(`Swap çok kullanılıyor: ${Math.round(swapUsedMB)} MB`);
+  if (stats.swap.pct >= 75) overallWarnings.push(`Swap çok kullanılıyor: %${stats.swap.pct} (${Math.round(swapUsedMB)} MB)`);
   if (stats.disk.pct >= 85) overallWarnings.push(`Disk doluyor: %${stats.disk.pct}`);
   if (stats.cpu.load1_pct >= 150) overallWarnings.push(`CPU yükü yüksek: ${stats.cpu.load1.toFixed(2)}`);
   const offlinePm2 = stats.pm2.filter((p) => p.status !== 'online');
@@ -354,7 +355,7 @@ export default function SystemTab({ token }: { token: string }) {
           <ProgressBar pct={stats.swap.pct} color={swapC.bar} />
           <div className="text-sm text-gray-600 mt-2">
             {fmtBytes(stats.swap.used)} / {fmtGB(stats.swap.total)}
-            {swapUsedMB > 100 && <span className="ml-2 text-yellow-600">⚠ RAM dolup swap kullanılıyor</span>}
+            {stats.swap.pct >= 50 && <span className="ml-2 text-yellow-600">⚠ RAM dolup swap kullanılıyor</span>}
           </div>
         </div>
 

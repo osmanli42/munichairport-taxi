@@ -106,7 +106,7 @@ router.get('/admin/system-stats', authenticateAdmin, async (req: AuthRequest, re
 // ---------- Alert thresholds + email ----------
 const THRESHOLDS = {
   ram_pct: 85,
-  swap_used_mb: 500,
+  swap_pct: 75,
   disk_pct: 85,
   load1_pct: 150, // load > 1.5x cores
   pm2_offline: true,
@@ -224,7 +224,7 @@ Bu durum sürerse Standard 2 tarifine yükseltmeyi değerlendir (4 GB RAM, +51�
 
   // Swap
   const swapUsedMB = s.swap.used / 1024 / 1024;
-  if (swapUsedMB >= THRESHOLDS.swap_used_mb && shouldFire('swap')) {
+  if (s.swap.pct >= THRESHOLDS.swap_pct && shouldFire('swap')) {
     sendAlert(
       `Swap kullanımı yüksek: ${fmtMB(s.swap.used)}`,
       `Swap: ${fmtMB(s.swap.used)} / ${fmtGB(s.swap.total)} kullanılıyor.
