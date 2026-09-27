@@ -386,7 +386,13 @@ router.post('/admin/live-assist/suggest', authenticateAdmin, async (req: AuthReq
     res.json({ text: text.slice(0, 500) });
   } catch (err: any) {
     console.error('live-assist suggest error:', err.message);
-    res.status(502).json({ error: err.message === 'refusal' ? 'Yapay zekâ bu mesaja taslak üretmedi' : 'Taslak oluşturulamadı' });
+    const msg = String(err.message || '');
+    res.status(502).json({
+      error: msg === 'refusal' ? 'Yapay zekâ bu mesaja taslak üretmedi'
+        : /credit balance/i.test(msg) ? 'Claude hesabında kredi bitmiş — console.anthropic.com → Plans & Billing'
+        : /authentication|api[_ ]key/i.test(msg) ? 'Claude API anahtarı geçersiz'
+        : 'Taslak oluşturulamadı',
+    });
   }
 });
 
