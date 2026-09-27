@@ -332,7 +332,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     if (!voiceRef.current || !fresh.length) return;
     if (fresh.length > 1) { speakTr(`${fresh.length} yeni ziyaretçi`); return; }
     const s = fresh[0];
-    const src = sourceLabel(s).label.replace(/[^\p{L}\p{N} ]/gu, '').trim();
+    const src = sourceLabel(s).label.replace(/[^A-Za-z0-9À-ɏğüşöçıİĞÜŞÖÇ ]/g, '').trim();
     speakTr(['Yeni ziyaretçi', s.city ? `${s.city}'den` : '', src].filter(Boolean).join(', '));
   }, [live]);
 
