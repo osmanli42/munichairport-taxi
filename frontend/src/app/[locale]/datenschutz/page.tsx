@@ -86,6 +86,18 @@ const sections = [
         ),
       },
       {
+        subtitle: 'Live-Chat',
+        content: (email: string) => (
+          <div className="space-y-2">
+            <p>Auf unserer Website können Sie mit uns über einen Live-Chat Kontakt aufnehmen. Dabei verarbeiten wir die Nachrichten und Bilder, die Sie im Chat senden, sowie die Fahrtdaten Ihrer Suche (Abhol- und Zieladresse, Datum, Uhrzeit, Personenzahl, angezeigter Preis), damit wir Ihre Anfrage ohne Rückfragen beantworten können. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Anbahnung und Durchführung eines Beförderungsvertrags) sowie Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse an einer schnellen Beantwortung von Kundenanfragen).</p>
+            <p>Zur Formulierung von Antwortentwürfen kann der Chatverlauf (ohne Bilder) an den KI-Dienst Anthropic, PBC, 548 Market Street, San Francisco, CA 94104, USA, übermittelt werden. Die Antworten werden stets von einem Mitarbeiter geprüft und selbst versendet; es findet keine automatisierte Entscheidung statt. Die Übermittlung in die USA erfolgt auf Grundlage der EU-Standardvertragsklauseln. Bitte senden Sie im Chat keine besonders sensiblen Daten (z. B. Zahlungs- oder Gesundheitsdaten).</p>
+            <p><strong>Speicherdauer:</strong> Chatnachrichten und im Chat gesendete Bilder werden zur Nachvollziehbarkeit von Absprachen gespeichert und nach 2 Jahren automatisch gelöscht. Auf Wunsch löschen wir Ihren Chatverlauf auch früher, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen – schreiben Sie uns an{' '}
+              <a href={`mailto:${email}`} className="underline hover:opacity-80" style={{ color: '#c9a84c' }}>{email}</a>.
+            </p>
+          </div>
+        ),
+      },
+      {
         subtitle: 'Google Maps',
         content: (email: string) => (
           <p>Diese Seite nutzt den Kartendienst Google Maps. Anbieter ist die Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland. Mit der Nutzung von Google Maps können Informationen über Ihre Nutzung dieser Website einschließlich Ihrer IP-Adresse an Google in den USA übertragen werden.</p>
@@ -133,7 +145,7 @@ export default function DatenschutzPage() {
             Datenschutzerklärung
           </h1>
           <p className="text-sm" style={{ color: '#8a9bb0' }}>
-            Flughafen-München.TAXI &nbsp;·&nbsp; Stand: April 2026
+            Flughafen-München.TAXI &nbsp;·&nbsp; Stand: September 2026
           </p>
         </div>
 

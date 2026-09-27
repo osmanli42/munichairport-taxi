@@ -5,7 +5,7 @@
  * einmal pro Besuch und Art (UNIQUE in live_assist_alerts); ob er im Live-Tab piept
  * und/oder per E-Mail rausgeht, entscheiden die Schalter in den Einstellungen.
  */
-import { query } from '../db';
+import { query, run } from '../db';
 import { getLiveAssistSettings, createAlert, describeVisit, ensureLiveAssistTables } from './liveAssist';
 
 const TICK_MS = 20_000;
@@ -63,7 +63,24 @@ async function tick(): Promise<void> {
   }
 }
 
+// Datenschutz: Chatnachrichten und Bilder nach 2 Jahren löschen (siehe /datenschutz → Live-Chat)
+async function purgeOldChats(): Promise<void> {
+  try {
+    await ensureLiveAssistTables();
+    const f = await run(`DELETE FROM live_chat_files WHERE created_at < NOW() - INTERVAL 2 YEAR`);
+    const m = await run(`DELETE FROM live_messages WHERE created_at < NOW() - INTERVAL 2 YEAR`);
+    const a = await run(`DELETE FROM live_assist_alerts WHERE created_at < NOW() - INTERVAL 2 YEAR`);
+    if (f.affectedRows || m.affectedRows || a.affectedRows) {
+      console.log(`[live-assist] Aufbewahrung: ${m.affectedRows} Nachrichten, ${f.affectedRows} Bilder, ${a.affectedRows} Alarme gelöscht (> 2 Jahre)`);
+    }
+  } catch (err: any) {
+    console.error('[live-assist] purge failed:', err.message);
+  }
+}
+
 export function startLiveAssistAlertJob(): void {
   setInterval(tick, TICK_MS);
+  setTimeout(purgeOldChats, 60_000);
+  setInterval(purgeOldChats, 24 * 60 * 60 * 1000);
   console.log('[live-assist] Alarm-Job gestartet — alle 20 s');
 }
