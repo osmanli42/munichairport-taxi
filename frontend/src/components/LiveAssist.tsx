@@ -253,7 +253,7 @@ export default function LiveAssist() {
       <button
         type="button"
         onClick={() => { setOpen(true); setAutoMode(false); setUnread(0); }}
-        className="fixed z-[60] bottom-6 right-6 flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white pl-4 pr-5 h-14 rounded-full shadow-xl"
+        className="fixed z-[60] bottom-[100px] right-4 md:bottom-6 md:right-6 flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white pl-4 pr-5 h-14 rounded-full shadow-xl"
         aria-label={t.chat}
       >
         <span className="relative">
@@ -270,7 +270,7 @@ export default function LiveAssist() {
     <div
       role="dialog"
       aria-label={agent}
-      className="fixed z-[60] left-3 right-3 bottom-[96px] sm:left-auto sm:right-6 sm:bottom-6 sm:w-[370px]"
+      className="fixed z-[60] left-3 right-3 bottom-[100px] md:left-auto md:right-6 md:bottom-6 md:w-[370px]"
       style={{ animation: 'laIn .25s ease-out' }}
     >
       <style>{'@keyframes laIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}'}</style>
