@@ -93,7 +93,8 @@ export default function LiveAssist() {
 
   useEffect(() => { if (cfg) setOnline(!!cfg.agent_online); }, [cfg]);
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent(LA_ONLINE_EVENT, { detail: online && !!cfg?.enabled }));
+    // Chat-Button ist immer da → schwebender WhatsApp-Button würde ihn überdecken
+    window.dispatchEvent(new CustomEvent(LA_ONLINE_EVENT, { detail: !!cfg?.enabled }));
   }, [online, cfg?.enabled]);
   useEffect(() => {
     try { setClaimed(sessionStorage.getItem(LIVE_PROMO_KEY)); } catch { /* ignore */ }
