@@ -308,4 +308,5 @@ export function reactionDetail(action: string, visit: string): string {
 // Nur im Speicher — ein Prozess, und nach einem Neustart meldet sich der Tab in 5 s wieder.
 let adminSeenAt = 0;
 export function markAdminOnline(): void { adminSeenAt = Date.now(); }
-export function isAdminOnline(): boolean { return Date.now() - adminSeenAt < 30_000; }
+// 3 Min.: Chrome drosselt den Live-Tab im Hintergrund auf ~1 Abfrage/Minute
+export function isAdminOnline(): boolean { return Date.now() - adminSeenAt < 180_000; }

@@ -239,7 +239,8 @@ export default function LiveAssist() {
   if (!cfg?.enabled) return null;
 
   const hasThread = messages.length > 0;
-  const showLauncher = !open && (online || hasThread);
+  // Immer sichtbar: offline führt der Chat zu WhatsApp / Rückruf
+  const showLauncher = !open;
   if (!open && !showLauncher) return null;
 
   const agent = cfg.agent_name || 'Munich Airport Taxi';
