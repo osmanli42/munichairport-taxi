@@ -113,7 +113,7 @@ export default function SystemTab({ token }: { token: string }) {
   const [healthRunning, setHealthRunning] = useState(false);
   const [alertSettings, setAlertSettings] = useState<AlertCfg | null>(null);
   const [alertSaving, setAlertSaving] = useState(false);
-  const [dismissingStuck, setDismissingStuck] = useState(false);
+  const [dismissingStuck, setDismissingStuck] = useState<string>('');
   const [pm2Busy, setPm2Busy] = useState<string>('');
   const [pm2Msg, setPm2Msg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -191,19 +191,30 @@ export default function SystemTab({ token }: { token: string }) {
     setHealthRunning(false);
   };
 
-  const dismissStuckInquiries = async () => {
-    if (!confirm('Bilerek yanıtlanmamış FMT taleplerini uyarıdan kaldır?')) return;
-    setDismissingStuck(true);
+  // Secondary sites whose "API + DB" warning counts unanswered inquiries — "Sıfırla" hides
+  // the ones left unanswered on purpose (they are not deleted).
+  const DISMISSABLE: Record<string, { site: string; name: string }> = {
+    'fmtde:api': { site: 'fmtde', name: 'Flughafen Taxi .de' },
+    'tf:api': { site: 'tf', name: 'Taxi Freising' },
+  };
+  const dismissStuckInquiries = async (checkName: string) => {
+    const target = DISMISSABLE[checkName];
+    if (!target || !confirm(`Bilerek yanıtlanmamış ${target.name} taleplerini uyarıdan kaldır?`)) return;
+    setDismissingStuck(checkName);
     try {
-      await fetch(`${API_BASE}/admin/health/fmtde/dismiss-stuck`, {
+      const r = await fetch(`${API_BASE}/admin/health/${target.site}/dismiss-stuck`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alert(`Sıfırlanamadı: ${d.error || `HTTP ${r.status}`}`);
+      }
       await runHealthCheck();
     } catch {
-      // ignore
+      alert('Sıfırlanamadı: bağlantı hatası');
     }
-    setDismissingStuck(false);
+    setDismissingStuck('');
   };
 
   const pm2Action = async (name: string, action: 'start' | 'stop' | 'restart') => {
@@ -361,14 +372,14 @@ export default function SystemTab({ token }: { token: string }) {
                     <span className="text-xs text-gray-500 ml-auto">
                       {h.latency_ms != null ? `${h.latency_ms}ms` : ''}
                     </span>
-                    {h.check_name === 'fmtde:api' && isWarn && (
+                    {DISMISSABLE[h.check_name] && isWarn && (
                       <button
-                        onClick={dismissStuckInquiries}
-                        disabled={dismissingStuck}
+                        onClick={() => dismissStuckInquiries(h.check_name)}
+                        disabled={!!dismissingStuck}
                         className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium disabled:opacity-50"
                         title="Bu talepleri bilerek yanıtlamadım, uyarıdan kaldır"
                       >
-                        {dismissingStuck ? 'Sıfırlanıyor…' : 'Sıfırla'}
+                        {dismissingStuck === h.check_name ? 'Sıfırlanıyor…' : 'Sıfırla'}
                       </button>
                     )}
                   </div>

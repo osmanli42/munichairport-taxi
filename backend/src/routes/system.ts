@@ -550,18 +550,26 @@ router.post('/admin/health/run', authenticateAdmin, async (req: AuthRequest, res
   }
 });
 
-// POST /api/admin/health/fmtde/dismiss-stuck — blendet bewusst nicht beantwortete FMT-Anfragen
-// aus dem "Flughafen Taxi .de — API + DB"-Warnhinweis aus (siehe healthMonitor.ts SECONDARY_SITES).
-// Ruft FMTs eigenes Backend über ein Shared Secret auf, da FMT kein eigenes Admin-Login hat.
-router.post('/admin/health/fmtde/dismiss-stuck', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+// POST /api/admin/health/:site/dismiss-stuck — hides deliberately unanswered inquiries of
+// the secondary sites from their "API + DB" warning (see healthMonitor.ts SECONDARY_SITES).
+// Neither site has an admin login of its own, so each backend is called with a shared secret.
+const DISMISS_TARGETS: Record<string, { url: string; secretEnv: string }> = {
+  fmtde: { url: 'https://api.flughafen-muenchen-taxi.de/api/admin/inquiries/dismiss-stuck', secretEnv: 'FMT_ADMIN_DISMISS_SECRET' },
+  tf: { url: 'https://taxifreising.de/api/admin/inquiries/dismiss-stuck', secretEnv: 'TF_ADMIN_DISMISS_SECRET' },
+};
+
+router.post('/admin/health/:site/dismiss-stuck', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const secret = process.env.FMT_ADMIN_DISMISS_SECRET;
-    if (!secret) { res.status(500).json({ error: 'FMT_ADMIN_DISMISS_SECRET nicht konfiguriert' }); return; }
-    const r = await fetch('https://api.flughafen-muenchen-taxi.de/api/admin/inquiries/dismiss-stuck', {
+    const target = DISMISS_TARGETS[req.params.site];
+    if (!target) { res.status(404).json({ error: 'Unbekannte Seite' }); return; }
+    const secret = process.env[target.secretEnv];
+    if (!secret) { res.status(500).json({ error: `${target.secretEnv} nicht konfiguriert` }); return; }
+    const r = await fetch(target.url, {
       method: 'POST',
       headers: { 'x-admin-secret': secret },
+      signal: AbortSignal.timeout(10_000),
     });
-    const data = await r.json();
+    const data = await r.json().catch(() => ({}));
     if (!r.ok) { res.status(r.status).json(data); return; }
     res.json(data);
   } catch (err: any) {
