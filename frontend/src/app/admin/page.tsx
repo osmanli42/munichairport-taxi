@@ -87,6 +87,23 @@ function autoRechnungSendAt(booking: Booking): Date | null {
   return new Date(pickup.getTime() + ((Number(booking.duration_minutes) || 0) + 15) * 60000);
 }
 
+// Whether autoRechnungJob will invoice this ride because of the per-payment-method switches
+// in the Rechnung tab (not because the customer asked). Mirrors the cron's rule so the admin
+// shows "wird automatisch gesendet" for exactly the rides that will get one: switch on, no
+// company (B2B is billed via Sammelrechnung), confirmed/completed, card charge not failed,
+// and the ride ending after the switch was turned on (*_since, Berlin wall clock).
+function autoRechnungViaZahlungsart(booking: Booking, settings: Record<string, string>): 'card' | 'cash' | null {
+  const pm = booking.payment_method === 'card' ? 'card' : booking.payment_method === 'cash' ? 'cash' : null;
+  if (!pm || booking.company_id) return null;
+  if (settings[`auto_rechnung_${pm}_enabled`] !== '1') return null;
+  if (booking.status !== 'confirmed' && booking.status !== 'completed') return null;
+  if (pm === 'card' && booking.charge_status === 'failed') return null;
+  const since = new Date(String(settings[`auto_rechnung_${pm}_since`] || '').replace(' ', 'T'));
+  const end = autoRechnungSendAt(booking);
+  if (!end || isNaN(since.getTime())) return null;
+  return end.getTime() >= since.getTime() ? pm : null;
+}
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
@@ -633,7 +650,11 @@ export default function AdminPage() {
         adminApi.getTomorrowCards().then(setTomorrowCards).catch(() => {});
         adminApi.getTodayBookings().then(setTodayBookings).catch(() => {});
       }
-      if (activeTab === 'bookings') { loadBookings(); if (prices.length === 0) loadPrices(); }
+      if (activeTab === 'bookings') {
+        loadBookings(); if (prices.length === 0) loadPrices();
+        // The per-payment-method auto-invoice switches decide the "🧾 ausstehend" badge.
+        settingsApi.getAll().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
+      }
       if (activeTab === 'statistics') { loadDetailedStats(); loadGeoStats('30d'); }
       if (activeTab === 'prices') {
         loadPrices();
@@ -647,6 +668,7 @@ export default function AdminPage() {
       }
       if (activeTab === 'rechnung') {
         adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
+        settingsApi.getAll().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
       }
       if (activeTab === 'marketing') {
         loadMarketingCustomers();
@@ -1446,10 +1468,12 @@ export default function AdminPage() {
                                 >
                                   🧾 Fehler
                                 </span>
-                              ) : booking.rechnung_required ? (
+                              ) : booking.rechnung_required || autoRechnungViaZahlungsart(booking, settings) ? (
                                 <span
                                   className="inline-flex items-center gap-1 mt-1 ml-1 bg-gray-100 text-gray-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                                  title="Kunde hat eine Rechnung angefordert — wird nach der Fahrt automatisch versendet"
+                                  title={booking.rechnung_required
+                                    ? 'Kunde hat eine Rechnung angefordert — wird nach der Fahrt automatisch versendet'
+                                    : `${booking.payment_method === 'card' ? 'Kreditkarte' : 'Bar'}-Automatik — wird nach der Fahrt automatisch versendet`}
                                 >
                                   🧾 ausstehend
                                 </span>
@@ -3556,25 +3580,35 @@ export default function AdminPage() {
               {!selectedBooking.rechnung_number && (
                 <div className={cn(
                   'mt-3 rounded-xl border p-3',
-                  selectedBooking.rechnung_required ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'
+                  selectedBooking.rechnung_required || autoRechnungViaZahlungsart(selectedBooking, settings)
+                    ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50'
                 )}>
                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
                     <CalendarDays size={15} />
                     Automatische Rechnung
                   </div>
-                  {selectedBooking.rechnung_required ? (
+                  {selectedBooking.rechnung_required || autoRechnungViaZahlungsart(selectedBooking, settings) ? (
                     <p className="mt-1 text-xs font-medium text-emerald-700">
                       {(() => {
+                        // Name the switch when that is the only reason, so the office knows
+                        // why a ride nobody asked about is getting an invoice.
+                        const via = !selectedBooking.rechnung_required ? autoRechnungViaZahlungsart(selectedBooking, settings) : null;
+                        const tag = via === 'card' ? ' (Kreditkarte-Automatik)' : via === 'cash' ? ' (Bar-Automatik)' : '';
                         const at = autoRechnungSendAt(selectedBooking);
-                        if (!at) return '✓ Wird nach der Fahrt automatisch gesendet.';
+                        if (!at) return `✓ Wird nach der Fahrt automatisch gesendet${tag}.`;
                         return at.getTime() <= Date.now()
-                          ? '✓ Fahrt ist vorbei — die Rechnung geht in Kürze automatisch raus.'
-                          : `✓ Wird automatisch gesendet — ca. ${formatDateTime(at.toISOString())}`;
+                          ? `✓ Fahrt ist vorbei — die Rechnung geht in Kürze automatisch raus${tag}.`
+                          : `✓ Wird automatisch gesendet${tag} — ca. ${formatDateTime(at.toISOString())}`;
                       })()}
                     </p>
                   ) : (
                     <p className="mt-1 text-xs text-gray-500">
                       Adresse eintragen und aktivieren — die Rechnung geht dann nach der Fahrt von selbst raus.
+                    </p>
+                  )}
+                  {!selectedBooking.rechnung_required && autoRechnungViaZahlungsart(selectedBooking, settings) && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Ohne Adresse stehen Name und E-Mail des Kunden auf der Rechnung. Für eine Firmenadresse unten eintragen.
                     </p>
                   )}
 
@@ -3606,7 +3640,7 @@ export default function AdminPage() {
                         >
                           {vormerkenSaving
                             ? <><RefreshCw size={15} className="animate-spin" /> Speichern...</>
-                            : <><CheckCircle2 size={15} /> {selectedBooking.rechnung_required ? 'Adresse speichern' : 'Automatisch senden aktivieren'}</>}
+                            : <><CheckCircle2 size={15} /> {selectedBooking.rechnung_required || autoRechnungViaZahlungsart(selectedBooking, settings) ? 'Adresse speichern' : 'Automatisch senden aktivieren'}</>}
                         </button>
                         {!!selectedBooking.rechnung_required && (
                           <button
@@ -3722,6 +3756,75 @@ export default function AdminPage() {
               <Check size={16} />{bankSuccess}
             </div>
           )}
+          {/* Automatic invoice by payment method. Two independent switches (card / cash) read
+              by autoRechnungJob every minute, so they take effect without a deploy. Switching
+              one on is stamped server-side (*_since) and only rides ending after that get an
+              invoice — the backlog of old, never-invoiced rides is left alone. */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Send size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Automatischer Rechnungsversand</h3>
+                <p className="text-xs text-gray-500">Rechnung per E-Mail 15 Min. nach Fahrtende — zusätzlich zu Kunden, die selbst eine Rechnung angefordert haben</p>
+              </div>
+            </div>
+            <div className="space-y-5">
+              {([
+                { pm: 'card', label: 'Kreditkarte', text: 'Jede mit Kreditkarte bezahlte Fahrt bekommt automatisch eine Rechnung („Kreditkarte bezahlt“). Fehlgeschlagene Stripe-Zahlungen werden übersprungen.' },
+                { pm: 'cash', label: 'Bar', text: 'Jede bar bezahlte Fahrt bekommt automatisch eine Rechnung („Bar bezahlt“).' },
+              ] as const).map(({ pm, label, text }) => {
+                const key = `auto_rechnung_${pm}_enabled`;
+                const on = settings[key] === '1';
+                const since = settings[`auto_rechnung_${pm}_since`];
+                return (
+                  <div key={pm} className="flex items-start justify-between gap-4">
+                    <div>
+                      <label className="font-semibold text-gray-700">{label}</label>
+                      <p className="text-xs text-gray-500 mt-0.5">{text}</p>
+                      <p className={cn('text-xs mt-1', on ? 'text-emerald-700 font-medium' : 'text-gray-400')}>
+                        {on && since
+                          ? `✓ Aktiv seit ${formatDateTime(since.replace(' ', 'T'))} — nur Fahrten, die danach enden.`
+                          : 'Aus. Beim Aktivieren bekommen bereits beendete Fahrten keine Rechnung.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = on ? '0' : '1';
+                        // Outward-facing: from now on real customers get mail, so confirm first.
+                        if (newVal === '1' && !window.confirm(`Ab jetzt bekommt jede ${label}-Fahrt nach Fahrtende automatisch eine Rechnung per E-Mail. Aktivieren?`)) return;
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ [key]: newVal });
+                          setSettings(prev => ({ ...prev, ...updated }));
+                          setBankSuccess(newVal === '1' ? `${label}: automatische Rechnung aktiviert` : `${label}: automatische Rechnung deaktiviert`);
+                          setTimeout(() => setBankSuccess(''), 3000);
+                        } catch {
+                          alert('Einstellung konnte nicht gespeichert werden.');
+                        }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        on ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                      aria-label={`${label}: automatische Rechnung ${on ? 'deaktivieren' : 'aktivieren'}`}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        on ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-[11px] text-gray-400">
+              Firmenkunden (B2B) sind ausgenommen — sie werden über die Sammelrechnung abgerechnet. Ohne Rechnungsadresse stehen Name und E-Mail des Kunden auf der Rechnung. Nur bestätigte oder abgeschlossene Buchungen.
+            </p>
+          </div>
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-2 mb-5">
               <div className="w-9 h-9 bg-primary-100 rounded-xl flex items-center justify-center">
