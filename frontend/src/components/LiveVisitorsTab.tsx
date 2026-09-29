@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakTr } from './LiveAssistAdmin';
+import CustomerHistory, { CustomerHistoryData } from '@/components/live/CustomerHistory';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
@@ -62,6 +63,8 @@ interface LiveSession {
   past_bookings_count: number;
   /** Bookings made during this visit; past_bookings_count counts every visit ever. */
   session_bookings_count?: number;
+  /** Returning customer: earlier bookings (also from other devices via e-mail / phone). */
+  customer?: CustomerHistoryData | null;
   last_booking_date: string | null;
   last_booking_pickup_address: string | null;
   last_booking_dropoff_address: string | null;
@@ -682,7 +685,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 const funnel = getFunnelStage(s);
                 const status = getStatus(s);
                 const bookedNow = (s.session_bookings_count ?? 0) > 0;
-                const earlierBookings = s.past_bookings_count - (s.session_bookings_count ?? 0);
+                const earlierBookings = (s.customer ? s.customer.bookings.length : s.past_bookings_count) - (s.session_bookings_count ?? 0);
                 const confirmedBooking = s.past_bookings_count > 0 && s.last_booking_pickup_address && s.last_booking_dropoff_address
                   ? {
                       pickup: s.last_booking_pickup_address,
@@ -722,7 +725,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       {s.past_bookings_count > 0 && (
                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
                           title={s.last_booking_date ? `Son sipariş: ${new Date(s.last_booking_date).toLocaleDateString('de-DE')}` : ''}>
-                          ⭐ {earlierBookings > 0 ? `Eski müşteri · ${earlierBookings} rezervasyon` : 'Yeni müşteri'}
+                          ⭐ {earlierBookings > 0 ? `Eski müşteri · ${earlierBookings} sipariş` : 'Yeni müşteri'}
                         </span>
                       )}
                       {isReturning && s.past_bookings_count === 0 && (
@@ -763,18 +766,13 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                         )}
                       </div>
                     )}
-                    {confirmedBooking && !bookedNow && (
+                    {s.customer && (!bookedNow || earlierBookings > 0) && (
+                      <CustomerHistory c={s.customer} bookedNow={bookedNow} />
+                    )}
+                    {!s.customer && confirmedBooking && !bookedNow && (
                       <div className="mb-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
-                        <div className="flex items-center gap-1 font-semibold mb-1">
-                          <span>🕘 Son rezervasyonu (önceki ziyaret)</span>
-                          {confirmedBooking.when && (
-                            <span className="ml-auto font-normal text-purple-700 flex items-center gap-1">
-                              <Clock size={11} /> {confirmedBooking.when}
-                            </span>
-                          )}
-                        </div>
+                        <div className="font-semibold mb-1">🕘 Son rezervasyonu (önceki ziyaret) {confirmedBooking.when && <span className="font-normal">· {confirmedBooking.when}</span>}</div>
                         <div className="break-words">{confirmedBooking.pickup} → {confirmedBooking.dropoff}</div>
-                        <div className="mt-1 text-purple-600">Bu ziyarette yeni rezervasyon yok.</div>
                       </div>
                     )}
                     {!bookedNow && prospective && (

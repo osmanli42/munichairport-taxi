@@ -608,12 +608,69 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
        LIMIT 100`
     );
 
+    // Returning customers: their earlier bookings, also those made from another device
+    // (matched by e-mail / phone of the bookings this browser made).
+    const histories = await customerHistories(
+      sessions.filter((x: any) => Number(x.past_bookings_count) > 0).map((x: any) => x.visitor_id));
+    for (const x of sessions as any[]) x.customer = histories.get(x.visitor_id) || null;
+
     res.json({ count: sessions.length, sessions });
   } catch (err: any) {
     console.error('live-visitors error:', err.message);
     res.status(500).json({ error: 'failed' });
   }
 });
+
+const HISTORY_COLS = `id, booking_number, visitor_id, name, phone, email, phone_e164, pickup_address, dropoff_address,
+  pickup_datetime, return_datetime, trip_type, vehicle_type, passengers, price, payment_method, status, company_id,
+  language, DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_utc`;
+
+async function customerHistories(visitorIds: string[]): Promise<Map<string, any>> {
+  const out = new Map<string, any>();
+  const ids = Array.from(new Set(visitorIds.filter(Boolean)));
+  if (!ids.length) return out;
+  const own = await query<any>(`SELECT ${HISTORY_COLS} FROM bookings WHERE visitor_id IN (${ids.map(() => '?').join(',')})`, ids);
+  const emails = Array.from(new Set(own.map((b) => String(b.email || '').trim().toLowerCase()).filter((e) => e.includes('@'))));
+  const phones = Array.from(new Set(own.map((b) => b.phone_e164).filter(Boolean)));
+  const related = emails.length || phones.length
+    ? await query<any>(`SELECT ${HISTORY_COLS} FROM bookings WHERE ${[
+        emails.length ? `LOWER(TRIM(email)) IN (${emails.map(() => '?').join(',')})` : '',
+        phones.length ? `phone_e164 IN (${phones.map(() => '?').join(',')})` : '',
+      ].filter(Boolean).join(' OR ')}`, [...emails, ...phones])
+    : [];
+  for (const vid of ids) {
+    const mine = own.filter((b) => b.visitor_id === vid);
+    const myEmails = new Set(mine.map((b) => String(b.email || '').trim().toLowerCase()).filter(Boolean));
+    const myPhones = new Set(mine.map((b) => b.phone_e164).filter(Boolean));
+    const all = new Map<number, any>();
+    for (const b of [...mine, ...related.filter((r) => myEmails.has(String(r.email || '').trim().toLowerCase()) || (r.phone_e164 && myPhones.has(r.phone_e164)))]) {
+      all.set(b.id, b);
+    }
+    const list = Array.from(all.values()).sort((a, b) => String(b.created_utc).localeCompare(String(a.created_utc)));
+    if (!list.length) continue;
+    const valid = list.filter((b) => b.status !== 'cancelled');
+    const latest = list[0];
+    out.set(vid, {
+      name: latest.name,
+      phone: latest.phone,
+      email: latest.email,
+      language: latest.language,
+      count: valid.length,
+      cancelled: list.length - valid.length,
+      revenue: valid.reduce((sum, b) => sum + (Number(b.price) || 0), 0),
+      first_booking: list[list.length - 1].created_utc,
+      other_devices: list.length - mine.length,
+      bookings: list.slice(0, 15).map((b) => ({
+        id: b.id, booking_number: b.booking_number, created_utc: b.created_utc,
+        pickup_address: b.pickup_address, dropoff_address: b.dropoff_address,
+        pickup_datetime: b.pickup_datetime, return_datetime: b.return_datetime, trip_type: b.trip_type,
+        vehicle_type: b.vehicle_type, passengers: b.passengers, price: Number(b.price) || 0,
+        payment_method: b.payment_method, status: b.status, company: !!b.company_id,
+      })),
+    });
+  }
+  return out;
+}
 
 // GET /api/admin/activity-events — the "Canlı Olay Akışı" panel's history, for the
 // current Berlin day. Deliberately NOT a write-time log (no cron writing rows as
