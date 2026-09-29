@@ -576,6 +576,12 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
              AND (target LIKE '%Jetzt buchen%' OR target LIKE '%Weiter%' OR target LIKE '%submit%' OR target LIKE '%Anfrage%')) AS form_submit_clicks,
          (SELECT COUNT(*) FROM bookings b
            WHERE b.visitor_id = s.visitor_id) AS past_bookings_count,
+         -- Booked during this visit (not just some time before): same session, or the same
+         -- visitor after this session started. Drives the "Rezervasyon Yaptı" badge.
+         (SELECT COUNT(*) FROM bookings b
+           WHERE b.session_id = s.session_id
+              OR (b.visitor_id = s.visitor_id AND b.created_at >= s.first_seen
+                  AND b.created_at <= s.last_seen + INTERVAL 10 MINUTE)) AS session_bookings_count,
          (SELECT MAX(b.created_at) FROM bookings b
            WHERE b.visitor_id = s.visitor_id) AS last_booking_date,
          (SELECT b.pickup_address FROM bookings b

@@ -60,6 +60,8 @@ interface LiveSession {
   form_fields_list: string | null;
   form_submit_clicks: number;
   past_bookings_count: number;
+  /** Bookings made during this visit; past_bookings_count counts every visit ever. */
+  session_bookings_count?: number;
   last_booking_date: string | null;
   last_booking_pickup_address: string | null;
   last_booking_dropoff_address: string | null;
@@ -214,7 +216,9 @@ function getFunnelStage(s: LiveSession): { label: string; color: string; step: n
   // past_bookings_count is the authoritative signal (a real row in `bookings`).
   // form_submit_clicks only counts clicks on buttons matching "Weiter"/"submit"/etc,
   // which fires even when the actual booking request fails — don't claim completion from it.
-  if (s.past_bookings_count > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
+  // Only a booking from this visit counts — a returning customer who booked last week and
+  // is just looking again must not show as "booked".
+  if ((s.session_bookings_count ?? 0) > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
   if (s.form_submit_clicks > 0) return { label: '📤 Gönderim Denedi', color: 'bg-orange-600 text-white', step: 3 };
   if (s.form_fields_touched > 0) return { label: '📝 Form Dolduruyor', color: 'bg-orange-500 text-white', step: 3 };
   if (s.booking_clicks > 0 || (s.current_path && s.current_path.includes('/buchen'))) return { label: '🛒 Buchen\'de', color: 'bg-orange-400 text-white', step: 3 };
@@ -374,7 +378,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
 
       sessions.forEach(s => {
         const old = prev.get(s.session_id);
-        if (old && s.past_bookings_count > old.past_bookings_count) {
+        if (old && (s.session_bookings_count ?? 0) > (old.session_bookings_count ?? 0)) {
           sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
         }
       });
@@ -677,6 +681,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 const isReturning = (s.prev_visits || 0) > 0;
                 const funnel = getFunnelStage(s);
                 const status = getStatus(s);
+                const bookedNow = (s.session_bookings_count ?? 0) > 0;
+                const earlierBookings = s.past_bookings_count - (s.session_bookings_count ?? 0);
                 const confirmedBooking = s.past_bookings_count > 0 && s.last_booking_pickup_address && s.last_booking_dropoff_address
                   ? {
                       pickup: s.last_booking_pickup_address,
@@ -686,7 +692,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       returnWhen: fmtPickupDateTime(s.last_booking_return_datetime),
                     }
                   : null;
-                const prospective = !confirmedBooking ? parseProspectiveRoute(s) : null;
+                const prospective = !bookedNow ? parseProspectiveRoute(s) : null;
                 const prospectiveWhen = prospective?.date
                   ? fmtPickupDateTime(`${prospective.date}T${prospective.time || '00:00'}:00`)
                   : null;
@@ -716,7 +722,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       {s.past_bookings_count > 0 && (
                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium"
                           title={s.last_booking_date ? `Son sipariş: ${new Date(s.last_booking_date).toLocaleDateString('de-DE')}` : ''}>
-                          ⭐ {s.past_bookings_count}x müşteri
+                          ⭐ {earlierBookings > 0 ? `Eski müşteri · ${earlierBookings} rezervasyon` : 'Yeni müşteri'}
                         </span>
                       )}
                       {isReturning && s.past_bookings_count === 0 && (
@@ -741,7 +747,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     </div>
 
                     {/* Row 2b: Route detail — confirmed booking (emerald) or prospective (blue) */}
-                    {confirmedBooking && (
+                    {confirmedBooking && bookedNow && (
                       <div className="mb-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800">
                         <div className="flex items-center gap-1 font-semibold mb-1">
                           <span>🗺 Rezervasyon Güzergahı</span>
@@ -757,7 +763,21 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                         )}
                       </div>
                     )}
-                    {!confirmedBooking && prospective && (
+                    {confirmedBooking && !bookedNow && (
+                      <div className="mb-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
+                        <div className="flex items-center gap-1 font-semibold mb-1">
+                          <span>🕘 Son rezervasyonu (önceki ziyaret)</span>
+                          {confirmedBooking.when && (
+                            <span className="ml-auto font-normal text-purple-700 flex items-center gap-1">
+                              <Clock size={11} /> {confirmedBooking.when}
+                            </span>
+                          )}
+                        </div>
+                        <div className="break-words">{confirmedBooking.pickup} → {confirmedBooking.dropoff}</div>
+                        <div className="mt-1 text-purple-600">Bu ziyarette yeni rezervasyon yok.</div>
+                      </div>
+                    )}
+                    {!bookedNow && prospective && (
                       <div className="mb-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800">
                         <div className="flex items-center gap-1 font-semibold mb-1">
                           <span>🗺 Muhtemel Güzergah</span>
