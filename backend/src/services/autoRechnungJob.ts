@@ -17,7 +17,7 @@ import { sendRechnungForBooking } from './rechnungSender';
 const BUFFER_MINUTES = 15;
 // Give up after this many failed sends so a permanently broken address or API key
 // doesn't retry every minute forever. Surfaced in the admin list as a red badge.
-const MAX_ATTEMPTS = 3;
+export const MAX_ATTEMPTS = 3;
 // Cap per tick — sending is network-bound and the cron fires every minute.
 const BATCH_SIZE = 20;
 

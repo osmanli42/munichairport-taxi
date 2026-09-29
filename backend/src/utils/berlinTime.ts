@@ -33,3 +33,10 @@ export function berlinNowSql(date: Date = new Date()): string {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
   }).format(date);
 }
+
+// Berlin calendar date `offsetDays` from today as 'YYYY-MM-DD' — the same form as the
+// date prefix of the wall-clock `pickup_datetime` / `return_datetime` strings.
+export function berlinDateSql(offsetDays = 0): string {
+  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date()).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + offsetDays)).toISOString().slice(0, 10);
+}

@@ -420,6 +420,11 @@ export const adminApi = {
     return response.data;
   },
 
+  getDashboard: async () => {
+    const response = await api.get('/admin/dashboard');
+    return response.data;
+  },
+
   getTodayBookings: async (): Promise<Booking[]> => {
     const response = await api.get('/admin/bookings/today');
     return response.data;

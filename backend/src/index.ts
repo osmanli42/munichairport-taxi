@@ -15,6 +15,7 @@ import driverTrackingRouter from './routes/driver-tracking';
 import driverAppRouter from './routes/driver-app';
 import traccarRouter from './routes/traccar';
 import adminTrackingRouter from './routes/admin-tracking';
+import adminDashboardRouter from './routes/admin-dashboard';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import adsRouter from './routes/ads';
@@ -86,6 +87,7 @@ app.get('/api/smtp-test', async (req, res) => {
 
 // Routes
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/admin/dashboard', adminDashboardRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/ads', adsRouter);
 app.use('/api', callbacksRouter);

@@ -9,7 +9,7 @@ import { decrypt } from './bookings';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
 import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
-import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql } from '../utils/berlinTime';
+import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql, berlinDateSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
 
 
@@ -155,7 +155,9 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
 // GET /api/admin/bookings/today - All bookings with pickup today
 router.get('/bookings/today', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Berlin calendar day — the server clock is UTC, so toISOString() showed the wrong
+    // day between midnight and 02:00 Berlin time.
+    const today = berlinDateSql(0);
     const bookings = await query(`
       SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
              pickup_datetime, vehicle_type, passengers, price, status, payment_method,
@@ -176,9 +178,7 @@ router.get('/bookings/today', authenticateAdmin, async (req: AuthRequest, res: R
 // GET /api/admin/bookings/tomorrow-cards - Card bookings for tomorrow (to charge today)
 router.get('/bookings/tomorrow-cards', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowStr = berlinDateSql(1);
 
     const bookings = await query(`
       SELECT id, booking_number, name, phone, pickup_address, dropoff_address,
