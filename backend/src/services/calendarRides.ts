@@ -40,6 +40,7 @@ export interface BookingRef {
   pickup_address: string | null;
   dropoff_address: string | null;
   calendar_event_uid: string | null;
+  duration_minutes: number | null;
 }
 
 // Earliest events in the calendar are from January 2023.
@@ -95,7 +96,7 @@ export async function calendarId(): Promise<string | null> {
 export async function loadBookingRefs(): Promise<BookingRef[]> {
   return query<BookingRef>(`
     SELECT id, booking_number, name, price, status, trip_type, pickup_datetime, return_datetime,
-           pickup_address, dropoff_address, calendar_event_uid
+           pickup_address, dropoff_address, calendar_event_uid, duration_minutes
       FROM bookings`);
 }
 
@@ -143,6 +144,25 @@ export function classifyEvents(events: CalEvent[], bookings: BookingRef[]): Clas
     if (twin) return { ...base, kind: 'duplicate' as const, booking: twin.b };
     return { ...base, kind: 'ride' as const, booking: null };
   });
+}
+
+// ---- Live window (dashboard) ---------------------------------------------------------
+// The dashboard reads the next days straight from Google so edits show within minutes;
+// shared cache so the schedule and the widgets don't each call the API.
+
+const WINDOW_CACHE_MS = 5 * 60_000;
+const windowCache = new Map<string, { at: number; events: CalEvent[] }>();
+
+export async function calendarEventsCached(from: string, to: string): Promise<CalEvent[] | null> {
+  const id = await calendarId();
+  if (!id) return null;
+  const key = `${id}|${from}|${to}`;
+  const hit = windowCache.get(key);
+  if (hit && Date.now() - hit.at < WINDOW_CACHE_MS) return hit.events;
+  const { events } = await fetchEventsRange(id, from, to);
+  if (windowCache.size > 20) windowCache.clear();
+  windowCache.set(key, { at: Date.now(), events });
+  return events;
 }
 
 // ---- Mirror table --------------------------------------------------------------------

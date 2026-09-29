@@ -8,11 +8,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
-  Clock, CreditCard, ExternalLink, Eye, FileText, History, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
+  Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
+import {
+  berlinNowWall, wall, hhmm, wallMinutes, addDays, dayLabel, fmtDuration, fmtAgo, plural, MONTHS, isAirport, Card,
+} from './dashboard/shared';
+import QuickActions from './dashboard/QuickActions';
+import EventsStrip from './dashboard/EventsStrip';
+import FlightBoard from './dashboard/FlightBoard';
+import DriverPlan from './dashboard/DriverPlan';
+import CapacityHeatmap, { CapacityEntry } from './dashboard/CapacityHeatmap';
+import MissedCustomers from './dashboard/MissedCustomers';
+import { ForecastCard, FunnelCard, ReceivablesCard } from './dashboard/BusinessCards';
+import type { Flights, WidgetOverview } from './dashboard/types';
 
 // ---------------------------------------------------------------------------------------
 // Types
@@ -84,66 +95,26 @@ interface Props {
   onShowCard: (b: Booking) => void;
   onCharge: (id: number) => Promise<void>;
   chargingId: number | null;
+  onNewBooking: () => void;
+  onGoTab: (tab: string) => void;
 }
 
-// ---------------------------------------------------------------------------------------
-// Berlin wall-clock helpers
+// Sections the viewer can hide (per browser). Fahrplan, KPIs and Handlungsbedarf always show.
+const WIDGETS: Array<[string, string]> = [
+  ['quick', 'Schnellaktionen'], ['events', 'Feiertage & Events'], ['flights', 'Flugstatus'],
+  ['charges', 'Morgen abbuchen'], ['drivers', 'Fahrer-Einsatzplan'], ['missed', 'Verpasste Kunden'],
+  ['forecast', 'Monatsprognose'], ['funnel', 'Website heute'], ['receivables', 'Offene Forderungen'],
+  ['capacity', 'Auslastung 7 Tage'], ['chart', 'Buchungseingang'], ['month', 'Monat im Überblick'],
+  ['recent', 'Letzte Buchungen'], ['reports', 'Finanzamt-Bericht'],
+];
+const HIDDEN_KEY = 'dash_hidden_widgets';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const authHeader = () => {
+  try { return { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }; } catch { return {} as Record<string, string>; }
+};
 
-const BERLIN = 'Europe/Berlin';
-
-/** Current Berlin time as 'YYYY-MM-DDTHH:mm'. */
-function berlinNowWall(): string {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: BERLIN, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(new Date()).replace(' ', 'T');
-}
-
-const wall = (s?: string | null) => String(s || '').replace(' ', 'T').slice(0, 16);
-const hhmm = (s?: string | null) => wall(s).slice(11, 16) || '—';
-
-/** Minutes since epoch for a wall-clock string — only ever used for differences. */
-function wallMinutes(s: string): number {
-  const [d, t = '00:00'] = wall(s).split('T');
-  const [y, m, day] = d.split('-').map(Number);
-  const [h, mi] = t.split(':').map(Number);
-  return Date.UTC(y, m - 1, day, h, mi) / 60000;
-}
-
-function addDays(date: string, n: number): string {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-}
-
-function dayLabel(date: string, opts: Intl.DateTimeFormatOptions): string {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('de-DE', { timeZone: 'UTC', ...opts });
-}
-
-function fmtDuration(min: number): string {
-  if (min < 1) return 'jetzt';
-  if (min < 60) return `${min} Min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h < 24) return m && h < 3 ? `${h} Std ${m} Min` : `${h} Std`;
-  const d = Math.round(h / 24);
-  return `${d} Tag${d > 1 ? 'en' : ''}`;
-}
-
-function fmtAgo(created: string, now: string): string {
-  const diff = wallMinutes(now) - wallMinutes(created);
-  if (diff < 1) return 'gerade eben';
-  if (diff < 60) return `vor ${diff} Min`;
-  if (created.slice(0, 10) === now.slice(0, 10)) return `heute ${hhmm(created)}`;
-  if (created.slice(0, 10) === addDays(now.slice(0, 10), -1)) return `gestern ${hhmm(created)}`;
-  return `${dayLabel(created.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(created)}`;
-}
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const CAL_PREF_KEY = 'dash_show_calendar';
-
-const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 // ---------------------------------------------------------------------------------------
 // Small building blocks
@@ -185,7 +156,6 @@ function PaymentChip({ b }: { b: Pick<Booking, 'payment_method' | 'ueberweisung_
 }
 
 const VEHICLE_LABELS: Record<string, string> = { kombi: 'Kombi', van: 'Van', grossraumtaxi: 'Großraum' };
-const isAirport = (a?: string | null) => /flughafen|airport|terminal|MUC\b/i.test(a || '');
 
 function DeltaChip({ cur, prev, suffix }: { cur: number; prev: number; suffix: string }) {
   if (!prev && !cur) return <span className="text-xs text-gray-400">keine Daten {suffix}</span>;
@@ -201,22 +171,6 @@ function DeltaChip({ cur, prev, suffix }: { cur: number; prev: number; suffix: s
   );
 }
 
-function Card({ title, icon: Icon, right, children, className }: {
-  title: string; icon: typeof Clock; right?: React.ReactNode; children: React.ReactNode; className?: string;
-}) {
-  return (
-    <section className={cn('bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden', className)}>
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-          <Icon size={17} className="text-primary-500" />
-          {title}
-        </h3>
-        {right}
-      </header>
-      {children}
-    </section>
-  );
-}
 
 // ---------------------------------------------------------------------------------------
 // Ride schedule
@@ -930,7 +884,7 @@ function Kpi({ label, value, sub, footer, Icon, tone }: {
 
 // ---------------------------------------------------------------------------------------
 
-export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, onCharge, chargingId }: Props) {
+export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, onCharge, chargingId, onNewBooking, onGoTab }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [cards, setCards] = useState<Booking[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -942,6 +896,45 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   useEffect(() => {
     try { if (localStorage.getItem(CAL_PREF_KEY) === '0') setShowCal(false); } catch { /* ignore */ }
   }, []);
+  const [widgets, setWidgets] = useState<WidgetOverview | null>(null);
+  const [flights, setFlights] = useState<Flights | null>(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [picker, setPicker] = useState(false);
+  useEffect(() => {
+    try { setHidden(new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'))); } catch { /* ignore */ }
+  }, []);
+  const show = (id: string) => !hidden.has(id);
+  const toggleWidget = (id: string) => setHidden((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+    return next;
+  });
+
+  const loadWidgets = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_URL}/admin/dashboard-widgets/overview`, { headers: authHeader() });
+      if (r.ok) setWidgets(await r.json());
+    } catch { /* widgets are optional */ }
+  }, []);
+  const loadFlights = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_URL}/admin/dashboard-widgets/flights`, { headers: authHeader() });
+      if (r.ok) setFlights(await r.json());
+    } catch { /* optional */ }
+  }, []);
+  const toggleFlights = async (on: boolean) => {
+    await fetch(`${API_URL}/admin/dashboard-widgets/flight-status`, {
+      method: 'PUT', headers: { ...authHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }),
+    }).catch(() => {});
+    loadFlights();
+  };
+  useEffect(() => {
+    loadFlights();
+    const t = setInterval(loadFlights, 5 * 60_000);
+    return () => clearInterval(t);
+  }, [loadFlights]);
+
   const toggleCal = () => setShowCal((v) => {
     try { localStorage.setItem(CAL_PREF_KEY, v ? '0' : '1'); } catch { /* ignore */ }
     return !v;
@@ -959,6 +952,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      loadWidgets();
       const [d, c] = await Promise.all([adminApi.getDashboard(), adminApi.getTomorrowCards()]);
       setData(d);
       setCards(c);
@@ -969,7 +963,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadWidgets]);
 
   useEffect(() => { load(); }, [load, reloadToken]);
   useEffect(() => {
@@ -1007,6 +1001,9 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
     else if (i.cal.html_link) window.open(i.cal.html_link, '_blank', 'noopener');
   };
   const it = data.intake;
+  const capacity: CapacityEntry[] = items.map((i) => (i.kind === 'booking'
+    ? { time: i.time, bus: ['van', 'grossraumtaxi'].includes(i.leg.vehicle_type), label: i.leg.name }
+    : { time: i.time, bus: /bus/i.test(i.cal.location), label: i.cal.guest || i.cal.summary }));
   const monthName = MONTHS[+data.month.month.slice(5, 7) - 1];
   const prevMonthName = MONTHS[(+data.month.month.slice(5, 7) + 10) % 12];
 
@@ -1023,15 +1020,39 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
             <span className="text-gray-400"> (Berlin)</span>
           </p>
         </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white ring-1 ring-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl"
-          title="Aktualisiert sich jede Minute automatisch"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loadedAt ? `Stand ${hhmm(loadedAt)}` : 'Aktualisieren'}
-        </button>
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={() => setPicker((v) => !v)}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white ring-1 ring-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl"
+          >
+            <LayoutGrid size={14} /> Widgets
+          </button>
+          <button
+            onClick={() => { load(); loadFlights(); }}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white ring-1 ring-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl"
+            title="Aktualisiert sich jede Minute automatisch"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            {loadedAt ? `Stand ${hhmm(loadedAt)}` : 'Aktualisieren'}
+          </button>
+          {picker && (
+            <div className="absolute right-0 top-full mt-2 z-30 w-64 bg-white rounded-2xl shadow-xl ring-1 ring-gray-200 p-3">
+              <div className="text-xs font-semibold text-gray-500 px-1 pb-2">Angezeigte Bereiche</div>
+              {WIDGETS.map(([id, label]) => (
+                <label key={id} className="flex items-center gap-2 px-1 py-1.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" checked={show(id)} onChange={() => toggleWidget(id)} className="rounded" />
+                  {label}
+                </label>
+              ))}
+              <button onClick={() => setPicker(false)} className="mt-2 w-full text-xs text-gray-500 hover:text-gray-800">Schließen</button>
+            </div>
+          )}
+        </div>
       </div>
+      {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
+      {show('events') && widgets?.events && (
+        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} today={today} onSaved={loadWidgets} />
+      )}
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
 
       {/* KPIs */}
@@ -1114,28 +1135,52 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         </div>
         <div className="space-y-6">
           <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} onOpen={onOpenBooking} />
-          <TomorrowCharges
+          {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
+          {show('charges') && <TomorrowCharges
             cards={cards}
             tomorrow={addDays(today, 1)}
             chargingId={chargingId}
             onCharge={(id) => { onCharge(id).finally(load); }}
             onShowCard={onShowCard}
             onOpen={onOpenBooking}
-          />
+          />}
         </div>
       </div>
 
+      {/* Operations */}
+      {(show('drivers') || show('missed')) && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          {show('drivers') && <div className={show('missed') ? 'xl:col-span-2' : 'xl:col-span-3'}><DriverPlan plan={widgets?.drivers ?? null} now={now} onOpen={onOpenBooking} /></div>}
+          {show('missed') && <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} />}
+        </div>
+      )}
+
+      {/* Business */}
+      {(show('forecast') || show('funnel') || show('receivables')) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {show('forecast') && <ForecastCard f={widgets?.forecast ?? null} />}
+          {show('funnel') && <FunnelCard f={widgets?.funnel ?? null} />}
+          {show('receivables') && <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} />}
+        </div>
+      )}
+
+      {show('capacity') && <CapacityHeatmap entries={capacity} today={today} />}
+
       {/* Trends */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        <div className="xl:col-span-2"><IntakeChart chart={data.chart} today={today} /></div>
-        <MonthOverview month={data.month} />
-      </div>
+      {(show('chart') || show('month')) && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          {show('chart') && <div className={show('month') ? 'xl:col-span-2' : 'xl:col-span-3'}><IntakeChart chart={data.chart} today={today} /></div>}
+          {show('month') && <MonthOverview month={data.month} />}
+        </div>
+      )}
 
       {/* Latest + reports */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        <div className="xl:col-span-2"><RecentBookings recent={data.recent} now={now} onOpen={onOpenBooking} /></div>
-        <ReportsCard />
-      </div>
+      {(show('recent') || show('reports')) && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          {show('recent') && <div className={show('reports') ? 'xl:col-span-2' : 'xl:col-span-3'}><RecentBookings recent={data.recent} now={now} onOpen={onOpenBooking} /></div>}
+          {show('reports') && <ReportsCard />}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,8 +9,8 @@ import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
-import { fetchEventsRange, CalEvent } from '../services/calendarInvoice';
-import { calendarId, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
+import { CalEvent } from '../services/calendarInvoice';
+import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
 
 const router = Router();
 
@@ -43,8 +43,6 @@ const CHART_DAYS = 14;
 // text) and rides that only exist there (phone, Get-e, partners). The dashboard adds the
 // latter to the schedule; the former are already there as bookings. Read-only.
 
-const CAL_CACHE_MS = 5 * 60_000;
-let calCache: { key: string; at: number; events: CalEvent[] } | null = null;
 
 
 export type CalendarLeg = {
@@ -78,16 +76,10 @@ async function loadCalendar(from: string, to: string): Promise<{
   if (!id) return { enabled: false, error: null, ...empty };
 
   let events: CalEvent[];
-  const key = `${id}|${from}|${to}`;
-  if (calCache && calCache.key === key && Date.now() - calCache.at < CAL_CACHE_MS) {
-    events = calCache.events;
-  } else {
-    try {
-      events = (await fetchEventsRange(id, from, to)).events;
-      calCache = { key, at: Date.now(), events };
-    } catch (e: any) {
-      return { enabled: true, error: e?.message || 'Kalender nicht erreichbar', ...empty };
-    }
+  try {
+    events = (await calendarEventsCached(from, to)) || [];
+  } catch (e: any) {
+    return { enabled: true, error: e?.message || 'Kalender nicht erreichbar', ...empty };
   }
 
   const legs: CalendarLeg[] = [];

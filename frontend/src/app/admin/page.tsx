@@ -969,6 +969,8 @@ export default function AdminPage() {
             onShowCard={(b) => { setSelectedBooking(b); setShowCardPopup(true); setCardVisible(false); }}
             onCharge={handleChargeSavedCard}
             chargingId={chargingId}
+            onNewBooking={openCreateModal}
+            onGoTab={(t) => setActiveTab(t as Tab)}
           />
         )}
 
