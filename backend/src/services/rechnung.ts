@@ -370,13 +370,20 @@ export function generateRechnungPdf(opts: {
     const bankY = Math.max(totY + 24, pageBottom - bankBoxH);
     if (isPaid) {
       const paidLabel = zahlungsart === 'bar'
-        ? (isEn ? '✓  Paid in Cash' : '✓  Bar bezahlt')
+        ? (isEn ? 'Paid in Cash' : 'Bar bezahlt')
         : zahlungsart === 'kreditkarte'
-          ? (isEn ? '✓  Paid by Credit Card' : '✓  Kreditkarte bezahlt')
-          : (isEn ? '✓  Paid by Bank Transfer' : '✓  Bereits per Überweisung bezahlt');
+          ? (isEn ? 'Paid by Credit Card' : 'Kreditkarte bezahlt')
+          : (isEn ? 'Paid by Bank Transfer' : 'Bereits per Überweisung bezahlt');
       doc.rect(marginL, bankY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
+      // WorkSans has no "✓" glyph (it printed as an empty box), so the tick is drawn.
+      const tickX = marginL + 22;
+      const tickY = bankY + 22;
+      doc.circle(tickX, tickY, 8).fill('#15803d');
+      doc.moveTo(tickX - 3.8, tickY + 0.2).lineTo(tickX - 1, tickY + 3).lineTo(tickX + 4, tickY - 3)
+        .lineWidth(1.8).lineCap('round').lineJoin('round').strokeColor('#ffffff').stroke();
+      doc.lineCap('butt').lineJoin('miter');
       doc.fontSize(11).font('WorkSans-Bold').fillColor('#15803d')
-        .text(paidLabel, marginL + 12, bankY + 15);
+        .text(paidLabel, marginL + 38, bankY + 15);
     } else {
       doc.rect(marginL, bankY, pageW, 90).fill('#f9fafb').stroke();
       doc.fontSize(8).font('WorkSans-Bold').fillColor(BRAND)
