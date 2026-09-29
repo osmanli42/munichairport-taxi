@@ -53,10 +53,10 @@ interface DashboardData {
   chart: Array<{ date: string } & Agg>;
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
   attention: Record<AttentionKey, Leg[]> & {
-    /** Card rides still to charge: tomorrow's after 20:00, today's upcoming ones always. */
+    /** Card rides still to charge: tomorrow's after 20:15, today's upcoming ones always. */
     cardsUncharged?: UnchargedCard[];
   };
-  card_deadline_hour?: number;
+  card_deadline?: string;
   recent: Recent[];
   calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
   /** Calendar-only rides this month up to now (by ride date); null when switched off in Statistik. */
@@ -516,7 +516,7 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 // Attention panel
 
 function AttentionPanel({ a, mismatches, deadline, onOpen }: {
-  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: number; onOpen: (id: number) => void;
+  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void;
 }) {
   const cards = a.cardsUncharged || [];
   // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
@@ -554,7 +554,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen }: {
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-red-700">Kreditkarte nicht abgebucht <span className="font-normal">({cards.length} · {formatPrice(cards.reduce((s, c) => s + c.price, 0))})</span></div>
                   <div className="text-[11px] text-red-600/80">
-                    {cards.some((c) => c.day === 'tomorrow') ? `Fahrt morgen — sollte bis ${deadline}:00 Uhr abgebucht sein` : 'Fahrt heute steht bevor'}
+                    {cards.some((c) => c.day === 'tomorrow') ? `Fahrt morgen — sollte bis ${deadline} Uhr abgebucht sein` : 'Fahrt heute steht bevor'}
                   </div>
                 </div>
               </div>
@@ -1189,7 +1189,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
         </div>
         <div className="space-y-6">
-          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline_hour ?? 20} onOpen={onOpenBooking} />
+          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} />
           {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
           {show('charges') && <TomorrowCharges
             cards={cards}

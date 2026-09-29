@@ -76,8 +76,10 @@ interface AlertCfg {
   reminder_hours: number;
   server_cooldown_hours: number;
   business_cooldown_hours: number;
+  card_charge_deadline?: string;
   email_to?: string;
 }
+const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
@@ -191,7 +193,7 @@ export default function SystemTab({ token }: { token: string }) {
         setAlertSettings({
           enabled: ad.enabled, categories: ad.categories, down_after_minutes: ad.down_after_minutes,
           reminder_hours: ad.reminder_hours, server_cooldown_hours: ad.server_cooldown_hours,
-          business_cooldown_hours: ad.business_cooldown_hours, email_to: ad.email_to,
+          business_cooldown_hours: ad.business_cooldown_hours, card_charge_deadline: ad.card_charge_deadline, email_to: ad.email_to,
         });
       }
       setLastUpdated(new Date());
@@ -635,12 +637,25 @@ export default function SystemTab({ token }: { token: string }) {
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
                 ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
-                ['card_charge', '💳 Kart çekilmedi', 'Saat 20:00’de yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle).'],
+                ['card_charge', '💳 Kart çekilmedi', `Saat ${alertSettings.card_charge_deadline || '20:15'}’te yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle); dashboard’da da o saatten sonra kırmızı uyarı. Müşteri hatırlatmaları 20:00’de gider.`],
               ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
                 <div key={key} className="flex items-start gap-3 px-3 py-2.5">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-800">{label}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
+                    {key === 'card_charge' && (
+                      <label className="mt-1.5 inline-flex items-center gap-2 text-xs text-gray-700">
+                        <Clock size={13} className="text-blue-500" /> Kontrol saati
+                        <select
+                          value={alertSettings.card_charge_deadline || '20:15'}
+                          onChange={(e) => saveAlertSettings({ card_charge_deadline: e.target.value })}
+                          disabled={alertSaving}
+                          className="border border-gray-300 rounded-lg px-2 py-0.5 text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
+                        >
+                          {CARD_DEADLINE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </label>
+                    )}
                   </div>
                   <button
                     onClick={() => saveAlertSettings({ categories: { ...alertSettings.categories, [key]: !alertSettings.categories[key] } })}

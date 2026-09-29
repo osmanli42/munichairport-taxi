@@ -19,7 +19,11 @@ export interface AlertConfig {
   reminder_hours: number;           // "still down" reminder for an open incident
   server_cooldown_hours: number;    // RAM / swap / disk / CPU
   business_cooldown_hours: number;  // error spike, no bookings, slow page, PM2
+  card_charge_deadline: string;     // HH:mm Berlin — tomorrow's card rides must be charged by then
 }
+
+// After the customer reminders at 20:00; the check job runs until 23:55.
+export const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
 
 export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   enabled: true,
@@ -37,6 +41,7 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   reminder_hours: 12,
   server_cooldown_hours: 24,
   business_cooldown_hours: 6,
+  card_charge_deadline: '20:15',
 };
 
 let cache: { cfg: AlertConfig; at: number } | null = null;
@@ -59,6 +64,7 @@ function merge(raw: any): AlertConfig {
     reminder_hours: clamp(raw?.reminder_hours, 1, 168, d.reminder_hours),
     server_cooldown_hours: clamp(raw?.server_cooldown_hours, 1, 168, d.server_cooldown_hours),
     business_cooldown_hours: clamp(raw?.business_cooldown_hours, 1, 168, d.business_cooldown_hours),
+    card_charge_deadline: CARD_DEADLINE_OPTIONS.includes(raw?.card_charge_deadline) ? raw.card_charge_deadline : d.card_charge_deadline,
   };
 }
 
