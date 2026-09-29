@@ -1,182 +1,178 @@
+// Public tracking endpoints, authorised by the per-booking HMAC token in the link:
+//   customer page  /track/:bn?t=…    (role 'cust')
+//   single-ride driver page /fahrer/:bn?t=…  (role 'drv') — for drivers without the app
+// All decisions (status, ETA, pickup point, time window) come from services/driverTracking.
+
 import { Router, Request, Response } from 'express';
-import { query, run } from '../db';
+import { run } from '../db';
 import { verifyToken } from '../utils/trackingToken';
+import {
+  loadBookingByNumber, buildCustomerView, buildDriverRideView, getTrackingSettings, trackingPhase,
+  ingestFix, parseFix, setDriverStatus, LIFECYCLE, DriverStatus,
+} from '../services/driverTracking';
 
 const router = Router();
 
-const _k1 = process.env.GOOGLE_MAPS_API_KEY || '';
-const _k2 = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const GOOGLE_API_KEY = _k1.length > 35 ? _k1 : _k2.length > 35 ? _k2 : 'AIzaSyA7wWp8hvzPOVGUsy4pTFVgTzF9QBkmFxI';
-
-const ARRIVAL_RADIUS_M = 150;
-
-function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+function tokenOf(req: Request): string | undefined {
+  return (req.query.t as string | undefined) || (req.body?.t as string | undefined);
 }
 
-async function geocode(address: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-    url.searchParams.set('address', address);
-    url.searchParams.set('key', GOOGLE_API_KEY);
-    const r = await fetch(url.toString());
-    const data = await r.json() as any;
-    const loc = data?.results?.[0]?.geometry?.location;
-    return loc ? { lat: loc.lat, lng: loc.lng } : null;
-  } catch { return null; }
-}
-
-async function driveEtaMinutes(from: { lat: number; lng: number }, to: { lat: number; lng: number }): Promise<number | null> {
-  try {
-    const url = new URL('https://maps.googleapis.com/maps/api/distancematrix/json');
-    url.searchParams.set('origins', `${from.lat},${from.lng}`);
-    url.searchParams.set('destinations', `${to.lat},${to.lng}`);
-    url.searchParams.set('key', GOOGLE_API_KEY);
-    url.searchParams.set('mode', 'driving');
-    const r = await fetch(url.toString());
-    const data = await r.json() as any;
-    const el = data?.rows?.[0]?.elements?.[0];
-    if (el?.status !== 'OK') return null;
-    return Math.ceil(el.duration.value / 60);
-  } catch { return null; }
-}
-
-// Ensure a booking has pickup coordinates; geocode + persist on first need.
-async function ensurePickupCoords(booking: any): Promise<{ lat: number; lng: number } | null> {
-  if (booking.pickup_lat != null && booking.pickup_lng != null) {
-    return { lat: booking.pickup_lat, lng: booking.pickup_lng };
-  }
-  const coords = await geocode(booking.pickup_address);
-  if (coords) {
-    await run('UPDATE bookings SET pickup_lat = ?, pickup_lng = ? WHERE id = ?', [coords.lat, coords.lng, booking.id]);
-  }
-  return coords;
-}
-
-// GET /api/tracking/:booking_number?t=<customerToken> — customer view
+// GET /api/tracking/:booking_number?t= — customer view
 router.get('/:booking_number', async (req: Request, res: Response): Promise<void> => {
   try {
     const bn = req.params.booking_number;
-    if (!verifyToken(bn, 'cust', req.query.t as string | undefined)) {
+    if (!verifyToken(bn, 'cust', tokenOf(req))) {
       res.status(403).json({ error: 'Invalid tracking token' });
       return;
     }
-    const [booking] = await query<any>('SELECT * FROM bookings WHERE booking_number = ?', [bn]);
-    if (!booking) {
+    const b = await loadBookingByNumber(bn);
+    if (!b) {
       res.status(404).json({ error: 'Booking not found' });
       return;
     }
-
-    let driver: any = null;
-    if (booking.assigned_driver_id) {
-      [driver] = await query<any>('SELECT name, phone, vehicle_plate, vehicle_model FROM drivers WHERE id = ?', [booking.assigned_driver_id]);
-    }
-
-    const pickup = await ensurePickupCoords(booking);
-
-    let eta_minutes: number | null = null;
-    const hasLoc = booking.driver_lat != null && booking.driver_lng != null;
-    if (hasLoc && pickup && booking.driver_status !== 'arrived') {
-      eta_minutes = await driveEtaMinutes(
-        { lat: booking.driver_lat, lng: booking.driver_lng },
-        pickup
-      );
-    }
-
-    const hasCustLoc = booking.customer_lat != null && booking.customer_lng != null;
-
-    res.json({
-      booking_number: bn,
-      driver_status: booking.driver_status || (booking.assigned_driver_id ? 'assigned' : null),
-      pickup_address: booking.pickup_address,
-      dropoff_address: booking.dropoff_address,
-      pickup_datetime: booking.pickup_datetime,
-      pickup: pickup,
-      driver: driver ? { name: driver.name, phone: driver.phone, vehicle_plate: driver.vehicle_plate, vehicle_model: driver.vehicle_model } : null,
-      driver_location: hasLoc ? { lat: booking.driver_lat, lng: booking.driver_lng, updated_at: booking.driver_location_updated_at } : null,
-      customer_location: hasCustLoc ? { lat: booking.customer_lat, lng: booking.customer_lng, updated_at: booking.customer_location_updated_at } : null,
-      eta_minutes,
-    });
-  } catch (error) {
-    console.error('Tracking GET error:', error);
+    res.set('Cache-Control', 'no-store');
+    res.json(await buildCustomerView(b));
+  } catch (error: any) {
+    console.error('Tracking GET error:', error?.message);
     res.status(500).json({ error: 'Failed to load tracking' });
   }
 });
 
-// POST /api/tracking/:booking_number/location — driver pushes GPS
-router.post('/:booking_number/location', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const bn = req.params.booking_number;
-    const { lat, lng, t } = req.body || {};
-    if (!verifyToken(bn, 'drv', t)) {
-      res.status(403).json({ error: 'Invalid driver token' });
-      return;
-    }
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
-      res.status(400).json({ error: 'lat and lng required' });
-      return;
-    }
-    const [booking] = await query<any>('SELECT * FROM bookings WHERE booking_number = ?', [bn]);
-    if (!booking) {
-      res.status(404).json({ error: 'Booking not found' });
-      return;
-    }
-
-    // Decide status: assigned -> enroute on first ping; auto-arrival within radius.
-    let newStatus = booking.driver_status === 'arrived' ? 'arrived' : 'enroute';
-    const pickup = await ensurePickupCoords(booking);
-    if (pickup && haversineMeters(lat, lng, pickup.lat, pickup.lng) <= ARRIVAL_RADIUS_M) {
-      newStatus = 'arrived';
-    }
-
-    await run(
-      `UPDATE bookings SET driver_lat = ?, driver_lng = ?, driver_location_updated_at = NOW(), driver_status = ? WHERE id = ?`,
-      [lat, lng, newStatus, booking.id]
-    );
-
-    const hasCustLoc = booking.customer_lat != null && booking.customer_lng != null;
-
-    res.json({
-      ok: true,
-      driver_status: newStatus,
-      pickup: pickup ?? null,
-      pickup_address: booking.pickup_address ?? null,
-      dropoff_address: booking.dropoff_address ?? null,
-      customer_name: booking.name ?? null,
-      customer_location: hasCustLoc ? { lat: booking.customer_lat, lng: booking.customer_lng } : null,
-    });
-  } catch (error) {
-    console.error('Tracking location error:', error);
-    res.status(500).json({ error: 'Failed to update location' });
-  }
-});
-
-// POST /api/tracking/:booking_number/customer-location — customer shares GPS
+// POST /api/tracking/:booking_number/customer-location — customer opted in to share GPS
 router.post('/:booking_number/customer-location', async (req: Request, res: Response): Promise<void> => {
   try {
     const bn = req.params.booking_number;
-    const { lat, lng, t } = req.body || {};
-    if (!verifyToken(bn, 'cust', t)) {
+    if (!verifyToken(bn, 'cust', tokenOf(req))) {
       res.status(403).json({ error: 'Invalid token' });
       return;
     }
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
+    const fix = parseFix(req.body, 'web');
+    if (!fix) {
       res.status(400).json({ error: 'lat and lng required' });
       return;
     }
+    const b = await loadBookingByNumber(bn);
+    const s = await getTrackingSettings();
+    if (!b || !s.share_customer_location || trackingPhase(b, s) !== 'active'
+      || b.driver_status === 'onboard' || b.driver_status === 'completed') {
+      res.json({ ok: false });
+      return;
+    }
+    if (fix.accuracy != null && fix.accuracy > s.max_accuracy_m) {
+      res.json({ ok: false, reason: 'inaccurate' });
+      return;
+    }
     await run(
-      `UPDATE bookings SET customer_lat = ?, customer_lng = ?, customer_location_updated_at = NOW() WHERE booking_number = ?`,
-      [lat, lng, bn]
+      `UPDATE bookings SET customer_lat = ?, customer_lng = ?, customer_accuracy = ?, customer_location_updated_at = NOW() WHERE id = ?`,
+      [fix.lat, fix.lng, fix.accuracy, b.id]
     );
     res.json({ ok: true });
-  } catch (error) {
-    console.error('Customer location error:', error);
+  } catch (error: any) {
+    console.error('Customer location error:', error?.message);
     res.status(500).json({ error: 'Failed to update customer location' });
+  }
+});
+
+// DELETE /api/tracking/:booking_number/customer-location?t= — customer stops sharing
+router.delete('/:booking_number/customer-location', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bn = req.params.booking_number;
+    if (!verifyToken(bn, 'cust', tokenOf(req))) {
+      res.status(403).json({ error: 'Invalid token' });
+      return;
+    }
+    await run(
+      `UPDATE bookings SET customer_lat = NULL, customer_lng = NULL, customer_accuracy = NULL, customer_location_updated_at = NULL WHERE booking_number = ?`,
+      [bn]
+    );
+    res.json({ ok: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// GET /api/tracking/:booking_number/driver?t= — single-ride driver page
+router.get('/:booking_number/driver', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bn = req.params.booking_number;
+    if (!verifyToken(bn, 'drv', tokenOf(req))) {
+      res.status(403).json({ error: 'Invalid driver token' });
+      return;
+    }
+    const b = await loadBookingByNumber(bn);
+    if (!b) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const s = await getTrackingSettings();
+    const phase = trackingPhase(b, s);
+    res.set('Cache-Control', 'no-store');
+    res.json({ phase, ride: phase === 'active' || phase === 'too_early' ? await buildDriverRideView(b, { live: true }) : null });
+  } catch (error: any) {
+    console.error('Driver ride GET error:', error?.message);
+    res.status(500).json({ error: 'Failed to load ride' });
+  }
+});
+
+// POST /api/tracking/:booking_number/driver/status — { t, status }
+router.post('/:booking_number/driver/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bn = req.params.booking_number;
+    if (!verifyToken(bn, 'drv', tokenOf(req))) {
+      res.status(403).json({ error: 'Invalid driver token' });
+      return;
+    }
+    const to = req.body?.status as DriverStatus;
+    if (!LIFECYCLE.includes(to)) {
+      res.status(400).json({ error: 'Ungültiger Status' });
+      return;
+    }
+    const b = await loadBookingByNumber(bn);
+    if (!b) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const s = await getTrackingSettings();
+    if (trackingPhase(b, s) !== 'active') {
+      res.status(409).json({ error: 'Diese Fahrt ist nicht (mehr) aktiv' });
+      return;
+    }
+    const r = await setDriverStatus(b, to, 'driver');
+    if (!r.ok) {
+      res.status(409).json({ error: r.error });
+      return;
+    }
+    const fresh = await loadBookingByNumber(bn);
+    res.json({ ok: true, ride: await buildDriverRideView(fresh, { live: true }) });
+  } catch (error: any) {
+    console.error('Driver status error:', error?.message);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// POST /api/tracking/:booking_number/location — single-ride driver pushes GPS
+router.post('/:booking_number/location', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bn = req.params.booking_number;
+    if (!verifyToken(bn, 'drv', tokenOf(req))) {
+      res.status(403).json({ error: 'Invalid driver token' });
+      return;
+    }
+    const fix = parseFix(req.body, 'web');
+    if (!fix) {
+      res.status(400).json({ error: 'lat and lng required' });
+      return;
+    }
+    const b = await loadBookingByNumber(bn);
+    if (!b) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const r = await ingestFix(b, fix, b.assigned_driver_id ? Number(b.assigned_driver_id) : null);
+    res.json({ ok: true, stored: r.stored, reason: r.reason || null, status: b.driver_status || 'assigned' });
+  } catch (error: any) {
+    console.error('Tracking location error:', error?.message);
+    res.status(500).json({ error: 'Failed to update location' });
   }
 });
 

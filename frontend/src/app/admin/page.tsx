@@ -8,7 +8,7 @@ import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
-  Zap, CheckCircle2, AlertCircle, CalendarDays, Percent,
+  Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -21,8 +21,11 @@ import B2BTab from '@/components/B2BTab';
 import KalenderTab from '@/components/KalenderTab';
 import AdminAddressField from '@/components/AdminAddressField';
 import RabatteTab from '@/components/RabatteTab';
+import DriversTab from '@/components/DriversTab';
+import BookingTrackingPanel from '@/components/tracking/BookingTrackingPanel';
+import TrackingAlerts from '@/components/tracking/TrackingAlerts';
 
-type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'rabatte' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b' | 'kalender';
+type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'rabatte' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b' | 'kalender' | 'fahrer';
 
 interface MarketingCustomer {
   email: string;
@@ -162,11 +165,6 @@ export default function AdminPage() {
   const [newPlzStadt, setNewPlzStadt] = useState('');
   const [newPlzSurcharge, setNewPlzSurcharge] = useState('10');
   const [plzSaving, setPlzSaving] = useState(false);
-  const [drivers, setDrivers] = useState<Array<{ id: number; name: string; phone: string; vehicle_plate: string; vehicle_model: string; active: number }>>([]);
-  const [trackingLinks, setTrackingLinks] = useState<{ customer_link: string; driver_link: string } | null>(null);
-  const [assigning, setAssigning] = useState(false);
-  const [copied, setCopied] = useState('');
-  const [newDriverName, setNewDriverName] = useState('');
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
     bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
     company_name: '', company_address: '', company_phone: '', company_email: '',
@@ -241,10 +239,6 @@ export default function AdminPage() {
   const [promoMsg, setPromoMsg] = useState('');
 
   useEffect(() => {
-    if (selectedBooking) { loadDrivers(); setTrackingLinks(null); }
-  }, [selectedBooking?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     const icsContacts = marketingCustomers.filter(c => c.source === 'ics');
     localStorage.setItem('marketing_ics_contacts', JSON.stringify(icsContacts));
   }, [marketingCustomers]);
@@ -299,37 +293,6 @@ export default function AdminPage() {
     localStorage.removeItem('admin_token');
     setIsLoggedIn(false);
     setToken('');
-  }
-
-  const loadDrivers = useCallback(async () => {
-    try { setDrivers(await adminApi.getDrivers()); } catch { /* ignore */ }
-  }, []);
-
-  async function handleAssignDriver(driverId: number | null) {
-    if (!selectedBooking) return;
-    setAssigning(true);
-    try {
-      const r = await adminApi.assignDriver(selectedBooking.id, driverId);
-      if (r.assigned && r.customer_link && r.driver_link) {
-        setTrackingLinks({ customer_link: r.customer_link, driver_link: r.driver_link });
-      } else {
-        setTrackingLinks(null);
-      }
-    } catch { /* ignore */ }
-    finally { setAssigning(false); }
-  }
-
-  async function handleCreateDriver() {
-    if (!newDriverName.trim()) return;
-    try {
-      await adminApi.createDriver({ name: newDriverName.trim() });
-      setNewDriverName('');
-      loadDrivers();
-    } catch { /* ignore */ }
-  }
-
-  function copyLink(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); });
   }
 
   const loadStats = useCallback(async () => {
@@ -900,6 +863,8 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Live-tracking alerts (sound + toast); clicking one opens the booking */}
+      <TrackingAlerts onOpenBooking={(id) => { adminApi.getBooking(id).then((b) => setSelectedBooking(b)).catch(() => {}); }} />
       {/* Admin Header */}
       <header className="bg-primary-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
@@ -938,6 +903,7 @@ export default function AdminPage() {
             { id: 'ads' as Tab, icon: MousePointerClick, label: 'Google Ads' },
             { id: 'b2b' as Tab, icon: Building2, label: 'B2B Business' },
             { id: 'kalender' as Tab, icon: CalendarDays, label: 'Kalender' },
+            { id: 'fahrer' as Tab, icon: Car, label: 'Fahrer' },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
@@ -991,6 +957,9 @@ export default function AdminPage() {
 
         {/* Automatische Rabatte */}
         {activeTab === 'rabatte' && <RabatteTab token={token} />}
+
+        {/* Fahrer & Live-Tracking */}
+        {activeTab === 'fahrer' && <DriversTab />}
 
         {/* Dashboard */}
         {activeTab === 'dashboard' && stats && (
@@ -3283,51 +3252,8 @@ export default function AdminPage() {
             </div>
 
             <div className="p-6 space-y-4 text-sm">
-              {/* Fahrer & Live-Tracking — top of modal */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold text-blue-900 text-sm">🚕 Fahrer & Live-Tracking</h3>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 border rounded-lg px-2 py-1 text-sm"
-                    defaultValue=""
-                    onChange={(e) => handleAssignDriver(e.target.value ? Number(e.target.value) : null)}
-                    disabled={assigning}
-                  >
-                    <option value="">— Kein Fahrer —</option>
-                    {drivers.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}{d.vehicle_plate ? ` · ${d.vehicle_plate}` : ''}</option>
-                    ))}
-                  </select>
-                  {assigning && <span className="text-xs text-gray-400 self-center">...</span>}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Neuer Fahrer Name"
-                    value={newDriverName}
-                    onChange={(e) => setNewDriverName(e.target.value)}
-                    className="flex-1 border rounded-lg px-2 py-1 text-sm"
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreateDriver()}
-                  />
-                  <button onClick={handleCreateDriver} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">+ Hinzufügen</button>
-                </div>
-                {trackingLinks && (
-                  <div className="space-y-2">
-                    {[
-                      { label: '🔗 Kundenlink', key: 'cust', url: trackingLinks.customer_link },
-                      { label: '📍 Fahrerlink', key: 'drv', url: trackingLinks.driver_link },
-                    ].map(({ label, key, url }) => (
-                      <div key={key} className="flex gap-2 items-center">
-                        <span className="text-xs text-gray-600 flex-1 truncate">{label}: <span className="font-mono text-gray-800">{url.split('?')[0].split('/').slice(-1)[0]}</span></span>
-                        <button onClick={() => copyLink(url, key)} className="text-xs bg-white border rounded px-2 py-0.5 hover:bg-gray-50">
-                          {copied === key ? '✓' : 'Kopieren'}
-                        </button>
-                        <a href={`https://wa.me/?text=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-green-500 text-white rounded px-2 py-0.5">WA</a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Fahrer & Live-Tracking — top of modal (components/tracking/BookingTrackingPanel) */}
+              <BookingTrackingPanel booking={selectedBooking} />
 
               {/* Status */}
               <div className="flex items-center justify-between">

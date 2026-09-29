@@ -153,33 +153,7 @@ export const bookingsApi = {
   },
 };
 
-export interface TrackingData {
-  booking_number: string;
-  driver_status: 'assigned' | 'enroute' | 'arrived' | 'completed' | null;
-  pickup_address: string;
-  dropoff_address: string;
-  pickup_datetime: string;
-  pickup: { lat: number; lng: number } | null;
-  driver: { name: string; phone: string; vehicle_plate: string; vehicle_model: string } | null;
-  driver_location: { lat: number; lng: number; updated_at: string } | null;
-  customer_location: { lat: number; lng: number; updated_at: string } | null;
-  eta_minutes: number | null;
-}
-
-export const trackingApi = {
-  get: async (booking_number: string, token: string): Promise<TrackingData> => {
-    const response = await api.get(`/tracking/${booking_number}`, { params: { t: token } });
-    return response.data;
-  },
-  postLocation: async (booking_number: string, lat: number, lng: number, token: string) => {
-    const response = await api.post(`/tracking/${booking_number}/location`, { lat, lng, t: token });
-    return response.data as { ok: boolean; driver_status: string; pickup: { lat: number; lng: number } | null; pickup_address: string | null; dropoff_address: string | null; customer_name: string | null; customer_location: { lat: number; lng: number } | null };
-  },
-  postCustomerLocation: async (booking_number: string, lat: number, lng: number, token: string) => {
-    const response = await api.post(`/tracking/${booking_number}/customer-location`, { lat, lng, t: token });
-    return response.data as { ok: boolean };
-  },
-};
+// Live tracking (customer page, driver app, admin) has its own client: lib/tracking.ts.
 
 export const pricesApi = {
   getAll: async (): Promise<Price[]> => {
@@ -584,26 +558,6 @@ export const adminApi = {
   saveReminderSettings: async (data: { enabled?: boolean; time?: string }): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
     await api.post('/admin/settings/reminder', data, { headers: { Authorization: `Bearer ${token}` } });
-  },
-
-  getDrivers: async () => {
-    const response = await api.get('/admin/drivers');
-    return response.data;
-  },
-
-  createDriver: async (data: { name: string; phone?: string; vehicle_plate?: string; vehicle_model?: string }) => {
-    const response = await api.post('/admin/drivers', data);
-    return response.data;
-  },
-
-  assignDriver: async (bookingId: number, driver_id: number | null) => {
-    const response = await api.post(`/admin/bookings/${bookingId}/assign-driver`, { driver_id });
-    return response.data as { ok: boolean; assigned: boolean; customer_link?: string; driver_link?: string };
-  },
-
-  getTrackingLinks: async (bookingId: number) => {
-    const response = await api.get(`/admin/bookings/${bookingId}/tracking-links`);
-    return response.data as { customer_link: string; driver_link: string };
   },
 };
 

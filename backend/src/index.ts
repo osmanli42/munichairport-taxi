@@ -12,6 +12,9 @@ import promotionsRouter from './routes/promotions';
 import autoDiscountsRouter from './routes/auto-discounts';
 import trackingRouter from './routes/tracking';
 import driverTrackingRouter from './routes/driver-tracking';
+import driverAppRouter from './routes/driver-app';
+import traccarRouter from './routes/traccar';
+import adminTrackingRouter from './routes/admin-tracking';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import adsRouter from './routes/ads';
@@ -31,6 +34,7 @@ import { startAdsAlertJob } from './services/adsAlertJob';
 import { startAutoStatusJob } from './services/autoStatusJob';
 import { startAutoRechnungJob } from './services/autoRechnungJob';
 import { startLiveAssistAlertJob } from './services/liveAssistAlertJob';
+import { startDriverTrackingJobs } from './services/driverTracking';
 
 dotenv.config();
 
@@ -99,6 +103,9 @@ app.use('/api/admin/companies', adminCompaniesRouter);
 app.use('/api/admin/calendar', adminCalendarRouter);
 app.use('/api/popular-routes', popularRoutesRouter);
 app.use('/api/tracking', driverTrackingRouter);
+app.use('/api/driver-app', driverAppRouter);
+app.use('/api/traccar', traccarRouter);
+app.use('/api/admin/tracking', adminTrackingRouter);
 app.use('/api', trackingRouter);
 app.use('/api', recordingRouter);
 app.use('/api', systemRouter);
@@ -123,6 +130,7 @@ app.listen(PORT, () => {
       startAutoStatusJob();
       startAutoRechnungJob();
       startLiveAssistAlertJob();
+      startDriverTrackingJobs();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });

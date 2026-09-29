@@ -423,6 +423,83 @@ export async function initializeDatabase(): Promise<void> {
       catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
 
+    // Live-tracking v2: fix quality + device time per ride, the full ride lifecycle
+    // (enroute → arrived → onboard → completed) with timestamps, the airport meeting-point
+    // override, and one-shot markers so customer e-mails / admin alerts fire only once.
+    const trackingV2BookingCols = [
+      `ALTER TABLE bookings ADD COLUMN driver_accuracy FLOAT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_heading FLOAT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_speed FLOAT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_fix_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_source VARCHAR(10) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_enroute_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_arrived_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_onboard_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN driver_completed_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN dropoff_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN dropoff_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN meeting_point VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN customer_accuracy FLOAT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN tracking_mail_link_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN tracking_mail_enroute_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN tracking_mail_arrived_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN tracking_gps_lost_at DATETIME DEFAULT NULL`,
+    ];
+    for (const stmt of trackingV2BookingCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
+    // Drivers: a revocable personal app link (token_version), a Traccar device id for
+    // background GPS, the app language, and the last fix — kept only while on a ride.
+    const trackingV2DriverCols = [
+      `ALTER TABLE drivers ADD COLUMN app_token_version INT NOT NULL DEFAULT 1`,
+      `ALTER TABLE drivers ADD COLUMN traccar_device_id VARCHAR(64) DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN language VARCHAR(5) NOT NULL DEFAULT 'de'`,
+      `ALTER TABLE drivers ADD COLUMN last_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_accuracy FLOAT DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_heading FLOAT DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_fix_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_source VARCHAR(10) DEFAULT NULL`,
+      `ALTER TABLE drivers ADD COLUMN last_seen_app_at DATETIME DEFAULT NULL`,
+    ];
+    for (const stmt of trackingV2DriverCols) {
+      try { await conn.execute(stmt); }
+      catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+    try { await conn.execute(`ALTER TABLE drivers ADD UNIQUE INDEX uq_traccar_device (traccar_device_id)`); }
+    catch (e: any) { if (!/Duplicate key name/i.test(e.message || '')) throw e; }
+    try { await conn.execute(`ALTER TABLE bookings ADD INDEX idx_driver_active (assigned_driver_id, driver_status)`); }
+    catch (e: any) { if (!/Duplicate key name/i.test(e.message || '')) throw e; }
+
+    // Tracking configuration lives in its own single-row table rather than `settings`:
+    // GET /api/settings is public and returns every row, and this config carries the
+    // admin alert e-mail address.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS tracking_config (
+        id TINYINT NOT NULL,
+        config_json TEXT NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+
+    // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS tracking_events (
+        id INT NOT NULL AUTO_INCREMENT,
+        booking_id INT NOT NULL,
+        booking_number VARCHAR(40) NOT NULL,
+        driver_id INT DEFAULT NULL,
+        kind VARCHAR(20) NOT NULL,
+        detail VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_created (created_at)
+      )
+    `);
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS admin_users (
         id INT NOT NULL AUTO_INCREMENT,

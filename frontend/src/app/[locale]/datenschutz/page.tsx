@@ -98,6 +98,16 @@ const sections = [
         ),
       },
       {
+        subtitle: 'Live-Verfolgung Ihrer Fahrt',
+        content: (email: string) => (
+          <div className="space-y-2">
+            <p>Über den Link in Ihrer Buchungs- bzw. Fahrer-E-Mail können Sie die Position Ihres Fahrers auf einer Karte verfolgen. Dazu verarbeiten wir die GPS-Position des Fahrzeugs ausschließlich während der aktiven Fahrt (vom Losfahren des Fahrers bis zum Ende der Fahrt) sowie den Status der Fahrt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Beförderungsvertrags).</p>
+            <p>Freiwillig können Sie auf der Verfolgungsseite zusätzlich Ihren eigenen Standort mit dem Fahrer teilen, damit er Sie leichter findet. Dies geschieht nur nach Ihrer ausdrücklichen Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), nur bis zum Einsteigen und kann jederzeit über „Beenden“ widerrufen werden.</p>
+            <p>Die Karten werden über den Dienst Mapbox (Mapbox, Inc., 740 15th Street NW, 5th Floor, Washington, DC 20005, USA) angezeigt; dabei wird Ihre IP-Adresse an Mapbox übertragen. <strong>Speicherdauer:</strong> Positionsdaten von Fahrer und Fahrgast werden spätestens 24 Stunden nach Ende der Fahrt automatisch gelöscht.</p>
+          </div>
+        ),
+      },
+      {
         subtitle: 'Google Maps',
         content: (email: string) => (
           <p>Diese Seite nutzt den Kartendienst Google Maps. Anbieter ist die Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland. Mit der Nutzung von Google Maps können Informationen über Ihre Nutzung dieser Website einschließlich Ihrer IP-Adresse an Google in den USA übertragen werden.</p>

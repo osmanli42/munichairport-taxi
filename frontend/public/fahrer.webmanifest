@@ -1,0 +1,14 @@
+{
+  "name": "Fahrer-App · Flughafen München Taxi",
+  "short_name": "FMT Fahrer",
+  "start_url": "/fahrer",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    { "src": "/fahrer-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/fahrer-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
