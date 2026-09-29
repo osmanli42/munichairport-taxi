@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import os from 'os';
 import fs from 'fs';
-import { execSync } from 'child_process';
+import { execSync, execFile, spawn } from 'child_process';
 import { Resend } from 'resend';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
@@ -128,6 +128,67 @@ const CONVERSION_THRESHOLDS = {
   slow_page_ms: 4000,
   slow_page_min_views: 5,
 };
+
+// ---------- PM2 control from the System tab ----------
+// Start / stop / restart a service without ssh. The two processes that serve the admin
+// itself (this API and the website that hosts /admin) can only be restarted: stopping
+// either would lock the admin out of the very button needed to start it again.
+const PM2_PROTECTED = new Set(['munichairport-taxi', 'munichairport-frontend']);
+const PM2_ACTIONS = ['start', 'stop', 'restart'];
+let pm2Busy = false;
+
+function pm2Run(args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile('pm2', args, { timeout: 60_000 }, (err, _stdout, stderr) => {
+      if (err) reject(new Error(String(stderr || err.message).slice(0, 300)));
+      else resolve();
+    });
+  });
+}
+
+router.post('/admin/system-stats/pm2/:name/:action', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  const { name, action } = req.params;
+  if (!PM2_ACTIONS.includes(action)) {
+    res.status(400).json({ error: 'Ungültige Aktion' });
+    return;
+  }
+  // Only names pm2 itself reports — nothing user-typed reaches the command line.
+  const proc = pm2List().find((p) => p.name === name);
+  if (!proc) {
+    res.status(404).json({ error: 'Servis bulunamadı' });
+    return;
+  }
+  if (action === 'stop' && PM2_PROTECTED.has(name)) {
+    res.status(400).json({ error: 'Bu servis admin panelini çalıştırıyor — sadece yeniden başlatılabilir.' });
+    return;
+  }
+  if (pm2Busy) {
+    res.status(409).json({ error: 'Başka bir servis işlemi sürüyor, birkaç saniye sonra tekrar dene.' });
+    return;
+  }
+  console.log(`[pm2-admin] ${req.adminUsername || 'admin'}: ${action} ${name} (vorher: ${proc.status})`);
+
+  // Restarting this very process: answer first, then let pm2 restart us.
+  if (name === (process.env.name || 'munichairport-taxi')) {
+    res.json({ ok: true, self_restart: true });
+    setTimeout(() => {
+      spawn('pm2', [action, name], { detached: true, stdio: 'ignore' }).unref();
+    }, 500);
+    return;
+  }
+
+  pm2Busy = true;
+  try {
+    // Deliberately no `pm2 save`: what comes back after a VPS reboot stays as configured
+    // on the server, a click in the admin only changes the running state.
+    await pm2Run([action, name]);
+    res.json({ ok: true, pm2: pm2List() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'pm2 işlemi başarısız' });
+  } finally {
+    pm2Busy = false;
+  }
+});
 
 // Which alerts go out and how often: services/alertCenter.ts (persisted, survives the
 // restarts that used to reset every cooldown and re-send the same alerts after each deploy).

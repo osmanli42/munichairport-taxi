@@ -3,6 +3,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import PasswordChangeCard from './PasswordChangeCard';
 
+// What each PM2 process is, in words — and which ones serve customers (stopping those
+// takes a website offline, so the confirm says so plainly).
+const PM2_INFO: Record<string, { label: string; customer?: boolean; protectedStop?: boolean }> = {
+  'munichairport-taxi': { label: 'flughafen-muenchen.taxi — Backend / API (bu admin paneli)', customer: true, protectedStop: true },
+  'munichairport-frontend': { label: 'flughafen-muenchen.taxi — Website + Admin', customer: true, protectedStop: true },
+  'fmt-backend': { label: 'flughafen-muenchen-taxi.de — Backend', customer: true },
+  'fmt-de-frontend': { label: 'flughafen-muenchen-taxi.de — Website', customer: true },
+  'fmt-webhook': { label: 'flughafen-muenchen-taxi.de — Deploy-Webhook' },
+  'taxifreising': { label: 'taxifreising.de', customer: true },
+  'haber-app': { label: 'Haber uygulaması' },
+  'trading-backend': { label: 'Trading uygulaması — Backend (çok RAM kullanır)' },
+  'trading-frontend': { label: 'Trading uygulaması — Frontend' },
+  'transcript-proxy': { label: 'Transcript Proxy' },
+};
+
 // Mirrors backend services/alertCenter.ts
 type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary';
 interface AlertCfg {
@@ -17,7 +32,7 @@ interface AlertCfg {
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
-  HeartPulse, Zap,
+  HeartPulse, Zap, Play, Square, RotateCw, PauseCircle,
 } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
@@ -99,6 +114,8 @@ export default function SystemTab({ token }: { token: string }) {
   const [alertSettings, setAlertSettings] = useState<AlertCfg | null>(null);
   const [alertSaving, setAlertSaving] = useState(false);
   const [dismissingStuck, setDismissingStuck] = useState(false);
+  const [pm2Busy, setPm2Busy] = useState<string>('');
+  const [pm2Msg, setPm2Msg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -189,6 +206,38 @@ export default function SystemTab({ token }: { token: string }) {
     setDismissingStuck(false);
   };
 
+  const pm2Action = async (name: string, action: 'start' | 'stop' | 'restart') => {
+    const info = PM2_INFO[name];
+    const label = info?.label || name;
+    const verb = action === 'start' ? 'başlatılsın' : action === 'stop' ? 'durdurulsun' : 'yeniden başlatılsın';
+    const warn = action === 'stop' && info?.customer
+      ? '\n\n⚠️ Bu bir MÜŞTERİ SİTESİ — durdurursan site kapanır ve rezervasyon alamaz.'
+      : action === 'start' && stats && stats.ram.pct >= 80
+        ? `\n\n⚠️ RAM şu an %${stats.ram.pct} dolu — yeni servis sunucuyu yavaşlatabilir.`
+        : action === 'restart' && name === 'munichairport-taxi'
+          ? '\n\nAdmin paneli birkaç saniye yanıt vermeyecek.'
+          : '';
+    if (!confirm(`${label}\n\n„${name}“ ${verb}?${warn}`)) return;
+    setPm2Busy(`${name}:${action}`);
+    setPm2Msg(null);
+    try {
+      const r = await fetch(`${API_BASE}/admin/system-stats/pm2/${encodeURIComponent(name)}/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      setPm2Msg({ ok: true, text: d.self_restart ? `${name} yeniden başlatılıyor — birkaç saniye sonra sayfa kendini yeniler.` : `${name}: ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}` });
+      if (d.self_restart) setTimeout(() => load(), 8000);
+      else load();
+    } catch (e: any) {
+      setPm2Msg({ ok: false, text: `${name}: ${e.message || 'işlem başarısız'}` });
+    } finally {
+      setPm2Busy('');
+      setTimeout(() => setPm2Msg(null), 8000);
+    }
+  };
+
   const sendTestAlert = async () => {
     setTestEmailStatus('Gönderiliyor...');
     try {
@@ -224,8 +273,9 @@ export default function SystemTab({ token }: { token: string }) {
   if (swapUsedMB >= 1500) overallWarnings.push(`Swap çok kullanılıyor: ${Math.round(swapUsedMB)} MB`);
   if (stats.disk.pct >= 85) overallWarnings.push(`Disk doluyor: %${stats.disk.pct}`);
   if (stats.cpu.load1_pct >= 150) overallWarnings.push(`CPU yükü yüksek: ${stats.cpu.load1.toFixed(2)}`);
-  const offlinePm2 = stats.pm2.filter((p) => p.status !== 'online');
-  if (offlinePm2.length > 0) overallWarnings.push(`${offlinePm2.length} servis çalışmıyor`);
+  // "stopped" = switched off on purpose (here or via pm2 stop) — not a warning.
+  const offlinePm2 = stats.pm2.filter((p) => !['online', 'stopped', 'stopping'].includes(p.status));
+  if (offlinePm2.length > 0) overallWarnings.push(`${offlinePm2.length} servis çöktü`);
   const failedHealth = (health?.latest || []).filter((h) => h.status === 'fail');
   for (const h of failedHealth) overallWarnings.push(`${h.label}: ${h.message}`);
 
@@ -402,32 +452,77 @@ export default function SystemTab({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* PM2 services */}
+      {/* PM2 services — status + start / stop / restart (backend: POST /admin/system-stats/pm2/:name/:action) */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b flex items-center gap-2">
+        <div className="px-6 py-4 border-b flex items-center gap-2 flex-wrap">
           <Activity size={18} /> <h3 className="font-semibold">PM2 Servisleri</h3>
-          <span className="text-xs text-gray-500 ml-auto">{stats.pm2.length} servis</span>
+          <span className="text-xs text-gray-500">
+            {stats.pm2.filter((p) => p.status === 'online').length} çalışıyor · {stats.pm2.filter((p) => p.status !== 'online').length} kapalı
+          </span>
+          {pm2Msg && (
+            <span className={`ml-auto text-xs px-2.5 py-1 rounded-lg ${pm2Msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{pm2Msg.text}</span>
+          )}
         </div>
         <div className="divide-y">
           {stats.pm2.map((p) => {
             const isOn = p.status === 'online';
+            const isStopped = p.status === 'stopped' || p.status === 'stopping';
+            const info = PM2_INFO[p.name];
+            const busy = pm2Busy.startsWith(`${p.name}:`);
             return (
               <div key={p.pm_id} className="px-6 py-3 flex items-center gap-3 flex-wrap">
-                {isOn ? <CheckCircle2 size={18} className="text-green-500" /> : <XCircle size={18} className="text-red-500" />}
-                <span className="font-medium text-gray-900 min-w-[180px]">{p.name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${isOn ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {p.status}
+                {isOn ? <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+                  : isStopped ? <PauseCircle size={18} className="text-gray-400 shrink-0" />
+                  : <XCircle size={18} className="text-red-500 shrink-0" />}
+                <div className="min-w-[220px] flex-1">
+                  <div className="font-medium text-gray-900">{p.name}</div>
+                  {info && <div className="text-xs text-gray-500">{info.label}</div>}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isOn ? 'bg-green-100 text-green-700' : isStopped ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'}`}>
+                  {isOn ? 'çalışıyor' : isStopped ? 'durduruldu' : p.status}
                 </span>
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <Clock size={12} /> {fmtUptimeMs(p.uptime)}
-                </span>
-                <span className="text-xs text-gray-500">CPU: {p.cpu}%</span>
-                <span className="text-xs text-gray-500">RAM: {fmtMB(p.memory)}</span>
-                {p.restarts > 5 && (
-                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded ml-auto">
-                    {p.restarts} restart
-                  </span>
+                {isOn && (
+                  <>
+                    <span className="text-xs text-gray-500 flex items-center gap-1"><Clock size={12} /> {fmtUptimeMs(p.uptime)}</span>
+                    <span className="text-xs text-gray-500">CPU: {p.cpu}%</span>
+                    <span className="text-xs text-gray-500">RAM: {fmtMB(p.memory)}</span>
+                  </>
                 )}
+                {p.restarts > 5 && (
+                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">{p.restarts} restart</span>
+                )}
+                <div className="flex gap-1.5 ml-auto">
+                  {!isOn && (
+                    <button
+                      onClick={() => pm2Action(p.name, 'start')}
+                      disabled={!!pm2Busy}
+                      className="inline-flex items-center gap-1 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-2.5 py-1.5 text-xs font-semibold"
+                    >
+                      <Play size={12} /> {busy ? '…' : 'Başlat'}
+                    </button>
+                  )}
+                  {isOn && (
+                    <button
+                      onClick={() => pm2Action(p.name, 'restart')}
+                      disabled={!!pm2Busy}
+                      className="inline-flex items-center gap-1 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 px-2.5 py-1.5 text-xs font-semibold"
+                    >
+                      <RotateCw size={12} /> {busy ? '…' : 'Yeniden başlat'}
+                    </button>
+                  )}
+                  {isOn && !info?.protectedStop && (
+                    <button
+                      onClick={() => pm2Action(p.name, 'stop')}
+                      disabled={!!pm2Busy}
+                      className={`inline-flex items-center gap-1 rounded-lg border disabled:opacity-50 px-2.5 py-1.5 text-xs font-semibold ${info?.customer ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <Square size={11} /> Durdur
+                    </button>
+                  )}
+                  {isOn && info?.protectedStop && (
+                    <span className="text-[11px] text-gray-400 self-center" title="Durdurulursa admin paneline erişilemez">korumalı</span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -467,7 +562,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['site_down', '🚨 Site / API kesintisi', `Bir kontrol ${alertSettings.down_after_minutes} dakikadan uzun başarısız olursa tek e-posta — tüm sorunlar birlikte. Deploy sırasında gönderilmez.`],
                 ['site_recovered', '✅ „Düzeldi“ bildirimi', 'Yalnızca kesinti e-postası gitmişse, düzelince tek e-posta (ne kadar sürdüğüyle).'],
                 ['server', '🖥️ Sunucu kaynakları (RAM, Swap, Disk, CPU)', `Eşik 15 dakika boyunca aşılırsa; en fazla ${alertSettings.server_cooldown_hours} saatte bir.`],
-                ['pm2', '⚙️ Çöken PM2 servisi', 'Bilerek durdurulan servisler (pm2 stop, ör. haber-app) uyarı üretmez.'],
+                ['pm2', '⚙️ Çöken PM2 servisi', 'Durdurulan servisler (aşağıdaki listeden veya pm2 stop ile) uyarı üretmez.'],
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
                 ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
