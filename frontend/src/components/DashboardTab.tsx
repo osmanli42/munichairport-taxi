@@ -52,7 +52,11 @@ interface DashboardData {
   intake: Record<'today' | 'yesterdaySameTime' | 'yesterday' | 'week' | 'prevWeek' | 'mtd' | 'prevMtd' | 'prevMonth', Agg>;
   chart: Array<{ date: string } & Agg>;
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
-  attention: Record<'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus', Leg[]>;
+  attention: Record<AttentionKey, Leg[]> & {
+    /** Card rides still to charge: tomorrow's after 20:00, today's upcoming ones always. */
+    cardsUncharged?: UnchargedCard[];
+  };
+  card_deadline_hour?: number;
   recent: Recent[];
   calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
   /** Calendar-only rides this month up to now (by ride date); null when switched off in Statistik. */
@@ -64,6 +68,22 @@ interface DashboardData {
 }
 
 type CalSum = { count: number; priced: number; revenue: number };
+type AttentionKey = 'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus';
+
+type UnchargedCard = {
+  id: number;
+  booking_number: string;
+  name: string;
+  pickup_datetime: string;
+  price: number;
+  company_id: number | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  charge_status: string | null;
+  charge_error: string | null;
+  legacy_card: boolean;
+  day: 'today' | 'tomorrow';
+};
 
 type CalLeg = {
   uid: string;
@@ -495,17 +515,21 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 // ---------------------------------------------------------------------------------------
 // Attention panel
 
-function AttentionPanel({ a, mismatches, onOpen }: {
-  a: DashboardData['attention']; mismatches: CalMismatch[]; onOpen: (id: number) => void;
+function AttentionPanel({ a, mismatches, deadline, onOpen }: {
+  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: number; onOpen: (id: number) => void;
 }) {
-  const groups: Array<{ key: keyof DashboardData['attention']; title: string; hint: string; Icon: typeof Clock; tone: string }> = [
+  const cards = a.cardsUncharged || [];
+  // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
+  const cardIds = new Set(cards.map((c) => c.id));
+  a = { ...a, failedCharges: a.failedCharges.filter((l) => !cardIds.has(l.id)) };
+  const groups: Array<{ key: AttentionKey; title: string; hint: string; Icon: typeof Clock; tone: string }> = [
     { key: 'failedCharges', title: 'Kartenzahlung fehlgeschlagen', hint: 'Stripe-Abbuchung erneut versuchen oder Kunde kontaktieren', Icon: CreditCard, tone: 'text-red-600 bg-red-50' },
     { key: 'unconfirmed', title: 'Noch nicht bestätigt', hint: 'Neue Buchungen mit anstehender Fahrt', Icon: Clock, tone: 'text-blue-600 bg-blue-50' },
     { key: 'unpaidTransfers', title: 'Überweisung offen', hint: 'Fahrt in ≤ 3 Tagen oder vorbei, Zahlung nicht verbucht', Icon: Landmark, tone: 'text-amber-600 bg-amber-50' },
     { key: 'invoiceFailed', title: 'Rechnung nicht versendet', hint: 'Automatischer Versand nach 3 Versuchen abgebrochen', Icon: FileWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'openStatus', title: 'Fahrt vorbei, Status offen', hint: 'Noch „Bestätigt“ — auf „Abgeschlossen“ setzen', Icon: Receipt, tone: 'text-gray-600 bg-gray-100' },
   ];
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length;
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   return (
     <Card
@@ -523,6 +547,37 @@ function AttentionPanel({ a, mismatches, onOpen }: {
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
+          {cards.length > 0 && (
+            <div className="px-5 py-3 bg-red-50/60">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500 animate-pulse"><CreditCard size={15} /></span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-red-700">Kreditkarte nicht abgebucht <span className="font-normal">({cards.length} · {formatPrice(cards.reduce((s, c) => s + c.price, 0))})</span></div>
+                  <div className="text-[11px] text-red-600/80">
+                    {cards.some((c) => c.day === 'tomorrow') ? `Fahrt morgen — sollte bis ${deadline}:00 Uhr abgebucht sein` : 'Fahrt heute steht bevor'}
+                  </div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {cards.map((c) => (
+                  <li key={c.id}>
+                    <button onClick={() => onOpen(c.id)} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-red-700 shrink-0">{c.day === 'today' ? 'Heute' : 'Morgen'} {hhmm(c.pickup_datetime)}</span>
+                        <span className="truncate font-medium text-gray-800">{c.name}</span>
+                        <span className="ml-auto shrink-0 font-semibold text-gray-900">{formatPrice(c.price)}</span>
+                        <ChevronRight size={13} className="shrink-0 text-gray-300" />
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-gray-500 font-mono">
+                        {c.company_id ? 'Firmenkarte' : c.card_last4 ? `${(c.card_brand || 'Karte').toUpperCase()} •••• ${c.card_last4}` : c.legacy_card ? 'alte Karte – manuell' : 'keine Karte hinterlegt'}
+                        {c.charge_status === 'failed' && <span className="text-red-600 font-sans"> · fehlgeschlagen{c.charge_error ? `: ${c.charge_error}` : ''}</span>}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {mismatches.length > 0 && (
             <div className="px-5 py-3">
               <div className="flex items-start gap-2.5">
@@ -1134,7 +1189,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
         </div>
         <div className="space-y-6">
-          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} onOpen={onOpenBooking} />
+          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline_hour ?? 20} onOpen={onOpenBooking} />
           {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
           {show('charges') && <TomorrowCharges
             cards={cards}

@@ -9,6 +9,7 @@ import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
+import { unchargedCards, CARD_DEADLINE_HOUR } from '../services/cardChargeReminder';
 import { CalEvent } from '../services/calendarInvoice';
 import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
 
@@ -213,6 +214,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
        ORDER BY ${wallSql('b.pickup_datetime')} ${order} LIMIT 20`, params)
       .then((rows) => rows.map((r) => ({ ...r, leg_time: wall(r.leg_time) })));
 
+    // Card rides that should be charged by now: tomorrow's after 20:00, today's still ahead.
+    const cardsUncharged = await unchargedCards();
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
@@ -264,7 +267,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intake,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged },
+      card_deadline_hour: CARD_DEADLINE_HOUR,
       recent,
       calendar,
       calendarMonth: calMonth,

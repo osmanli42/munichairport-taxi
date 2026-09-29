@@ -9,8 +9,8 @@
 
 import { query, run } from '../db';
 
-export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary';
-export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary'];
+export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge';
+export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge'];
 
 export interface AlertConfig {
   enabled: boolean;
@@ -31,6 +31,7 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
     business: true,
     ads: true,
     daily_summary: true,
+    card_charge: true,
   },
   down_after_minutes: 6,
   reminder_hours: 12,

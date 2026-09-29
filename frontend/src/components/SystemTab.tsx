@@ -68,7 +68,7 @@ const PM2_INFO: Record<string, { label: string; what: string; ifStopped: string;
 };
 
 // Mirrors backend services/alertCenter.ts
-type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary';
+type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge';
 interface AlertCfg {
   enabled: boolean;
   categories: Record<AlertCategory, boolean>;
@@ -635,6 +635,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
                 ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
+                ['card_charge', '💳 Kart çekilmedi', 'Saat 20:00’de yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle).'],
               ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
                 <div key={key} className="flex items-start gap-3 px-3 py-2.5">
                   <div className="flex-1">

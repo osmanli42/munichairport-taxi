@@ -1,0 +1,104 @@
+// Card rides that should already be charged but are not.
+//
+// Card payments for a ride are charged the day before ("Morgen abbuchen" on the dashboard).
+// From 20:00 Berlin time, any card ride of tomorrow that is still open is flagged — on the
+// dashboard (Handlungsbedarf) and once per day by e-mail (alert category 'card_charge').
+// Today's rides that have not happened yet and are still not charged are flagged all day.
+
+import cron from 'node-cron';
+import { Resend } from 'resend';
+import { query } from '../db';
+import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
+import { shouldSendAlert } from './alertCenter';
+
+export const CARD_DEADLINE_HOUR = 20;
+
+export type UnchargedCard = {
+  id: number;
+  booking_number: string;
+  name: string;
+  pickup_datetime: string;
+  price: number;
+  company_id: number | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  charge_status: string | null;
+  charge_error: string | null;
+  legacy_card: boolean;   // old booking with a stored card number, no Stripe card
+  day: 'today' | 'tomorrow';
+};
+
+export async function unchargedCards(): Promise<UnchargedCard[]> {
+  const now = berlinNowSql();                       // 'YYYY-MM-DD HH:mm:ss'
+  const today = now.slice(0, 10);
+  const tomorrow = berlinDateSql(1);
+  const afterDeadline = +now.slice(11, 13) >= CARD_DEADLINE_HOUR;
+  const rows = await query<any>(`
+    SELECT id, booking_number, name, pickup_datetime, price, company_id, card_brand, card_last4,
+           charge_status, charge_error, (card_number_enc IS NOT NULL AND card_number_enc <> '') AS legacy_card
+      FROM bookings
+     WHERE payment_method = 'card' AND status IN ('new', 'confirmed')
+       AND COALESCE(charge_status, '') <> 'succeeded'
+       AND (stripe_charge_id IS NULL OR stripe_charge_id = '')
+       AND (
+         (LEFT(pickup_datetime, 10) = ? AND REPLACE(pickup_datetime, 'T', ' ') >= ?)
+         OR (? = 1 AND LEFT(pickup_datetime, 10) = ?)
+       )
+     ORDER BY REPLACE(pickup_datetime, 'T', ' ')`,
+    [today, now, afterDeadline ? 1 : 0, tomorrow]);
+  return rows.map((r) => ({
+    ...r,
+    price: Number(r.price) || 0,
+    legacy_card: !!Number(r.legacy_card),
+    pickup_datetime: String(r.pickup_datetime).replace(' ', 'T').slice(0, 16),
+    day: String(r.pickup_datetime).slice(0, 10) === today ? 'today' : 'tomorrow',
+  }));
+}
+
+const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+async function checkAndMail(): Promise<void> {
+  // Only the live server mails — a local run works on the test DB.
+  if (!process.env.RESEND_API_KEY || process.env.NODE_ENV !== 'production') return;
+  const tomorrow = berlinDateSql(1);
+  const list = (await unchargedCards()).filter((c) => c.day === 'tomorrow');
+  if (!list.length) return;
+  // One mail per day (for tomorrow's rides); the admin can switch the category off in System.
+  if (!(await shouldSendAlert('card_charge', `card_charge:${tomorrow}`, 20))) return;
+  const total = list.reduce((s, c) => s + c.price, 0);
+  const rows = list.map((c) => `
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;font-weight:bold">${esc(c.pickup_datetime.slice(11, 16))}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(c.name)}<br><span style="color:#888;font-size:12px">${esc(c.booking_number)}</span></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${c.company_id ? 'Firmenkarte' : c.card_last4 ? `${esc((c.card_brand || 'Karte').toUpperCase())} •••• ${esc(c.card_last4)}` : c.legacy_card ? 'alte Karte (manuell)' : '—'}
+        ${c.charge_status === 'failed' ? `<br><span style="color:#dc2626;font-size:12px">fehlgeschlagen: ${esc(c.charge_error || '')}</span>` : ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold">${c.price.toFixed(2).replace('.', ',')} €</td>
+    </tr>`).join('');
+  try {
+    await new Resend(process.env.RESEND_API_KEY).emails.send({
+      from: `Munich Airport Taxi <${FROM_EMAIL}>`,
+      to: ADMIN_EMAIL,
+      subject: `💳 ${list.length} Kreditkarte${list.length > 1 ? 'n' : ''} für morgen noch nicht abgebucht (${total.toFixed(2).replace('.', ',')} €)`,
+      html: `
+        <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb">
+          <div style="background:#fff;border-radius:12px;padding:24px;border-left:6px solid #f59e0b">
+            <h1 style="margin:0 0 8px;font-size:18px;color:#111">Kartenzahlungen für morgen offen</h1>
+            <p style="margin:0 0 16px;color:#555;font-size:14px">Es ist nach ${CARD_DEADLINE_HOUR}:00 Uhr und diese Fahrten von morgen sind noch nicht abgebucht:</p>
+            <table style="width:100%;border-collapse:collapse;font-size:14px">${rows}</table>
+            <p style="margin:16px 0 0"><a href="https://flughafen-muenchen.taxi/admin" style="background:#1a365d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:14px">Im Admin abbuchen</a></p>
+            <p style="margin:16px 0 0;color:#888;font-size:12px">Abschaltbar: Admin → System → E-Mail-Warnungen → „Kart çekilmedi“.</p>
+          </div>
+        </div>`,
+    });
+  } catch (e: any) {
+    console.error('[cardChargeReminder] mail failed:', e?.message || e);
+  }
+}
+
+export function startCardChargeReminderJob(): void {
+  // Every 5 minutes from 20:00 to 23:55 — first run after the deadline sends, the rest are
+  // stopped by the daily cooldown (or find nothing once charged).
+  cron.schedule(`*/5 ${CARD_DEADLINE_HOUR}-23 * * *`, () => { checkAndMail().catch(() => {}); }, { timezone: 'Europe/Berlin' });
+}

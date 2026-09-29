@@ -35,6 +35,7 @@ import { startHealthMonitorJob } from './services/healthMonitor';
 import { startAdsAlertJob } from './services/adsAlertJob';
 import { startAutoStatusJob } from './services/autoStatusJob';
 import { startAutoRechnungJob } from './services/autoRechnungJob';
+import { startCardChargeReminderJob } from './services/cardChargeReminder';
 import { startCalendarRidesJob } from './services/calendarRides';
 import { startLiveAssistAlertJob } from './services/liveAssistAlertJob';
 import { startDriverTrackingJobs } from './services/driverTracking';
@@ -134,6 +135,7 @@ app.listen(PORT, () => {
       startAdsAlertJob();
       startAutoStatusJob();
       startAutoRechnungJob();
+      startCardChargeReminderJob();
       startCalendarRidesJob();
       startLiveAssistAlertJob();
       startDriverTrackingJobs();
