@@ -3,19 +3,68 @@
 import { useEffect, useState, useCallback } from 'react';
 import PasswordChangeCard from './PasswordChangeCard';
 
-// What each PM2 process is, in words — and which ones serve customers (stopping those
-// takes a website offline, so the confirm says so plainly).
-const PM2_INFO: Record<string, { label: string; customer?: boolean; protectedStop?: boolean }> = {
-  'munichairport-taxi': { label: 'flughafen-muenchen.taxi — Backend / API (bu admin paneli)', customer: true, protectedStop: true },
-  'munichairport-frontend': { label: 'flughafen-muenchen.taxi — Website + Admin', customer: true, protectedStop: true },
-  'fmt-backend': { label: 'flughafen-muenchen-taxi.de — Backend', customer: true },
-  'fmt-de-frontend': { label: 'flughafen-muenchen-taxi.de — Website', customer: true },
-  'fmt-webhook': { label: 'flughafen-muenchen-taxi.de — Deploy-Webhook' },
-  'taxifreising': { label: 'taxifreising.de', customer: true },
-  'haber-app': { label: 'Haber uygulaması' },
-  'trading-backend': { label: 'Trading uygulaması — Backend (çok RAM kullanır)' },
-  'trading-frontend': { label: 'Trading uygulaması — Frontend' },
-  'transcript-proxy': { label: 'Transcript Proxy' },
+// What each PM2 process is, in plain words (checked against the VPS: pm2 cwd/script and
+// the nginx site that routes to its port), what happens if it is stopped, and why some
+// can only be restarted. Keep in sync with PM2_PROTECTED in backend routes/system.ts.
+const PM2_INFO: Record<string, { label: string; what: string; ifStopped: string; customer?: boolean; protectedWhy?: string }> = {
+  'munichairport-taxi': {
+    label: 'flughafen-muenchen.taxi — Backend / API',
+    what: 'Sitenin beyni: rezervasyon, fiyat hesaplama, fatura, e-postalar, şoför takibi, bu admin paneli ve tüm otomatik işler (fatura gönderimi, hatırlatmalar, site kontrolleri, uyarı mailleri).',
+    ifStopped: 'Rezervasyon alınamaz, e-posta ve fatura gitmez, admin paneli çalışmaz.',
+    customer: true,
+    protectedWhy: 'Bu admin panelini çalıştıran servis. Durdurursan panel de kapanır ve buradan tekrar başlatamazsın.',
+  },
+  'munichairport-frontend': {
+    label: 'flughafen-muenchen.taxi — Website + Admin',
+    what: 'Müşterinin gördüğü web sitesi (sayfalar, rezervasyon formu) ve /admin sayfası.',
+    ifStopped: 'flughafen-muenchen.taxi hiç açılmaz.',
+    customer: true,
+    protectedWhy: 'Admin sayfasını da bu servis gösteriyor. Durdurursan admine giremez, buradan tekrar başlatamazsın.',
+  },
+  'fmt-webhook': {
+    label: 'Otomatik deploy (her iki site)',
+    what: 'GitHub’a değişiklik gönderilince flughafen-muenchen.taxi ve flughafen-muenchen-taxi.de’yi otomatik günceller.',
+    ifStopped: 'Siteler çalışmaya devam eder ama yeni değişiklikler sessizce canlıya çıkmaz.',
+    protectedWhy: 'Durursa fark edilmez ama bütün güncellemeler takılır. Sadece yeniden başlatılabilir.',
+  },
+  'fmt-backend': {
+    label: 'flughafen-muenchen-taxi.de — Backend / API',
+    what: 'api.flughafen-muenchen-taxi.de: fiyat hesaplama, talep formu, müşteri ve admin e-postaları.',
+    ifStopped: 'Site açılır ama fiyat gösteremez, talepler gönderilemez.',
+    customer: true,
+  },
+  'fmt-de-frontend': {
+    label: 'flughafen-muenchen-taxi.de — Website',
+    what: 'flughafen-muenchen-taxi.de sitesinin sayfaları.',
+    ifStopped: 'flughafen-muenchen-taxi.de hiç açılmaz.',
+    customer: true,
+  },
+  'taxifreising': {
+    label: 'taxifreising.de — Backend / API',
+    what: 'Talep formu, fiyat teklifi ve e-postalar. (Sayfaların kendisi ayrıca doğrudan nginx’ten sunulur.)',
+    ifStopped: 'Site açılır ama talepler gönderilemez.',
+    customer: true,
+  },
+  'trading-backend': {
+    label: 'muc-line.de — Trading veri servisi (Python)',
+    what: 'Hisse tarayıcıları ve piyasa verileri. Sunucudaki en büyük RAM tüketicisi (~600 MB+).',
+    ifStopped: 'muc-line.de trading sayfası veri gösteremez; taksi sitelerini etkilemez.',
+  },
+  'trading-frontend': {
+    label: 'muc-line.de — Trading arayüzü',
+    what: 'muc-line.de’deki trading uygulamasının sayfaları.',
+    ifStopped: 'muc-line.de trading sayfası açılmaz; taksi sitelerini etkilemez.',
+  },
+  'transcript-proxy': {
+    label: 'YouTube altyazı ve çeviri servisi',
+    what: 'muc-line.de’deki dil öğrenme (Lernkarte) uygulaması için YouTube altyazısı ve kelime çevirisi getirir.',
+    ifStopped: 'O uygulamada altyazı/çeviri çalışmaz; taksi sitelerini etkilemez.',
+  },
+  'haber-app': {
+    label: 'Haber uygulaması',
+    what: 'Next.js haber uygulaması (port 3010). Hiçbir alan adına bağlı değil — internetten erişilemiyor.',
+    ifStopped: 'Hiçbir siteyi etkilemez.',
+  },
 };
 
 // Mirrors backend services/alertCenter.ts
@@ -221,8 +270,8 @@ export default function SystemTab({ token }: { token: string }) {
     const info = PM2_INFO[name];
     const label = info?.label || name;
     const verb = action === 'start' ? 'başlatılsın' : action === 'stop' ? 'durdurulsun' : 'yeniden başlatılsın';
-    const warn = action === 'stop' && info?.customer
-      ? '\n\n⚠️ Bu bir MÜŞTERİ SİTESİ — durdurursan site kapanır ve rezervasyon alamaz.'
+    const warn = action === 'stop' && info
+      ? `\n\n${info.customer ? '⚠️ MÜŞTERİ SİTESİ! ' : ''}Durdurulursa: ${info.ifStopped}`
       : action === 'start' && stats && stats.ram.pct >= 80
         ? `\n\n⚠️ RAM şu an %${stats.ram.pct} dolu — yeni servis sunucuyu yavaşlatabilir.`
         : action === 'restart' && name === 'munichairport-taxi'
@@ -485,9 +534,21 @@ export default function SystemTab({ token }: { token: string }) {
                 {isOn ? <CheckCircle2 size={18} className="text-green-500 shrink-0" />
                   : isStopped ? <PauseCircle size={18} className="text-gray-400 shrink-0" />
                   : <XCircle size={18} className="text-red-500 shrink-0" />}
-                <div className="min-w-[220px] flex-1">
-                  <div className="font-medium text-gray-900">{p.name}</div>
-                  {info && <div className="text-xs text-gray-500">{info.label}</div>}
+                <div className="min-w-[260px] flex-1">
+                  <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                    {p.name}
+                    {info && <span className="text-xs font-normal text-gray-500">· {info.label}</span>}
+                    {info?.protectedWhy && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">🔒 korumalı</span>
+                    )}
+                  </div>
+                  {info && (
+                    <div className="mt-1 text-xs text-gray-500 leading-relaxed max-w-2xl">
+                      <div>{info.what}</div>
+                      <div className={info.customer ? 'text-red-600/80' : 'text-gray-400'}>Durdurulursa: {info.ifStopped}</div>
+                      {info.protectedWhy && <div className="text-amber-700">Neden korumalı: {info.protectedWhy}</div>}
+                    </div>
+                  )}
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${isOn ? 'bg-green-100 text-green-700' : isStopped ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'}`}>
                   {isOn ? 'çalışıyor' : isStopped ? 'durduruldu' : p.status}
@@ -521,7 +582,7 @@ export default function SystemTab({ token }: { token: string }) {
                       <RotateCw size={12} /> {busy ? '…' : 'Yeniden başlat'}
                     </button>
                   )}
-                  {isOn && !info?.protectedStop && (
+                  {isOn && !info?.protectedWhy && (
                     <button
                       onClick={() => pm2Action(p.name, 'stop')}
                       disabled={!!pm2Busy}
@@ -529,9 +590,6 @@ export default function SystemTab({ token }: { token: string }) {
                     >
                       <Square size={11} /> Durdur
                     </button>
-                  )}
-                  {isOn && info?.protectedStop && (
-                    <span className="text-[11px] text-gray-400 self-center" title="Durdurulursa admin paneline erişilemez">korumalı</span>
                   )}
                 </div>
               </div>

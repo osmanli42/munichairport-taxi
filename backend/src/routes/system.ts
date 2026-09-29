@@ -130,10 +130,12 @@ const CONVERSION_THRESHOLDS = {
 };
 
 // ---------- PM2 control from the System tab ----------
-// Start / stop / restart a service without ssh. The two processes that serve the admin
-// itself (this API and the website that hosts /admin) can only be restarted: stopping
-// either would lock the admin out of the very button needed to start it again.
-const PM2_PROTECTED = new Set(['munichairport-taxi', 'munichairport-frontend']);
+// Start / stop / restart a service without ssh. Three processes can only be restarted:
+// this API and the website that hosts /admin (stopping either locks the admin out of the
+// very button needed to start it again), and fmt-webhook, which runs the auto-deploy of
+// both flughafen-muenchen.taxi and flughafen-muenchen-taxi.de — stopped, every push would
+// silently stop reaching production.
+const PM2_PROTECTED = new Set(['munichairport-taxi', 'munichairport-frontend', 'fmt-webhook']);
 const PM2_ACTIONS = ['start', 'stop', 'restart'];
 let pm2Busy = false;
 
@@ -159,7 +161,7 @@ router.post('/admin/system-stats/pm2/:name/:action', authenticateAdmin, async (r
     return;
   }
   if (action === 'stop' && PM2_PROTECTED.has(name)) {
-    res.status(400).json({ error: 'Bu servis admin panelini çalıştırıyor — sadece yeniden başlatılabilir.' });
+    res.status(400).json({ error: 'Bu servis korumalı — sadece yeniden başlatılabilir.' });
     return;
   }
   if (pm2Busy) {
