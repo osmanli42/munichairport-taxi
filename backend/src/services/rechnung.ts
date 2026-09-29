@@ -86,6 +86,10 @@ export function roundGrossPrice(price: number, exact: boolean = false): number {
   return Math.ceil(price * 2) / 2;
 }
 
+export function isRoundtripBooking(booking: any): boolean {
+  return booking?.trip_type === 'roundtrip' && !!booking?.return_datetime;
+}
+
 export function fmtDate(dateStr: string, lang: string): string {
   try {
     const d = new Date(dateStr);
@@ -257,22 +261,43 @@ export function generateRechnungPdf(opts: {
     const mwstAmount = grossPrice - netPrice;
 
     const pickupDate = booking.pickup_datetime ? fmtDate(booking.pickup_datetime, lang) : '';
-    const descLine1 = isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München';
-    const descLine2 = `${isEn ? 'From:' : 'Von:'} ${(booking.pickup_address || '').substring(0, 60)}`;
-    const descLine3 = `${isEn ? 'To:' : 'Nach:'} ${(booking.dropoff_address || '').substring(0, 60)}`;
-    const descLine4 = pickupDate ? (isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}`) : '';
+    // Round trip: still one position (the booking only stores the combined price, so no
+    // invented per-leg split), but both legs are listed with their own date — the invoice
+    // has to name every ride it bills, not just the outbound one.
+    const isRoundtrip = isRoundtripBooking(booking);
+    const descLine1 = isRoundtrip
+      ? (isEn ? 'Airport Transfer Munich – Return Trip' : 'Flughafentransfer München – Hin- und Rückfahrt')
+      : (isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München');
+    const fromAddr = (booking.pickup_address || '').substring(0, 60);
+    const toAddr = (booking.dropoff_address || '').substring(0, 60);
+    const subLines: { text: string; bold?: boolean; gap?: number }[] = isRoundtrip
+      ? [
+          { text: `${isEn ? 'Outbound' : 'Hinfahrt'}: ${pickupDate}`, bold: true },
+          { text: `${isEn ? 'From:' : 'Von:'} ${fromAddr}` },
+          { text: `${isEn ? 'To:' : 'Nach:'} ${toAddr}` },
+          { text: `${isEn ? 'Return' : 'Rückfahrt'}: ${fmtDate(booking.return_datetime, lang)}`, bold: true, gap: 4 },
+          { text: `${isEn ? 'From:' : 'Von:'} ${toAddr}` },
+          { text: `${isEn ? 'To:' : 'Nach:'} ${fromAddr}` },
+        ]
+      : [
+          { text: `${isEn ? 'From:' : 'Von:'} ${fromAddr}` },
+          { text: `${isEn ? 'To:' : 'Nach:'} ${toAddr}` },
+          ...(pickupDate ? [{ text: isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}` }] : []),
+        ];
 
-    const ROW_H_SERVICE = descLine4 ? 65 : 54;
+    // One-way keeps its previous geometry exactly (54 / 65 pt rows, lines at +20/+31/+42).
+    const ROW_H_SERVICE = 20 + subLines.reduce((h, l) => h + 11 + (l.gap || 0), 0) + 12;
     const rowTop = tableTop + 20;
     doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
     doc.fillColor('#111827').fontSize(8.5).font('WorkSans-Bold');
     doc.text('1', colPos, rowTop + 8, { width: 25, lineBreak: false });
     doc.font('WorkSans-Bold').text(descLine1, colDesc, rowTop + 8, { width: wDesc, height: 10, ellipsis: true });
-    doc.font('WorkSans').fontSize(8).fillColor(GRAY)
-      .text(descLine2, colDesc, rowTop + 20, { width: wDesc, height: 9, ellipsis: true });
-    doc.text(descLine3, colDesc, rowTop + 31, { width: wDesc, height: 9, ellipsis: true });
-    if (descLine4) {
-      doc.text(descLine4, colDesc, rowTop + 42, { width: wDesc, height: 9, ellipsis: true });
+    let lineY = rowTop + 20;
+    for (const l of subLines) {
+      lineY += l.gap || 0;
+      doc.font(l.bold ? 'WorkSans-Bold' : 'WorkSans').fontSize(8).fillColor(l.bold ? '#374151' : GRAY)
+        .text(l.text, colDesc, lineY, { width: wDesc, height: 9, ellipsis: true });
+      lineY += 11;
     }
     doc.fontSize(8.5).fillColor('#111827').font('WorkSans');
     doc.text('1×', colMenge, rowTop + 8, { width: wMenge, align: 'center', lineBreak: false });
@@ -424,12 +449,21 @@ export function buildRechnungEmail(opts: {
         ? `Thank you for choosing Munich Airport Taxi. Please find your invoice <strong>${rechnungsnummer}</strong> attached to this email.`
         : `Vielen Dank für Ihre Buchung bei Flughafen München Taxi. Anbei erhalten Sie Ihre Rechnung <strong>${rechnungsnummer}</strong> als PDF-Anhang.`);
 
+  // Same rule as the PDF: a round trip lists both legs with their dates.
+  const isRoundtrip = isRoundtripBooking(booking);
+  const routeRows = isRoundtrip
+    ? `<tr><td style="padding:8px 12px 2px;color:#6b7280;font-size:12px;" colspan="2"><strong style="color:#374151;">${isEn ? 'Outbound' : 'Hinfahrt'} ${fmtDate(booking.pickup_datetime, lang)}:</strong> ${booking.pickup_address} → ${booking.dropoff_address}</td></tr>
+    <tr><td style="padding:2px 12px 8px;color:#6b7280;font-size:12px;" colspan="2"><strong style="color:#374151;">${isEn ? 'Return' : 'Rückfahrt'} ${fmtDate(booking.return_datetime, lang)}:</strong> ${booking.dropoff_address} → ${booking.pickup_address}</td></tr>`
+    : `<tr><td style="padding:8px 12px;color:#6b7280;font-size:12px;" colspan="2">${booking.pickup_address} → ${booking.dropoff_address}</td></tr>`;
+
   const tableRows = `
     <tr style="background:#f3f4f6;">
-      <td style="padding:10px 12px;font-weight:600;color:#111827;">${isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München'}</td>
+      <td style="padding:10px 12px;font-weight:600;color:#111827;">${isRoundtrip
+        ? (isEn ? 'Airport Transfer Munich – Return Trip' : 'Flughafentransfer München – Hin- und Rückfahrt')
+        : (isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München')}</td>
       <td style="padding:10px 12px;text-align:right;color:#111827;">${fmtPrice(netPrice)}</td>
     </tr>
-    <tr><td style="padding:8px 12px;color:#6b7280;font-size:12px;" colspan="2">${booking.pickup_address} → ${booking.dropoff_address}</td></tr>
+    ${routeRows}
     <tr style="border-top:1px solid #e5e7eb;">
       <td style="padding:8px 12px;color:#6b7280;">${isEn ? 'Net Amount' : 'Nettobetrag'}</td>
       <td style="padding:8px 12px;text-align:right;color:#374151;">${fmtPrice(netPrice)}</td>
