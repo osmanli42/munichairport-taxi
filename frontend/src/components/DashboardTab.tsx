@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
-  Clock, CreditCard, ExternalLink, Eye, FileText, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
+  Clock, CreditCard, ExternalLink, Eye, FileText, History, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
@@ -38,13 +38,21 @@ interface DashboardData {
   now: string;
   today: string;
   legs: Leg[];
-  intake: Record<'today' | 'yesterdaySameTime' | 'yesterday' | 'week' | 'prevWeek' | 'mtd' | 'prevMtd', Agg>;
+  intake: Record<'today' | 'yesterdaySameTime' | 'yesterday' | 'week' | 'prevWeek' | 'mtd' | 'prevMtd' | 'prevMonth', Agg>;
   chart: Array<{ date: string } & Agg>;
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
   attention: Record<'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus', Leg[]>;
   recent: Recent[];
   calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
+  /** Calendar-only rides this month up to now (by ride date); null when switched off in Statistik. */
+  calendarMonth: CalSum | null;
+  calendarPrevMonth: CalSum | null;
+  /** All calendar-only rides up to now; null when switched off in Statistik. */
+  calendarTotal: CalSum | null;
+  allTime: Agg;
 }
+
+type CalSum = { count: number; priced: number; revenue: number };
 
 type CalLeg = {
   uid: string;
@@ -187,7 +195,7 @@ function DeltaChip({ cur, prev, suffix }: { cur: number; prev: number; suffix: s
   return (
     <span className={cn('inline-flex items-center gap-1 text-xs font-semibold', up ? 'text-emerald-600' : 'text-red-600')}>
       {up ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-      {up ? '+' : ''}{pct} %
+      <span className="whitespace-nowrap">{up ? '+' : ''}{pct} %</span>
       <span className="font-normal text-gray-400">{suffix}</span>
     </span>
   );
@@ -893,6 +901,17 @@ function ReportsCard() {
 // ---------------------------------------------------------------------------------------
 // KPI card
 
+// "648 Buchungen + Kalender 12.345 € (310 Fahrten)"
+function CalSplit({ bookings, cal }: { bookings: Agg; cal: CalSum | null }) {
+  if (!cal || cal.count === 0) return <>{plural(bookings.count, 'Buchung', 'Buchungen')}</>;
+  return (
+    <>
+      {plural(bookings.count, 'Buchung', 'Buchungen')} {formatPrice(bookings.revenue)}
+      <span className="block text-teal-600">+ Kalender {formatPrice(cal.revenue)} ({plural(cal.count, 'Fahrt', 'Fahrten')})</span>
+    </>
+  );
+}
+
 function Kpi({ label, value, sub, footer, Icon, tone }: {
   label: string; value: React.ReactNode; sub?: React.ReactNode; footer?: React.ReactNode; Icon: typeof Clock; tone: string;
 }) {
@@ -989,6 +1008,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   };
   const it = data.intake;
   const monthName = MONTHS[+data.month.month.slice(5, 7) - 1];
+  const prevMonthName = MONTHS[(+data.month.month.slice(5, 7) + 10) % 12];
 
   return (
     <div className="space-y-6">
@@ -1015,7 +1035,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <Kpi
           label="Fahrten heute"
           Icon={Car}
@@ -1062,9 +1082,25 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           label={`${monthName} bis heute`}
           Icon={Receipt}
           tone="bg-violet-50 text-violet-600"
-          value={formatPrice(it.mtd.revenue)}
-          sub={`${it.mtd.count} Buchungen`}
-          footer={<DeltaChip cur={it.mtd.revenue} prev={it.prevMtd.revenue} suffix="vs. Vormonat gleicher Zeitraum" />}
+          value={formatPrice(it.mtd.revenue + (data.calendarMonth?.revenue ?? 0))}
+          sub={<CalSplit bookings={it.mtd} cal={data.calendarMonth} />}
+          footer={<DeltaChip cur={it.mtd.revenue} prev={it.prevMtd.revenue} suffix="Buchungen vs. Vormonat" />}
+        />
+        <Kpi
+          label={`${prevMonthName} (Vormonat)`}
+          Icon={History}
+          tone="bg-amber-50 text-amber-600"
+          value={formatPrice(it.prevMonth.revenue + (data.calendarPrevMonth?.revenue ?? 0))}
+          sub={<CalSplit bookings={it.prevMonth} cal={data.calendarPrevMonth} />}
+          footer={<span className="text-xs text-gray-400">ganzer Monat</span>}
+        />
+        <Kpi
+          label="Gesamtumsatz"
+          Icon={Wallet}
+          tone="bg-gray-100 text-gray-700"
+          value={formatPrice(data.allTime.revenue + (data.calendarTotal?.revenue ?? 0))}
+          sub={<CalSplit bookings={data.allTime} cal={data.calendarTotal} />}
+          footer={<span className="text-xs text-gray-400">{data.calendarTotal ? 'seit 2023, inkl. Kalender' : 'alle Buchungen seit Start der Website'}</span>}
         />
       </div>
       <p className="-mt-3 text-[11px] text-gray-400">

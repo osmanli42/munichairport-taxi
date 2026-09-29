@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { adminApi, pricesApi, settingsApi, plzSurchargesApi, fixedRoutesApi, Booking, Price, PlzSurcharge, FixedRoute } from '@/lib/api';
+import { adminApi, pricesApi, settingsApi, plzSurchargesApi, fixedRoutesApi, Booking, Price, PlzSurcharge, FixedRoute, CalendarStats } from '@/lib/api';
 import { formatPrice, formatDateTime, cn } from '@/lib/utils';
 import { waNumber, parsePhone } from '@/lib/phone';
 import {
@@ -23,6 +23,7 @@ import AdminAddressField from '@/components/AdminAddressField';
 import RabatteTab from '@/components/RabatteTab';
 import DriversTab from '@/components/DriversTab';
 import DashboardTab from '@/components/DashboardTab';
+import CalendarRevenuePanel from '@/components/CalendarRevenuePanel';
 import BookingTrackingPanel from '@/components/tracking/BookingTrackingPanel';
 import TrackingAlerts from '@/components/tracking/TrackingAlerts';
 
@@ -225,6 +226,8 @@ export default function AdminPage() {
     else if (hadSelection.current) { hadSelection.current = false; setDashboardTick((t) => t + 1); }
   }, [selectedBooking]);
   const [detailedStats, setDetailedStats] = useState<Record<string, unknown> | null>(null);
+  // Google-Calendar-only rides for the Statistik tab (null = not loaded / not available).
+  const [calStats, setCalStats] = useState<CalendarStats | null>(null);
   const [geoRange, setGeoRange] = useState<'today' | '7d' | '30d' | '6m' | 'all'>('30d');
   const [geoStats, setGeoStats] = useState<{ visitorCountries: any[]; visitorCities: any[] } | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
@@ -300,8 +303,9 @@ export default function AdminPage() {
 
   const loadDetailedStats = useCallback(async () => {
     try {
-      const data = await adminApi.getStatistics();
+      const [data, cal] = await Promise.all([adminApi.getStatistics(), adminApi.getCalendarStats().catch(() => null)]);
       setDetailedStats(data);
+      setCalStats(cal);
     } catch (err) {
       console.error(err);
     }
@@ -2138,6 +2142,8 @@ export default function AdminPage() {
               <div className="text-center py-12 text-gray-400">Statistiken werden geladen...</div>
             ) : (
               <>
+                {calStats?.enabled && <CalendarRevenuePanel stats={calStats} onChanged={loadDetailedStats} />}
+
                 {/* KPI Summary Row */}
                 {(() => {
                   const avg = detailedStats.avgStats as { avg_price: number; avg_distance: number; avg_passengers: number; max_price: number; min_price: number };
@@ -2146,12 +2152,16 @@ export default function AdminPage() {
                   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                   const currentMonthData = monthly.find(m => m.month === currentMonth);
                   const lastMonth = currentMonthData;
+                  const calOn = !!calStats?.enabled && calStats.include;
+                  const calMonth = calOn ? calStats!.monthly.find(m => m.month === currentMonth) : undefined;
                   // MTD karşılaştırma: bu ayın 1→bugün vs geçen ayın 1→aynı gün
                   const mtd = detailedStats.mtdComparison as Array<{ period: string; revenue: number; count: number }> | undefined;
                   const mtdCurrent = mtd?.find(r => r.period === 'current');
                   const mtdPrevious = mtd?.find(r => r.period === 'previous');
-                  const growth = mtdCurrent && mtdPrevious && Number(mtdPrevious.revenue) > 0
-                    ? (((Number(mtdCurrent.revenue) - Number(mtdPrevious.revenue)) / Number(mtdPrevious.revenue)) * 100).toFixed(1)
+                  const mtdCurRev = Number(mtdCurrent?.revenue ?? 0) + (calOn ? calStats!.mtd.current.revenue : 0);
+                  const mtdPrevRev = Number(mtdPrevious?.revenue ?? 0) + (calOn ? calStats!.mtd.previous.revenue : 0);
+                  const growth = mtdPrevRev > 0
+                    ? (((mtdCurRev - mtdPrevRev) / mtdPrevRev) * 100).toFixed(1)
                     : null;
                   return (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2167,8 +2177,11 @@ export default function AdminPage() {
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
                         <div className="text-xs text-gray-500 mb-1">Dieser Monat</div>
-                        <div className="text-2xl font-bold text-gray-900">{lastMonth ? formatPrice(lastMonth.revenue) : '—'}</div>
-                        <div className="text-xs text-gray-400 mt-1">{lastMonth?.count ?? 0} Fahrten</div>
+                        <div className="text-2xl font-bold text-gray-900">{lastMonth || calMonth ? formatPrice(Number(lastMonth?.revenue ?? 0) + (calMonth?.revenue ?? 0)) : '—'}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {Number(lastMonth?.count ?? 0) + (calMonth?.count ?? 0)} Fahrten
+                          {calMonth && <span className="text-teal-600"> · davon Kalender {formatPrice(calMonth.revenue)} ({calMonth.count})</span>}
+                        </div>
                       </div>
                       <div className="bg-white rounded-2xl p-5 shadow-sm">
                         <div className="text-xs text-gray-500 mb-1">Wachstum (1–{now.getDate()}. {now.toLocaleString('de-DE', { month: 'short' })})</div>
@@ -2176,7 +2189,7 @@ export default function AdminPage() {
                           {growth !== null ? `${parseFloat(growth) >= 0 ? '+' : ''}${growth}%` : '—'}
                         </div>
                         <div className="text-xs text-gray-400 mt-1">
-                          vs. {mtdPrevious ? formatPrice(Number(mtdPrevious.revenue)) : '—'} (Vormonat gleicher Zeitraum)
+                          vs. {mtdPrevRev > 0 ? formatPrice(mtdPrevRev) : '—'} (Vormonat gleicher Zeitraum{calOn ? ', inkl. Kalender' : ''})
                         </div>
                       </div>
                     </div>
@@ -2185,13 +2198,32 @@ export default function AdminPage() {
 
                 {/* Monthly Revenue Chart */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-2">Monatlicher Umsatz (letzte 12 Monate)</h3>
+                  <h3 className="font-bold text-gray-900 mb-2">Monatlicher Umsatz (letzte 12 Monate{calStats?.enabled && calStats.include ? ', inkl. Kalender' : ''})</h3>
                   <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
                     <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary-600 inline-block" />Kreditkarte</span>
                     <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Barzahlung</span>
+                    {calStats?.enabled && calStats.include && (
+                      <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-teal-400 inline-block" />Kalender</span>
+                    )}
                   </div>
                   {(() => {
-                    const data = detailedStats.monthlyRevenue as Array<{ month: string; count: number; revenue: number; cash_revenue: number; card_revenue: number; cash_count: number; card_count: number }>;
+                    type MonthRow = { month: string; count: number; revenue: number; cash_revenue: number; card_revenue: number; cash_count: number; card_count: number; cal_revenue?: number; cal_count?: number; cal_priced?: number };
+                    const bookingMonths = detailedStats.monthlyRevenue as MonthRow[];
+                    // Calendar-only rides (by ride month) join the bars when switched on; months
+                    // before the website only have calendar rides, so they are added as rows.
+                    const calOn = !!calStats?.enabled && calStats.include;
+                    const d0 = new Date();
+                    const firstMonth = new Date(d0.getFullYear(), d0.getMonth() - 11, 1);
+                    const minMonth = `${firstMonth.getFullYear()}-${String(firstMonth.getMonth() + 1).padStart(2, '0')}`;
+                    const byMonth = new Map<string, MonthRow>(bookingMonths.map(m => [m.month, { ...m, revenue: Number(m.revenue), count: Number(m.count) }]));
+                    if (calOn) {
+                      for (const c of calStats!.monthly) {
+                        if (c.month < minMonth) continue;
+                        const r = byMonth.get(c.month) || { month: c.month, count: 0, revenue: 0, cash_revenue: 0, card_revenue: 0, cash_count: 0, card_count: 0 };
+                        byMonth.set(c.month, { ...r, revenue: r.revenue + c.revenue, count: r.count + c.count, cal_revenue: c.revenue, cal_count: c.count, cal_priced: c.priced });
+                      }
+                    }
+                    const data = Array.from(byMonth.values()).sort((a, b) => a.month.localeCompare(b.month));
                     const maxRevenue = Math.max(...data.map(d => d.revenue), 1);
                     return (
                       <div className="space-y-2">
@@ -2201,6 +2233,7 @@ export default function AdminPage() {
                           const totalPct = (d.revenue / maxRevenue) * 100;
                           const cardPct = d.revenue > 0 ? (d.card_revenue / d.revenue) * totalPct : 0;
                           const cashPct = d.revenue > 0 ? (d.cash_revenue / d.revenue) * totalPct : 0;
+                          const calPct = d.revenue > 0 ? ((d.cal_revenue ?? 0) / d.revenue) * totalPct : 0;
                           return (
                             <div key={d.month}>
                               <div className="flex items-center gap-3">
@@ -2208,6 +2241,7 @@ export default function AdminPage() {
                                 <div className="flex-1 bg-gray-100 rounded-full h-7 relative overflow-hidden flex">
                                   <div className="h-full bg-primary-600 transition-all" style={{ width: `${cardPct}%` }} />
                                   <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cashPct}%` }} />
+                                  {calPct > 0 && <div className="h-full bg-teal-400 transition-all" style={{ width: `${calPct}%` }} />}
                                   <div className="absolute inset-0 flex items-center px-3">
                                     <span className="text-xs font-bold text-white drop-shadow">{formatPrice(d.revenue)}</span>
                                   </div>
@@ -2219,6 +2253,11 @@ export default function AdminPage() {
                                 <div className="flex-1 flex gap-3 px-1">
                                   {(d.card_revenue ?? 0) > 0 && <span className="text-[11px] text-primary-600 font-medium">Kreditkarte: {formatPrice(d.card_revenue)}</span>}
                                   {(d.cash_revenue ?? 0) > 0 && <span className="text-[11px] text-emerald-600 font-medium">Bar: {formatPrice(d.cash_revenue)}</span>}
+                                  {(d.cal_count ?? 0) > 0 && (
+                                    <span className="text-[11px] text-teal-600 font-medium">
+                                      Kalender: {formatPrice(d.cal_revenue ?? 0)} ({d.cal_count} Fhrt.{(d.cal_count ?? 0) > (d.cal_priced ?? 0) ? `, ${(d.cal_count ?? 0) - (d.cal_priced ?? 0)} ohne Preis` : ''})
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>

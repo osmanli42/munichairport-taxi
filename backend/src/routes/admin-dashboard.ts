@@ -9,8 +9,8 @@ import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
-import { fetchEventsRange, parseInvoiceRide, CalEvent } from '../services/calendarInvoice';
-import { hasServiceAccount } from '../services/calendarImport';
+import { fetchEventsRange, CalEvent } from '../services/calendarInvoice';
+import { calendarId, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
 
 const router = Router();
 
@@ -46,8 +46,6 @@ const CHART_DAYS = 14;
 const CAL_CACHE_MS = 5 * 60_000;
 let calCache: { key: string; at: number; events: CalEvent[] } | null = null;
 
-const RE_CAL_CANCELLED = /❌|ipta+l+|an+ul+iert|storn|cancel|abgesagt/iu;
-const RE_BOOKING_NO = /\b[A-Z]{3}\d{6}-\d{4}\b/g;
 
 export type CalendarLeg = {
   uid: string;
@@ -76,75 +74,53 @@ async function loadCalendar(from: string, to: string): Promise<{
   enabled: boolean; error: string | null; legs: CalendarLeg[]; mismatches: CalendarMismatch[];
 }> {
   const empty = { legs: [] as CalendarLeg[], mismatches: [] as CalendarMismatch[] };
-  if (!hasServiceAccount()) return { enabled: false, error: null, ...empty };
-  const [setting] = await query<{ setting_value: string }>(`SELECT setting_value FROM settings WHERE setting_key = 'google_calendar_id'`);
-  const calendarId = setting?.setting_value;
-  if (!calendarId) return { enabled: false, error: null, ...empty };
+  const id = await calendarId();
+  if (!id) return { enabled: false, error: null, ...empty };
 
   let events: CalEvent[];
-  const key = `${calendarId}|${from}|${to}`;
+  const key = `${id}|${from}|${to}`;
   if (calCache && calCache.key === key && Date.now() - calCache.at < CAL_CACHE_MS) {
     events = calCache.events;
   } else {
     try {
-      events = (await fetchEventsRange(calendarId, from, to)).events;
+      events = (await fetchEventsRange(id, from, to)).events;
       calCache = { key, at: Date.now(), events };
     } catch (e: any) {
       return { enabled: true, error: e?.message || 'Kalender nicht erreichbar', ...empty };
     }
   }
 
-  // Bookings the events refer to — by imported uid or by a booking number in the text.
-  const uids = events.map((e) => e.uid);
-  const numbers = Array.from(new Set(events.flatMap((e) => `${e.summary}\n${e.location}\n${e.description}`.match(RE_BOOKING_NO) || [])));
-  const imported = new Set<string>();
-  if (uids.length) {
-    const rows = await query<{ calendar_event_uid: string }>(
-      `SELECT calendar_event_uid FROM bookings WHERE calendar_event_uid IN (${uids.map(() => '?').join(',')})`, uids);
-    rows.forEach((r) => imported.add(r.calendar_event_uid));
-  }
-  const byNumber = new Map<string, any>();
-  if (numbers.length) {
-    const rows = await query<any>(
-      `SELECT id, booking_number, name, price, status, trip_type, pickup_datetime, return_datetime
-         FROM bookings WHERE booking_number IN (${numbers.map(() => '?').join(',')})`, numbers);
-    rows.forEach((r) => byNumber.set(r.booking_number, r));
-  }
-
   const legs: CalendarLeg[] = [];
   const mismatches: CalendarMismatch[] = [];
-  for (const ev of events) {
-    if (!ev.start || imported.has(ev.uid)) continue;
-    const markers = `${ev.summary}\n${ev.location}`;
-    const refs = (`${markers}\n${ev.description}`.match(RE_BOOKING_NO) || []).map((n) => byNumber.get(n)).filter(Boolean);
-    if (refs.length) {
-      // Already a booking. Flag it when the calendar time matches none of its legs —
+  for (const c of classifyEvents(events, await loadBookingRefs())) {
+    const ev = c.event;
+    if (c.kind === 'booking' && c.booking) {
+      // The calendar copy of a booking: flag it when its time matches none of the legs —
       // the operator moved the ride in the calendar, or the booking has a wrong time.
-      const b = refs[0];
-      if (b.status !== 'cancelled' && !RE_CAL_CANCELLED.test(markers)) {
-        const times = [wall(b.pickup_datetime), b.trip_type === 'roundtrip' && b.return_datetime ? wall(b.return_datetime) : null].filter(Boolean);
-        if (!times.includes(ev.start)) {
-          mismatches.push({
-            id: b.id, booking_number: b.booking_number, name: b.name, price: Number(b.price) || 0,
-            booking_time: times.find((t) => t!.slice(0, 10) === ev.start!.slice(0, 10)) || times[0]!,
-            calendar_time: ev.start, html_link: ev.htmlLink,
-          });
-        }
+      const b = c.booking;
+      if (b.status === 'cancelled' || RE_CAL_CANCELLED.test(`${ev.summary}\n${ev.location}`)) continue;
+      const times = [wall(b.pickup_datetime), b.trip_type === 'roundtrip' && b.return_datetime ? wall(b.return_datetime) : null]
+        .filter((t): t is string => !!t);
+      if (!times.includes(ev.start!)) {
+        mismatches.push({
+          id: b.id, booking_number: b.booking_number, name: b.name, price: Number(b.price) || 0,
+          booking_time: times.find((t) => t.slice(0, 10) === ev.start!.slice(0, 10)) || times[0],
+          calendar_time: ev.start!, html_link: ev.htmlLink,
+        });
       }
       continue;
     }
-    if (RE_CAL_CANCELLED.test(markers)) continue;
-    const p = parseInvoiceRide(ev, [], []);
+    if (c.kind !== 'ride') continue;
     legs.push({
       uid: ev.uid,
-      leg_time: ev.start,
+      leg_time: ev.start!,
       summary: ev.summary.trim(),
       location: ev.location.trim(),
-      from: p.pickup_address,
-      to: p.dropoff_address,
-      via: p.via,
-      guest: p.guest_name ? p.guest_name.replace(/^name\s*:\s*/i, '') : null,
-      price: p.price,
+      from: c.from,
+      to: c.to,
+      via: c.via,
+      guest: c.guest,
+      price: c.price,
       html_link: ev.htmlLink,
     });
   }
@@ -197,7 +173,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
 
     const intake = {
       today: agg(), yesterdaySameTime: agg(), yesterday: agg(),
-      week: agg(), prevWeek: agg(), mtd: agg(), prevMtd: agg(),
+      week: agg(), prevWeek: agg(), mtd: agg(), prevMtd: agg(), prevMonth: agg(),
     };
     const chartMap = new Map<string, Agg>();
     for (let i = CHART_DAYS - 1; i >= 0; i--) chartMap.set(berlinDateSql(-i), agg());
@@ -223,12 +199,17 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
         const pm = r.payment_method || 'cash';
         add(payment[pm] || (payment[pm] = agg()), price);
       } else if (date.slice(0, 7) === prevMonth) {
+        add(intake.prevMonth, price);
         const day = +date.slice(8, 10);
         if (day < dom || (day === dom && time <= nowTime)) add(intake.prevMtd, price);
       }
       if (date >= chartStart && chartMap.has(date)) add(chartMap.get(date)!, price);
     }
     const chart = Array.from(chartMap.entries()).map(([date, a]) => ({ date, ...a }));
+
+    // All-time booking total (the "Gesamt" card of the old dashboard).
+    const [allTime] = await query<{ count: number; revenue: number }>(`
+      SELECT COUNT(*) AS count, COALESCE(SUM(price), 0) AS revenue FROM bookings WHERE status <> 'cancelled'`);
 
     // ---- Things that need a hand -----------------------------------------------------
     const since14 = `${berlinDateSql(-14)} 00:00:00`;
@@ -272,6 +253,18 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
 
     const calendar = await loadCalendar(today, lastDay);
 
+    // Calendar-only rides this month up to now (by ride date), for the month card.
+    const includeCalendar = await includeCalendarInStats();
+    const calSum = async (from: string, to: string) => {
+      const [r] = await query<{ count: number; priced: number; revenue: number }>(`
+        SELECT COUNT(*) AS count, COUNT(price) AS priced, COALESCE(SUM(price), 0) AS revenue
+          FROM calendar_rides WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`, [from, to]);
+      return { count: Number(r?.count) || 0, priced: Number(r?.priced) || 0, revenue: Number(r?.revenue) || 0 };
+    };
+    const calMonth = includeCalendar ? await calSum(`${month}-01T00:00`, wall(now)) : null;
+    const calPrevMonth = includeCalendar ? await calSum(`${prevMonth}-01T00:00`, `${prevMonth}-31T23:59`) : null;
+    const calTotal = includeCalendar ? await calSum('0000-01-01T00:00', wall(now)) : null;
+
     res.json({
       now: wall(now),
       today,
@@ -282,11 +275,86 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus },
       recent,
       calendar,
+      calendarMonth: calMonth,
+      calendarPrevMonth: calPrevMonth,
+      calendarTotal: calTotal,
+      allTime: { count: Number(allTime?.count) || 0, revenue: Number(allTime?.revenue) || 0 },
     });
   } catch (error) {
     console.error('[admin-dashboard]', error);
     res.status(500).json({ error: 'Failed to load dashboard' });
   }
+});
+
+// ---- Calendar revenue for the statistics ---------------------------------------------
+
+async function includeCalendarInStats(): Promise<boolean> {
+  const [row] = await query<{ setting_value: string }>(`SELECT setting_value FROM settings WHERE setting_key = 'stats_include_calendar'`);
+  return (row?.setting_value ?? '1') === '1';
+}
+
+// GET /api/admin/dashboard/calendar-stats — calendar-only rides (kind 'ride') by month and
+// year, plus booking totals per year so the Statistik tab can show both side by side.
+router.get('/calendar-stats', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const enabled = !!(await calendarId());
+    const include = await includeCalendarInStats();
+    const now = berlinNowSql();
+    const today = now.slice(0, 10);
+    const dom = +today.slice(8, 10);
+    const month = today.slice(0, 7);
+    const prevMonth = berlinDateSql(-dom).slice(0, 7);
+    const prevEnd = `${prevMonth}-${String(dom).padStart(2, '0')}T${now.slice(11, 16)}`;
+
+    const monthly = await query<any>(`
+      SELECT LEFT(ride_time, 7) AS month, COUNT(*) AS count, COUNT(price) AS priced, COALESCE(SUM(price), 0) AS revenue
+        FROM calendar_rides WHERE kind = 'ride'
+       GROUP BY LEFT(ride_time, 7) ORDER BY month`);
+    const [mtdCur] = await query<any>(`
+      SELECT COUNT(*) AS count, COALESCE(SUM(price), 0) AS revenue FROM calendar_rides
+       WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`, [`${month}-01T00:00`, wall(now)]);
+    const [mtdPrev] = await query<any>(`
+      SELECT COUNT(*) AS count, COALESCE(SUM(price), 0) AS revenue FROM calendar_rides
+       WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`, [`${prevMonth}-01T00:00`, prevEnd]);
+    const bookingYears = await query<any>(`
+      SELECT LEFT(pickup_datetime, 4) AS year, COUNT(*) AS count, COALESCE(SUM(price), 0) AS revenue
+        FROM bookings WHERE status <> 'cancelled'
+       GROUP BY LEFT(pickup_datetime, 4) ORDER BY year`);
+    const [kinds] = await query<any>(`
+      SELECT COUNT(*) AS events, SUM(kind = 'ride') AS rides, SUM(kind = 'duplicate') AS duplicates,
+             SUM(kind IN ('booking', 'imported')) AS bookings, SUM(kind = 'cancelled') AS cancelled,
+             MAX(synced_at) AS synced_at
+        FROM calendar_rides`);
+
+    const num = (r: any) => ({ count: Number(r?.count) || 0, revenue: Number(r?.revenue) || 0 });
+    res.json({
+      enabled,
+      include,
+      sync: {
+        last: calendarSyncStatus(),
+        synced_at: kinds?.synced_at || null,
+        events: Number(kinds?.events) || 0,
+        rides: Number(kinds?.rides) || 0,
+        duplicates: Number(kinds?.duplicates) || 0,
+        bookings: Number(kinds?.bookings) || 0,
+        cancelled: Number(kinds?.cancelled) || 0,
+      },
+      monthly: monthly.map((m) => ({ month: m.month, count: Number(m.count), priced: Number(m.priced), revenue: Number(m.revenue) })),
+      mtd: { current: num(mtdCur), previous: num(mtdPrev) },
+      bookingYears: bookingYears.map((y) => ({ year: y.year, ...num(y) })),
+    });
+  } catch (error) {
+    console.error('[calendar-stats]', error);
+    res.status(500).json({ error: 'Failed to load calendar stats' });
+  }
+});
+
+// POST /api/admin/dashboard/calendar-sync — re-read the whole calendar now (≈10 s).
+router.post('/calendar-sync', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  if (!(await calendarId())) { res.status(400).json({ error: 'Kalender nicht verbunden' }); return; }
+  const result = await syncAll();
+  if (!result) { res.status(409).json({ error: calendarSyncStatus()?.error || 'Synchronisierung läuft bereits' }); return; }
+  res.json({ success: true, ...result });
 });
 
 export default router;

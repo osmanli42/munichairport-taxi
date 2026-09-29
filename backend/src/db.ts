@@ -504,6 +504,27 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Rides from the operator's Google Calendar, mirrored for the statistics
+    // (services/calendarRides.ts). kind tells whether an event is a ride of its own or
+    // just the calendar copy of a booking / an imported booking / cancelled.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS calendar_rides (
+        uid VARCHAR(255) NOT NULL,
+        ride_time CHAR(16) NOT NULL,
+        kind VARCHAR(16) NOT NULL,
+        booking_id INT DEFAULT NULL,
+        price DECIMAL(10,2) DEFAULT NULL,
+        pickup_address TEXT,
+        dropoff_address TEXT,
+        summary TEXT,
+        location TEXT,
+        synced_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (uid, ride_time),
+        KEY idx_calendar_rides_time (ride_time),
+        KEY idx_calendar_rides_kind (kind, ride_time)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+
     // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS tracking_events (

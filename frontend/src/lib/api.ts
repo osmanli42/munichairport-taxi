@@ -119,6 +119,24 @@ export interface Booking {
   ueberweisung_paid_at?: string | null;
 }
 
+// Rides that exist only in the Google Calendar (see backend services/calendarRides.ts).
+export interface CalendarStats {
+  enabled: boolean;
+  include: boolean;
+  sync: {
+    last: { at: string; events: number; rides: number; error: string | null } | null;
+    synced_at: string | null;
+    events: number;
+    rides: number;
+    duplicates: number;
+    bookings: number;
+    cancelled: number;
+  };
+  monthly: Array<{ month: string; count: number; priced: number; revenue: number }>;
+  mtd: { current: { count: number; revenue: number }; previous: { count: number; revenue: number } };
+  bookingYears: Array<{ year: string; count: number; revenue: number }>;
+}
+
 export interface Price {
   id: number;
   vehicle_type: string;
@@ -417,6 +435,16 @@ export const adminApi = {
 
   updateSettings: async (settings: Record<string, string>) => {
     const response = await api.put('/settings', settings);
+    return response.data;
+  },
+
+  getCalendarStats: async (): Promise<CalendarStats> => {
+    const response = await api.get('/admin/dashboard/calendar-stats');
+    return response.data;
+  },
+
+  syncCalendarRides: async (): Promise<{ success: boolean; events: number; rides: number }> => {
+    const response = await api.post('/admin/dashboard/calendar-sync', {}, { timeout: 120000 });
     return response.data;
   },
 
