@@ -9,6 +9,8 @@ import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
+import { fetchEventsRange, parseInvoiceRide, CalEvent } from '../services/calendarInvoice';
+import { hasServiceAccount } from '../services/calendarImport';
 
 const router = Router();
 
@@ -35,6 +37,119 @@ const lastLegSql = `CASE WHEN b.trip_type = 'roundtrip' AND b.return_datetime IS
 
 const DAYS_AHEAD = 7;
 const CHART_DAYS = 14;
+
+// ---- Google Kalender ---------------------------------------------------------------
+// The operator's calendar holds every ride: web bookings (with their MAT… number in the
+// text) and rides that only exist there (phone, Get-e, partners). The dashboard adds the
+// latter to the schedule; the former are already there as bookings. Read-only.
+
+const CAL_CACHE_MS = 5 * 60_000;
+let calCache: { key: string; at: number; events: CalEvent[] } | null = null;
+
+const RE_CAL_CANCELLED = /❌|ipta+l+|an+ul+iert|storn|cancel|abgesagt/iu;
+const RE_BOOKING_NO = /\b[A-Z]{3}\d{6}-\d{4}\b/g;
+
+export type CalendarLeg = {
+  uid: string;
+  leg_time: string;
+  summary: string;
+  location: string;
+  from: string | null;
+  to: string | null;
+  via: string[];
+  guest: string | null;
+  price: number | null;
+  html_link: string | null;
+};
+
+export type CalendarMismatch = {
+  id: number;
+  booking_number: string;
+  name: string;
+  price: number;
+  booking_time: string;
+  calendar_time: string;
+  html_link: string | null;
+};
+
+async function loadCalendar(from: string, to: string): Promise<{
+  enabled: boolean; error: string | null; legs: CalendarLeg[]; mismatches: CalendarMismatch[];
+}> {
+  const empty = { legs: [] as CalendarLeg[], mismatches: [] as CalendarMismatch[] };
+  if (!hasServiceAccount()) return { enabled: false, error: null, ...empty };
+  const [setting] = await query<{ setting_value: string }>(`SELECT setting_value FROM settings WHERE setting_key = 'google_calendar_id'`);
+  const calendarId = setting?.setting_value;
+  if (!calendarId) return { enabled: false, error: null, ...empty };
+
+  let events: CalEvent[];
+  const key = `${calendarId}|${from}|${to}`;
+  if (calCache && calCache.key === key && Date.now() - calCache.at < CAL_CACHE_MS) {
+    events = calCache.events;
+  } else {
+    try {
+      events = (await fetchEventsRange(calendarId, from, to)).events;
+      calCache = { key, at: Date.now(), events };
+    } catch (e: any) {
+      return { enabled: true, error: e?.message || 'Kalender nicht erreichbar', ...empty };
+    }
+  }
+
+  // Bookings the events refer to — by imported uid or by a booking number in the text.
+  const uids = events.map((e) => e.uid);
+  const numbers = Array.from(new Set(events.flatMap((e) => `${e.summary}\n${e.location}\n${e.description}`.match(RE_BOOKING_NO) || [])));
+  const imported = new Set<string>();
+  if (uids.length) {
+    const rows = await query<{ calendar_event_uid: string }>(
+      `SELECT calendar_event_uid FROM bookings WHERE calendar_event_uid IN (${uids.map(() => '?').join(',')})`, uids);
+    rows.forEach((r) => imported.add(r.calendar_event_uid));
+  }
+  const byNumber = new Map<string, any>();
+  if (numbers.length) {
+    const rows = await query<any>(
+      `SELECT id, booking_number, name, price, status, trip_type, pickup_datetime, return_datetime
+         FROM bookings WHERE booking_number IN (${numbers.map(() => '?').join(',')})`, numbers);
+    rows.forEach((r) => byNumber.set(r.booking_number, r));
+  }
+
+  const legs: CalendarLeg[] = [];
+  const mismatches: CalendarMismatch[] = [];
+  for (const ev of events) {
+    if (!ev.start || imported.has(ev.uid)) continue;
+    const markers = `${ev.summary}\n${ev.location}`;
+    const refs = (`${markers}\n${ev.description}`.match(RE_BOOKING_NO) || []).map((n) => byNumber.get(n)).filter(Boolean);
+    if (refs.length) {
+      // Already a booking. Flag it when the calendar time matches none of its legs —
+      // the operator moved the ride in the calendar, or the booking has a wrong time.
+      const b = refs[0];
+      if (b.status !== 'cancelled' && !RE_CAL_CANCELLED.test(markers)) {
+        const times = [wall(b.pickup_datetime), b.trip_type === 'roundtrip' && b.return_datetime ? wall(b.return_datetime) : null].filter(Boolean);
+        if (!times.includes(ev.start)) {
+          mismatches.push({
+            id: b.id, booking_number: b.booking_number, name: b.name, price: Number(b.price) || 0,
+            booking_time: times.find((t) => t!.slice(0, 10) === ev.start!.slice(0, 10)) || times[0]!,
+            calendar_time: ev.start, html_link: ev.htmlLink,
+          });
+        }
+      }
+      continue;
+    }
+    if (RE_CAL_CANCELLED.test(markers)) continue;
+    const p = parseInvoiceRide(ev, [], []);
+    legs.push({
+      uid: ev.uid,
+      leg_time: ev.start,
+      summary: ev.summary.trim(),
+      location: ev.location.trim(),
+      from: p.pickup_address,
+      to: p.dropoff_address,
+      via: p.via,
+      guest: p.guest_name ? p.guest_name.replace(/^name\s*:\s*/i, '') : null,
+      price: p.price,
+      html_link: ev.htmlLink,
+    });
+  }
+  return { enabled: true, error: null, legs, mismatches };
+}
 
 type Agg = { count: number; revenue: number };
 const agg = (): Agg => ({ count: 0, revenue: 0 });
@@ -155,6 +270,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       created_berlin: wall(berlinNowSql(new Date(r.created_utc))),
     }));
 
+    const calendar = await loadCalendar(today, lastDay);
+
     res.json({
       now: wall(now),
       today,
@@ -164,6 +281,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       month: { month, payment, status },
       attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus },
       recent,
+      calendar,
     });
   } catch (error) {
     console.error('[admin-dashboard]', error);

@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
-  Clock, CreditCard, Eye, FileText, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
+  Clock, CreditCard, ExternalLink, Eye, FileText, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
@@ -43,7 +43,31 @@ interface DashboardData {
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
   attention: Record<'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus', Leg[]>;
   recent: Recent[];
+  calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
 }
+
+type CalLeg = {
+  uid: string;
+  leg_time: string;
+  summary: string;
+  location: string; // operator's notes: driver, "Get-e", "KK bende", …
+  from: string | null;
+  to: string | null;
+  via: string[];
+  guest: string | null;
+  price: number | null;
+  html_link: string | null;
+};
+
+type CalMismatch = {
+  id: number;
+  booking_number: string;
+  name: string;
+  price: number;
+  booking_time: string;
+  calendar_time: string;
+  html_link: string | null;
+};
 
 interface Props {
   /** Bumped by the page after something changed a booking (e.g. a card was charged). */
@@ -108,6 +132,8 @@ function fmtAgo(created: string, now: string): string {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+const CAL_PREF_KEY = 'dash_show_calendar';
 
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
@@ -283,7 +309,71 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
   );
 }
 
-function daySummary(legs: Leg[]) {
+// Rides that exist only in the operator's Google Calendar (phone, Get-e, partners).
+const RE_FLIGHT = /^(?:[A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d{1,4}[A-Z]?$/;
+
+function CalendarRow({ c, state, now }: { c: CalLeg; state: LegState; now: string }) {
+  const minutesTo = wallMinutes(c.leg_time) - wallMinutes(now);
+  const from = c.from || c.summary;
+  const to = c.to;
+  const flight = RE_FLIGHT.test(c.summary.trim()) ? c.summary.trim() : null;
+  const title = c.guest || (flight ? `Flug ${flight}` : 'Kalender-Fahrt');
+  const AirportIcon = isAirport(from) ? PlaneLanding : isAirport(to) ? PlaneTakeoff : Car;
+  const Wrapper = c.html_link ? 'a' : 'div';
+  return (
+    <Wrapper
+      {...(c.html_link ? { href: c.html_link, target: '_blank', rel: 'noopener noreferrer' } : {})}
+      title="Im Google Kalender öffnen"
+      className={cn(
+        'w-full text-left flex gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 transition-colors hover:bg-teal-50/60 border-l-[3px] border-teal-400',
+        state === 'past' && 'opacity-55',
+        state === 'next' && 'bg-primary-50/60',
+        state === 'running' && 'bg-emerald-50/60',
+      )}
+    >
+      <div className="w-12 sm:w-16 shrink-0">
+        <div className={cn('text-lg font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-primary-700')}>{hhmm(c.leg_time)}</div>
+        <div className={cn('text-[11px] font-medium mt-0.5', state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-primary-500' : 'text-gray-400')}>
+          {state === 'past' ? 'vorbei' : state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(c.leg_time.slice(0, 10), { weekday: 'short' })}
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-gray-900 truncate max-w-[16rem]">{title}</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700">
+            <CalendarDays size={11} /> Kalender
+          </span>
+          {state === 'next' && <span className="text-[11px] font-bold uppercase tracking-wide text-primary-500">Nächste Fahrt</span>}
+        </div>
+        <div className="mt-1 hidden sm:flex items-center gap-1.5 text-sm text-gray-600 min-w-0">
+          <AirportIcon size={14} className="shrink-0 text-gray-400" />
+          <span className="truncate">{from}</span>
+          {to && <><ArrowRight size={13} className="shrink-0 text-gray-300" /><span className="truncate">{to}</span></>}
+        </div>
+        <div className="mt-1 sm:hidden space-y-0.5 text-sm text-gray-600">
+          <div className="flex items-center gap-1.5 min-w-0"><AirportIcon size={14} className="shrink-0 text-gray-400" /><span className="truncate">{from}</span></div>
+          {to && <div className="flex items-center gap-1.5 min-w-0"><ArrowRight size={14} className="shrink-0 text-gray-300" /><span className="truncate">{to}</span></div>}
+          <div className="pt-1 font-bold text-gray-900 tabular-nums">{c.price ? formatPrice(c.price) : '—'}</div>
+        </div>
+        <div className="mt-1.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500">
+          {flight && <span className="inline-flex items-center gap-1 font-medium text-gray-600"><PlaneLanding size={12} /> {flight}</span>}
+          {c.via.length > 0 && <span className="truncate max-w-[14rem]">über {c.via.join(', ')}</span>}
+          {c.location && <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 max-w-[18rem] truncate">{c.location}</span>}
+        </div>
+      </div>
+      <div className="shrink-0 hidden sm:flex flex-col items-end gap-1.5">
+        <div className="font-bold text-gray-900 tabular-nums">{c.price ? formatPrice(c.price) : '—'}</div>
+        <span className="inline-flex items-center gap-1 text-[11px] text-teal-700"><ExternalLink size={11} /> Kalender</span>
+      </div>
+    </Wrapper>
+  );
+}
+
+type Item = { kind: 'booking'; time: string; leg: Leg } | { kind: 'calendar'; time: string; cal: CalLeg };
+
+function daySummary(items: Item[]) {
+  const legs = items.flatMap((i) => (i.kind === 'booking' ? [i.leg] : []));
+  const cals = items.flatMap((i) => (i.kind === 'calendar' ? [i.cal] : []));
   const unique = new Map<number, Leg>();
   for (const l of legs) unique.set(l.id, l);
   const revenue = Array.from(unique.values()).reduce((s, l) => s + (Number(l.price) || 0), 0);
@@ -293,21 +383,23 @@ function daySummary(legs: Leg[]) {
     byPay[k] = (byPay[k] || 0) + 1;
   }
   return {
-    count: legs.length,
+    count: items.length,
     hin: legs.filter((l) => l.leg === 'hin').length,
     rueck: legs.filter((l) => l.leg === 'rueck').length,
     revenue,
     byPay,
+    cal: cals.length,
+    calRevenue: cals.reduce((s, c) => s + (Number(c.price) || 0), 0),
   };
 }
 
-function legStates(legs: Leg[], now: string): LegState[] {
+function itemStates(items: Item[], now: string): LegState[] {
   const nowMin = wallMinutes(now);
   let nextGiven = false;
-  return legs.map((l) => {
-    const start = wallMinutes(l.leg_time);
-    const dur = Math.max(Number(l.duration_minutes) || 0, 30);
-    if (nowMin >= start + dur || l.status === 'completed') return 'past';
+  return items.map((it) => {
+    const start = wallMinutes(it.time);
+    const dur = it.kind === 'booking' ? Math.max(Number(it.leg.duration_minutes) || 0, 30) : 45;
+    if (nowMin >= start + dur || (it.kind === 'booking' && it.leg.status === 'completed')) return 'past';
     if (nowMin >= start) return 'running';
     if (!nextGiven) { nextGiven = true; return 'next'; }
     return 'upcoming';
@@ -316,28 +408,30 @@ function legStates(legs: Leg[], now: string): LegState[] {
 
 type ScheduleView = 'heute' | 'morgen' | 'woche';
 
-function Schedule({ data, now, onOpen }: { data: DashboardData; now: string; onOpen: (id: number) => void }) {
+function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
+  items: Item[]; now: string; onOpen: (id: number) => void;
+  calendar: DashboardData['calendar']; showCal: boolean; onToggleCal: () => void;
+}) {
   const [view, setView] = useState<ScheduleView>('heute');
   const today = now.slice(0, 10);
   const tomorrow = addDays(today, 1);
   const byDay = useMemo(() => {
-    const m = new Map<string, Leg[]>();
-    for (const l of data.legs) {
-      const d = l.leg_time.slice(0, 10);
+    const m = new Map<string, Item[]>();
+    for (const it of items) {
+      const d = it.time.slice(0, 10);
       if (!m.has(d)) m.set(d, []);
-      m.get(d)!.push(l);
+      m.get(d)!.push(it);
     }
     return m;
-  }, [data.legs]);
+  }, [items]);
 
   const days = view === 'heute' ? [today] : view === 'morgen' ? [tomorrow] : Array.from(byDay.keys()).sort();
   const count = (d: string) => byDay.get(d)?.length || 0;
-  const weekCount = data.legs.length;
 
   const tabs: Array<{ id: ScheduleView; label: string; n: number }> = [
     { id: 'heute', label: 'Heute', n: count(today) },
     { id: 'morgen', label: 'Morgen', n: count(tomorrow) },
-    { id: 'woche', label: '7 Tage', n: weekCount },
+    { id: 'woche', label: '7 Tage', n: items.length },
   ];
 
   return (
@@ -345,18 +439,32 @@ function Schedule({ data, now, onOpen }: { data: DashboardData; now: string; onO
       title="Fahrplan"
       icon={CalendarDays}
       right={(
-        <div className="flex w-full sm:w-auto rounded-xl bg-gray-100 p-1 text-sm">
-          {tabs.map((t) => (
+        <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
+          {calendar.enabled && (
             <button
-              key={t.id}
-              onClick={() => setView(t.id)}
-              className={cn('flex-1 sm:flex-none justify-center px-3 py-1 rounded-lg font-medium transition-colors inline-flex items-center gap-1.5 whitespace-nowrap',
-                view === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800')}
+              onClick={onToggleCal}
+              title={calendar.error ? `Kalender: ${calendar.error}` : 'Fahrten aus dem Google Kalender ein-/ausblenden'}
+              className={cn('inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset transition-colors',
+                calendar.error ? 'bg-red-50 text-red-600 ring-red-200'
+                  : showCal ? 'bg-teal-50 text-teal-700 ring-teal-200' : 'bg-white text-gray-500 ring-gray-200 hover:bg-gray-50')}
             >
-              {t.label}
-              <span className={cn('text-[11px] tabular-nums rounded-full px-1.5', view === t.id ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600')}>{t.n}</span>
+              <CalendarDays size={13} />
+              Kalender {calendar.error ? '⚠' : showCal ? 'an' : 'aus'}
             </button>
-          ))}
+          )}
+          <div className="flex flex-1 sm:flex-none rounded-xl bg-gray-100 p-1 text-sm">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setView(t.id)}
+                className={cn('flex-1 sm:flex-none justify-center px-3 py-1 rounded-lg font-medium transition-colors inline-flex items-center gap-1.5 whitespace-nowrap',
+                  view === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800')}
+              >
+                {t.label}
+                <span className={cn('text-[11px] tabular-nums rounded-full px-1.5', view === t.id ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600')}>{t.n}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     >
@@ -368,10 +476,10 @@ function Schedule({ data, now, onOpen }: { data: DashboardData; now: string; onO
           </p>
         </div>
       ) : days.map((d) => {
-        const legs = byDay.get(d) || [];
-        if (!legs.length) return null;
-        const states: LegState[] = d === today ? legStates(legs, now) : legs.map(() => 'upcoming');
-        const sum = daySummary(legs);
+        const dayItems = byDay.get(d) || [];
+        if (!dayItems.length) return null;
+        const states: LegState[] = d === today ? itemStates(dayItems, now) : dayItems.map(() => 'upcoming');
+        const sum = daySummary(dayItems);
         const firstUpcoming = states.findIndex((s) => s !== 'past');
         return (
           <div key={d}>
@@ -381,30 +489,38 @@ function Schedule({ data, now, onOpen }: { data: DashboardData; now: string; onO
                   {d === today ? 'Heute' : d === tomorrow ? 'Morgen' : dayLabel(d, { weekday: 'long' })}
                   <span className="font-normal text-gray-400"> · {dayLabel(d, { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                 </span>
-                <span className="text-gray-500">{sum.count} Fahrt{sum.count === 1 ? '' : 'en'}</span>
+                <span className="text-gray-500">
+                  {plural(sum.count, 'Fahrt', 'Fahrten')}{sum.cal > 0 && <span className="text-teal-600"> · {sum.cal} Kalender</span>}
+                </span>
               </div>
             )}
             <div className="divide-y divide-gray-100">
-              {legs.map((l, i) => (
-                <div key={`${l.id}-${l.leg}`}>
+              {dayItems.map((it, i) => (
+                <div key={it.kind === 'booking' ? `${it.leg.id}-${it.leg.leg}` : `cal-${it.cal.uid}-${it.time}`}>
                   {d === today && i === firstUpcoming && firstUpcoming > 0 && (
                     <div className="flex items-center gap-2 px-5 py-1 text-[11px] font-semibold text-red-500">
                       <span className="h-px flex-1 bg-red-200" /> Jetzt {hhmm(now)} <span className="h-px flex-1 bg-red-200" />
                     </div>
                   )}
-                  <LegRow l={l} state={states[i]} now={now} onOpen={() => onOpen(l.id)} />
+                  {it.kind === 'booking'
+                    ? <LegRow l={it.leg} state={states[i]} now={now} onOpen={() => onOpen(it.leg.id)} />
+                    : <CalendarRow c={it.cal} state={states[i]} now={now} />}
                 </div>
               ))}
             </div>
             {view !== 'woche' && (
               <footer className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
                 <span>
-                  {sum.count} Fahrt{sum.count === 1 ? '' : 'en'}
+                  {plural(sum.count, 'Fahrt', 'Fahrten')}
                   {sum.rueck > 0 && <> ({sum.hin} Hin · {sum.rueck} Rück)</>}
-                  {' · '}
+                  {Object.keys(sum.byPay).length > 0 && ' · '}
                   {Object.entries(sum.byPay).map(([k, n]) => `${n} ${k}`).join(' · ')}
+                  {sum.cal > 0 && <span className="text-teal-600"> · {sum.cal} Kalender</span>}
                 </span>
-                <span className="text-sm font-bold text-gray-900">Umsatz {formatPrice(sum.revenue)}</span>
+                <span className="text-right">
+                  <span className="text-sm font-bold text-gray-900">Umsatz {formatPrice(sum.revenue)}</span>
+                  {sum.calRevenue > 0 && <span className="block text-[11px] text-teal-600">+ Kalender ca. {formatPrice(sum.calRevenue)}</span>}
+                </span>
               </footer>
             )}
           </div>
@@ -417,7 +533,9 @@ function Schedule({ data, now, onOpen }: { data: DashboardData; now: string; onO
 // ---------------------------------------------------------------------------------------
 // Attention panel
 
-function AttentionPanel({ a, onOpen }: { a: DashboardData['attention']; onOpen: (id: number) => void }) {
+function AttentionPanel({ a, mismatches, onOpen }: {
+  a: DashboardData['attention']; mismatches: CalMismatch[]; onOpen: (id: number) => void;
+}) {
   const groups: Array<{ key: keyof DashboardData['attention']; title: string; hint: string; Icon: typeof Clock; tone: string }> = [
     { key: 'failedCharges', title: 'Kartenzahlung fehlgeschlagen', hint: 'Stripe-Abbuchung erneut versuchen oder Kunde kontaktieren', Icon: CreditCard, tone: 'text-red-600 bg-red-50' },
     { key: 'unconfirmed', title: 'Noch nicht bestätigt', hint: 'Neue Buchungen mit anstehender Fahrt', Icon: Clock, tone: 'text-blue-600 bg-blue-50' },
@@ -425,7 +543,8 @@ function AttentionPanel({ a, onOpen }: { a: DashboardData['attention']; onOpen: 
     { key: 'invoiceFailed', title: 'Rechnung nicht versendet', hint: 'Automatischer Versand nach 3 Versuchen abgebrochen', Icon: FileWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'openStatus', title: 'Fahrt vorbei, Status offen', hint: 'Noch „Bestätigt“ — auf „Abgeschlossen“ setzen', Icon: Receipt, tone: 'text-gray-600 bg-gray-100' },
   ];
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0);
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length;
+  const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   return (
     <Card
       title="Handlungsbedarf"
@@ -442,6 +561,35 @@ function AttentionPanel({ a, onOpen }: { a: DashboardData['attention']; onOpen: 
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
+          {mismatches.length > 0 && (
+            <div className="px-5 py-3">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-teal-700 bg-teal-50"><CalendarDays size={15} /></span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">Zeit weicht vom Kalender ab <span className="text-gray-400 font-normal">({mismatches.length})</span></div>
+                  <div className="text-[11px] text-gray-400">Buchung und Google-Kalender-Termin nennen verschiedene Zeiten</div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {mismatches.slice(0, 5).map((m) => (
+                  <li key={`${m.id}-${m.calendar_time}`}>
+                    <button onClick={() => onOpen(m.id)} className="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium text-gray-800">{m.name}</span>
+                        <span className="font-mono text-gray-400 shrink-0">{m.booking_number}</span>
+                        <ChevronRight size={13} className="ml-auto shrink-0 text-gray-300" />
+                      </div>
+                      <div className="mt-0.5 text-gray-500">
+                        Buchung <span className="font-semibold text-gray-700">{short(m.booking_time)}</span>
+                        {' · '}Kalender <span className="font-semibold text-teal-700">{short(m.calendar_time)}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+                {mismatches.length > 5 && <li className="px-2 text-[11px] text-gray-400">+ {mismatches.length - 5} weitere</li>}
+              </ul>
+            </div>
+          )}
           {groups.filter((g) => a[g.key].length).map((g) => (
             <div key={g.key} className="px-5 py-3">
               <div className="flex items-start gap-2.5">
@@ -455,7 +603,7 @@ function AttentionPanel({ a, onOpen }: { a: DashboardData['attention']; onOpen: 
                 {a[g.key].slice(0, 5).map((l) => (
                   <li key={l.id}>
                     <button onClick={() => onOpen(l.id)} className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
-                      <span className="font-mono text-gray-400 shrink-0">{dayLabel(l.leg_time.slice(0, 10), { day: '2-digit', month: '2-digit' })} {hhmm(l.leg_time)}</span>
+                      <span className="font-mono text-gray-400 shrink-0">{short(l.leg_time)}</span>
                       <span className="truncate font-medium text-gray-800">{l.name}</span>
                       <span className="ml-auto shrink-0 font-semibold text-gray-700">{formatPrice(l.price)}</span>
                       <ChevronRight size={13} className="shrink-0 text-gray-300" />
@@ -770,6 +918,24 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   const [loading, setLoading] = useState(false);
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
   const [now, setNow] = useState(berlinNowWall());
+  // Per-viewer choice whether calendar-only rides show in the schedule (default: on).
+  const [showCal, setShowCal] = useState(true);
+  useEffect(() => {
+    try { if (localStorage.getItem(CAL_PREF_KEY) === '0') setShowCal(false); } catch { /* ignore */ }
+  }, []);
+  const toggleCal = () => setShowCal((v) => {
+    try { localStorage.setItem(CAL_PREF_KEY, v ? '0' : '1'); } catch { /* ignore */ }
+    return !v;
+  });
+
+  const items = useMemo<Item[]>(() => {
+    if (!data) return [];
+    const list: Item[] = data.legs.map((leg) => ({ kind: 'booking' as const, time: leg.leg_time, leg }));
+    if (showCal && data.calendar?.enabled) {
+      for (const cal of data.calendar.legs) list.push({ kind: 'calendar', time: cal.leg_time, cal });
+    }
+    return list.sort((a, b) => a.time.localeCompare(b.time));
+  }, [data, showCal]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -809,12 +975,18 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   }
 
   const today = now.slice(0, 10);
-  const todayLegs = data.legs.filter((l) => l.leg_time.slice(0, 10) === today);
-  const states = legStates(todayLegs, now);
+  const todayItems = items.filter((i) => i.time.slice(0, 10) === today);
+  const todayLegs = todayItems.flatMap((i) => (i.kind === 'booking' ? [i.leg] : []));
+  const todayCal = todayItems.length - todayLegs.length;
+  const states = itemStates(todayItems, now);
   const done = states.filter((s) => s === 'past').length;
   const nextIdx = states.findIndex((s) => s === 'next' || s === 'running');
-  const next = nextIdx >= 0 ? todayLegs[nextIdx] : null;
-  const nextUpcoming = next ?? data.legs.find((l) => l.leg_time > now) ?? null;
+  const nextUpcoming = (nextIdx >= 0 ? todayItems[nextIdx] : null) ?? items.find((i) => i.time > now) ?? null;
+  const itemName = (i: Item) => (i.kind === 'booking' ? i.leg.name : i.cal.guest || i.cal.summary || 'Kalender-Fahrt');
+  const openItem = (i: Item) => {
+    if (i.kind === 'booking') onOpenBooking(i.leg.id);
+    else if (i.cal.html_link) window.open(i.cal.html_link, '_blank', 'noopener');
+  };
   const it = data.intake;
   const monthName = MONTHS[+data.month.month.slice(5, 7) - 1];
 
@@ -848,21 +1020,24 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           label="Fahrten heute"
           Icon={Car}
           tone="bg-primary-50 text-primary-600"
-          value={<>{todayLegs.length}<span className="text-base font-medium text-gray-400"> · {done} erledigt</span></>}
-          sub={todayLegs.some((l) => l.leg === 'rueck')
-            ? plural(todayLegs.filter((l) => l.leg === 'hin').length, 'Hinfahrt', 'Hinfahrten') + ' · '
-              + plural(todayLegs.filter((l) => l.leg === 'rueck').length, 'Rückfahrt', 'Rückfahrten')
-            : `${todayLegs.length - done} noch offen`}
+          value={<>{todayItems.length}<span className="text-base font-medium text-gray-400"> · {done} erledigt</span></>}
+          sub={[
+            todayLegs.some((l) => l.leg === 'rueck')
+              ? plural(todayLegs.filter((l) => l.leg === 'hin').length, 'Hinfahrt', 'Hinfahrten') + ' · '
+                + plural(todayLegs.filter((l) => l.leg === 'rueck').length, 'Rückfahrt', 'Rückfahrten')
+              : `${todayItems.length - done} noch offen`,
+            todayCal > 0 ? `${todayCal} aus Kalender` : '',
+          ].filter(Boolean).join(' · ')}
           footer={nextUpcoming ? (
-            <button onClick={() => onOpenBooking(nextUpcoming.id)} className="w-full flex items-center gap-2 text-left rounded-xl bg-gray-50 hover:bg-gray-100 px-3 py-2 text-xs">
+            <button onClick={() => openItem(nextUpcoming)} className="w-full flex items-center gap-2 text-left rounded-xl bg-gray-50 hover:bg-gray-100 px-3 py-2 text-xs">
               <Clock size={13} className="text-primary-500 shrink-0" />
               <span className="text-gray-500 shrink-0">Nächste:</span>
               <span className="font-semibold text-gray-900 shrink-0">
-                {nextUpcoming.leg_time.slice(0, 10) === today ? '' : `${dayLabel(nextUpcoming.leg_time.slice(0, 10), { weekday: 'short' })} `}{hhmm(nextUpcoming.leg_time)}
+                {nextUpcoming.time.slice(0, 10) === today ? '' : `${dayLabel(nextUpcoming.time.slice(0, 10), { weekday: 'short' })} `}{hhmm(nextUpcoming.time)}
               </span>
-              <span className="truncate text-gray-600">{nextUpcoming.name}</span>
+              <span className="truncate text-gray-600">{itemName(nextUpcoming)}</span>
               <span className="ml-auto shrink-0 font-medium text-primary-600">
-                {wallMinutes(nextUpcoming.leg_time) <= wallMinutes(now) ? 'läuft' : `in ${fmtDuration(wallMinutes(nextUpcoming.leg_time) - wallMinutes(now))}`}
+                {wallMinutes(nextUpcoming.time) <= wallMinutes(now) ? 'läuft' : `in ${fmtDuration(wallMinutes(nextUpcoming.time) - wallMinutes(now))}`}
               </span>
             </button>
           ) : <span className="text-xs text-gray-400">Keine weiteren Fahrten in den nächsten 7 Tagen</span>}
@@ -893,16 +1068,16 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         />
       </div>
       <p className="-mt-3 text-[11px] text-gray-400">
-        Umsätze nach Buchungsdatum (ohne Stornos). Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln.
+        Umsätze nach Buchungsdatum (ohne Stornos). Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
       </p>
 
       {/* Schedule + side column */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <div className="xl:col-span-2">
-          <Schedule data={data} now={now} onOpen={onOpenBooking} />
+          <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
         </div>
         <div className="space-y-6">
-          <AttentionPanel a={data.attention} onOpen={onOpenBooking} />
+          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} onOpen={onOpenBooking} />
           <TomorrowCharges
             cards={cards}
             tomorrow={addDays(today, 1)}
