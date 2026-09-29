@@ -346,6 +346,8 @@ export function LiveAssistPanel({ la }: { la: LiveAssistState }) {
             </label>
             <Toggle checked={s.wa_prefill_enabled === '1'} onChange={(v) => set('wa_prefill_enabled', v ? '1' : '0')}
               label="WhatsApp mesajı hazır dolu gelsin" hint="Fiyat / buchen sayfasında rota, tarih, araç, fiyat ve Ref kodu" />
+            <Toggle checked={s.returning_greet_enabled === '1'} onChange={(v) => set('returning_greet_enabled', v ? '1' : '0')}
+              label="Eski müşteriyi adıyla selamla" hint="Bu tarayıcıdan daha önce rezervasyon yapan ziyaretçiye: &quot;Willkommen zurück, Constanze! 👋 Wieder Flughafen München → Hauptbahnhof?&quot; (sadece ilk ad)" />
             <Toggle checked={s.voice_new_visitor === '1'} onChange={(v) => set('voice_new_visitor', v ? '1' : '0')}
               label="Yeni ziyaretçide sesli anons" hint="Live sekmesi açıkken: &quot;Yeni ziyaretçi, München'den, Google Ads&quot; (botlar hariç)" />
             <Toggle checked={s.ai_draft_enabled === '1'} onChange={(v) => set('ai_draft_enabled', v ? '1' : '0')}

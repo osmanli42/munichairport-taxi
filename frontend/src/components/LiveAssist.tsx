@@ -19,7 +19,7 @@ import { X, MessageCircle, PhoneCall, Gift, Send, ImagePlus, Loader2, ArrowRight
 import CallbackRequest from '@/components/CallbackRequest';
 import { buildWhatsAppLink } from '@/lib/utils';
 import {
-  useLiveAssistConfig, getSessionId, isPricePage, isBookingPage, readTripContext,
+  useLiveAssistConfig, getSessionId, isPricePage, isBookingPage, readTripContext, loadLiveAssistWelcome, LiveAssistWelcome,
   draftPath, ackLiveAssist, LIVE_PROMO_KEY, LA_ONLINE_EVENT, LA_PROMO_EVENT, imageToDataUrl,
 } from '@/lib/liveAssist';
 
@@ -36,6 +36,9 @@ const T = {
   de: {
     online: 'jetzt online', offline: 'gerade nicht im Chat', team: 'Munich Airport Taxi',
     greet: 'Hallo 👋 Haben Sie Fragen zum Preis oder zur Fahrt? Schreiben Sie mir einfach hier.',
+    welcomeBack: (n: string | null) => (n ? `Willkommen zurück, ${n}! 👋` : 'Willkommen zurück! 👋'),
+    againRoute: (f: string, to: string) => `Wieder ${f} → ${to}? Ich helfe gern – schreiben Sie mir einfach hier.`,
+    againDefault: 'Schön, Sie wiederzusehen. Haben Sie Fragen zu Ihrer nächsten Fahrt? Schreiben Sie mir einfach hier.',
     offlineText: 'Wir sind gerade nicht im Chat. Schreiben Sie uns auf WhatsApp – oder wir rufen Sie kostenlos zurück.',
     placeholder: 'Nachricht schreiben…', wa: 'WhatsApp', cb: 'Rückruf', close: 'Schließen', chat: 'Chat',
     offer: 'Online-Rabatt für Sie', take: 'Rabatt sichern & buchen', taken: 'Rabatt gespeichert – wird bei der Buchung eingelöst',
@@ -45,6 +48,9 @@ const T = {
   en: {
     online: 'online now', offline: 'not in chat right now', team: 'Munich Airport Taxi',
     greet: 'Hi 👋 Any questions about the price or your ride? Just write to me here.',
+    welcomeBack: (n: string | null) => (n ? `Welcome back, ${n}! 👋` : 'Welcome back! 👋'),
+    againRoute: (f: string, to: string) => `${f} → ${to} again? Happy to help – just write to me here.`,
+    againDefault: 'Great to see you again. Any questions about your next ride? Just write to me here.',
     offlineText: "We're not in the chat right now. Message us on WhatsApp – or we'll call you back for free.",
     placeholder: 'Write a message…', wa: 'WhatsApp', cb: 'Callback', close: 'Close', chat: 'Chat',
     offer: 'Online discount for you', take: 'Claim discount & book', taken: 'Discount saved – applied when you book',
@@ -54,6 +60,9 @@ const T = {
   tr: {
     online: 'şu an çevrimiçi', offline: 'şu an chat\'te değiliz', team: 'Munich Airport Taxi',
     greet: 'Merhaba 👋 Fiyat veya yolculuk hakkında sorunuz var mı? Buraya yazmanız yeterli.',
+    welcomeBack: (n: string | null) => (n ? `Tekrar hoş geldiniz, ${n}! 👋` : 'Tekrar hoş geldiniz! 👋'),
+    againRoute: (f: string, to: string) => `Yine ${f} → ${to} mi? Yardımcı olayım – buraya yazmanız yeterli.`,
+    againDefault: 'Sizi tekrar görmek güzel. Bir sonraki yolculuğunuzla ilgili sorunuz var mı? Buraya yazmanız yeterli.',
     offlineText: "Şu an chat'te değiliz. WhatsApp'tan yazın – ya da sizi ücretsiz geri arayalım.",
     placeholder: 'Mesaj yazın…', wa: 'WhatsApp', cb: 'Geri arama', close: 'Kapat', chat: 'Chat',
     offer: 'Size özel online indirim', take: 'İndirimi al & rezerve et', taken: 'İndirim kaydedildi – rezervasyonda uygulanır',
@@ -90,6 +99,8 @@ export default function LiveAssist() {
   const listRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const autoIdRef = useRef<number | null>(null);
+  // Returning customer (booked before in this browser) → personal greeting.
+  const [welcome, setWelcome] = useState<LiveAssistWelcome | null>(null);
 
   useEffect(() => { if (cfg) setOnline(!!cfg.agent_online); }, [cfg]);
   useEffect(() => {
@@ -148,6 +159,15 @@ export default function LiveAssist() {
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [cfg?.enabled, poll]);
+
+  useEffect(() => {
+    if (!cfg?.returning_greet) return;
+    const sid = getSessionId();
+    if (!sid) return;
+    let alive = true;
+    loadLiveAssistWelcome(sid).then((w) => { if (alive && w.returning) setWelcome(w); });
+    return () => { alive = false; };
+  }, [cfg?.returning_greet, open]);
 
   useEffect(() => {
     if (open && listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -297,9 +317,11 @@ export default function LiveAssist() {
         {/* Verlauf */}
         <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50 min-h-[140px]">
           {canChat ? (
-            !hasThread && <Bubble from="agent" body={t.greet} />
+            !hasThread && <Bubble from="agent" body={welcome
+              ? `${t.welcomeBack(welcome.name ?? null)} ${welcome.last && welcome.last.from && welcome.last.to ? t.againRoute(welcome.last.from, welcome.last.to) : t.againDefault}`
+              : t.greet} />
           ) : (
-            <Bubble from="agent" body={t.offlineText} />
+            <Bubble from="agent" body={welcome ? `${t.welcomeBack(welcome.name ?? null)} ${t.offlineText}` : t.offlineText} />
           )}
           {messages.map((m) => (
             <div key={m.id}>

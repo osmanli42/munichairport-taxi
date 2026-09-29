@@ -112,10 +112,46 @@ router.get('/live-assist/config', async (_req: Request, res: Response) => {
       wa_prefill_enabled: s.wa_prefill_enabled === '1',
       agent_name: s.agent_name,
       agent_online: s.enabled === '1' && isAdminOnline(),
+      returning_greet: s.enabled === '1' && s.returning_greet_enabled === '1',
     });
   } catch (err: any) {
     console.error('live-assist config error:', err.message);
     res.json({ enabled: false, auto_enabled: false, auto_delay_sec: 40, wa_prefill_enabled: false, agent_name: '' });
+  }
+});
+
+// GET /api/live-assist/welcome?session_id= — for the chat greeting of a returning customer:
+// first name + last route, only from bookings made in THIS browser (visitor_id), never
+// matched by e-mail/phone — the site must not reveal anyone else's name.
+const shortPlace = (a: string | null) => {
+  const v = String(a || '');
+  if (/flughafen|airport|terminal|\bMUC\b/i.test(v)) return 'Flughafen München';
+  return v.split(',')[0].trim().slice(0, 40);
+};
+router.get('/live-assist/welcome', async (req: Request, res: Response) => {
+  try {
+    const sessionId = String(req.query.session_id || '');
+    const s = await getLiveAssistSettings();
+    if (!sessionId || s.enabled !== '1' || s.returning_greet_enabled !== '1') { res.json({ returning: false }); return; }
+    const [row] = await query<{ visitor_id: string }>(`SELECT visitor_id FROM visitor_sessions WHERE session_id = ?`, [sessionId]);
+    if (!row?.visitor_id) { res.json({ returning: false }); return; }
+    const bookings = await query<any>(
+      `SELECT name, pickup_address, dropoff_address, company_id FROM bookings
+        WHERE visitor_id = ? AND status <> 'cancelled' ORDER BY created_at DESC LIMIT 20`, [row.visitor_id]);
+    const last = bookings[0];
+    if (!last) { res.json({ returning: false }); return; }
+    // First name only; skip company-ish or odd names.
+    const first = String(last.name || '').trim().split(/\s+/)[0] || '';
+    const name = /^[\p{L}][\p{L}'-]{1,24}$/u.test(first) && !/gmbh|group|ltd|firma/i.test(last.name) ? first : null;
+    res.json({
+      returning: true,
+      name,
+      count: bookings.length,
+      last: { from: shortPlace(last.pickup_address), to: shortPlace(last.dropoff_address) },
+    });
+  } catch (err: any) {
+    console.error('live-assist welcome error:', err.message);
+    res.json({ returning: false });
   }
 });
 

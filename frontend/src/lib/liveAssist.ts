@@ -13,6 +13,31 @@ export interface LiveAssistConfig {
   wa_prefill_enabled: boolean;
   agent_name: string;
   agent_online?: boolean;
+  /** Greet visitors who booked before by name (admin switch). */
+  returning_greet?: boolean;
+}
+
+export interface LiveAssistWelcome {
+  returning: boolean;
+  name?: string | null;
+  count?: number;
+  last?: { from: string; to: string };
+}
+
+// Once per page load and session: is this browser a returning customer?
+let welcomePromise: Promise<LiveAssistWelcome> | null = null;
+export function loadLiveAssistWelcome(sessionId: string): Promise<LiveAssistWelcome> {
+  if (!welcomePromise) {
+    welcomePromise = fetch(`${API_BASE}/live-assist/welcome?session_id=${encodeURIComponent(sessionId)}`)
+      .then((r) => (r.ok ? r.json() : { returning: false }))
+      .catch(() => ({ returning: false }))
+      .then((w: LiveAssistWelcome) => {
+        // The tracker may not have stored this session yet on the first try — ask again later.
+        if (!w.returning) welcomePromise = null;
+        return w;
+      });
+  }
+  return welcomePromise;
 }
 
 const OFF: LiveAssistConfig = { enabled: false, auto_enabled: false, auto_delay_sec: 40, wa_prefill_enabled: false, agent_name: '' };
