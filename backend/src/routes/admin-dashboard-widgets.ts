@@ -14,6 +14,7 @@ import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berl
 import { calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED } from '../services/calendarRides';
 import { classifyEvent } from '../services/calendarInvoice';
 import { getFlightStatus, normalizeFlightNumber, FlightStatus } from '../services/flightStatus';
+import { sourcedEvents, DEFAULT_SOURCES, SourceSwitches, SourceKind } from '../services/eventSources';
 
 const router = Router();
 
@@ -328,7 +329,7 @@ async function funnel(now: string) {
 
 // ---- Events (public holidays + the admin's list) ----------------------------------------
 
-type DashEvent = { id: string; name: string; start: string; end: string; kind: 'holiday' | 'custom'; note?: string };
+type DashEvent = { id: string; name: string; start: string; end: string; kind: 'holiday' | 'custom' | SourceKind; note?: string; time?: string };
 
 // Oktoberfest 2026 as the first entry so the list is not empty; the admin edits the rest.
 const DEFAULT_EVENTS: DashEvent[] = [
@@ -368,11 +369,31 @@ async function customEvents(): Promise<DashEvent[]> {
   }
 }
 
+async function eventSwitches(): Promise<SourceSwitches> {
+  try {
+    return { ...DEFAULT_SOURCES, ...JSON.parse((await getSetting('dashboard_event_sources')) || '{}') };
+  } catch {
+    return { ...DEFAULT_SOURCES };
+  }
+}
+
 async function upcomingEvents(today: string) {
   const until = berlinDateSql(45);
   const y = +today.slice(0, 4);
-  const all = [...bavarianHolidays(y), ...bavarianHolidays(y + 1), ...(await customEvents()).map((e) => ({ ...e, kind: 'custom' as const }))];
-  return all.filter((e) => e.end >= today && e.start <= until).sort((a, b) => a.start.localeCompare(b.start));
+  const switches = await eventSwitches();
+  const sourced = await sourcedEvents(switches);
+  const custom = (await customEvents()).map((e) => ({ ...e, kind: 'custom' as const }));
+  // Custom entries win over an automatic one with the same name and start (e.g. the preset
+  // Oktoberfest), so the admin can correct a date.
+  const customKeys = new Set(custom.map((e) => `${e.name.toLowerCase()}|${e.start}`));
+  const all: DashEvent[] = [
+    ...bavarianHolidays(y), ...bavarianHolidays(y + 1), ...custom,
+    ...sourced.events.filter((e) => !customKeys.has(`${e.name.toLowerCase()}|${e.start}`)),
+  ];
+  return {
+    events: all.filter((e) => e.end >= today && e.start <= until).sort((a, b) => a.start.localeCompare(b.start) || (a.time || '').localeCompare(b.time || '')),
+    sources: { switches, errors: sourced.errors },
+  };
 }
 
 // ---- Routes -----------------------------------------------------------------------------
@@ -392,7 +413,18 @@ router.get('/overview', authenticateAdmin, async (_req: AuthRequest, res: Respon
     safe('events', () => upcomingEvents(now.slice(0, 10))),
     safe('customEvents', () => customEvents()),
   ]);
-  res.json({ now, drivers, forecast: fc, missed, receivables: recv, funnel: fun, events, custom_events: custom });
+  res.json({
+    now, drivers, forecast: fc, missed, receivables: recv, funnel: fun,
+    events: events?.events ?? null, event_sources: events?.sources ?? null, custom_events: custom,
+  });
+});
+
+router.put('/event-sources', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const body = req.body || {};
+  const next: SourceSwitches = { ...(await eventSwitches()) };
+  for (const k of Object.keys(DEFAULT_SOURCES) as SourceKind[]) if (k in body) next[k] = !!body[k];
+  await setSetting('dashboard_event_sources', JSON.stringify(next));
+  res.json({ switches: next });
 });
 
 router.put('/events', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {

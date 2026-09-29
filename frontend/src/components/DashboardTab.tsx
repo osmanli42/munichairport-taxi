@@ -1051,7 +1051,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
       </div>
       {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
       {show('events') && widgets?.events && (
-        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} today={today} onSaved={loadWidgets} />
+        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
       )}
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
 

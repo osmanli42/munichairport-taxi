@@ -73,7 +73,10 @@ export type Receivables = {
 export type FunnelStage = { visitors: number; ads: number; prices: number; form: number; bookings: number; revenue: number };
 export type Funnel = { today: FunnelStage; yesterday: FunnelStage; ads_spend_today: number | null };
 
-export type DashEvent = { id: string; name: string; start: string; end: string; kind: 'holiday' | 'custom'; note?: string };
+export type EventKind = 'holiday' | 'custom' | 'messe' | 'school' | 'football';
+export type DashEvent = { id: string; name: string; start: string; end: string; kind: EventKind; note?: string; time?: string };
+export type EventSourceKind = 'messe' | 'school' | 'football';
+export type EventSources = { switches: Record<EventSourceKind, boolean>; errors: Partial<Record<EventSourceKind, string>> };
 
 export type WidgetOverview = {
   now: string;
@@ -83,6 +86,7 @@ export type WidgetOverview = {
   receivables: Receivables | null;
   funnel: Funnel | null;
   events: DashEvent[] | null;
+  event_sources: EventSources | null;
   custom_events: DashEvent[] | null;
 };
 
