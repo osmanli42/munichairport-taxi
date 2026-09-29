@@ -2,6 +2,18 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import PasswordChangeCard from './PasswordChangeCard';
+
+// Mirrors backend services/alertCenter.ts
+type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary';
+interface AlertCfg {
+  enabled: boolean;
+  categories: Record<AlertCategory, boolean>;
+  down_after_minutes: number;
+  reminder_hours: number;
+  server_cooldown_hours: number;
+  business_cooldown_hours: number;
+  email_to?: string;
+}
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
@@ -84,7 +96,7 @@ export default function SystemTab({ token }: { token: string }) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [testEmailStatus, setTestEmailStatus] = useState<string>('');
   const [healthRunning, setHealthRunning] = useState(false);
-  const [alertSettings, setAlertSettings] = useState<{ cooldown_hours: number; enabled: boolean } | null>(null);
+  const [alertSettings, setAlertSettings] = useState<AlertCfg | null>(null);
   const [alertSaving, setAlertSaving] = useState(false);
   const [dismissingStuck, setDismissingStuck] = useState(false);
 
@@ -110,7 +122,11 @@ export default function SystemTab({ token }: { token: string }) {
       }
       if (alertR.ok) {
         const ad = await alertR.json();
-        setAlertSettings({ cooldown_hours: ad.cooldown_hours, enabled: ad.enabled });
+        setAlertSettings({
+          enabled: ad.enabled, categories: ad.categories, down_after_minutes: ad.down_after_minutes,
+          reminder_hours: ad.reminder_hours, server_cooldown_hours: ad.server_cooldown_hours,
+          business_cooldown_hours: ad.business_cooldown_hours, email_to: ad.email_to,
+        });
       }
       setLastUpdated(new Date());
       setError('');
@@ -121,9 +137,9 @@ export default function SystemTab({ token }: { token: string }) {
     }
   }, [token]);
 
-  const saveAlertSettings = async (patch: Partial<{ cooldown_hours: number; enabled: boolean }>) => {
+  const saveAlertSettings = async (patch: Partial<AlertCfg>) => {
     if (!alertSettings) return;
-    const updated = { ...alertSettings, ...patch };
+    const updated = { ...alertSettings, ...patch, categories: { ...alertSettings.categories, ...(patch.categories || {}) } };
     setAlertSettings(updated);
     setAlertSaving(true);
     try {
@@ -182,7 +198,7 @@ export default function SystemTab({ token }: { token: string }) {
       });
       const d = await r.json();
       if (d.ok) setTestEmailStatus(`✅ Test e-postası gönderildi: ${d.sent_to}`);
-      else setTestEmailStatus(`⏱️ Cooldown aktif — bir sonraki e-posta ${alertSettings?.cooldown_hours ?? 1} saat sonra gönderilebilir`);
+      else setTestEmailStatus('🔕 Gönderilmedi — e-posta uyarıları kapalı (ana anahtar veya „Sunucu kaynakları“)');
     } catch {
       setTestEmailStatus('❌ Gönderilemedi');
     }
@@ -421,16 +437,15 @@ export default function SystemTab({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* Email alert section */}
+      {/* Email alert section — which server mails go out and how often (backend: alertCenter.ts) */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <Mail size={18} /> <h3 className="font-semibold">E-posta Uyarıları</h3>
           </div>
-          {/* Master on/off toggle */}
           {alertSettings && (
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <span className="text-sm text-gray-600">{alertSettings.enabled ? '✅ Aktif' : '🔕 Kapalı'}</span>
+              <span className="text-sm text-gray-600">{alertSettings.enabled ? '✅ Aktif' : '🔕 Hepsi kapalı'}</span>
               <button
                 onClick={() => saveAlertSettings({ enabled: !alertSettings.enabled })}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${alertSettings.enabled ? 'bg-green-500' : 'bg-gray-300'}`}
@@ -441,49 +456,73 @@ export default function SystemTab({ token }: { token: string }) {
           )}
         </div>
         <p className="text-sm text-gray-600 mb-4">
-          Sistem her 5 dakikada bir otomatik kontrol edilir. Aşağıdaki eşikler aşılırsa
-          <strong> info@flughafen-muenchen.taxi</strong> adresine e-posta gönderilir.
+          Sunucunun kendi uyarıları <strong>{alertSettings?.email_to || 'info@flughafen-muenchen.taxi'}</strong> adresine gider.
+          Yeni rezervasyon, talep ve chat e-postaları bu ayarlardan <strong>etkilenmez</strong>.
         </p>
 
-        {/* Cooldown selector */}
         {alertSettings && (
-          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
-            <Clock size={16} className="text-blue-500 shrink-0" />
-            <span className="text-sm text-gray-700">Aynı uyarı en erken</span>
-            <select
-              value={alertSettings.cooldown_hours}
-              onChange={e => saveAlertSettings({ cooldown_hours: Number(e.target.value) })}
-              disabled={alertSaving}
-              className="border border-gray-300 rounded-lg px-2 py-1 text-sm font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
-            >
-              <option value={1}>1 saat</option>
-              <option value={2}>2 saat</option>
-              <option value={4}>4 saat</option>
-              <option value={6}>6 saat</option>
-              <option value={12}>12 saat</option>
-              <option value={24}>24 saat</option>
-            </select>
-            <span className="text-sm text-gray-700">sonra tekrar gönderilir</span>
-            {alertSaving && <span className="text-xs text-gray-400">kaydediliyor…</span>}
-          </div>
+          <>
+            <div className={`divide-y divide-gray-100 rounded-xl border border-gray-100 ${alertSettings.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
+              {([
+                ['site_down', '🚨 Site / API kesintisi', `Bir kontrol ${alertSettings.down_after_minutes} dakikadan uzun başarısız olursa tek e-posta — tüm sorunlar birlikte. Deploy sırasında gönderilmez.`],
+                ['site_recovered', '✅ „Düzeldi“ bildirimi', 'Yalnızca kesinti e-postası gitmişse, düzelince tek e-posta (ne kadar sürdüğüyle).'],
+                ['server', '🖥️ Sunucu kaynakları (RAM, Swap, Disk, CPU)', `Eşik 15 dakika boyunca aşılırsa; en fazla ${alertSettings.server_cooldown_hours} saatte bir.`],
+                ['pm2', '⚙️ Çöken PM2 servisi', 'Bilerek durdurulan servisler (pm2 stop, ör. haber-app) uyarı üretmez.'],
+                ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
+                ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
+                ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
+              ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
+                <div key={key} className="flex items-start gap-3 px-3 py-2.5">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-800">{label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
+                  </div>
+                  <button
+                    onClick={() => saveAlertSettings({ categories: { ...alertSettings.categories, [key]: !alertSettings.categories[key] } })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${alertSettings.categories[key] ? 'bg-green-500' : 'bg-gray-300'}`}
+                    aria-label={label}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${alertSettings.categories[key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className={`grid sm:grid-cols-2 gap-3 mt-4 ${alertSettings.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
+              {([
+                ['down_after_minutes', 'Kesinti e-postası için süre', [4, 6, 10, 15, 30], 'dk'],
+                ['reminder_hours', 'Sürerse hatırlatma', [6, 12, 24, 48], 'saatte bir'],
+                ['server_cooldown_hours', 'Sunucu kaynak uyarısı', [12, 24, 48, 168], 'saatte en fazla bir'],
+                ['business_cooldown_hours', 'Satış / hata / PM2 uyarısı', [2, 4, 6, 12, 24], 'saatte en fazla bir'],
+              ] as [keyof AlertCfg, string, number[], string][]).map(([key, label, options, unit]) => (
+                <label key={key} className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100 text-sm text-gray-700">
+                  <Clock size={15} className="text-blue-500 shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  <select
+                    value={alertSettings[key] as number}
+                    onChange={(e) => saveAlertSettings({ [key]: Number(e.target.value) } as Partial<AlertCfg>)}
+                    disabled={alertSaving}
+                    className="border border-gray-300 rounded-lg px-2 py-1 text-sm font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
+                  >
+                    {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <span className="text-xs text-gray-500 w-20">{unit}</span>
+                </label>
+              ))}
+            </div>
+            {alertSaving && <div className="text-xs text-gray-400 mt-2">kaydediliyor…</div>}
+          </>
         )}
 
-        <div className="grid sm:grid-cols-2 gap-2 text-sm mb-4">
-          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 RAM kullanımı &gt; %85</div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Swap &gt; 1500 MB</div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 Disk &gt; %85</div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2">🔴 CPU load &gt; 1.5× core</div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2 sm:col-span-2">🔴 Bir PM2 servisi çökerse</div>
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
+          <button
+            onClick={sendTestAlert}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+          >
+            <Mail size={14} /> Test e-postası gönder
+          </button>
+          {testEmailStatus && <div className="text-sm text-gray-700">{testEmailStatus}</div>}
         </div>
-        <button
-          onClick={sendTestAlert}
-          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
-        >
-          <Mail size={14} /> Test e-postası gönder
-        </button>
-        {testEmailStatus && (
-          <div className="mt-3 text-sm text-gray-700">{testEmailStatus}</div>
-        )}
       </div>
 
       <PasswordChangeCard />

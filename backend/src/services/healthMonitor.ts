@@ -4,8 +4,10 @@
  */
 import https from 'https';
 import tls from 'tls';
+import { execFileSync } from 'child_process';
 import { Resend } from 'resend';
 import { query, run } from '../db';
+import { getAlertConfig, getStateValue, setStateValue } from './alertCenter';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
@@ -370,29 +372,58 @@ export async function getLatestStatus(): Promise<{ latest: HealthResult[]; trend
 }
 
 // ---------- Alerting ----------
-const lastFailAlerts: Record<string, number> = {};
-const lastKnownStatus: Record<string, HealthStatus> = {};
-const ALERT_COOLDOWN = 60 * 60 * 1000; // 1 hour
-const REQUIRE_CONSECUTIVE = 2; // require 2 consecutive fails before alerting (avoid flapping)
+// One mail per incident, not one per check. A single VPS hiccup used to time out ~8
+// checks across three sites at once and send 8 "çalışmıyor" + 8 "düzeldi" mails; a lone
+// failed check followed by a good one even sent a "düzeldi" without any preceding alert.
+// Now a check must keep failing for `down_after_minutes` (System tab), everything that
+// crosses that line in the same run goes into ONE mail, and ONE recovery mail follows —
+// only for checks that were actually reported. Open incidents are persisted, so a
+// restart neither re-sends the alert nor forgets the recovery.
+const CHECK_INTERVAL_MIN = 2;
+const OPEN_KEY = 'health:open_incidents';
 const consecutiveFails: Record<string, number> = {};
 
-async function sendAlert(subject: string, body: string): Promise<void> {
+type OpenIncident = { label: string; since: number; last_mail: number; message: string };
+
+async function loadOpen(): Promise<Record<string, OpenIncident>> {
+  try { return JSON.parse((await getStateValue(OPEN_KEY)) || '{}'); } catch { return {}; }
+}
+
+// A frontend build on this small VPS (or a pm2 restart during deploy) makes checks time
+// out for a few minutes — expected, not an outage. Failures still count; the alert just
+// waits until the deploy is over and fires only if the problem is still there.
+function deployInProgress(): boolean {
+  try {
+    execFileSync('pgrep', ['-f', 'next build|deploy-munich\\.sh|deploy-fmt\\.sh'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function fmtDuration(ms: number): string {
+  const m = Math.max(1, Math.round(ms / 60_000));
+  return m < 60 ? `${m} dk` : `${Math.floor(m / 60)} sa ${m % 60} dk`;
+}
+
+async function sendAlert(subject: string, body: string, kind: 'down' | 'up'): Promise<void> {
+  const up = kind === 'up';
+  const color = up ? '#16a34a' : '#dc2626';
   try {
     const resend = new Resend(RESEND_API_KEY);
     await resend.emails.send({
       from: `Munich Airport Taxi Server <${FROM_EMAIL}>`,
       to: ADMIN_EMAIL,
-      subject: `🚨 ${subject}`,
+      subject: `${up ? '✅' : '🚨'} ${subject}`,
       html: `
         <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;">
-          <div style="background:#fff;border-radius:12px;padding:24px;border-left:6px solid #dc2626;">
-            <h1 style="margin:0 0 12px;color:#dc2626;font-size:20px;">🚨 Site Sorunu</h1>
+          <div style="background:#fff;border-radius:12px;padding:24px;border-left:6px solid ${color};">
+            <h1 style="margin:0 0 12px;color:${color};font-size:20px;">${up ? '✅ Sorun giderildi' : '🚨 Site Sorunu'}</h1>
             <h2 style="margin:0 0 16px;color:#111;font-size:16px;">${subject}</h2>
-            <div style="background:#fef2f2;padding:16px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;color:#7f1d1d;">${body}</div>
+            <div style="background:${up ? '#f0fdf4' : '#fef2f2'};padding:16px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;color:${up ? '#14532d' : '#7f1d1d'};">${body}</div>
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
               <p style="margin:0 0 6px;">Zaman: <strong>${new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}</strong></p>
-              <p style="margin:0;">Admin paneli: <a href="https://${SITE_HOST}/admin">https://${SITE_HOST}/admin</a> · System sekmesi</p>
-              <p style="margin:8px 0 0;">Aynı uyarı 1 saat içinde tekrar gönderilmez.</p>
+              <p style="margin:0;">Admin paneli: <a href="https://${SITE_HOST}/admin">https://${SITE_HOST}/admin</a> · System sekmesinden hangi e-postaların gideceğini ayarlayabilirsin.</p>
             </div>
           </div>
         </div>
@@ -404,50 +435,78 @@ async function sendAlert(subject: string, body: string): Promise<void> {
   }
 }
 
-async function processAlerts(results: HealthResult[]): Promise<void> {
+export async function processAlerts(results: HealthResult[]): Promise<void> {
+  const cfg = await getAlertConfig();
+  const needed = Math.max(1, Math.ceil(cfg.down_after_minutes / CHECK_INTERVAL_MIN));
+  const now = Date.now();
   for (const r of results) {
-    const prev = lastKnownStatus[r.check_name];
-    lastKnownStatus[r.check_name] = r.status;
+    consecutiveFails[r.check_name] = r.status === 'fail' ? (consecutiveFails[r.check_name] || 0) + 1 : 0;
+  }
 
-    if (r.status === 'fail') {
-      consecutiveFails[r.check_name] = (consecutiveFails[r.check_name] || 0) + 1;
+  const open = await loadOpen();
+  let changed = false;
 
-      // Only alert after 2 consecutive failures and if cooldown passed
-      if (consecutiveFails[r.check_name] >= REQUIRE_CONSECUTIVE) {
-        const last = lastFailAlerts[r.check_name] || 0;
-        if (Date.now() - last >= ALERT_COOLDOWN) {
-          lastFailAlerts[r.check_name] = Date.now();
-          await sendAlert(
-            `${r.label} çalışmıyor`,
-            `Check: ${r.label}
-Durum: FAIL
-Süre: ${r.latency_ms}ms
-Hata: ${r.message}
-
-Bu hata ${consecutiveFails[r.check_name]} kontrolde üst üste alındı.
-Hemen müdahale gerekli olabilir.`
-          );
-        }
-      }
-    } else {
-      // Recovered — clear fail counter
-      if (consecutiveFails[r.check_name] && consecutiveFails[r.check_name] > 0) {
-        if (prev === 'fail' || consecutiveFails[r.check_name] >= REQUIRE_CONSECUTIVE) {
-          // We previously alerted (or were about to) — send recovery notice
-          await sendAlert(
-            `✅ ${r.label} düzeldi`,
-            `Check: ${r.label}
-Durum: OK
-Süre: ${r.latency_ms}ms
-Mesaj: ${r.message}
-
-Sorun çözülmüş görünüyor.`
-          );
-        }
-      }
-      consecutiveFails[r.check_name] = 0;
+  // Recoveries — only for incidents we reported (and forget ones whose check vanished).
+  const recovered: [string, OpenIncident][] = [];
+  for (const [name, inc] of Object.entries(open)) {
+    const r = results.find((x) => x.check_name === name);
+    if (!r || r.status !== 'fail') {
+      recovered.push([name, inc]);
+      delete open[name];
+      changed = true;
     }
   }
+  if (recovered.length && cfg.enabled && cfg.categories.site_recovered) {
+    const lines = recovered.map(([, inc]) => `  ✓ ${inc.label} — ${fmtDuration(now - inc.since)} sürdü`).join('\n');
+    await sendAlert(
+      recovered.length === 1 ? `${recovered[0][1].label} düzeldi` : `${recovered.length} kontrol düzeldi`,
+      `Tekrar çalışıyor:\n${lines}`,
+      'up'
+    );
+  }
+
+  // New incidents and reminders — never while a deploy is running, and only if the admin
+  // wants outage mails at all (otherwise nothing is recorded, so no recovery mail either).
+  const failing = results.filter((r) => r.status === 'fail');
+  if (!deployInProgress() && cfg.enabled && cfg.categories.site_down) {
+    const fresh = failing.filter((r) => consecutiveFails[r.check_name] >= needed && !open[r.check_name]);
+    const remind = failing.filter((r) => open[r.check_name] && now - open[r.check_name].last_mail >= cfg.reminder_hours * 3600_000);
+    if (fresh.length || remind.length) {
+      for (const r of fresh) {
+        open[r.check_name] = {
+          label: r.label,
+          since: now - (consecutiveFails[r.check_name] - 1) * CHECK_INTERVAL_MIN * 60_000,
+          last_mail: now,
+          message: r.message,
+        };
+      }
+      for (const r of remind) open[r.check_name].last_mail = now;
+      changed = true;
+
+      // Most checks failing at once means this VPS itself is struggling (overload,
+      // network), not three separate sites.
+      const hostIssue = failing.length >= Math.ceil(results.length * 0.6);
+      const reported = [...fresh, ...remind];
+      const subject = hostIssue
+        ? `Sunucu yanıt vermiyor — ${failing.length}/${results.length} kontrol başarısız`
+        : reported.length === 1
+          ? `${reported[0].label} çalışmıyor${remind.length ? ' (hâlâ)' : ''}`
+          : `${reported.length} kontrol çalışmıyor`;
+      const lines = failing
+        .map((r) => `  ✗ ${r.label}: ${r.message}${open[r.check_name] ? ` (${fmtDuration(now - open[r.check_name].since)})` : ''}`)
+        .join('\n');
+      await sendAlert(
+        subject,
+        `${hostIssue ? 'Kontrollerin çoğu aynı anda zaman aşımına uğruyor — sorun büyük olasılıkla VPS\'in kendisinde (RAM/CPU/ağ).\n\n' : ''}`
+          + `Başarısız kontroller:\n${lines}\n\n`
+          + `Bu uyarı, sorun ${cfg.down_after_minutes} dakikadan uzun sürdüğü için gönderildi. `
+          + `Düzelince tek bir "düzeldi" e-postası gelir; sürerse ${cfg.reminder_hours} saatte bir hatırlatılır.`,
+        'down'
+      );
+    }
+  }
+
+  if (changed) await setStateValue(OPEN_KEY, JSON.stringify(open));
 }
 
 // ---------- Cron job ----------
@@ -473,5 +532,5 @@ export function startHealthMonitorJob(): void {
       console.error('[health] check failed:', e.message);
     }
   }, 2 * 60 * 1000);
-  console.log('[health] Monitor started — runs every 2 minutes, alerts after 2 consecutive failures');
+  console.log('[health] Monitor started — runs every 2 minutes, one grouped mail per incident');
 }

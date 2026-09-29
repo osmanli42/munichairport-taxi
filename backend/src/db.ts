@@ -485,6 +485,25 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Server alert e-mails (services/alertCenter.ts): the admin's switches, and the
+    // cooldowns / sent markers that used to live in memory and reset on every restart.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS alert_config (
+        id TINYINT NOT NULL,
+        config_json TEXT NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS alert_state (
+        state_key VARCHAR(100) NOT NULL,
+        state_value TEXT NOT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (state_key)
+      )
+    `);
+
     // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS tracking_events (

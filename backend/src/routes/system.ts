@@ -6,6 +6,9 @@ import { Resend } from 'resend';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 import { query } from '../db';
+import {
+  getAlertConfig, saveAlertConfig, shouldSendAlert, resetCooldown, listCooldowns, getStateValue, setStateValue,
+} from '../services/alertCenter';
 
 const router = Router();
 
@@ -126,48 +129,26 @@ const CONVERSION_THRESHOLDS = {
   slow_page_min_views: 5,
 };
 
-// Per-alert cooldown — configurable, default 4 hours
-const lastAlerts: Record<string, number> = {};
-
-// Alert settings — persist in memory (survives until restart), default 4h
-const alertSettings = {
-  cooldown_hours: 4,   // hours between same alert type
-  enabled: true,       // master switch
-};
-
-function getCooldownMs(): number {
-  return alertSettings.cooldown_hours * 60 * 60 * 1000;
-}
-
-function shouldFire(key: string): boolean {
-  if (!alertSettings.enabled) return false;
-  const now = Date.now();
-  const prev = lastAlerts[key] || 0;
-  if (now - prev < getCooldownMs()) return false;
-  lastAlerts[key] = now;
-  return true;
-}
+// Which alerts go out and how often: services/alertCenter.ts (persisted, survives the
+// restarts that used to reset every cooldown and re-send the same alerts after each deploy).
 
 // ---------- Alert settings endpoints ----------
-router.get('/admin/system-stats/alert-settings', authenticateAdmin, (_req: AuthRequest, res: Response) => {
-  // Calculate next possible alert times
-  const nextAlerts: Record<string, string | null> = {};
-  for (const [key, ts] of Object.entries(lastAlerts)) {
-    const nextMs = ts + getCooldownMs();
-    nextAlerts[key] = nextMs > Date.now() ? new Date(nextMs).toISOString() : null;
+router.get('/admin/system-stats/alert-settings', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const cfg = await getAlertConfig();
+    res.json({ ...cfg, cooldowns: await listCooldowns(), email_to: ADMIN_EMAIL });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
   }
-  res.json({ ...alertSettings, next_alerts: nextAlerts });
 });
 
-router.post('/admin/system-stats/alert-settings', authenticateAdmin, (req: AuthRequest, res: Response) => {
-  const { cooldown_hours, enabled } = req.body || {};
-  if (typeof cooldown_hours === 'number' && cooldown_hours >= 1 && cooldown_hours <= 168) {
-    alertSettings.cooldown_hours = cooldown_hours;
+router.post('/admin/system-stats/alert-settings', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const cfg = await saveAlertConfig(req.body || {});
+    res.json({ ok: true, ...cfg });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
   }
-  if (typeof enabled === 'boolean') {
-    alertSettings.enabled = enabled;
-  }
-  res.json({ ok: true, ...alertSettings });
 });
 
 function fmtMB(bytes: number): string {
@@ -198,7 +179,7 @@ async function sendAlert(subject: string, body: string): Promise<void> {
             <div style="background:#fef2f2;padding:16px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;color:#7f1d1d;">${body}</div>
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
               <p style="margin:0 0 6px;">Bu uyarı saat <strong>${new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' })}</strong> tarihinde gönderildi.</p>
-              <p style="margin:0;">VPS: <strong>flughafen-muenchen.taxi</strong> · Aynı uyarı ${alertSettings.cooldown_hours} saat boyunca tekrar gönderilmez.</p>
+              <p style="margin:0;">VPS: <strong>flughafen-muenchen.taxi</strong> · Hangi uyarıların ne sıklıkla gideceği: Admin → System sekmesi.</p>
             </div>
           </div>
         </div>
@@ -210,10 +191,19 @@ async function sendAlert(subject: string, body: string): Promise<void> {
   }
 }
 
-function checkAlerts(s: ReturnType<typeof collectStats>): void {
+// A resource alert needs the condition on 3 checks in a row (15 min): swap and load spike
+// during every deploy build and settle again — that is not worth an e-mail.
+const RESOURCE_STREAK = 3;
+const streaks: Record<string, number> = {};
+function sustained(key: string, condition: boolean, needed = RESOURCE_STREAK): boolean {
+  streaks[key] = condition ? (streaks[key] || 0) + 1 : 0;
+  return streaks[key] >= needed;
+}
+
+async function checkAlerts(s: ReturnType<typeof collectStats>): Promise<void> {
   // RAM
-  if (s.ram.pct >= THRESHOLDS.ram_pct && shouldFire('ram')) {
-    sendAlert(
+  if (sustained('ram', s.ram.pct >= THRESHOLDS.ram_pct) && await shouldSendAlert('server', 'ram')) {
+    await sendAlert(
       `RAM kullanımı yüksek: %${s.ram.pct}`,
       `RAM: ${fmtGB(s.ram.used)} / ${fmtGB(s.ram.total)} (${s.ram.pct}%)
 Boş: ${fmtMB(s.ram.free)}
@@ -224,8 +214,8 @@ Bu durum sürerse Standard 2 tarifine yükseltmeyi değerlendir (4 GB RAM, +51�
 
   // Swap
   const swapUsedMB = s.swap.used / 1024 / 1024;
-  if (swapUsedMB >= THRESHOLDS.swap_used_mb && shouldFire('swap')) {
-    sendAlert(
+  if (sustained('swap', swapUsedMB >= THRESHOLDS.swap_used_mb) && await shouldSendAlert('server', 'swap')) {
+    await sendAlert(
       `Swap kullanımı yüksek: ${fmtMB(s.swap.used)}`,
       `Swap: ${fmtMB(s.swap.used)} / ${fmtGB(s.swap.total)} kullanılıyor.
 
@@ -235,8 +225,8 @@ Standard 2 (4 GB RAM) tarifine geçmek mantıklı olabilir.`
   }
 
   // Disk
-  if (s.disk.pct >= THRESHOLDS.disk_pct && shouldFire('disk')) {
-    sendAlert(
+  if (sustained('disk', s.disk.pct >= THRESHOLDS.disk_pct) && await shouldSendAlert('server', 'disk')) {
+    await sendAlert(
       `Disk doluyor: %${s.disk.pct}`,
       `Disk: ${fmtGB(s.disk.used)} / ${fmtGB(s.disk.total)} (${s.disk.pct}%)
 Boş: ${fmtGB(s.disk.free)}
@@ -246,8 +236,8 @@ Logları, eski backup'ları veya gereksiz dosyaları temizlemek gerek.`
   }
 
   // CPU load
-  if (s.cpu.load1_pct >= THRESHOLDS.load1_pct && shouldFire('cpu')) {
-    sendAlert(
+  if (sustained('cpu', s.cpu.load1_pct >= THRESHOLDS.load1_pct) && await shouldSendAlert('server', 'cpu')) {
+    await sendAlert(
       `CPU yükü yüksek: ${s.cpu.load1.toFixed(2)} (${s.cpu.cores} core)`,
       `Load avg: ${s.cpu.load1.toFixed(2)} / ${s.cpu.load5.toFixed(2)} / ${s.cpu.load15.toFixed(2)} (1m / 5m / 15m)
 Cores: ${s.cpu.cores}
@@ -256,15 +246,18 @@ Sürekli yüksek yük varsa Standard 2 (2 core) ya da Standard 3 (4 core) düş�
     );
   }
 
-  // PM2 offline
-  const offline = s.pm2.filter((p) => p.status !== 'online');
-  if (offline.length > 0 && shouldFire('pm2_offline')) {
-    sendAlert(
+  // PM2 — a service stopped on purpose (pm2 stop → "stopped") is not a failure; only
+  // crashed/errored ones are, and only if they stay down for two checks (10 min), so a
+  // restart during a deploy doesn't count.
+  const offline = s.pm2.filter((p) => !['online', 'stopped', 'stopping', 'launching'].includes(p.status));
+  if (sustained('pm2', offline.length > 0, 2) && await shouldSendAlert('pm2', 'pm2_offline')) {
+    await sendAlert(
       `${offline.length} servis çalışmıyor`,
-      `Çalışmayan PM2 servisleri:
+      `Çöken PM2 servisleri:
 ${offline.map((p) => `  - ${p.name} (${p.status}, ${p.restarts} restart)`).join('\n')}
 
-ssh ile bağlanıp 'pm2 restart all' çalıştırman gerekebilir.`
+ssh ile bağlanıp 'pm2 logs <isim>' ile sebebe bak, sonra 'pm2 restart <isim>'.
+(Bilerek durdurulmuş servisler — pm2 stop — uyarı üretmez.)`
     );
   }
 }
@@ -285,7 +278,7 @@ async function checkConversionAlerts(): Promise<void> {
   );
   const sessions = Number(dry?.sessions || 0);
   const bookings = Number(dry?.bookings || 0);
-  if (sessions >= CONVERSION_THRESHOLDS.dry_spell_min_sessions && bookings === 0 && shouldFire('no_conversions')) {
+  if (sessions >= CONVERSION_THRESHOLDS.dry_spell_min_sessions && bookings === 0 && await shouldSendAlert('business', 'no_conversions')) {
     await sendAlert(
       `${h} saatte ${sessions} ziyaretçi, 0 rezervasyon`,
       `Son ${h} saatte ${sessions} oturum açıldı ama tek bir web rezervasyonu gelmedi.
@@ -311,7 +304,7 @@ Admin → Replay sekmesindeki "Neden vazgeçiyorlar" panelinden son oturumlara b
     lastHour >= CONVERSION_THRESHOLDS.error_spike_min &&
     hourlyAvg > 0 &&
     lastHour >= hourlyAvg * CONVERSION_THRESHOLDS.error_spike_factor &&
-    shouldFire('error_spike')
+    await shouldSendAlert('business', 'error_spike')
   ) {
     const top = await query<any>(
       `SELECT type, target, COUNT(*) AS n FROM visitor_events
@@ -340,7 +333,7 @@ ${top.map((t: any) => `  - [${t.type}] ${t.target} × ${t.n}`).join('\n')}`
   if (
     views >= CONVERSION_THRESHOLDS.slow_page_min_views &&
     avgMs > CONVERSION_THRESHOLDS.slow_page_ms &&
-    shouldFire('slow_booking_page')
+    await shouldSendAlert('business', 'slow_booking_page')
   ) {
     await sendAlert(
       `Rezervasyon sayfası yavaş: ${Math.round(avgMs)} ms`,
@@ -353,13 +346,18 @@ ${CONVERSION_THRESHOLDS.slow_page_ms} ms üstü yüklemeler doğrudan rezervasyo
 
 // Günlük özet — günde bir kez, Berlin saatiyle sabah
 const SUMMARY_HOUR = 8;
-let lastSummaryDay = '';
+const SUMMARY_DAY_KEY = 'daily_summary:last_day';
 
 async function sendDailySummary(): Promise<void> {
   const berlin = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
   const dayKey = berlin.toISOString().slice(0, 10);
-  if (berlin.getHours() < SUMMARY_HOUR || lastSummaryDay === dayKey) return;
-  lastSummaryDay = dayKey;
+  if (berlin.getHours() < SUMMARY_HOUR) return;
+  // Persisted: the in-memory flag reset on every restart, so the summary went out again
+  // after each deploy (14 summaries in 7 days).
+  if ((await getStateValue(SUMMARY_DAY_KEY)) === dayKey) return;
+  await setStateValue(SUMMARY_DAY_KEY, dayKey);
+  const cfg = await getAlertConfig();
+  if (!cfg.enabled || !cfg.categories.daily_summary) return;
 
   const [t] = await query<any>(
     `SELECT
@@ -407,7 +405,7 @@ export function startSystemAlertJob(): void {
   setInterval(() => {
     try {
       const s = collectStats();
-      checkAlerts(s);
+      checkAlerts(s).catch((e) => console.error('[system-alerts] check failed:', e.message));
     } catch (e: any) {
       console.error('[system-alerts] check failed:', e.message);
     }
@@ -419,7 +417,7 @@ export function startSystemAlertJob(): void {
       sendDailySummary().catch((e) => console.error('[daily-summary] failed:', e.message));
     }
   }, intervalMs);
-  console.log('[system-alerts] Job started — checks every 5 minutes, alerts cooldown 1h');
+  console.log('[system-alerts] Job started — checks every 5 minutes (settings: System tab)');
 }
 
 // GET /api/admin/conversion-health — dönüşüm uyarılarının baktığı ham sayılar.
@@ -513,8 +511,8 @@ router.post('/admin/health/fmtde/dismiss-stuck', authenticateAdmin, async (req: 
 // Manual test endpoint — send a test alert
 router.post('/admin/system-stats/test-alert', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    delete lastAlerts.test; // reset cooldown for this kind
-    if (shouldFire('test')) {
+    await resetCooldown('cooldown:test');
+    if (await shouldSendAlert('server', 'test', 0)) {
       await sendAlert(
         'Test uyarısı (manuel)',
         `Bu bir test mesajıdır. E-posta sistemi çalışıyor.

@@ -8,6 +8,7 @@ import cron from 'node-cron';
 import { Resend } from 'resend';
 import { query, run } from '../db';
 import { computeOverview } from '../routes/ads';
+import { categoryEnabled } from './alertCenter';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
@@ -69,6 +70,8 @@ async function sendAdsAlert(subject: string, score: number | null, items: { titl
 
 async function runCheck(): Promise<void> {
   try {
+    // Admin can switch ads alerts off in the System tab (services/alertCenter.ts).
+    if (!(await categoryEnabled('ads'))) return;
     const r = await computeOverview({ days: 30 });
     const highAlerts = r.alerts.filter((a) => a.severity === 'high');
     const lowScore = r.score !== null && r.score < 50;
