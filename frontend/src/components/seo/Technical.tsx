@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/dashboard/shared';
 import { seoApi, nf, Empty, shortPath } from './common';
 import Structure from './Structure';
+import SiteCheck from './SiteCheck';
 
 const SEV: Record<string, [string, string]> = {
   error: ['Hata', 'bg-red-100 text-red-700'],
@@ -49,6 +50,7 @@ export default function Technical() {
 
   return (
     <div className="space-y-6">
+      <SiteCheck />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <Card title="Site denetimi" icon={ShieldCheck} right={(
           <button onClick={() => act('audit')} disabled={!!running || busy === 'audit'} className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 disabled:opacity-50">

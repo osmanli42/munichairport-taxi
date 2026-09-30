@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/dashboard/shared';
 import { seoApi, nf, pct, eur, Delta, Kpi, TrendChart, Empty } from './common';
 import MetaCheck from './MetaCheck';
+import SiteCheck from './SiteCheck';
 import { PositionDistribution, DeviceSplit } from './Visibility';
 
 export default function Overview({ days, onGo }: { days: number; onGo: (tab: string) => void }) {
@@ -126,6 +127,8 @@ export default function Overview({ days, onGo }: { days: number; onGo: (tab: str
           </Card>
         </div>
       </div>
+
+      <SiteCheck compact onGo={onGo} />
 
       <MetaCheck />
     </div>

@@ -4,6 +4,8 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Kein „X-Powered-By: Next.js“ — verrät die Server-Technik (Security-Check)
+  poweredByHeader: false,
   images: {
     domains: ['maps.googleapis.com', 'maps.gstatic.com'],
   },
@@ -15,6 +17,9 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
+          // Browser merken sich: nur HTTPS (1 Jahr). Ohne includeSubDomains, damit keine Subdomain unerwartet bricht.
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
       {

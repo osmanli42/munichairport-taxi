@@ -12,6 +12,7 @@ import { runVitals, latestVitals, VITALS_URLS, vitalsError } from '../services/s
 import { gscTotals, organicFunnel, queryTable, pageTable, trackedKeywords, positionDistribution, cannibalization } from '../services/seo/analytics';
 import { buildTasks, setTaskStatus, trackedKeywordList, SEO_TRACKER_DIR } from '../services/seo/insights';
 import { auditWithAlerts } from '../services/seo/jobs';
+import { latestSiteCheck, siteCheckOnce } from '../services/seo/sitecheck';
 import { backlinkOverview, backlinkReminder, importLinks, setBacklinkReminder } from '../services/seo/backlinks';
 
 const router = Router();
@@ -181,6 +182,13 @@ router.delete('/backlinks/import/:id', authenticateAdmin, wrap(async (req, res) 
   await run(`DELETE FROM seo_backlinks WHERE import_id = ?`, [id]);
   await run(`DELETE FROM seo_backlink_imports WHERE id = ?`, [id]);
   res.json({ ok: true });
+}));
+
+// Website check (IONOS-style): presence, findability, security, speed.
+router.get('/site-check', authenticateAdmin, wrap(async (_req, res) => { res.json(await latestSiteCheck()); }));
+router.post('/site-check', authenticateAdmin, wrap(async (_req, res) => {
+  await siteCheckOnce();
+  res.json(await latestSiteCheck());
 }));
 
 router.post('/audit', authenticateAdmin, wrap(async (_req, res) => {

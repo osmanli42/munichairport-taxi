@@ -573,6 +573,17 @@ export async function initializeDatabase(): Promise<void> {
         KEY idx_seo_backlinks_import (import_id, domain)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // Website check (SEO tab): presence / findability / security / speed.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_site_checks (
+        id INT NOT NULL AUTO_INCREMENT,
+        created_at DATETIME NOT NULL,
+        overall INT NOT NULL DEFAULT 0,
+        result LONGTEXT NOT NULL,
+        PRIMARY KEY (id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+
     // ---- Google Ads coach (routes/ads-v2.ts, services/ads/*) ----
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS ads_imports (

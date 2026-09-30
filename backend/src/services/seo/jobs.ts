@@ -3,6 +3,7 @@
 //   daily 04:10  Search Console sync (last 6 days; full history until it is there) → alerts
 //   Sun   05:00  site audit → alert on new technical errors
 //   Mon   05:30  PageSpeed (Core Web Vitals)
+//   daily 05:50  website check (headers, icons, redirects, SSL, speed)
 // First start: fills 16 months of Search Console history if the table is empty.
 
 import cron from 'node-cron';
@@ -11,6 +12,7 @@ import { runAudit } from './audit';
 import { runVitals } from './vitals';
 import { checkAuditAlerts, checkSeoAlerts } from './insights';
 import { query } from '../../db';
+import { siteCheckOnce } from './sitecheck';
 
 export async function auditWithAlerts() {
   const started = new Date(Date.now() - 1000);
@@ -46,4 +48,5 @@ export function startSeoJobs(): void {
   }, { timezone: 'Europe/Berlin' });
   cron.schedule('0 5 * * 0', () => { auditWithAlerts().catch((e) => console.error('[seo] audit:', e?.message || e)); }, { timezone: 'Europe/Berlin' });
   cron.schedule('30 5 * * 1', () => { runVitals().catch(() => {}); }, { timezone: 'Europe/Berlin' });
+  cron.schedule('50 5 * * *', () => { siteCheckOnce().catch((e: any) => console.error('[seo] site check:', e?.message || e)); }, { timezone: 'Europe/Berlin' });
 }
