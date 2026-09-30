@@ -2245,7 +2245,7 @@ const cities: CityData[] = [
     ...calcPrice(160),
   },
   {
-    slug: 'taxi-donauwörth-flughafen-muenchen',
+    slug: 'taxi-donauwoerth-flughafen-muenchen',
     name: 'Donauwörth',
     nameDE: 'Donauwörth',
     country: 'DE',

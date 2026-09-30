@@ -550,7 +550,7 @@ const en: Record<string, CityTranslationEn> = {
     sights: ['Edwin-Scharff Museums', 'Danube riverside promenade', 'Glacis – historic fortress grounds', 'Ulm Minster (across the river in Ulm)', 'EuropaPark proximity'],
     intro: 'From Neu-Ulm to Munich Airport it\'s approx. {km} km. Our taxi covers the route in about {min} minutes.',
   },
-  'taxi-donauwörth-flughafen-muenchen': {
+  'taxi-donauwoerth-flughafen-muenchen': {
     description: 'Donauwörth lies at the confluence of the Danube and Wörnitz, is part of the Romantic Road and known for the Reichsstraße – one of Bavaria\'s most beautiful streets.',
     history: 'Donauwörth was a Free Imperial City and suffered heavy destruction in the Thirty Years\' War. The Reichsstraße with its colourful townhouses is one of Bavaria\'s most impressive old-town streets.',
     known_for: 'Romantic Road, Reichsstraße, Danube-Wörnitz confluence',

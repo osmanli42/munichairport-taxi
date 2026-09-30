@@ -17,6 +17,11 @@ const nextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
         ],
       },
+      {
+        // Bilder aus /public/images: 7 Tage Browser-Cache (vorher max-age=0 → bei jedem Besuch neu geladen)
+        source: '/images/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' }],
+      },
     ];
   },
 };

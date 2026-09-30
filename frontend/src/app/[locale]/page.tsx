@@ -5,9 +5,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, UsersRound, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
-const SearchBar = dynamic(() => import('@/components/SearchBar'), { ssr: false });
+// Platzhalter in Endhöhe der Suche: ohne ihn schiebt die nachgeladene Suche alles darunter
+// um bis zu 252px nach unten (CLS ~0,12 auf Mobilgeräten)
+const SearchBar = dynamic(() => import('@/components/SearchBar'), {
+  ssr: false,
+  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[65px] rounded-2xl bg-white/10" />,
+});
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
+import HomeSeoContent from '@/components/HomeSeoContent';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -371,7 +377,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-8">
-            <Link href="/vehicles" className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block">
+            <Link href={locale === 'de' ? '/vehicles' : `/${locale}/vehicles`} className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block">
               {sd.cta}
             </Link>
           </div>
@@ -551,6 +557,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* SEO-Text + FAQ (Hauptkeywords) */}
+      <HomeSeoContent locale={locale} />
 
       {/* CTA Section */}
       <section className="bg-primary-600 py-16">

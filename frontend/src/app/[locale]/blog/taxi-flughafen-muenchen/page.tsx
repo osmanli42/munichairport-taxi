@@ -4,7 +4,7 @@ import { Phone } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026',
+  title: { absolute: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026' },
   description:
     'Was kostet ein Taxi zum Flughafen München? Alle Festpreise 2026, Fahrtdauer aus verschiedenen Stadtteilen und Tipps für eine stressfreie Anreise.',
   alternates: {

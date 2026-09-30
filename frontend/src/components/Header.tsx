@@ -36,6 +36,9 @@ export default function Header() {
     window.location.href = finalPath;
   }
 
+  // Interne Links in der aktuellen Sprache (de ohne Präfix, as-needed)
+  const lp = (href: string) => (locale === 'de' ? href : href === '/' ? `/${locale}` : `/${locale}${href}`);
+
   const navLinks = [
     { href: '/', label: t('home') },
     { href: '/vehicles', label: t('vehicles') },
@@ -50,8 +53,12 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center group min-w-0">
-            <img src="/images/logo-wide.webp" alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-12 w-auto max-w-full object-contain object-left" />
+          <Link href={lp('/')} className="flex items-center group min-w-0">
+            <img
+              src="/images/logo-wide.webp"
+              srcSet="/images/logo-wide-320.webp 320w, /images/logo-wide-400.webp 400w, /images/logo-wide-640.webp 640w, /images/logo-wide.webp 823w"
+              sizes="(min-width: 1024px) 300px, 200px"
+              alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-12 w-auto max-w-full object-contain object-left" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -59,10 +66,10 @@ export default function Header() {
             {navLinks.map((link) => (
               <Link
                 key={link.href}
-                href={link.href}
+                href={lp(link.href)}
                 className={cn(
                   'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                  pathname === link.href || pathname === `/${locale}${link.href}`
+                  pathname === lp(link.href)
                     ? 'bg-primary-700 text-white'
                     : 'text-primary-100 hover:bg-primary-700 hover:text-white'
                 )}
@@ -126,7 +133,7 @@ export default function Header() {
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={lp(link.href)}
                   className="px-4 py-3 text-white hover:bg-primary-700 rounded-md font-medium"
                   onClick={() => setMenuOpen(false)}
                 >

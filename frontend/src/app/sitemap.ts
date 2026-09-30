@@ -2,6 +2,8 @@ import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
 import { allCitySlugs } from '@/lib/citiesData';
 
+const GERMAN_ONLY = new Set(['/blog/taxi-flughafen-muenchen']);
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const host = headers().get('host') ?? 'flughafen-muenchen.taxi';
   const baseUrl = `https://${host}`;
@@ -13,6 +15,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   for (const locale of locales) {
     for (const page of pages) {
+      // Ratgeber ist nur deutsch; /en und /tr zeigen per canonical auf die DE-Seite → nicht in die Sitemap
+      if (locale && GERMAN_ONLY.has(page)) continue;
       routes.push({
         url: `${baseUrl}${locale}${page}`,
         lastModified: new Date(),

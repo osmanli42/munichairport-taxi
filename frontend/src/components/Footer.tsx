@@ -18,6 +18,8 @@ export default function Footer() {
   const locale = useLocale();
   const tx = TEXT[locale as keyof typeof TEXT] || TEXT.de;
   const year = new Date().getFullYear();
+  // Interne Links in der aktuellen Sprache (de ohne Präfix, as-needed)
+  const lp = (href: string) => (locale === 'de' ? href : href === '/' ? `/${locale}` : `/${locale}${href}`);
 
   const linkCls = 'hover:text-gold-400 transition-colors';
   const iconCls = 'flex items-center justify-center w-9 h-9 rounded-full text-white hover:text-gold-400 transition-colors';
@@ -28,8 +30,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.15fr_1.5fr_0.7fr_1.15fr] gap-10 lg:gap-8">
           {/* Brand */}
           <div>
-            <Link href="/" aria-label={t('company')}>
-              <img src="/images/logo-wide.webp" alt="Flughafen-muenchen.TAXI" width={823} height={132} loading="lazy" className="h-11 w-auto max-w-full object-contain object-left" />
+            <Link href={lp('/')} aria-label={t('company')}>
+              <img src="/images/logo-wide.webp" srcSet="/images/logo-wide-400.webp 400w, /images/logo-wide-640.webp 640w, /images/logo-wide.webp 823w" sizes="275px" alt="Flughafen-muenchen.TAXI" width={823} height={132} loading="lazy" className="h-11 w-auto max-w-full object-contain object-left" />
             </Link>
             <p className="mt-4 text-sm text-white/85">{t('tagline')}.</p>
             <div className="flex items-center gap-2 mt-4 -ml-2">
@@ -52,16 +54,16 @@ export default function Footer() {
             <h3 className="text-sm font-bold text-white mb-4">{tx.quick}</h3>
             <div className="grid grid-cols-2 gap-x-6 whitespace-nowrap">
               <ul className="space-y-2.5 text-sm text-white/80">
-                <li><Link href="/" className={linkCls}>{nav('home')}</Link></li>
-                <li><Link href="/vehicles" className={linkCls}>{nav('vehicles')}</Link></li>
-                <li><Link href="/business" className={linkCls}>{tx.business}</Link></li>
-                <li><Link href="/faq" className={linkCls}>{nav('faq')}</Link></li>
+                <li><Link href={lp('/')} className={linkCls}>{nav('home')}</Link></li>
+                <li><Link href={lp('/vehicles')} className={linkCls}>{nav('vehicles')}</Link></li>
+                <li><Link href={lp('/business')} className={linkCls}>{tx.business}</Link></li>
+                <li><Link href={lp('/faq')} className={linkCls}>{nav('faq')}</Link></li>
               </ul>
               <ul className="space-y-2.5 text-sm text-white/80">
-                <li><Link href="/about" className={linkCls}>{nav('about')}</Link></li>
-                <li><Link href="/contact" className={linkCls}>{nav('contact')}</Link></li>
-                <li><Link href="/treffpunkt-flughafen-muenchen" className={linkCls}>{t('meetingPoint')}</Link></li>
-                <li><Link href="/buchung-verwalten" className={linkCls}>{t('manageBooking')}</Link></li>
+                <li><Link href={lp('/about')} className={linkCls}>{nav('about')}</Link></li>
+                <li><Link href={lp('/contact')} className={linkCls}>{nav('contact')}</Link></li>
+                <li><Link href={lp('/treffpunkt-flughafen-muenchen')} className={linkCls}>{t('meetingPoint')}</Link></li>
+                <li><Link href={lp('/buchung-verwalten')} className={linkCls}>{t('manageBooking')}</Link></li>
               </ul>
             </div>
           </div>
@@ -70,9 +72,9 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-bold text-white mb-4">{t('legal')}</h3>
             <ul className="space-y-2.5 text-sm text-white/80 whitespace-nowrap">
-              <li><Link href="/impressum" className={linkCls}>{t('impressum')}</Link></li>
-              <li><Link href="/datenschutz" className={linkCls}>{t('datenschutz')}</Link></li>
-              <li><Link href="/agb" className={linkCls}>{t('agb')}</Link></li>
+              <li><Link href={lp('/impressum')} className={linkCls}>{t('impressum')}</Link></li>
+              <li><Link href={lp('/datenschutz')} className={linkCls}>{t('datenschutz')}</Link></li>
+              <li><Link href={lp('/agb')} className={linkCls}>{t('agb')}</Link></li>
             </ul>
           </div>
 

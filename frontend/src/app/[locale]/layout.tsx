@@ -134,8 +134,18 @@ export default async function LocaleLayout({
               },
               'openingHours': 'Mo-Su 00:00-24:00',
               'priceRange': '€€',
-              'areaServed': 'München, Bavaria',
+              '@id': `${baseUrl}/#taxiservice`,
+              'logo': `${baseUrl}/images/logo-wide.webp`,
+              'image': `${baseUrl}/images/hero-airport.webp`,
+              'areaServed': [
+                { '@type': 'Airport', 'name': 'Flughafen München (MUC)', 'iataCode': 'MUC' },
+                { '@type': 'City', 'name': 'München' },
+                { '@type': 'City', 'name': 'Freising' },
+                { '@type': 'City', 'name': 'Erding' },
+                { '@type': 'State', 'name': 'Bayern' },
+              ],
               'serviceType': 'Airport Transfer',
+              'availableLanguage': ['de', 'en', 'tr'],
             }),
           }}
         />

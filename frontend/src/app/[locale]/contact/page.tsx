@@ -239,7 +239,7 @@ export default function ContactPage() {
               </div>
             </div>
             <Link
-              href="/faq"
+              href={locale === 'de' ? '/faq' : `/${locale}/faq`}
               className="inline-flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-xl transition-all hover:-translate-y-0.5"
               style={{ background: '#fff', border: '1.5px solid #d9e2ee', color: '#0f1b2d' }}
             >
@@ -251,7 +251,7 @@ export default function ContactPage() {
             {faqs.map(({ q }, i) => (
               <Link
                 key={i}
-                href="/faq"
+                href={locale === 'de' ? '/faq' : `/${locale}/faq`}
                 className="flex items-center justify-between gap-3 py-3.5 group"
                 style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : undefined}
               >

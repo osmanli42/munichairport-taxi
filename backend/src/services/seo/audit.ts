@@ -114,7 +114,8 @@ async function doAudit() {
           } catch { /* ignore */ }
         });
         const imgs = $('img');
-        const withAlt = imgs.filter((_, el) => !!($(el).attr('alt') || '').trim()).length;
+        // alt="" = bewusst dekorativ (WCAG) → ok; nur fehlendes alt-Attribut zählt
+        const withAlt = imgs.filter((_, el) => $(el).attr('alt') !== undefined).length;
         const words = $('body').text().replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length;
         let links = 0;
         $('a[href]').each((_, el) => {

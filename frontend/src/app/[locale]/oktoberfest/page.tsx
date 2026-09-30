@@ -199,13 +199,13 @@ export default function OktoberfestPage() {
       {/* ─── Hero ─── */}
       <section className="relative overflow-hidden text-white" style={{ background: '#0f1b2d' }}>
         <div className="absolute inset-0" aria-hidden="true">
-          <img src="/images/oktoberfest/hero.webp" alt="" className="w-full h-full object-cover" style={{ objectPosition: 'center 38%' }} />
+          <img src="/images/oktoberfest/hero.webp" alt="Oktoberfest München – Theresienwiese" className="w-full h-full object-cover" style={{ objectPosition: 'center 38%' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.94) 0%, rgba(15,27,45,.82) 35%, rgba(15,27,45,.45) 62%, rgba(15,27,45,.25) 100%)' }} />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(15,27,45,.55) 0%, rgba(15,27,45,0) 35%, rgba(15,27,45,.35) 100%)' }} />
           {/* Großraumtaxi rechts, weich eingeblendet */}
           <img
             src="/images/grossraumtaxi.webp"
-            alt=""
+            alt={isEN ? 'Large taxi to Oktoberfest' : 'Großraumtaxi zum Oktoberfest'}
             className="hidden lg:block absolute right-[-40px] bottom-[86px] w-[560px] xl:w-[660px] max-w-[48vw]"
             style={{
               WebkitMaskImage: 'radial-gradient(72% 66% at 55% 52%, #000 20%, rgba(0,0,0,.6) 50%, transparent 76%)',
@@ -283,7 +283,7 @@ export default function OktoberfestPage() {
         <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {ui.stats.map(s => (
             <article key={s.label} className="relative h-[150px] rounded-2xl overflow-hidden border border-gray-100 shadow-[0_4px_18px_rgba(15,27,45,.07)]">
-              <img src={`/images/oktoberfest/${s.img}.webp`} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={`/images/oktoberfest/${s.img}.webp`} alt={`Oktoberfest – ${s.label}`} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #fff 46%, rgba(255,255,255,.95) 62%, rgba(255,255,255,.45) 82%, rgba(255,255,255,0) 100%)' }} />
               <div className="relative h-full flex items-center gap-4 px-5">
                 <span className="flex items-center justify-center w-14 h-14 rounded-full shrink-0" style={{ background: '#fdf0c8' }}>

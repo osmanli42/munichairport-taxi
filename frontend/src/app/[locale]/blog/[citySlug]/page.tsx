@@ -22,31 +22,55 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 37.5 -> "37,50" (de/tr) bzw. "37.50" (en)
   const eu = (n: number) => n.toFixed(2).replace('.', ',');
   const us = (n: number) => n.toFixed(2);
+  // Kurzform für Titel: 88 -> "88", 37.5 -> "37,50"
+  const short = (n: number, sep: ',' | '.') => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', sep));
+  // Google kürzt Titel ab ~60 Zeichen → erste Variante nehmen, die passt
+  const fit = (...variants: string[]) => variants.find((v) => v.length <= 60) ?? variants[variants.length - 1];
+  const c = city.nameDE;
 
   const copy =
     locale === 'en'
       ? {
-          title: `Taxi ${city.nameDE} to Munich Airport – Fixed Price €${us(city.kombi_price)}`,
+          title: fit(
+            `Taxi ${c} to Munich Airport – Fixed Price €${short(city.kombi_price, '.')}`,
+            `Taxi ${c} to Munich Airport – from €${short(city.kombi_price, '.')}`,
+            `Taxi ${c} – Munich Airport from €${short(city.kombi_price, '.')}`,
+            `Taxi ${c} to Munich Airport`,
+            `Taxi ${c} – MUC Airport`,
+          ),
           description: `Taxi from ${city.nameDE} to Munich Airport (MUC): ${city.distance_km} km, approx. ${city.drive_minutes} min. Fixed price from €${us(city.kombi_price)} – book online now!`,
           ogTitle: `Taxi ${city.nameDE} → Munich Airport | Fixed Price €${us(city.kombi_price)}`,
           ogDescription: `${city.distance_km} km, ${city.drive_minutes} min from ${city.nameDE}. Estate car from €${us(city.kombi_price)}, van from €${us(city.van_price)}. Around the clock, punctual & reliable.`,
         }
       : locale === 'tr'
         ? {
-            title: `${city.nameDE} Münih Havalimanı Taksi – Sabit Fiyat ${eu(city.kombi_price)} €`,
+            title: fit(
+              `${c} Münih Havalimanı Taksi – Sabit Fiyat ${short(city.kombi_price, ',')} €`,
+              `${c} Münih Havalimanı Taksi – ${short(city.kombi_price, ',')} €'dan`,
+              `${c} – Münih Havalimanı Taksi ${short(city.kombi_price, ',')} €`,
+              `${c} Münih Havalimanı Taksi`,
+              `${c} – MUC Taksi`,
+            ),
             description: `${city.nameDE} şehrinden Münih Havalimanı'na (MUC) taksi: ${city.distance_km} km, yaklaşık ${city.drive_minutes} dk. ${eu(city.kombi_price)} € sabit fiyattan başlar – hemen online rezervasyon!`,
             ogTitle: `Taksi ${city.nameDE} → Münih Havalimanı | Sabit Fiyat ${eu(city.kombi_price)} €`,
             ogDescription: `${city.nameDE} şehrinden ${city.distance_km} km, ${city.drive_minutes} dk. Kombi ${eu(city.kombi_price)} €, Van ${eu(city.van_price)} €. 7/24, dakik ve güvenilir.`,
           }
         : {
-            title: `Taxi ${city.nameDE} Flughafen München – Festpreis ${eu(city.kombi_price)} €`,
+            title: fit(
+              `Taxi ${c} Flughafen München – Festpreis ${short(city.kombi_price, ',')} €`,
+              `Taxi ${c} Flughafen München – ab ${short(city.kombi_price, ',')} €`,
+              `Taxi ${c} – Flughafen München ab ${short(city.kombi_price, ',')} €`,
+              `Taxi ${c} Flughafen München`,
+              `Taxi ${c} – Flughafen MUC`,
+            ),
             description: `Taxi von ${city.nameDE} zum Flughafen München (MUC): ${city.distance_km} km, ca. ${city.drive_minutes} Min. Fahrtzeit. Festpreis ab ${eu(city.kombi_price)} € – jetzt online buchen!`,
             ogTitle: `Taxi ${city.nameDE} → Flughafen München | Festpreis ${eu(city.kombi_price)} €`,
             ogDescription: `${city.distance_km} km, ${city.drive_minutes} Min. Fahrtzeit ab ${city.nameDE}. Kombi ab ${eu(city.kombi_price)} €, Van ab ${eu(city.van_price)} €. Rund um die Uhr, pünktlich & zuverlässig.`,
           };
 
   return {
-    title: copy.title,
+    // absolute: kein " | Munich Airport Taxi"-Suffix aus dem Layout-Template
+    title: { absolute: copy.title },
     description: copy.description,
     alternates: {
       canonical: locale === 'de' ? `${CITY_BASE_URL}${path}` : `${CITY_BASE_URL}/${locale}${path}`,
