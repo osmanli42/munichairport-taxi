@@ -10,7 +10,6 @@ import { latestVitals } from './vitals';
 
 const HOST = 'flughafen-muenchen.taxi';
 const SITE = `https://${HOST}`;
-const ALT_DOMAINS = ['munichairport.taxi'];
 const UA = 'Mozilla/5.0 (compatible; FMT-SiteCheck/1.0; +https://flughafen-muenchen.taxi)';
 
 export type CheckStatus = 'pass' | 'warn' | 'fail' | 'info';
@@ -75,7 +74,7 @@ export async function runSiteCheck() {
   const og = $('meta[property="og:image"]').attr('content');
   add({ area: 'presence', key: 'og', label: 'Paylaşım görseli (Open Graph)', status: og && $('meta[property="og:title"]').length ? 'pass' : 'warn',
     detail: og ? 'WhatsApp/Facebook paylaşımında görsel çıkar' : 'og:image yok', fix: 'Link paylaşıldığında önizleme görseli.' });
-  add({ area: 'presence', key: 'domain', label: 'Alan adı uzunluğu', status: 'info', detail: `${HOST} (${HOST.length} karakter) — kısa alternatif munichairport.taxi yönlendiriyor` });
+  add({ area: 'presence', key: 'domain', label: 'Alan adı uzunluğu', status: 'info', detail: `${HOST} (${HOST.length} karakter)` });
 
   // ---- Findability --------------------------------------------------------------------------
   const title = $('head title').first().text().trim();
@@ -118,13 +117,6 @@ export async function runSiteCheck() {
   const www = await redirect(`https://www.${HOST}/test-pfad`);
   add({ area: 'findability', key: 'www_redirect', label: 'www → www\'siz yönlendirme', status: (www.status === 301 || www.status === 308) && www.location.includes('/test-pfad') ? 'pass' : www.status ? 'warn' : 'fail',
     detail: `${www.status || 'hata'} → ${www.location || '—'}` });
-  for (const d of ALT_DOMAINS) {
-    const r = await redirect(`http://${d}/test-pfad`);
-    const perm = r.status === 301 || r.status === 308;
-    add({ area: 'findability', key: `alt_${d}`, label: `${d} yönlendirmesi`, status: perm && r.location.includes('/test-pfad') ? 'pass' : perm || r.status === 302 ? 'warn' : 'fail',
-      detail: `${r.status || 'hata'} → ${r.location || '—'}`,
-      fix: r.status === 302 ? 'Alan adı sağlayıcısında (IONOS → Domains → munichairport.taxi → Weiterleitung) tipi „HTTP 301 (dauerhaft)“ yap ve alt sayfa yolunu da aktarsın.' : undefined });
-  }
 
   // ---- Security -----------------------------------------------------------------------------
   const days = await certDaysLeft(HOST);
