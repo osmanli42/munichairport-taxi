@@ -11,6 +11,8 @@ import { seoApi, Empty } from './common';
 
 type Check = { area: string; key: string; label: string; status: 'pass' | 'warn' | 'fail' | 'info'; detail: string; fix?: string };
 const ORDER = ['presence', 'findability', 'security', 'speed'];
+// Same four areas as the IONOS Website-Check app.
+const IONOS: Record<string, string> = { presence: 'Präsent sein', findability: 'Gefunden werden', security: 'Abgesichert sein', speed: 'Schnell sein' };
 const rank = { fail: 0, warn: 1, info: 2, pass: 3 } as const;
 const tone = (s: number) => (s >= 85 ? 'bg-emerald-500' : s >= 60 ? 'bg-amber-400' : 'bg-red-500');
 const text = (s: number) => (s >= 85 ? 'text-emerald-600' : s >= 60 ? 'text-amber-600' : 'text-red-600');
@@ -66,9 +68,9 @@ export default function SiteCheck({ compact, onGo }: { compact?: boolean; onGo?:
         </div>
         <div className="space-y-2.5">
           {ORDER.map((a) => (
-            <button key={a} onClick={() => (compact ? onGo?.('technical') : setOpen(open === a ? 'all' : a))} className="w-full text-left">
+            <button key={a} onClick={() => (compact ? onGo?.('sitecheck') : setOpen(open === a ? 'all' : a))} className="w-full text-left">
               <div className="flex items-center gap-3">
-                <span className="w-36 shrink-0 text-sm text-gray-700">{d.areas[a]}</span>
+                <span className="w-40 shrink-0 text-sm text-gray-700">{d.areas[a]}<span className="block text-[10px] text-gray-400">{IONOS[a]}</span></span>
                 <div className="flex-1 h-5 rounded-full bg-gray-100 overflow-hidden relative">
                   <div className={cn('h-full rounded-full', tone(r.scores[a]))} style={{ width: `${Math.max(6, r.scores[a])}%` }} />
                   <span className="absolute left-2 top-0 text-[11px] font-bold leading-5 text-white drop-shadow">{r.scores[a]}</span>
@@ -78,6 +80,18 @@ export default function SiteCheck({ compact, onGo }: { compact?: boolean; onGo?:
           ))}
         </div>
       </div>
+
+      {!compact && (
+        <div className="px-5 pb-3 flex gap-1 overflow-x-auto">
+          {(['all', ...ORDER] as string[]).map((a) => (
+            <button key={a} onClick={() => setOpen(a)}
+              className={cn('shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold', open === a ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100')}>
+              {a === 'all' ? 'Tümü' : <>{d.areas[a]} <span className="font-normal opacity-70">({IONOS[a]})</span></>}
+              {a !== 'all' && <span className={cn('rounded-full px-1.5 text-[10px] text-white', tone(r.scores[a]))}>{r.scores[a]}</span>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!compact && (
         <div className="border-t border-gray-100">
