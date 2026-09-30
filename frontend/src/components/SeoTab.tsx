@@ -26,15 +26,21 @@ const TABS: Array<[Tab, string, typeof Search]> = [
   ['connect', 'Bağlantı', Link2],
 ];
 
-export default function SeoTab(_props: { token?: string }) {
+export default function SeoTab({ onRemindersChange }: { token?: string; onRemindersChange?: () => void }) {
   const [tab, setTab] = useState<Tab>('overview');
   const [days, setDays] = useState(28);
   const [status, setStatus] = useState<any>(null);
   const [openTasks, setOpenTasks] = useState<number | null>(null);
+  const [backlinksDue, setBacklinksDue] = useState(false);
   const loadStatus = useCallback(() => {
     seoApi('/status').then(setStatus).catch(() => {});
     seoApi('/tasks').then((j) => setOpenTasks(j.tasks.filter((t: any) => t.status === 'open').length)).catch(() => {});
+    seoApi('/reminders').then((j) => setBacklinksDue(!!j.backlinks?.due)).catch(() => {});
   }, []);
+  const remindersChanged = useCallback(() => {
+    seoApi('/reminders').then((j) => setBacklinksDue(!!j.backlinks?.due)).catch(() => {});
+    onRemindersChange?.();
+  }, [onRemindersChange]);
   useEffect(() => { loadStatus(); }, [loadStatus]);
   const connected = !!status?.gsc?.connected;
 
@@ -68,6 +74,7 @@ export default function SeoTab(_props: { token?: string }) {
             <Icon size={15} /> {label}
             {id === 'tasks' && openTasks ? <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')}>{openTasks}</span> : null}
             {id === 'connect' && !connected && status && <span className="w-2 h-2 rounded-full bg-amber-500" />}
+            {id === 'backlinks' && backlinksDue && <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')}>1</span>}
           </button>
         ))}
       </div>
@@ -76,7 +83,7 @@ export default function SeoTab(_props: { token?: string }) {
       {tab === 'keywords' && <Keywords days={days} connected={connected} onGo={(t) => setTab(t as Tab)} />}
       {tab === 'pages' && <Pages days={days} />}
       {tab === 'technical' && <Technical />}
-      {tab === 'backlinks' && <Backlinks />}
+      {tab === 'backlinks' && <Backlinks onRemindersChange={remindersChanged} />}
       {tab === 'competitors' && <Competitors />}
       {tab === 'tasks' && <Tasks />}
       {tab === 'connect' && <Connect onConnected={loadStatus} />}

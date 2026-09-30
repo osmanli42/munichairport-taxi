@@ -12,7 +12,7 @@ import { runVitals, latestVitals, VITALS_URLS, vitalsError } from '../services/s
 import { gscTotals, organicFunnel, queryTable, pageTable, trackedKeywords, positionDistribution, cannibalization } from '../services/seo/analytics';
 import { buildTasks, setTaskStatus, trackedKeywordList, SEO_TRACKER_DIR } from '../services/seo/insights';
 import { auditWithAlerts } from '../services/seo/jobs';
-import { backlinkOverview, importLinks } from '../services/seo/backlinks';
+import { backlinkOverview, backlinkReminder, importLinks, setBacklinkReminder } from '../services/seo/backlinks';
 
 const router = Router();
 const days = (v: unknown) => ([7, 28, 90].includes(Number(v)) ? Number(v) : 28);
@@ -148,7 +148,22 @@ router.get('/structure', authenticateAdmin, wrap(async (_req, res) => {
 
 // Backlinks: Search Console „Links“ CSV uploads (snapshots) + referral visits from our own tracking.
 router.get('/backlinks', authenticateAdmin, wrap(async (req, res) => {
-  res.json(await backlinkOverview([7, 28, 90, 365].includes(Number(req.query.days)) ? Number(req.query.days) : 90));
+  const [overview, reminder] = await Promise.all([
+    backlinkOverview([7, 28, 90, 365].includes(Number(req.query.days)) ? Number(req.query.days) : 90),
+    backlinkReminder(),
+  ]);
+  res.json({ ...overview, reminder });
+}));
+
+// Things due in the SEO tab (badge on the admin tab bar).
+router.get('/reminders', authenticateAdmin, wrap(async (_req, res) => {
+  const backlinks = await backlinkReminder();
+  res.json({ count: backlinks.due ? 1 : 0, backlinks });
+}));
+
+router.put('/backlinks/reminder', authenticateAdmin, wrap(async (req, res) => {
+  await setBacklinkReminder(req.body?.enabled !== false);
+  res.json(await backlinkReminder());
 }));
 
 router.post('/backlinks/import', authenticateAdmin, wrap(async (req, res) => {

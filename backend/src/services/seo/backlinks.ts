@@ -5,7 +5,7 @@
 // 2) Our own tracking: visits that arrived through a link on another website (referrer), with bookings.
 
 import { query, run } from '../../db';
-import { berlinMidnightUtcSql } from '../../utils/berlinTime';
+import { berlinDayOfMonth, berlinMidnightUtcSql } from '../../utils/berlinTime';
 
 const OWN = ['flughafen-muenchen.taxi', 'munichairport.taxi', 'localhost'];
 // Search engines (= organic, not a backlink) and payment / login redirects (not a link on a website).
@@ -157,4 +157,23 @@ export async function backlinkOverview(days: number) {
     history,
     referrals: await referralTraffic(days),
   };
+}
+
+// Monthly reminder: the Search Console export is due once per calendar month (Berlin).
+// Shown as a badge on the SEO tab and in the dashboard's „Handlungsbedarf“; switchable in the Backlinks tab.
+const REMINDER_KEY = 'seo_backlink_reminder';
+
+export async function backlinkReminder() {
+  const [s] = await query<{ setting_value: string }>(`SELECT setting_value FROM settings WHERE setting_key = ?`, [REMINDER_KEY]);
+  const enabled = s?.setting_value !== '0';
+  const monthStart = berlinMidnightUtcSql(-(berlinDayOfMonth() - 1));
+  const [last] = await query<any>(`SELECT DATE_FORMAT(MAX(created_at), '%Y-%m-%dT%H:%i:%sZ') AS at FROM seo_backlink_imports WHERE kind <> 'targets'`);
+  const lastUpload: string | null = last?.at || null;
+  const uploadedThisMonth = !!lastUpload && lastUpload.replace('T', ' ').slice(0, 19) >= monthStart;
+  return { enabled, due: enabled && !uploadedThisMonth, lastUpload };
+}
+
+export async function setBacklinkReminder(enabled: boolean) {
+  const v = enabled ? '1' : '0';
+  await run(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`, [REMINDER_KEY, v, v]);
 }

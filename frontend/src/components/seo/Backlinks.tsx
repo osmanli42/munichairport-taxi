@@ -4,9 +4,9 @@
 // + visits that came through links on other websites (own tracking, with bookings).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, Globe, Info, Link2, Trash2, TrendingDown, Upload } from 'lucide-react';
+import { AlertTriangle, BellRing, ExternalLink, Globe, Info, Link2, Trash2, TrendingDown, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/dashboard/shared';
+import { Card, Switch } from '@/components/dashboard/shared';
 import { seoApi, nf, eur, shortPath, Kpi, Empty } from './common';
 
 const KIND: Record<string, string> = { pages: 'Verweisende Seiten', sites: 'Top-verlinkende Websites', targets: 'Top-verlinkte Seiten' };
@@ -18,7 +18,7 @@ const SRC: Record<string, [string, string]> = {
 };
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-export default function Backlinks() {
+export default function Backlinks({ onRemindersChange }: { onRemindersChange?: () => void }) {
   const [d, setD] = useState<any>(null);
   const [days, setDays] = useState(90);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -44,6 +44,7 @@ export default function Backlinks() {
       }
       setMsg({ ok: true, text: `Yüklendi — ${done.join(' · ')}` });
       load();
+      onRemindersChange?.();
     } catch (e: any) {
       setMsg({ ok: false, text: e.message });
     } finally {
@@ -56,6 +57,13 @@ export default function Backlinks() {
     if (!confirm('Bu yüklemeyi silmek istiyor musun?')) return;
     await seoApi(`/backlinks/import/${id}`, { method: 'DELETE' });
     load();
+    onRemindersChange?.();
+  }
+
+  async function toggleReminder() {
+    await seoApi('/backlinks/reminder', { method: 'PUT', body: JSON.stringify({ enabled: !d?.reminder?.enabled }) });
+    load();
+    onRemindersChange?.();
   }
 
   if (!d) return <div className="h-64 bg-white rounded-2xl animate-pulse" />;
@@ -69,6 +77,20 @@ export default function Backlinks() {
 
   return (
     <div className="space-y-6">
+      {d.reminder?.due && (
+        <button onClick={() => fileRef.current?.click()} className="w-full text-left flex items-center gap-3 rounded-2xl bg-red-50 ring-1 ring-red-200 px-5 py-4 hover:bg-red-100">
+          <AlertTriangle className="text-red-600 shrink-0" size={22} />
+          <div className="flex-1">
+            <div className="font-semibold text-red-800">Bu ayın backlink CSV'si henüz yüklenmedi</div>
+            <div className="text-sm text-red-700">
+              Search Console → Links → „Externe Links exportieren“ → CSV. Yükleyince bu uyarı, SEO butonundaki 1 ve Handlungsbedarf'taki satır kaybolur.
+              {d.reminder.lastUpload && <> Son yükleme: {fmt(d.reminder.lastUpload)}.</>}
+            </div>
+          </div>
+          <Upload size={18} className="text-red-700 shrink-0" />
+        </button>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi label="Link veren domain" value={d.latest ? nf(domains.length) : '—'}
@@ -81,10 +103,16 @@ export default function Backlinks() {
 
       {/* Upload */}
       <Card title="Search Console backlink verisi" icon={Upload} right={
+        <div className="flex items-center gap-4">
+        <span className="inline-flex items-center gap-1.5" title="Her ayın 1'inden itibaren, o ay yükleme yapılmadıysa SEO butonunda 1 ve Handlungsbedarf'ta uyarı">
+          <BellRing size={14} className="text-gray-400" />
+          <Switch on={d.reminder?.enabled !== false} onChange={toggleReminder} label="Aylık hatırlatma" />
+        </span>
         <button onClick={() => fileRef.current?.click()} disabled={busy}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
           <Upload size={13} /> {busy ? 'Yükleniyor…' : 'CSV yükle'}
         </button>
+        </div>
       }>
         <input ref={fileRef} type="file" accept=".csv,text/csv" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
         <div className="p-5 text-sm text-gray-600 space-y-2">

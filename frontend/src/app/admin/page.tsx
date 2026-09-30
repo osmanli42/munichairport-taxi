@@ -116,6 +116,7 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [kalenderOpenCount, setKalenderOpenCount] = useState<number | null>(null);
+  const [seoDueCount, setSeoDueCount] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [prices, setPrices] = useState<Price[]>([]);
@@ -273,6 +274,24 @@ export default function AdminPage() {
       .then((d) => setKalenderOpenCount(typeof d?.count === 'number' ? d.count : null))
       .catch(() => {});
   }, [token]);
+
+  // Fällige SEO-Aufgaben (z. B. monatlicher Backlink-CSV-Upload) → Zahl am SEO-Tab
+  const refreshSeoDue = useCallback(() => {
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/seo2/reminders`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setSeoDueCount(typeof d?.count === 'number' ? d.count : null))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    refreshSeoDue();
+    const timer = setInterval(refreshSeoDue, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [isLoggedIn, refreshSeoDue]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -916,6 +935,14 @@ export default function AdminPage() {
             >
               <Icon size={16} />
               <span className="hidden sm:inline">{label}</span>
+              {id === 'seo' && !!seoDueCount && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
+                  title="Backlink-CSV dieses Monats fehlt"
+                >
+                  {seoDueCount}
+                </span>
+              )}
               {id === 'kalender' && !!kalenderOpenCount && (
                 <span
                   className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
@@ -941,7 +968,7 @@ export default function AdminPage() {
         {activeTab === 'system' && <SystemTab token={token} />}
 
         {/* SEO */}
-        {activeTab === 'seo' && <SeoTab token={token} />}
+        {activeTab === 'seo' && <SeoTab token={token} onRemindersChange={refreshSeoDue} />}
 
         {/* Google Ads */}
         {activeTab === 'ads' && <AdsTab token={token} />}

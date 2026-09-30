@@ -12,6 +12,7 @@ import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJ
 import { unchargedCards, cardDeadline } from '../services/cardChargeReminder';
 import { CalEvent } from '../services/calendarInvoice';
 import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
+import { backlinkReminder } from '../services/seo/backlinks';
 
 const router = Router();
 
@@ -216,6 +217,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
 
     // Card rides that should be charged by now: tomorrow's after the deadline (System tab), today's still ahead.
     const cardsUncharged = await unchargedCards();
+    // Monthly Search Console backlink export not uploaded yet (SEO → Backlinks).
+    const seoBacklinks = await backlinkReminder().catch(() => null);
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
@@ -267,7 +270,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intake,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null },
       card_deadline: await cardDeadline(),
       recent,
       calendar,

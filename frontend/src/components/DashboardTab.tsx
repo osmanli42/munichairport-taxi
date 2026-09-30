@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
-  PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car,
+  PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -55,6 +55,8 @@ interface DashboardData {
   attention: Record<AttentionKey, Leg[]> & {
     /** Card rides still to charge: tomorrow's after 20:15, today's upcoming ones always. */
     cardsUncharged?: UnchargedCard[];
+    /** Monthly Search Console backlink export not uploaded yet (SEO → Backlinks). */
+    seoBacklinks?: { lastUpload: string | null } | null;
   };
   card_deadline?: string;
   recent: Recent[];
@@ -515,8 +517,8 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 // ---------------------------------------------------------------------------------------
 // Attention panel
 
-function AttentionPanel({ a, mismatches, deadline, onOpen }: {
-  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void;
+function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
+  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void; onGoTab: (tab: string) => void;
 }) {
   const cards = a.cardsUncharged || [];
   // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
@@ -529,7 +531,8 @@ function AttentionPanel({ a, mismatches, deadline, onOpen }: {
     { key: 'invoiceFailed', title: 'Rechnung nicht versendet', hint: 'Automatischer Versand nach 3 Versuchen abgebrochen', Icon: FileWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'openStatus', title: 'Fahrt vorbei, Status offen', hint: 'Noch „Bestätigt“ — auf „Abgeschlossen“ setzen', Icon: Receipt, tone: 'text-gray-600 bg-gray-100' },
   ];
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length;
+  const seo = a.seoBacklinks || null;
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0);
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   return (
     <Card
@@ -577,6 +580,20 @@ function AttentionPanel({ a, mismatches, deadline, onOpen }: {
                 ))}
               </ul>
             </div>
+          )}
+          {seo && (
+            <button onClick={() => onGoTab('seo')} className="w-full px-5 py-3 bg-red-50/60 text-left hover:bg-red-50">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><Network size={15} /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-red-700">SEO: Backlink-CSV hochladen</div>
+                  <div className="text-[11px] text-red-600/80">
+                    Monatlicher Search-Console-Export (Links) fehlt{seo.lastUpload ? ` · zuletzt ${new Date(seo.lastUpload).toLocaleDateString('de-DE')}` : ' · noch nie hochgeladen'}
+                  </div>
+                </div>
+                <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
+              </div>
+            </button>
           )}
           {mismatches.length > 0 && (
             <div className="px-5 py-3">
@@ -1189,7 +1206,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
         </div>
         <div className="space-y-6">
-          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} />
+          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
           {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
           {show('charges') && <TomorrowCharges
             cards={cards}
