@@ -10,7 +10,9 @@ async function fetchSerp(query, cfg) {
     google_domain: cfg.googleDomain || 'google.de',
     gl: cfg.geo || 'de',
     hl: cfg.language || 'de',
-    num: '100',
+    // Google no longer serves 100 results per request (2025) — SerpAPI returns the top 10,
+    // so a missing position means "not in the top 10", shown as '>10'.
+    num: '10',
     api_key: cfg.serpApiKey,
   });
   const url = `https://serpapi.com/search.json?${params}`;

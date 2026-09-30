@@ -504,6 +504,108 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // SEO (services/seo/*): Search Console data, site audit, page speed, task states.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_gsc_daily (
+        row_hash CHAR(40) NOT NULL,
+        date DATE NOT NULL,
+        query VARCHAR(500) NOT NULL,
+        page VARCHAR(700) NOT NULL,
+        device VARCHAR(10) NOT NULL,
+        clicks INT NOT NULL DEFAULT 0,
+        impressions INT NOT NULL DEFAULT 0,
+        position DOUBLE NOT NULL DEFAULT 0,
+        PRIMARY KEY (row_hash),
+        KEY idx_seo_gsc_date (date),
+        KEY idx_seo_gsc_query (query(100), date)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_gsc_totals (
+        date DATE NOT NULL,
+        device VARCHAR(10) NOT NULL,
+        clicks INT NOT NULL DEFAULT 0,
+        impressions INT NOT NULL DEFAULT 0,
+        position DOUBLE NOT NULL DEFAULT 0,
+        PRIMARY KEY (date, device)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_audit_pages (
+        url_hash CHAR(40) NOT NULL,
+        url VARCHAR(700) NOT NULL,
+        status INT DEFAULT NULL,
+        ms INT DEFAULT NULL,
+        title VARCHAR(500) DEFAULT NULL,
+        meta VARCHAR(1000) DEFAULT NULL,
+        h1_count INT DEFAULT NULL,
+        canonical VARCHAR(700) DEFAULT NULL,
+        noindex TINYINT NOT NULL DEFAULT 0,
+        hreflang_count INT DEFAULT NULL,
+        schema_types VARCHAR(500) DEFAULT NULL,
+        word_count INT DEFAULT NULL,
+        alt_ratio DOUBLE DEFAULT NULL,
+        internal_links INT DEFAULT NULL,
+        checked_at DATETIME NOT NULL,
+        PRIMARY KEY (url_hash)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_audit_issues (
+        id INT NOT NULL AUTO_INCREMENT,
+        issue_key CHAR(40) NOT NULL,
+        url VARCHAR(700) NOT NULL,
+        type VARCHAR(40) NOT NULL,
+        severity VARCHAR(10) NOT NULL,
+        detail VARCHAR(1000) DEFAULT NULL,
+        first_seen DATETIME NOT NULL,
+        last_seen DATETIME NOT NULL,
+        resolved_at DATETIME DEFAULT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_seo_issue (issue_key)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_audit_runs (
+        id INT NOT NULL AUTO_INCREMENT,
+        started_at DATETIME NOT NULL,
+        finished_at DATETIME DEFAULT NULL,
+        pages INT NOT NULL DEFAULT 0,
+        errors INT NOT NULL DEFAULT 0,
+        warnings INT NOT NULL DEFAULT 0,
+        notices INT NOT NULL DEFAULT 0,
+        score INT DEFAULT NULL,
+        PRIMARY KEY (id)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_vitals (
+        id INT NOT NULL AUTO_INCREMENT,
+        url VARCHAR(700) NOT NULL,
+        checked_at DATETIME NOT NULL,
+        score INT DEFAULT NULL,
+        lcp_ms INT DEFAULT NULL,
+        cls DOUBLE DEFAULT NULL,
+        tbt_ms INT DEFAULT NULL,
+        fcp_ms INT DEFAULT NULL,
+        field_lcp_ms INT DEFAULT NULL,
+        field_inp_ms INT DEFAULT NULL,
+        field_cls DOUBLE DEFAULT NULL,
+        field_category VARCHAR(20) DEFAULT NULL,
+        PRIMARY KEY (id),
+        KEY idx_seo_vitals_url (url(191), checked_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_tasks (
+        task_key CHAR(40) NOT NULL,
+        status VARCHAR(10) NOT NULL,
+        title VARCHAR(500) DEFAULT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (task_key)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+
     // Rides from the operator's Google Calendar, mirrored for the statistics
     // (services/calendarRides.ts). kind tells whether an event is a ride of its own or
     // just the calendar copy of a booking / an imported booking / cancelled.

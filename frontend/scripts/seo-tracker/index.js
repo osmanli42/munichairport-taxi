@@ -45,7 +45,7 @@ function writeReport(snapshot, audit, rankSummary, score, extras = {}) {
   if (rankSummary) {
     md += `\n## Rank positions\n\n| Keyword | Position | URL |\n|---|---|---|\n`;
     for (const [kw, v] of Object.entries(rankSummary.keywords || {})) {
-      md += `| ${kw} | ${v.position ?? (v.error ? 'ERR' : '>100')} | ${v.url || ''} |\n`;
+      md += `| ${kw} | ${v.position ?? (v.error ? 'ERR' : '>10')} | ${v.url || ''} |\n`;
     }
   }
   if (extras.trend) md += `\n## Trend\n\`\`\`\n${extras.trend}\n\`\`\`\n`;
@@ -66,7 +66,7 @@ function printSummary(score, rankSummary, regressions) {
     for (const [kw, v] of Object.entries(rankSummary.keywords || {})) {
       const pos = v.position;
       const cc = pos === 1 ? 'green' : pos && pos <= 10 ? 'yellow' : 'red';
-      console.log(`  ${color(cc, (pos ? '#' + pos : (v.error ? 'ERR' : '>100')).padStart(5))}  ${kw}`);
+      console.log(`  ${color(cc, (pos ? '#' + pos : (v.error ? 'ERR' : '>10')).padStart(5))}  ${kw}`);
     }
   }
   if (regressions && regressions.length) {
@@ -89,7 +89,7 @@ async function cmdRank(cfg) {
   header('RANK CHECK');
   const r = await ranks.checkAll(cfg);
   for (const [kw, v] of Object.entries(r.keywords)) {
-    console.log(`  ${(v.position ? '#' + v.position : v.error || '>100').padStart(8)}  ${kw}`);
+    console.log(`  ${(v.position ? '#' + v.position : v.error || '>10').padStart(8)}  ${kw}`);
   }
   return r;
 }
@@ -159,7 +159,7 @@ async function cmdWatch(cfg) {
     const deltaStr = scoreDelta > 0 ? `+${scoreDelta}` : `${scoreDelta}`;
     const rankRows = rankSummary
       ? Object.entries(rankSummary.keywords).map(([kw, v]) => {
-          const pos = v.position ? `#${v.position}` : '>100';
+          const pos = v.position ? `#${v.position}` : '>10';
           const prev_pos = prev?.ranks?.[kw]?.position;
           const change = prev_pos && v.position ? prev_pos - v.position : 0;
           const arrow = change > 0 ? `↑${change}` : change < 0 ? `↓${Math.abs(change)}` : '→';
