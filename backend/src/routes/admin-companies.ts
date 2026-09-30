@@ -343,6 +343,7 @@ router.get('/invoices/:invoiceId/pdf', authenticateAdmin, async (req: AuthReques
       bookings, total: Number(invoice.total), dueDate: invoice.due_date,
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
       projectName: invoice.project_name,
+      lang: invoice.lang === 'en' ? 'en' : 'de',
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -501,6 +502,7 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
       bookings, total: updatedTotal, dueDate: invoice.due_date,
       mahngebuehr: newLevel >= 3 ? mahngebuehr : 0, reminderLevel: newLevel, s,
       projectName: invoice.project_name,
+      lang: invoice.lang === 'en' ? 'en' : 'de',
     });
 
     const emailHtml = buildReminderEmail({
@@ -566,9 +568,21 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
       bookings, total: Number(invoice.total), dueDate: invoice.due_date,
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
       projectName: invoice.project_name,
+      lang: invoice.lang === 'en' ? 'en' : 'de',
     });
 
-    const bodyHtml = `
+    // Englische Rechnung (Kalender-Kunde mit englischer Korrespondenz) → englische Mail
+    const isEn = invoice.lang === 'en';
+    const totalStr = isEn ? `€${Number(invoice.total).toFixed(2)}` : `${Number(invoice.total).toFixed(2).replace('.', ',')} €`;
+    const bodyHtml = isEn ? `
+      <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Dear Sir or Madam,<br><br>please find attached your invoice <strong>${invoice.invoice_number}</strong> for <strong>${company.company_name}</strong> (period <strong>${invoice.period_month}</strong>).</p>
+      <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 20px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;width:140px;">Total amount:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${totalStr}</td></tr>
+          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Payable by:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;color:#374151;font-size:15px;line-height:1.6;">Kind regards,<br>${s.company_name || 'Taxi N&N GbR'}</p>` : `
       <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Sehr geehrte Damen und Herren der <strong>${company.company_name}</strong>,<br><br>anbei erhalten Sie Ihre Rechnung <strong>${invoice.invoice_number}</strong> für den Zeitraum <strong>${invoice.period_month}</strong>.</p>
       <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 20px;">
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -583,9 +597,9 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
     const { error: sendError } = await resend.emails.send({
       from: `Flughafen München Taxi <info@flughafen-muenchen.taxi>`,
       to: email.trim(),
-      subject: `Rechnung ${invoice.invoice_number} – Flughafen München Taxi`,
-      html: wrapBrandedEmail({ title: `Rechnung ${invoice.invoice_number}`, bodyHtml }),
-      attachments: [{ filename: `Rechnung_${invoice.invoice_number}.pdf`, content: pdfBuffer.toString('base64') }],
+      subject: `${isEn ? 'Invoice' : 'Rechnung'} ${invoice.invoice_number} – ${isEn ? 'Munich Airport Taxi' : 'Flughafen München Taxi'}`,
+      html: wrapBrandedEmail({ title: `${isEn ? 'Invoice' : 'Rechnung'} ${invoice.invoice_number}`, bodyHtml }),
+      attachments: [{ filename: `${isEn ? 'Invoice' : 'Rechnung'}_${invoice.invoice_number}.pdf`, content: pdfBuffer.toString('base64') }],
     });
     if (sendError) { res.status(500).json({ error: sendError.message || 'E-Mail-Versand fehlgeschlagen' }); return; }
 

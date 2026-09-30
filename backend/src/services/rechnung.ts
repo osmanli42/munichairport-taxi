@@ -576,6 +576,30 @@ function sammelRoute(b: any): string {
   return [b.pickup_address || '', ...stops, b.dropoff_address || ''].join('\n→ ');
 }
 
+// Texte der Sammelrechnung (PDF). Deutsch = bisheriger Wortlaut, unverändert.
+const SAMMEL_TEXT = {
+  de: {
+    invoice: 'RECHNUNG', reminder: 'ZAHLUNGSERINNERUNG', dunning: 'MAHNUNG',
+    number: 'Rechnungsnr.:', date: 'Datum:', period: 'Zeitraum:', due: 'Zahlbar bis:',
+    billTo: 'RECHNUNGSEMPFÄNGER', project: 'Projekt: ', custVat: 'USt-IdNr.: ',
+    colPos: 'Pos.', colDate: 'Datum', colBooking: 'Buchung', colRoute: 'Strecke', colGuest: 'Gast', colCost: 'KSt.', colAmount: 'Betrag (Netto)',
+    net: 'Nettobetrag', vat: 'MwSt.', subtotal: 'Zwischensumme:', fee: 'Mahngebühr:', total: 'GESAMTBETRAG:',
+    exempt: 'Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG',
+    bank: 'BANKVERBINDUNG', holder: 'Kontoinhaber:', reference: 'Verwendungszweck:',
+    taxNo: 'Steuer-Nr.: ', ownVat: 'USt-IdNr.: ', page: (a: number, b: number) => `Seite ${a} von ${b}`,
+  },
+  en: {
+    invoice: 'INVOICE', reminder: 'PAYMENT REMINDER', dunning: 'FINAL REMINDER',
+    number: 'Invoice no.:', date: 'Date:', period: 'Period:', due: 'Payable by:',
+    billTo: 'BILL TO', project: 'Project: ', custVat: 'VAT / Company ID: ',
+    colPos: 'No.', colDate: 'Date', colBooking: 'Booking', colRoute: 'Route', colGuest: 'Passenger', colCost: 'Cost ctr.', colAmount: 'Amount (net)',
+    net: 'Net amount', vat: 'VAT', subtotal: 'Subtotal:', fee: 'Reminder fee:', total: 'TOTAL:',
+    exempt: 'No VAT shown — exempt under §4 No. 21 German VAT Act (UStG)',
+    bank: 'BANK DETAILS', holder: 'Account holder:', reference: 'Payment reference:',
+    taxNo: 'Tax no.: ', ownVat: 'VAT ID: ', page: (a: number, b: number) => `Page ${a} of ${b}`,
+  },
+} as const;
+
 export function generateSammelrechnungPdf(opts: {
   company: { company_name: string; contact_name: string; address: string; ust_idnr?: string };
   invoiceNumber: string;
@@ -588,9 +612,13 @@ export function generateSammelrechnungPdf(opts: {
   reminderLevel: number;
   s: Record<string, string>;
   projectName?: string | null;
+  /** Sprache der Rechnung (Kalender: aus der Fahrtbeschreibung erkannt). Standard: Deutsch. */
+  lang?: 'de' | 'en';
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const { company, invoiceNumber, periodMonth, mwst, bookings, total, dueDate, mahngebuehr, reminderLevel, s, projectName } = opts;
+    const lang = opts.lang === 'en' ? 'en' : 'de';
+    const T = SAMMEL_TEXT[lang];
 
     const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
     registerUnicodeFonts(doc);
@@ -608,22 +636,22 @@ export function generateSammelrechnungPdf(opts: {
 
     // ── HEADER
     const titleX = marginL + pageW - 250;
-    const titleLabel = reminderLevel >= 3 ? 'MAHNUNG' : reminderLevel > 0 ? 'ZAHLUNGSERINNERUNG' : 'RECHNUNG';
+    const titleLabel = reminderLevel >= 3 ? T.dunning : reminderLevel > 0 ? T.reminder : T.invoice;
     doc.fontSize(17).font('WorkSans-Bold').fillColor(reminderLevel >= 3 ? '#dc2626' : BRAND)
       .text(titleLabel, titleX, 50, { width: 250, align: 'right' });
 
-    const todayStr = fmtDate(new Date().toISOString(), 'de');
-    const dueDateStr = fmtDate(dueDate, 'de');
+    const todayStr = fmtDate(new Date().toISOString(), lang);
+    const dueDateStr = fmtDate(dueDate, lang);
 
     doc.fontSize(8).font('WorkSans').fillColor(GRAY);
     const metaX = titleX + 60;
     const metaLabelW = 75;
     const metaValueW = 250 - 60 - metaLabelW;
     const metaRows: [string, string][] = [
-      ['Rechnungsnr.:', invoiceNumber],
-      ['Datum:', todayStr],
-      ['Zeitraum:', periodMonth],
-      ['Zahlbar bis:', dueDateStr],
+      [T.number, invoiceNumber],
+      [T.date, todayStr],
+      [T.period, periodMonth],
+      [T.due, dueDateStr],
     ];
     let ry = 74;
     for (const [label, val] of metaRows) {
@@ -649,7 +677,7 @@ export function generateSammelrechnungPdf(opts: {
     // ── CUSTOMER BLOCK
     const custY = logoY + 60;
     doc.fontSize(8).font('WorkSans').fillColor(GRAY)
-      .text('RECHNUNGSEMPFÄNGER', marginL, custY);
+      .text(T.billTo, marginL, custY);
     let addrY = custY + 12;
     doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
       .text(company.company_name, marginL, addrY, { width: pageW, lineBreak: false });
@@ -657,8 +685,8 @@ export function generateSammelrechnungPdf(opts: {
     doc.fontSize(9).font('WorkSans').fillColor('#374151');
     if (company.contact_name) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.address) { doc.text(company.address, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    if (projectName) { doc.text('Projekt: ' + projectName, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    if (company.ust_idnr) { doc.text('USt-IdNr.: ' + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+    if (projectName) { doc.text(T.project + projectName, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+    if (company.ust_idnr) { doc.text(T.custVat + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     doc.text('', marginL, addrY - 4);
 
     // ── SEPARATOR
@@ -681,13 +709,13 @@ export function generateSammelrechnungPdf(opts: {
     // Table header
     doc.rect(marginL, tableTop, pageW, 16).fill(BRAND);
     doc.fontSize(6.5).font('WorkSans-Bold').fillColor('#ffffff');
-    doc.text('Pos.', colX.pos, tableTop + 4.5, { width: colWidths.pos, lineBreak: false });
-    doc.text('Datum', colX.date, tableTop + 4.5, { width: colWidths.date, lineBreak: false });
-    doc.text('Buchung', colX.nr, tableTop + 4.5, { width: colWidths.nr, lineBreak: false });
-    doc.text('Strecke', colX.route, tableTop + 4.5, { width: colWidths.route, lineBreak: false });
-    doc.text('Gast', colX.guest, tableTop + 4.5, { width: colWidths.guest, lineBreak: false });
-    doc.text('KSt.', colX.kst, tableTop + 4.5, { width: colWidths.kst, lineBreak: false });
-    doc.text('Betrag (Netto)', colX.price, tableTop + 4.5, { width: colWidths.price, align: 'right', lineBreak: false });
+    doc.text(T.colPos, colX.pos, tableTop + 4.5, { width: colWidths.pos, lineBreak: false });
+    doc.text(T.colDate, colX.date, tableTop + 4.5, { width: colWidths.date, lineBreak: false });
+    doc.text(T.colBooking, colX.nr, tableTop + 4.5, { width: colWidths.nr, lineBreak: false });
+    doc.text(T.colRoute, colX.route, tableTop + 4.5, { width: colWidths.route, lineBreak: false });
+    doc.text(T.colGuest, colX.guest, tableTop + 4.5, { width: colWidths.guest, lineBreak: false });
+    doc.text(T.colCost, colX.kst, tableTop + 4.5, { width: colWidths.kst, lineBreak: false });
+    doc.text(T.colAmount, colX.price, tableTop + 4.5, { width: colWidths.price, align: 'right', lineBreak: false });
 
     let curY = tableTop + 16;
     const ROW_H = 26; // Mindesthöhe — lange Strecken und Gästelisten machen die Zeile höher statt abgeschnitten zu werden
@@ -712,7 +740,7 @@ export function generateSammelrechnungPdf(opts: {
       doc.fontSize(6.5).font('WorkSans').fillColor('#111827');
       const cellH = rowH - 6;
       doc.text(String(i + 1), colX.pos, curY + 4, { width: colWidths.pos, height: cellH, ellipsis: true });
-      doc.text(b.pickup_datetime ? fmtDate(b.pickup_datetime, 'de') : '', colX.date, curY + 4, { width: colWidths.date, height: cellH, ellipsis: true });
+      doc.text(b.pickup_datetime ? fmtDate(b.pickup_datetime, lang) : '', colX.date, curY + 4, { width: colWidths.date, height: cellH, ellipsis: true });
       doc.text(b.booking_number || '', colX.nr, curY + 4, { width: colWidths.nr, height: cellH, ellipsis: true });
       doc.text(route, colX.route, curY + 4, { width: colWidths.route, height: cellH, ellipsis: true });
       doc.text(guest, colX.guest, curY + 4, { width: colWidths.guest, height: cellH, ellipsis: true });
@@ -752,14 +780,14 @@ export function generateSammelrechnungPdf(opts: {
     for (const rate of sortedRates) {
       const gross = rateGroups.get(rate)!;
       const net = rate > 0 ? gross / (1 + rate / 100) : gross;
-      totItems.push([`Nettobetrag (${rate}%):`, net, false]);
-      if (rate > 0) totItems.push([`MwSt. (${rate}%):`, gross - net, false]);
+      totItems.push([`${T.net} (${rate}%):`, net, false]);
+      if (rate > 0) totItems.push([`${T.vat} (${rate}%):`, gross - net, false]);
     }
-    totItems.push(['Zwischensumme:', subtotal, false]);
+    totItems.push([T.subtotal, subtotal, false]);
     if (mahngebuehr > 0) {
-      totItems.push(['Mahngebühr:', mahngebuehr, false]);
+      totItems.push([T.fee, mahngebuehr, false]);
     }
-    totItems.push(['GESAMTBETRAG:', grandTotal, true]);
+    totItems.push([T.total, grandTotal, true]);
 
     for (const [label, amount, bold] of totItems) {
       if (bold) {
@@ -775,7 +803,7 @@ export function generateSammelrechnungPdf(opts: {
 
     if (sortedRates.length === 1 && sortedRates[0] === 0) {
       doc.fontSize(8).font('WorkSans').fillColor(GRAY)
-        .text('Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG', marginL, totY + 8, { width: pageW });
+        .text(T.exempt, marginL, totY + 8, { width: pageW });
       totY += 24;
     }
 
@@ -787,18 +815,18 @@ export function generateSammelrechnungPdf(opts: {
       bankStartY = 50 + 13;
     }
     doc.fontSize(10).font('WorkSans-Bold').fillColor(BRAND)
-      .text(`Zahlbar bis: ${dueDateStr}`, marginL, bankStartY - 13, { width: pageW });
+      .text(`${T.due} ${dueDateStr}`, marginL, bankStartY - 13, { width: pageW });
     doc.rect(marginL, bankStartY, pageW, 90).fill('#f9fafb').stroke();
     doc.fontSize(8).font('WorkSans-Bold').fillColor(BRAND)
-      .text('BANKVERBINDUNG', marginL + 12, bankStartY + 14);
+      .text(T.bank, marginL + 12, bankStartY + 14);
     doc.fontSize(7.5).font('WorkSans').fillColor('#374151');
 
     const bankRows: [string, string][] = [
-      ['Kontoinhaber:', s.bank_kontoinhaber || companyName],
+      [T.holder, s.bank_kontoinhaber || companyName],
       ['Bank:', s.bank_name || '—'],
       ['IBAN:', s.bank_iban || '—'],
       ['BIC/SWIFT:', s.bank_bic || '—'],
-      ['Verwendungszweck:', invoiceNumber],
+      [T.reference, invoiceNumber],
     ];
     let bY = bankStartY + 32;
     for (const [label, val] of bankRows) {
@@ -815,10 +843,10 @@ export function generateSammelrechnungPdf(opts: {
       doc.moveTo(marginL, fY).lineTo(marginL + pageW, fY).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
       doc.fontSize(7.5).font('WorkSans').fillColor(GRAY);
       const footerParts: string[] = [companyName, s.company_address || ''].filter(Boolean);
-      if (s.company_steuernr) footerParts.push('Steuer-Nr.: ' + s.company_steuernr);
-      if (s.company_ustidnr) footerParts.push('USt-IdNr.: ' + s.company_ustidnr);
+      if (s.company_steuernr) footerParts.push(T.taxNo + s.company_steuernr);
+      if (s.company_ustidnr) footerParts.push(T.ownVat + s.company_ustidnr);
       doc.text(footerParts.join('  ·  '), marginL, fY + 6, { width: pageW, align: 'center' });
-      doc.text(`flughafen-muenchen.taxi  ·  Seite ${i - range.start + 1} von ${range.count}`, marginL, fY + 18, { width: pageW, align: 'center' });
+      doc.text(`flughafen-muenchen.taxi  ·  ${T.page(i - range.start + 1, range.count)}`, marginL, fY + 18, { width: pageW, align: 'center' });
     }
 
     doc.end();

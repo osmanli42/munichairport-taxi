@@ -584,6 +584,11 @@ export async function initializeDatabase(): Promise<void> {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
 
+    // Sprache der Sammelrechnung (Kalender: aus der Terminbeschreibung). Bestehende = Deutsch.
+    try {
+      await conn.execute(`ALTER TABLE company_invoices ADD COLUMN lang VARCHAR(2) NOT NULL DEFAULT 'de'`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // ---- Google Ads coach (routes/ads-v2.ts, services/ads/*) ----
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS ads_imports (

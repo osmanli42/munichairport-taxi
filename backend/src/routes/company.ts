@@ -533,6 +533,7 @@ router.get('/invoices/:id/rechnung.pdf', authenticateCompany, async (req: Compan
       mahngebuehr: Number(invoice.mahngebuehr) || 0,
       reminderLevel: Number(invoice.reminder_level) || 0,
       s,
+      lang: invoice.lang === 'en' ? 'en' : 'de',
     });
 
     res.setHeader('Content-Type', 'application/pdf');

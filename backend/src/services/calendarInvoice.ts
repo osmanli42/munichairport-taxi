@@ -49,6 +49,8 @@ export interface ParsedRide {
   company_id: number | null;
   company_via: 'kuerzel' | 'alias' | 'name' | 'rechnungsadresse' | null;
   billing: BillingInfo | null;
+  /** Sprache der Terminbeschreibung (unsere Bestätigung an den Kunden) → Sprache der Rechnung */
+  lang: 'de' | 'en';
   email_candidates: string[];
   pickup_address: string | null;
   dropoff_address: string | null;
@@ -523,8 +525,49 @@ function extractBilling(desc: string): BillingInfo | null {
       return { name: parts[0], address: parts.slice(1).join(', '), email: emails[0] || null, ust_idnr: ust, project: null };
     }
   }
+
+  // 3) Weitere Formulierungen (oft englisch, aus der Kundenmail übernommen), z. B.
+  //    "I would also need an invoice with the following data:" + Firma / Adresse / "Company number/ID: …"
+  //    Nur wenn 1) und 2) nichts gefunden haben — bestehende Treffer ändern sich nicht.
+  for (let i = 0; i < ls.length; i++) {
+    const trig = RE_BILLING_TRIGGERS.map((re) => ls[i].match(re)).find(Boolean);
+    if (!trig) continue;
+    const block: string[] = [];
+    let id: string | null = null;
+    let email: string | null = null;
+    const inline = cleanValue(trig[1] || '');
+    if (inline) block.push(inline);
+    for (let j = i + 1; j < ls.length && block.length < 5; j++) {
+      const l = cleanValue(ls[j]);
+      if (!l) { if (block.length || id) break; continue; }
+      const im = l.match(RE_BILLING_ID);
+      if (im) { id = cleanValue(im[1]); continue; }
+      const em = l.match(/e-?mail\s*:?\s*(\S+@\S+)/i);
+      if (em) { email = em[1].toLowerCase(); continue; }
+      if (RE_BILLING_END.test(l)) break;
+      block.push(l);
+    }
+    if (block.length) {
+      return { name: block[0], address: block.slice(1).join(', '), email: email || emails[0] || null, ust_idnr: ust || id, project: null };
+    }
+  }
   return null;
 }
+
+// Einleitungen eines Rechnungsempfänger-Blocks (EN/DE/TR), Rest der Zeile = erste Blockzeile.
+const RE_BILLING_TRIGGERS: RegExp[] = [
+  /\b(?:invoice|receipt|bill)\b[^\n]{0,60}\b(?:following|below)\b[^:\n]{0,30}:?\s*(.*)$/i,
+  /\b(?:billing|invoice|invoicing)\s+(?:address|details|data|information)\s*:?\s*(.*)$/i,
+  /\b(?:issue|send|address)\s+(?:the\s+)?(?:invoice|receipt)\s+to\s*:?\s*(.*)$/i,
+  /\binvoice\s+(?:to|for)\s*:\s*(.*)$/i,
+  /\brechnung\b[^\n]{0,40}\b(?:folgende[nr]?|diese)\s+(?:daten|adresse|firma|anschrift)\s*:?\s*(.*)$/i,
+  /\b(?:rechnungsdaten|rechnungsempfänger(?:in)?)\s*:?\s*(.*)$/i,
+  /\bfatura\s+(?:bilgileri|adresi)\s*:?\s*(.*)$/i,
+];
+// Firmen-/Steuernummer-Zeile im Block → ust_idnr (nicht Teil der Adresse).
+const RE_BILLING_ID = /^(?:company\s*(?:number|no\.?|id|reg(?:istration)?)[^:]{0,15}|tax\s*(?:id|number|no\.?|code)|vat(?:\s*(?:id|number|no\.?|reg\w*))?|uid|ust-?id\w*|steuer-?(?:nummer|nr\.?)|registration\s*(?:number|no\.?)|vergi\s*(?:no|numarası))\s*[:#.]?\s*(.+)$/i;
+// Zeilen, an denen der Rechnungsblock sicher zu Ende ist.
+const RE_BILLING_END = /^(?:the price|price|best regards|kind regards|regards|thank|many thanks|we look forward|mit freundlichen|viele grüße|vielen dank|der preis|preis|fahrgast|passenger|kontakt|contact|tel\b|telefon|phone|mobil|mobile|whatsapp|www\.|trip date|from\s*:|to\s*:|date\s*:|datum)/i;
 
 // ─── Firmenzuordnung ─────────────────────────────────────────────────────────
 
@@ -568,6 +611,18 @@ export function matchCompany(
     if (c) return { company_id: c.id, via: 'rechnungsadresse' };
   }
   return null;
+}
+
+// ─── Sprache der Beschreibung ────────────────────────────────────────────────
+// Englische Bestätigungen ("Dear …, Thank you for your booking … Trip date … Price") → Rechnung auf Englisch.
+// Deutsch ist Standard; nur bei klar englischem Text wird 'en' gewählt.
+const EN_WORDS = /\b(the|and|your|you|thank|please|booking|trip|date|time|from|to|flight|number|luggage|price|dear|regards|would|need|invoice|with|following|pickup|passengers?)\b/gi;
+const DE_WORDS = /\b(der|die|das|und|ihre?|sie|vielen|dank|buchung|fahrt|abholung|uhr|preis|sehr|geehrte[rn]?|freundlichen|grüßen|mit|für|gepäck|passagiere?|koffer|rechnung|flughafen|zum|vom)\b/gi;
+export function detectLanguage(text: string): 'de' | 'en' {
+  const t = String(text || '').slice(0, 3000);
+  const en = (t.match(EN_WORDS) || []).length;
+  const de = (t.match(DE_WORDS) || []).length;
+  return en >= 8 && en > de * 2 ? 'en' : 'de';
 }
 
 // ─── Ereignis → Rechnungsentwurf ─────────────────────────────────────────────
@@ -625,6 +680,7 @@ export function parseInvoiceRide(ev: CalEvent, companies: CompanyRef[], aliases:
     company_id: company?.company_id ?? null,
     company_via: company?.via ?? null,
     billing,
+    lang: detectLanguage(desc || full),
     email_candidates: emailCandidates,
     pickup_address: normalizeAddress(pickup),
     dropoff_address: normalizeAddress(dropoff),

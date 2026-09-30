@@ -41,6 +41,8 @@ interface Ride {
   company_id: number | null;
   company_via: string | null;
   billing: Billing | null;
+  /** Sprache der Terminbeschreibung (Backend-Erkennung) → Vorschlag für die Rechnungssprache */
+  lang?: 'de' | 'en';
   email_candidates: string[];
   pickup_address: string | null;
   dropoff_address: string | null;
@@ -64,6 +66,8 @@ interface Company {
   ust_idnr: string | null;
   invoice_email: string | null;
   payment_term_days: number;
+  /** Sprache der letzten Rechnung dieses Kunden */
+  invoice_lang?: string | null;
 }
 
 interface InvoiceRow {
@@ -276,6 +280,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
   const [newForms, setNewForms] = useState<Record<string, NewCustomerForm>>({});
   const [aliasChoice, setAliasChoice] = useState<Record<string, { save: boolean; text: string; offer: boolean }>>({});
   const [projects, setProjects] = useState<Record<string, string>>({});
+  const [langs, setLangs] = useState<Record<string, 'de' | 'en'>>({});
   const [busy, setBusy] = useState<Record<string, 'create' | 'preview' | 'send' | undefined>>({});
   const [groupError, setGroupError] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<Record<string, CreatedInvoice>>({});
@@ -460,6 +465,19 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     return problems;
   };
 
+  // Rechnungssprache: manuelle Wahl > letzte Rechnung des bestehenden Kunden > Sprache der Terminbeschreibungen
+  const detectedLang = (g: Group): 'de' | 'en' => {
+    const rides = includedRides(g).length ? includedRides(g) : g.rides;
+    const en = rides.filter((r) => r.lang === 'en').length;
+    return en > rides.length / 2 ? 'en' : 'de';
+  };
+  const groupLang = (g: Group): 'de' | 'en' => {
+    if (langs[g.key]) return langs[g.key];
+    const last = g.companyId ? companiesById.get(g.companyId)?.invoice_lang : null;
+    if (last === 'en' || last === 'de') return last;
+    return detectedLang(g);
+  };
+
   const buildBody = (g: Group) => {
     const inc = includedRides(g);
     const alias = aliasChoice[g.key];
@@ -474,6 +492,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
       },
       alias: alias?.save && alias.text.trim() ? alias.text.trim() : undefined,
       project_name: projects[g.key]?.trim() || undefined,
+      lang: groupLang(g),
       rides: inc.filter((r) => r.kind === 'calendar').map((r) => ({
         uid: r.uid,
         pickup_datetime: r.pickup_datetime,
@@ -979,6 +998,18 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                     yazınca bu müşteriyi otomatik tanı
                   </label>
                 )}
+                <div className="flex items-center gap-2 text-gray-700" title="Takvim açıklamasının diline göre önerilir; bestehender Kunde → son faturasının dili">
+                  Fatura dili:
+                  <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs">
+                    {(['de', 'en'] as const).map((l) => (
+                      <button key={l} type="button" onClick={() => setLangs((x) => ({ ...x, [g.key]: l }))}
+                        className={`px-2 py-0.5 rounded-md font-semibold ${groupLang(g) === l ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        {l === 'de' ? 'Deutsch' : 'English'}
+                      </button>
+                    ))}
+                  </div>
+                  {detectedLang(g) === 'en' && !g.companyId && <span className="text-[11px] text-blue-600">takvim İngilizce</span>}
+                </div>
                 <label className="flex items-center gap-2 text-gray-700">
                   Proje (opsiyonel):
                   <input

@@ -452,8 +452,10 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
     const [state, matchData, companies, defaults] = await Promise.all([
       loadOpenState(calendarId, range.from, range.to),
       loadMatchData(),
-      query(`SELECT id, company_name, contact_name, address, ust_idnr, invoice_email, payment_term_days
-             FROM companies WHERE status = 'active' ORDER BY company_name`),
+      // invoice_lang: Sprache der letzten Rechnung — bestehende Kunden bleiben bei ihrer Sprache
+      query(`SELECT c.id, c.company_name, c.contact_name, c.address, c.ust_idnr, c.invoice_email, c.payment_term_days,
+                    (SELECT ci.lang FROM company_invoices ci WHERE ci.company_id = c.id ORDER BY ci.id DESC LIMIT 1) AS invoice_lang
+             FROM companies c WHERE c.status = 'active' ORDER BY c.company_name`),
       loadDefaultSteuersaetze(),
     ]);
     const { from, to, now, events, importedRows, ignoredRows, invoiced, openEvents, unbilledRows } = state;
@@ -535,6 +537,7 @@ router.get('/inbox', authenticateAdmin, async (req: AuthRequest, res: Response):
           company_id: Number(b.company_id),
           company_via: null,
           billing: null,
+          lang: (b.language === 'en' ? 'en' : 'de') as 'de' | 'en',
           email_candidates: [] as string[],
           pickup_address: b.pickup_address,
           dropoff_address: b.dropoff_address,
@@ -633,7 +636,10 @@ interface InvoiceBody {
   project_name?: string;
   rides?: InvoiceRideInput[];
   booking_ids?: number[];
+  /** Sprache der Rechnung (PDF + Buchungen); Standard Deutsch */
+  lang?: 'de' | 'en';
 }
+const invoiceLang = (b: InvoiceBody): 'de' | 'en' => (b?.lang === 'en' ? 'en' : 'de');
 
 interface InvoiceDraft {
   company: any | null; // bestehende Firma
@@ -773,7 +779,7 @@ router.post('/invoice-preview', authenticateAdmin, async (req: AuthRequest, res:
       .sort((a, b) => (toLocalDateTime(a.pickup_datetime) < toLocalDateTime(b.pickup_datetime) ? -1 : 1));
     const pdf = await generateSammelrechnungPdf({
       company: { company_name: c.company_name, contact_name: c.contact_name, address: c.address, ust_idnr: c.ust_idnr || undefined },
-      invoiceNumber: `ENTWURF ${number}`,
+      invoiceNumber: `${invoiceLang(req.body as InvoiceBody) === 'en' ? 'DRAFT' : 'ENTWURF'} ${number}`,
       periodMonth: draft.month,
       mwst: dominantRate(bookings) as 0 | 7 | 19,
       bookings,
@@ -783,6 +789,7 @@ router.post('/invoice-preview', authenticateAdmin, async (req: AuthRequest, res:
       reminderLevel: 0,
       s: await fetchBankSettings(),
       projectName: (req.body as InvoiceBody).project_name?.trim() || null,
+      lang: invoiceLang(req.body as InvoiceBody),
     });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=Entwurf_${number}.pdf`);
@@ -830,7 +837,7 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
           vehicle_type, passengers, name, phone, email, notes, price, payment_method,
           language, trip_type, steuersatz, company_id,
           source, calendar_event_uid, imported_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', 'de', 'oneway', ?, ?, 'calendar', ?, NOW())`,
+        ) VALUES (?, ?, ?, ?, ?, ?, 'kombi', 1, ?, ?, ?, ?, ?, 'invoice', ?, 'oneway', ?, ?, 'calendar', ?, NOW())`,
         [
           // Vorab abgerechnete Fahrt bleibt "confirmed", bis sie gefahren ist (autoStatusJob schließt sie ab)
           b.booking_number, b.pickup_datetime <= berlinNow() ? 'completed' : 'confirmed',
@@ -838,7 +845,7 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
           b.name || company.contact_name || company.company_name,
           company.phone || '', company.email || '',
           r.notes?.slice(0, 1000) || null,
-          b.price, b.steuersatz, company.id, r.uid,
+          b.price, invoiceLang(body), b.steuersatz, company.id, r.uid,
         ]
       );
       createdBookingIds.push(result.insertId);
@@ -851,12 +858,12 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
     );
     const invoiceNumber = await nextInvoiceNumber(company.id, draft.month);
     await run(
-      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status, project_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?)`,
+      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status, project_name, lang)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)`,
       [
         company.id, invoiceNumber, draft.month, dominantRate(bookings),
         JSON.stringify(bookings.map((b: any) => Number(b.id))), invoiceTotal(bookings),
-        dueDateFor(company), body.project_name?.trim() || null,
+        dueDateFor(company), body.project_name?.trim() || null, invoiceLang(body),
       ]
     );
 
