@@ -281,6 +281,8 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
   const [aliasChoice, setAliasChoice] = useState<Record<string, { save: boolean; text: string; offer: boolean }>>({});
   const [projects, setProjects] = useState<Record<string, string>>({});
   const [langs, setLangs] = useState<Record<string, 'de' | 'en'>>({});
+  // Zahlungsart je Rechnung: Standard Überweisung (auf Rechnung); bar / Karte = schon bezahlt
+  const [zahlungen, setZahlungen] = useState<Record<string, 'ueberweisung' | 'bar' | 'kreditkarte'>>({});
   const [busy, setBusy] = useState<Record<string, 'create' | 'preview' | 'send' | undefined>>({});
   const [groupError, setGroupError] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<Record<string, CreatedInvoice>>({});
@@ -493,6 +495,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
       alias: alias?.save && alias.text.trim() ? alias.text.trim() : undefined,
       project_name: projects[g.key]?.trim() || undefined,
       lang: groupLang(g),
+      zahlungsart: zahlungen[g.key] || 'ueberweisung',
       rides: inc.filter((r) => r.kind === 'calendar').map((r) => ({
         uid: r.uid,
         pickup_datetime: r.pickup_datetime,
@@ -1010,6 +1013,18 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                   </div>
                   {detectedLang(g) === 'en' && !g.companyId && <span className="text-[11px] text-blue-600">takvim İngilizce</span>}
                 </div>
+                <label className="flex items-center gap-2 text-gray-700" title="Bar / Kredi kartı: fatura „ödendi“ olarak kesilir, vade tarihi ve banka bilgisi yazılmaz">
+                  Ödeme:
+                  <select
+                    value={zahlungen[g.key] || 'ueberweisung'}
+                    onChange={(e) => setZahlungen((z) => ({ ...z, [g.key]: e.target.value as 'ueberweisung' | 'bar' | 'kreditkarte' }))}
+                    className={`px-2 py-1 border rounded-lg text-xs bg-white ${(zahlungen[g.key] || 'ueberweisung') === 'ueberweisung' ? 'border-gray-200' : 'border-emerald-300 text-emerald-800 font-semibold'}`}
+                  >
+                    <option value="ueberweisung">Überweisung (auf Rechnung)</option>
+                    <option value="bar">Bar ödendi</option>
+                    <option value="kreditkarte">Kredi kartı ile ödendi</option>
+                  </select>
+                </label>
                 <label className="flex items-center gap-2 text-gray-700">
                   Proje (opsiyonel):
                   <input

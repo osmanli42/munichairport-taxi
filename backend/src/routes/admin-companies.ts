@@ -344,6 +344,7 @@ router.get('/invoices/:invoiceId/pdf', authenticateAdmin, async (req: AuthReques
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
       projectName: invoice.project_name,
       lang: invoice.lang === 'en' ? 'en' : 'de',
+      zahlungsart: invoice.zahlungsart,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -503,6 +504,7 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
       mahngebuehr: newLevel >= 3 ? mahngebuehr : 0, reminderLevel: newLevel, s,
       projectName: invoice.project_name,
       lang: invoice.lang === 'en' ? 'en' : 'de',
+      zahlungsart: invoice.zahlungsart,
     });
 
     const emailHtml = buildReminderEmail({
@@ -569,17 +571,22 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
       mahngebuehr: Number(invoice.mahngebuehr) || 0, reminderLevel: Number(invoice.reminder_level) || 0, s,
       projectName: invoice.project_name,
       lang: invoice.lang === 'en' ? 'en' : 'de',
+      zahlungsart: invoice.zahlungsart,
     });
 
     // Englische Rechnung (Kalender-Kunde mit englischer Korrespondenz) → englische Mail
     const isEn = invoice.lang === 'en';
     const totalStr = isEn ? `€${Number(invoice.total).toFixed(2)}` : `${Number(invoice.total).toFixed(2).replace('.', ',')} €`;
+    // Bar / Kreditkarte bezahlt → „Bezahlt“-Zeile statt Zahlungsziel
+    const paidRow = invoice.zahlungsart === 'bar' || invoice.zahlungsart === 'kreditkarte'
+      ? `<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">${isEn ? 'Payment:' : 'Zahlung:'}</td><td style="padding:4px 0;color:#15803d;font-size:14px;font-weight:600;">✓ ${invoice.zahlungsart === 'bar' ? (isEn ? 'Paid in cash' : 'Bar bezahlt') : (isEn ? 'Paid by credit card' : 'Kreditkarte bezahlt')}</td></tr>`
+      : null;
     const bodyHtml = isEn ? `
       <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Dear Sir or Madam,<br><br>please find attached your invoice <strong>${invoice.invoice_number}</strong> for <strong>${company.company_name}</strong> (period <strong>${invoice.period_month}</strong>).</p>
       <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 20px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;width:140px;">Total amount:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${totalStr}</td></tr>
-          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Payable by:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>
+          ${paidRow ?? `<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Payable by:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>`}
         </table>
       </div>
       <p style="margin:0;color:#374151;font-size:15px;line-height:1.6;">Kind regards,<br>${s.company_name || 'Taxi N&N GbR'}</p>` : `
@@ -587,7 +594,7 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
       <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 20px;">
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;width:140px;">Gesamtbetrag:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${Number(invoice.total).toFixed(2).replace('.', ',')} €</td></tr>
-          <tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Zahlbar bis:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>
+          ${paidRow ?? `<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">Zahlbar bis:</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.due_date}</td></tr>`}
         </table>
       </div>
       <p style="margin:0;color:#374151;font-size:15px;line-height:1.6;">Mit freundlichen Grüßen,<br>${s.company_name || 'Taxi N&N GbR'}</p>`;

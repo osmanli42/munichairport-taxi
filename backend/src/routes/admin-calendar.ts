@@ -638,8 +638,12 @@ interface InvoiceBody {
   booking_ids?: number[];
   /** Sprache der Rechnung (PDF + Buchungen); Standard Deutsch */
   lang?: 'de' | 'en';
+  /** Überweisung (auf Rechnung, Standard) oder bereits bar / per Kreditkarte bezahlt */
+  zahlungsart?: 'ueberweisung' | 'bar' | 'kreditkarte';
 }
 const invoiceLang = (b: InvoiceBody): 'de' | 'en' => (b?.lang === 'en' ? 'en' : 'de');
+const invoiceZahlungsart = (b: InvoiceBody): 'ueberweisung' | 'bar' | 'kreditkarte' =>
+  (b?.zahlungsart === 'bar' || b?.zahlungsart === 'kreditkarte' ? b.zahlungsart : 'ueberweisung');
 
 interface InvoiceDraft {
   company: any | null; // bestehende Firma
@@ -790,6 +794,7 @@ router.post('/invoice-preview', authenticateAdmin, async (req: AuthRequest, res:
       s: await fetchBankSettings(),
       projectName: (req.body as InvoiceBody).project_name?.trim() || null,
       lang: invoiceLang(req.body as InvoiceBody),
+      zahlungsart: invoiceZahlungsart(req.body as InvoiceBody),
     });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=Entwurf_${number}.pdf`);
@@ -858,12 +863,14 @@ router.post('/invoice', authenticateAdmin, async (req: AuthRequest, res: Respons
     );
     const invoiceNumber = await nextInvoiceNumber(company.id, draft.month);
     await run(
-      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status, project_name, lang)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'sent', ?, ?)`,
+      // Bar / Kreditkarte = schon bezahlt → Status „paid“ (keine offene Forderung, keine Mahnung)
+      `INSERT INTO company_invoices (company_id, invoice_number, period_month, mwst_satz, booking_ids, total, due_date, status, project_name, lang, zahlungsart)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         company.id, invoiceNumber, draft.month, dominantRate(bookings),
         JSON.stringify(bookings.map((b: any) => Number(b.id))), invoiceTotal(bookings),
-        dueDateFor(company), body.project_name?.trim() || null, invoiceLang(body),
+        dueDateFor(company), invoiceZahlungsart(body) === 'ueberweisung' ? 'sent' : 'paid',
+        body.project_name?.trim() || null, invoiceLang(body), invoiceZahlungsart(body),
       ]
     );
 

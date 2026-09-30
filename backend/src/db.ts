@@ -589,6 +589,11 @@ export async function initializeDatabase(): Promise<void> {
       await conn.execute(`ALTER TABLE company_invoices ADD COLUMN lang VARCHAR(2) NOT NULL DEFAULT 'de'`);
     } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
 
+    // Zahlungsart der Sammelrechnung: Überweisung (auf Rechnung) oder bereits bar / per Karte bezahlt
+    try {
+      await conn.execute(`ALTER TABLE company_invoices ADD COLUMN zahlungsart VARCHAR(20) NOT NULL DEFAULT 'ueberweisung'`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+
     // ---- Google Ads coach (routes/ads-v2.ts, services/ads/*) ----
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS ads_imports (

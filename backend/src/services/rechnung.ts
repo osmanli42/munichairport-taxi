@@ -587,6 +587,7 @@ const SAMMEL_TEXT = {
     exempt: 'Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG',
     bank: 'BANKVERBINDUNG', holder: 'Kontoinhaber:', reference: 'Verwendungszweck:',
     taxNo: 'Steuer-Nr.: ', ownVat: 'USt-IdNr.: ', page: (a: number, b: number) => `Seite ${a} von ${b}`,
+    payment: 'Zahlung:', paidCash: 'Bar bezahlt', paidCard: 'Kreditkarte bezahlt',
   },
   en: {
     invoice: 'INVOICE', reminder: 'PAYMENT REMINDER', dunning: 'FINAL REMINDER',
@@ -597,6 +598,7 @@ const SAMMEL_TEXT = {
     exempt: 'No VAT shown — exempt under §4 No. 21 German VAT Act (UStG)',
     bank: 'BANK DETAILS', holder: 'Account holder:', reference: 'Payment reference:',
     taxNo: 'Tax no.: ', ownVat: 'VAT ID: ', page: (a: number, b: number) => `Page ${a} of ${b}`,
+    payment: 'Payment:', paidCash: 'Paid in Cash', paidCard: 'Paid by Credit Card',
   },
 } as const;
 
@@ -614,11 +616,15 @@ export function generateSammelrechnungPdf(opts: {
   projectName?: string | null;
   /** Sprache der Rechnung (Kalender: aus der Fahrtbeschreibung erkannt). Standard: Deutsch. */
   lang?: 'de' | 'en';
+  /** Bereits bezahlt (bar / Kreditkarte) → „bezahlt“-Vermerk statt Zahlungsziel und Bankverbindung */
+  zahlungsart?: 'ueberweisung' | 'bar' | 'kreditkarte';
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const { company, invoiceNumber, periodMonth, mwst, bookings, total, dueDate, mahngebuehr, reminderLevel, s, projectName } = opts;
     const lang = opts.lang === 'en' ? 'en' : 'de';
     const T = SAMMEL_TEXT[lang];
+    const paidBy = opts.zahlungsart === 'bar' || opts.zahlungsart === 'kreditkarte' ? opts.zahlungsart : null;
+    const paidLabel = paidBy === 'bar' ? T.paidCash : paidBy === 'kreditkarte' ? T.paidCard : '';
 
     const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
     registerUnicodeFonts(doc);
@@ -651,7 +657,7 @@ export function generateSammelrechnungPdf(opts: {
       [T.number, invoiceNumber],
       [T.date, todayStr],
       [T.period, periodMonth],
-      [T.due, dueDateStr],
+      paidBy ? [T.payment, paidLabel] : [T.due, dueDateStr],
     ];
     let ry = 74;
     for (const [label, val] of metaRows) {
@@ -814,6 +820,18 @@ export function generateSammelrechnungPdf(opts: {
       doc.addPage();
       bankStartY = 50 + 13;
     }
+    if (paidBy) {
+      // Bereits bezahlt: grüner Vermerk (wie bei der Einzelrechnung), keine Bankverbindung
+      const paidY = bankStartY + 46;
+      doc.rect(marginL, paidY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
+      const tickX = marginL + 22;
+      const tickY = paidY + 22;
+      doc.circle(tickX, tickY, 8).fill('#15803d');
+      doc.moveTo(tickX - 3.8, tickY + 0.2).lineTo(tickX - 1, tickY + 3).lineTo(tickX + 4, tickY - 3)
+        .lineWidth(1.8).lineCap('round').lineJoin('round').strokeColor('#ffffff').stroke();
+      doc.lineCap('butt').lineJoin('miter');
+      doc.fontSize(11).font('WorkSans-Bold').fillColor('#15803d').text(paidLabel, marginL + 38, paidY + 15);
+    } else {
     doc.fontSize(10).font('WorkSans-Bold').fillColor(BRAND)
       .text(`${T.due} ${dueDateStr}`, marginL, bankStartY - 13, { width: pageW });
     doc.rect(marginL, bankStartY, pageW, 90).fill('#f9fafb').stroke();
@@ -833,6 +851,7 @@ export function generateSammelrechnungPdf(opts: {
       doc.font('WorkSans').fillColor(GRAY).text(label, marginL + 12, bY, { width: 110, lineBreak: false });
       doc.font('WorkSans-Bold').fillColor('#111827').text(val, marginL + 125, bY, { width: pageW - 135, lineBreak: false });
       bY += 11;
+    }
     }
 
     // ── FOOTER (on every page)

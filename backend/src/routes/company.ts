@@ -534,6 +534,7 @@ router.get('/invoices/:id/rechnung.pdf', authenticateCompany, async (req: Compan
       reminderLevel: Number(invoice.reminder_level) || 0,
       s,
       lang: invoice.lang === 'en' ? 'en' : 'de',
+      zahlungsart: invoice.zahlungsart,
     });
 
     res.setHeader('Content-Type', 'application/pdf');
