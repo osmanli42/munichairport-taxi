@@ -4,21 +4,23 @@
 // ranked to-do list (backend: routes/admin-seo.ts, services/seo/*).
 
 import { useCallback, useEffect, useState } from 'react';
-import { BarChart3, FileSearch, FileText, Link2, ListChecks, Search, Swords, TrendingUp } from 'lucide-react';
+import { BarChart3, FileSearch, FileText, Link2, ListChecks, Network, Search, Swords, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { seoApi } from './seo/common';
 import Overview from './seo/Overview';
 import Keywords from './seo/Keywords';
 import Pages from './seo/Pages';
 import Technical from './seo/Technical';
+import Backlinks from './seo/Backlinks';
 import { Tasks, Competitors, Connect } from './seo/Extras';
 
-type Tab = 'overview' | 'keywords' | 'pages' | 'technical' | 'competitors' | 'tasks' | 'connect';
+type Tab = 'overview' | 'keywords' | 'pages' | 'technical' | 'backlinks' | 'competitors' | 'tasks' | 'connect';
 const TABS: Array<[Tab, string, typeof Search]> = [
   ['overview', 'Genel Bakış', BarChart3],
   ['keywords', 'Anahtar Kelimeler', Search],
   ['pages', 'Sayfalar', FileText],
   ['technical', 'Teknik', FileSearch],
+  ['backlinks', 'Backlinkler', Network],
   ['competitors', 'Rakipler', Swords],
   ['tasks', 'Görevler', ListChecks],
   ['connect', 'Bağlantı', Link2],
@@ -74,6 +76,7 @@ export default function SeoTab(_props: { token?: string }) {
       {tab === 'keywords' && <Keywords days={days} connected={connected} onGo={(t) => setTab(t as Tab)} />}
       {tab === 'pages' && <Pages days={days} />}
       {tab === 'technical' && <Technical />}
+      {tab === 'backlinks' && <Backlinks />}
       {tab === 'competitors' && <Competitors />}
       {tab === 'tasks' && <Tasks />}
       {tab === 'connect' && <Connect onConnected={loadStatus} />}

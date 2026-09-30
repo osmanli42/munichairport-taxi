@@ -90,6 +90,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const countryFlag: Record<string, string> = { DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭' };
+
+// Interne Verlinkung: 8 Nachbar-Strecken (gleicher Landkreis/Land, ähnliche Entfernung zum MUC).
+// Ohne diesen Block verlinkte keine andere Seite auf die meisten Stadtseiten (Waisenseiten).
+function nearbyCities(city: CityData): CityData[] {
+  return allCitySlugs
+    .map((slug) => citiesBySlug[slug])
+    .filter((c) => c && c.slug !== city.slug)
+    .sort((a, b) => {
+      const rank = (c: CityData) => (city.district && c.district === city.district ? 0 : 1) + (c.country === city.country ? 0 : 2);
+      return rank(a) - rank(b) || Math.abs(a.distance_km - city.distance_km) - Math.abs(b.distance_km - city.distance_km);
+    })
+    .slice(0, 8);
+}
 const countryName: Record<string, string> = { DE: 'Deutschland', AT: 'Österreich', CH: 'Schweiz' };
 
 export default function CityBlogPage({ params }: Props) {
@@ -435,6 +448,31 @@ export default function CityBlogPage({ params }: Props) {
               </details>
             ))}
           </div>
+        </section>
+
+        {/* Weitere Strecken (interne Links) */}
+        <section className="mb-10">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            {locale === 'en' ? 'More taxi routes to Munich Airport' : locale === 'tr' ? 'Münih Havalimanı’na diğer taksi güzergâhları' : 'Weitere Taxi-Strecken zum Flughafen München'}
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {nearbyCities(city).map((c) => (
+              <li key={c.slug}>
+                <Link
+                  href={`${locale === 'de' ? '' : `/${locale}`}/blog/${c.slug}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3 hover:border-yellow-400 hover:bg-yellow-50 transition"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <MapPin size={16} className="text-yellow-500 shrink-0" />
+                    <span className="font-medium text-gray-800 truncate">
+                      {locale === 'tr' ? `${c.nameDE} – Münih Havalimanı` : locale === 'en' ? `Taxi ${c.nameDE} – Munich Airport` : `Taxi ${c.nameDE} – Flughafen München`}
+                    </span>
+                  </span>
+                  <span className="text-sm text-gray-500 whitespace-nowrap">{c.distance_km} km</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* Final CTA */}

@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, FileSearch, Gauge, Map, RefreshCw
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/dashboard/shared';
 import { seoApi, nf, Empty, shortPath } from './common';
+import Structure from './Structure';
 
 const SEV: Record<string, [string, string]> = {
   error: ['Hata', 'bg-red-100 text-red-700'],
@@ -188,6 +189,8 @@ export default function Technical() {
           )}
         </Card>
       </div>
+
+      <Structure />
     </div>
   );
 }

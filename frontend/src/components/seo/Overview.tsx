@@ -5,6 +5,8 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Gauge, Link2, Search } from 'l
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/dashboard/shared';
 import { seoApi, nf, pct, eur, Delta, Kpi, TrendChart, Empty } from './common';
+import MetaCheck from './MetaCheck';
+import { PositionDistribution, DeviceSplit } from './Visibility';
 
 export default function Overview({ days, onGo }: { days: number; onGo: (tab: string) => void }) {
   const [d, setD] = useState<any>(null);
@@ -57,6 +59,13 @@ export default function Overview({ days, onGo }: { days: number; onGo: (tab: str
           <Kpi label="Organik ciro" value={eur(o.current.revenue)} delta={<Delta cur={o.current.revenue} prev={o.previous.revenue} />} tone="text-emerald-700" />
         </div>
       </div>
+
+      {g && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          <div className="xl:col-span-2"><PositionDistribution data={d.positions} /></div>
+          <DeviceSplit devices={g.devices} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <Card title={g ? 'Tıklama ve gösterim — 90 gün' : 'Organik ziyaret ve rezervasyon — 90 gün'} icon={Search} className="xl:col-span-2">
@@ -117,6 +126,8 @@ export default function Overview({ days, onGo }: { days: number; onGo: (tab: str
           </Card>
         </div>
       </div>
+
+      <MetaCheck />
     </div>
   );
 }

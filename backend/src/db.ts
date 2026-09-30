@@ -551,6 +551,33 @@ export async function initializeDatabase(): Promise<void> {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_backlink_imports (
+        id INT NOT NULL AUTO_INCREMENT,
+        filename VARCHAR(200) DEFAULT NULL,
+        kind VARCHAR(10) NOT NULL,
+        rows_count INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_backlinks (
+        id INT NOT NULL AUTO_INCREMENT,
+        import_id INT NOT NULL,
+        domain VARCHAR(255) NOT NULL,
+        url VARCHAR(1000) DEFAULT NULL,
+        target VARCHAR(1000) DEFAULT NULL,
+        links INT DEFAULT NULL,
+        last_crawled DATE DEFAULT NULL,
+        PRIMARY KEY (id),
+        KEY idx_seo_backlinks_import (import_id, domain)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    // Incoming internal links per page (from other sitemap pages) — orphan-page check
+    try {
+      await conn.execute(`ALTER TABLE seo_audit_pages ADD COLUMN inlinks INT DEFAULT NULL`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    await conn.execute(`
       CREATE TABLE IF NOT EXISTS seo_audit_issues (
         id INT NOT NULL AUTO_INCREMENT,
         issue_key CHAR(40) NOT NULL,

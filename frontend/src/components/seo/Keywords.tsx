@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Crosshair, MousePointerClick, Pencil, Search, Sparkles, Target, TrendingDown } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Copy, Crosshair, MousePointerClick, Pencil, Search, Sparkles, Target, TrendingDown } from 'lucide-react';
 import { Card } from '@/components/dashboard/shared';
 import { seoApi, nf, pct, Delta, PosBadge, Spark, Empty, shortPath } from './common';
 
@@ -121,6 +121,54 @@ export default function Keywords({ days, connected, onGo }: { days: number; conn
           )}
         </Card>
       </div>
+
+      {/* Position movers + cannibalization */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        {([['winners', 'Pozisyon kazananlar', ArrowUpRight, 'text-emerald-600'], ['losers', 'Pozisyon kaybedenler', ArrowDownRight, 'text-red-600']] as const).map(([key, title, Icon, tone]) => (
+          <Card key={key} title={title} icon={Icon} right={<span className="text-xs text-gray-400">önceki {days} güne göre</span>}>
+            {!(d[key] || []).length ? <Empty>{key === 'losers' ? 'Yok ✓' : 'Yok'}</Empty> : (
+              <ul className="divide-y divide-gray-100">
+                {d[key].slice(0, 10).map((r: any) => (
+                  <li key={r.query} className="px-5 py-2.5 flex items-center gap-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-gray-900">{r.query}</div>
+                      {r.page && <div className="truncate text-[11px] text-gray-400">{shortPath(r.page)}</div>}
+                    </div>
+                    <span className="text-xs text-gray-400 tabular-nums whitespace-nowrap">{nf(r.prevPosition, 1)} →</span>
+                    <PosBadge pos={r.position} />
+                    <span className={`w-12 text-right text-xs font-bold tabular-nums ${tone}`}>{r.change > 0 ? '+' : ''}{nf(r.change, 1)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      <Card title="Kannibalizasyon — aynı sorguda yarışan sayfalar" icon={Copy} right={<span className="text-xs text-gray-400">Google hangi sayfayı göstereceğine karar veremiyor</span>}>
+        {!(d.cannibal || []).length ? <Empty>Kannibalizasyon yok ✓</Empty> : (
+          <ul className="divide-y divide-gray-100">
+            {d.cannibal.map((c: any) => (
+              <li key={c.query} className="px-5 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-gray-900 truncate">{c.query}</span>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">{nf(c.impressions)} gösterim · {nf(c.clicks)} tık</span>
+                </div>
+                <div className="mt-1.5 space-y-1">
+                  {c.pages.map((p: any) => (
+                    <div key={p.page} className="flex items-center gap-2 text-xs">
+                      <PosBadge pos={p.position} />
+                      <span className="truncate flex-1 text-gray-600">{shortPath(p.page)}</span>
+                      <span className="w-24 h-1.5 rounded-full bg-gray-100 shrink-0"><span className="block h-full rounded-full bg-amber-400" style={{ width: `${p.share * 100}%` }} /></span>
+                      <span className="w-10 text-right tabular-nums text-gray-500">{pct(p.share, 0)}</span>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       {/* All queries */}
       <Card

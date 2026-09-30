@@ -133,7 +133,14 @@ export async function queryTable(days: number, device?: string) {
   const newQ = rows.filter((r) => !prevMap.has(r.query) && r.impressions >= 5).sort((a, b) => b.impressions - a.impressions).slice(0, 20);
   const lost = prev.map((r) => ({ query: r.query, ...toAgg(r) }))
     .filter((r) => !curSet.has(r.query) && r.clicks > 0).sort((a, b) => b.clicks - a.clicks).slice(0, 20);
-  return { period: p, rows, striking, ctrOpp, newQueries: newQ, lostQueries: lost };
+  // Position movers (Semrush „Position changes“): queries seen in both periods with enough impressions.
+  const moved = rows
+    .filter((r) => r.prev && r.impressions >= 10 && r.prev.impressions >= 10 && r.position > 0 && r.prev.position > 0)
+    .map((r) => ({ query: r.query, page: r.page, position: r.position, prevPosition: r.prev!.position, change: r.prev!.position - r.position, impressions: r.impressions, clicks: r.clicks }))
+    .filter((r) => Math.abs(r.change) >= 1);
+  const winners = moved.filter((r) => r.change > 0).sort((a, b) => b.change * Math.log10(b.impressions + 1) - a.change * Math.log10(a.impressions + 1)).slice(0, 15);
+  const losers = moved.filter((r) => r.change < 0).sort((a, b) => a.change * Math.log10(a.impressions + 1) - b.change * Math.log10(b.impressions + 1)).slice(0, 15);
+  return { period: p, rows, striking, ctrOpp, newQueries: newQ, lostQueries: lost, winners, losers };
 }
 
 export async function trackedKeywords(keywords: string[]) {
@@ -184,4 +191,62 @@ export async function pageTable(days: number) {
     .map((x) => ({ path: x.path, clicks: x.gsc?.clicks || 0, prev_clicks: x.prev.clicks, change: ((x.gsc?.clicks || 0) - x.prev.clicks) / x.prev.clicks }))
     .sort((a, b) => a.change - b.change).slice(0, 10);
   return { period: p, pages: list.slice(0, 300), decay };
+}
+
+const BUCKETS = [
+  { key: 'top3', label: '1–3', max: 3 },
+  { key: 'top10', label: '4–10', max: 10 },
+  { key: 'top20', label: '11–20', max: 20 },
+  { key: 'top50', label: '21–50', max: 50 },
+  { key: 'rest', label: '51+', max: Infinity },
+] as const;
+const bucketOf = (pos: number) => BUCKETS.find((b) => pos <= b.max)!.key;
+
+/** Keyword position distribution (like Semrush „Organic positions“): now vs. before + weekly history. */
+export async function positionDistribution(days: number) {
+  const p = periods(days);
+  const count = async (a: string, b: string) => {
+    const rows = await query<any>(`
+      SELECT query, SUM(position * impressions) / NULLIF(SUM(impressions), 0) AS pos FROM seo_gsc_daily
+       WHERE date BETWEEN ? AND ? GROUP BY query HAVING SUM(impressions) > 0`, [a, b]);
+    const out: Record<string, number> = { top3: 0, top10: 0, top20: 0, top50: 0, rest: 0 };
+    for (const r of rows) out[bucketOf(Number(r.pos) || 999)]++;
+    return out;
+  };
+  const weekly = await query<any>(`
+    SELECT wk, DATE_FORMAT(MIN(d), '%Y-%m-%d') AS week,
+           SUM(pos <= 3) AS top3, SUM(pos > 3 AND pos <= 10) AS top10, SUM(pos > 10 AND pos <= 20) AS top20,
+           SUM(pos > 20 AND pos <= 50) AS top50, SUM(pos > 50) AS rest
+      FROM (SELECT YEARWEEK(date, 3) AS wk, MIN(date) AS d, query,
+                   SUM(position * impressions) / NULLIF(SUM(impressions), 0) AS pos
+              FROM seo_gsc_daily WHERE date >= ? GROUP BY wk, query HAVING SUM(impressions) > 0) t
+     GROUP BY wk ORDER BY wk`, [berlinDateSql(-7 * 17)]);
+  return {
+    buckets: BUCKETS.map((b) => ({ key: b.key, label: b.label })),
+    current: await count(p.start, p.end),
+    previous: await count(p.prevStart, p.prevEnd),
+    weekly: weekly.map((w) => ({ week: w.week, top3: +w.top3, top10: +w.top10, top20: +w.top20, top50: +w.top50, rest: +w.rest })),
+  };
+}
+
+/** Keyword cannibalization: one query, several of our pages splitting the impressions. */
+export async function cannibalization(days: number) {
+  const p = periods(days);
+  const rows = await query<any>(`
+    SELECT query, page, ${aggSql} FROM seo_gsc_daily WHERE date BETWEEN ? AND ? GROUP BY query, page`, [p.start, p.end]);
+  const byQuery = new Map<string, Array<{ page: string } & Agg>>();
+  for (const r of rows) {
+    const list = byQuery.get(r.query) || [];
+    list.push({ page: r.page, ...toAgg(r) });
+    byQuery.set(r.query, list);
+  }
+  const out = [];
+  for (const [q, pages] of Array.from(byQuery.entries())) {
+    const total = pages.reduce((a, x) => a + x.impressions, 0);
+    if (total < 20) continue;
+    const competing = pages.filter((x) => x.impressions / total >= 0.1).sort((a, b) => b.impressions - a.impressions);
+    if (competing.length < 2) continue;
+    out.push({ query: q, impressions: total, clicks: pages.reduce((a, x) => a + x.clicks, 0), pages: competing.slice(0, 4).map((x) => ({ ...x, share: x.impressions / total })) });
+  }
+  return out.sort((a, b) => b.impressions - a.impressions).slice(0, 20);
 }

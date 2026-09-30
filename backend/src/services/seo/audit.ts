@@ -116,7 +116,10 @@ async function doAudit() {
         const imgs = $('img');
         // alt="" = bewusst dekorativ (WCAG) → ok; nur fehlendes alt-Attribut zählt
         const withAlt = imgs.filter((_, el) => $(el).attr('alt') !== undefined).length;
-        const words = $('body').text().replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length;
+        // Visible main text only: scripts (JSON-LD, Next.js payload) and header/footer/nav would inflate the count.
+        const $t = cheerio.load(r.html);
+        $t('script, style, noscript, template, header, footer, nav').remove();
+        const words = $t('body').text().replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length;
         let links = 0;
         $('a[href]').each((_, el) => {
           const href = $(el).attr('href') || '';
@@ -165,6 +168,13 @@ async function doAudit() {
 
   for (const [t, list] of Array.from(titles.entries())) if (list.length > 1) for (const url of list) issues.push({ url, type: 'title_duplicate', severity: 'warning', detail: `${list.length} Seiten: „${t.slice(0, 80)}“` });
   for (const [m, list] of Array.from(metas.entries())) if (list.length > 1) for (const url of list) issues.push({ url, type: 'meta_duplicate', severity: 'notice', detail: `${list.length} Seiten: „${m.slice(0, 80)}“` });
+
+  // Incoming links per sitemap page (links from other pages only; the same page linking itself does not count).
+  for (const url of urls) {
+    const from = internal.get(norm(url));
+    const n = from ? Array.from(from).filter((f) => norm(f) !== norm(url)).length : 0;
+    await run(`UPDATE seo_audit_pages SET inlinks = ? WHERE url_hash = ?`, [n, hash(url)]);
+  }
 
   // Internal links to pages that are not in the sitemap: check them once (HEAD-ish GET).
   const checked = new Map<string, number>();
