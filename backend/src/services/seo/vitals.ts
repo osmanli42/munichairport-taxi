@@ -1,9 +1,23 @@
 // Core Web Vitals via Google PageSpeed Insights (mobile): lab score + field data (CrUX,
 // what real Chrome users experienced). Free, but the anonymous quota is shared and often
-// exhausted (HTTP 429) — uses PAGESPEED_API_KEY, else the server's GOOGLE_MAPS_API_KEY
-// (its Google project must have "PageSpeed Insights API" enabled). Weekly for key pages.
+// exhausted (HTTP 429). Authenticates with PAGESPEED_API_KEY if set, else with the Google
+// service account (quota of its project, where "PageSpeed Insights API" must be enabled).
+// Weekly for the key pages.
 
 import { query, run } from '../../db';
+
+async function serviceAccountToken(): Promise<string | null> {
+  const raw = process.env.GSC_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  try {
+    const sa = JSON.parse(raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+    const { google } = await import('googleapis');
+    const auth = new google.auth.JWT({ email: sa.client_email, key: sa.private_key, scopes: ['openid'] });
+    return (await auth.getAccessToken()).token || null;
+  } catch {
+    return null;
+  }
+}
 
 export const VITALS_URLS = [
   'https://flughafen-muenchen.taxi/',
@@ -15,9 +29,13 @@ export const VITALS_URLS = [
 
 async function measure(url: string) {
   const params = new URLSearchParams({ url, strategy: 'mobile', category: 'performance' });
-  const key = process.env.PAGESPEED_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
-  if (key) params.set('key', key);
-  const res = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params}`, { signal: AbortSignal.timeout(90_000) });
+  const headers: Record<string, string> = {};
+  if (process.env.PAGESPEED_API_KEY) params.set('key', process.env.PAGESPEED_API_KEY);
+  else {
+    const token = await serviceAccountToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params}`, { headers, signal: AbortSignal.timeout(90_000) });
   if (!res.ok) {
     const body: any = await res.json().catch(() => ({}));
     throw new Error(`PageSpeed HTTP ${res.status}: ${String(body?.error?.message || '').slice(0, 300)}`);
