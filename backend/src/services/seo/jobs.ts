@@ -1,6 +1,6 @@
 // Schedules for the SEO tab (Berlin time). Kept here so the data services stay free of
 // cron and alert wiring.
-//   daily 04:10  Search Console sync (last 6 days) → ranking / click alerts
+//   daily 04:10  Search Console sync (last 6 days; full history until it is there) → alerts
 //   Sun   05:00  site audit → alert on new technical errors
 //   Mon   05:30  PageSpeed (Core Web Vitals)
 // First start: fills 16 months of Search Console history if the table is empty.
@@ -35,7 +35,11 @@ export function startSeoJobs(): void {
   cron.schedule('10 4 * * *', async () => {
     try {
       if ((await gscStatus()).connected) {
-        await syncGscRecent();
+        // Google fills a newly added property within about a day: until older data is in the
+        // table, load the full history instead of just the last days.
+        const [h] = await query<{ oldest: string | null }>(`SELECT MIN(date) AS oldest FROM seo_gsc_daily`);
+        const hasHistory = h?.oldest && new Date(h.oldest).getTime() < Date.now() - 60 * 86400_000;
+        if (hasHistory) await syncGscRecent(); else await syncGscHistory();
         await checkSeoAlerts();
       }
     } catch (e: any) { console.error('[seo] nightly:', e?.message || e); }
