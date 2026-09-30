@@ -1013,7 +1013,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                   </div>
                   {detectedLang(g) === 'en' && !g.companyId && <span className="text-[11px] text-blue-600">takvim İngilizce</span>}
                 </div>
-                <label className="flex items-center gap-2 text-gray-700" title="Bar / Kredi kartı: fatura „ödendi“ olarak kesilir, vade tarihi ve banka bilgisi yazılmaz">
+                <label className="flex items-center gap-2 text-gray-700" title="Bar / Kredi kartı: faturada sadece ödeme şekli yazar, vade tarihi ve banka bilgisi yazılmaz">
                   Ödeme:
                   <select
                     value={zahlungen[g.key] || 'ueberweisung'}
@@ -1021,8 +1021,8 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                     className={`px-2 py-1 border rounded-lg text-xs bg-white ${(zahlungen[g.key] || 'ueberweisung') === 'ueberweisung' ? 'border-gray-200' : 'border-emerald-300 text-emerald-800 font-semibold'}`}
                   >
                     <option value="ueberweisung">Überweisung (auf Rechnung)</option>
-                    <option value="bar">Bar ödendi</option>
-                    <option value="kreditkarte">Kredi kartı ile ödendi</option>
+                    <option value="bar">Bar</option>
+                    <option value="kreditkarte">Kredi kartı</option>
                   </select>
                 </label>
                 <label className="flex items-center gap-2 text-gray-700">

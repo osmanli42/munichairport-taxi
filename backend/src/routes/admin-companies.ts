@@ -577,9 +577,9 @@ router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequ
     // Englische Rechnung (Kalender-Kunde mit englischer Korrespondenz) → englische Mail
     const isEn = invoice.lang === 'en';
     const totalStr = isEn ? `€${Number(invoice.total).toFixed(2)}` : `${Number(invoice.total).toFixed(2).replace('.', ',')} €`;
-    // Bar / Kreditkarte bezahlt → „Bezahlt“-Zeile statt Zahlungsziel
+    // Bar / Kreditkarte → Zahlungsart statt Zahlungsziel
     const paidRow = invoice.zahlungsart === 'bar' || invoice.zahlungsart === 'kreditkarte'
-      ? `<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">${isEn ? 'Payment:' : 'Zahlung:'}</td><td style="padding:4px 0;color:#15803d;font-size:14px;font-weight:600;">✓ ${invoice.zahlungsart === 'bar' ? (isEn ? 'Paid in cash' : 'Bar bezahlt') : (isEn ? 'Paid by credit card' : 'Kreditkarte bezahlt')}</td></tr>`
+      ? `<tr><td style="padding:4px 0;color:#6b7280;font-size:14px;">${isEn ? 'Payment method:' : 'Zahlungsart:'}</td><td style="padding:4px 0;color:#111827;font-size:14px;font-weight:600;">${invoice.zahlungsart === 'bar' ? (isEn ? 'Cash' : 'Bar') : (isEn ? 'Credit card' : 'Kreditkarte')}</td></tr>`
       : null;
     const bodyHtml = isEn ? `
       <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:1.6;">Dear Sir or Madam,<br><br>please find attached your invoice <strong>${invoice.invoice_number}</strong> for <strong>${company.company_name}</strong> (period <strong>${invoice.period_month}</strong>).</p>

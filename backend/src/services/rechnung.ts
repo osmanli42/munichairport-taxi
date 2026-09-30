@@ -587,7 +587,7 @@ const SAMMEL_TEXT = {
     exempt: 'Kein Steuerausweis, da MwSt.-befreit gemäß §4 Nr. 21 UStG',
     bank: 'BANKVERBINDUNG', holder: 'Kontoinhaber:', reference: 'Verwendungszweck:',
     taxNo: 'Steuer-Nr.: ', ownVat: 'USt-IdNr.: ', page: (a: number, b: number) => `Seite ${a} von ${b}`,
-    payment: 'Zahlung:', paidCash: 'Bar bezahlt', paidCard: 'Kreditkarte bezahlt',
+    payment: 'Zahlungsart:', paidCash: 'Bar', paidCard: 'Kreditkarte',
   },
   en: {
     invoice: 'INVOICE', reminder: 'PAYMENT REMINDER', dunning: 'FINAL REMINDER',
@@ -598,7 +598,7 @@ const SAMMEL_TEXT = {
     exempt: 'No VAT shown — exempt under §4 No. 21 German VAT Act (UStG)',
     bank: 'BANK DETAILS', holder: 'Account holder:', reference: 'Payment reference:',
     taxNo: 'Tax no.: ', ownVat: 'VAT ID: ', page: (a: number, b: number) => `Page ${a} of ${b}`,
-    payment: 'Payment:', paidCash: 'Paid in Cash', paidCard: 'Paid by Credit Card',
+    payment: 'Payment method:', paidCash: 'Cash', paidCard: 'Credit card',
   },
 } as const;
 
@@ -821,16 +821,11 @@ export function generateSammelrechnungPdf(opts: {
       bankStartY = 50 + 13;
     }
     if (paidBy) {
-      // Bereits bezahlt: grüner Vermerk (wie bei der Einzelrechnung), keine Bankverbindung
-      const paidY = bankStartY + 46;
-      doc.rect(marginL, paidY, pageW, 44).fill('#f0fdf4').stroke('#bbf7d0');
-      const tickX = marginL + 22;
-      const tickY = paidY + 22;
-      doc.circle(tickX, tickY, 8).fill('#15803d');
-      doc.moveTo(tickX - 3.8, tickY + 0.2).lineTo(tickX - 1, tickY + 3).lineTo(tickX + 4, tickY - 3)
-        .lineWidth(1.8).lineCap('round').lineJoin('round').strokeColor('#ffffff').stroke();
-      doc.lineCap('butt').lineJoin('miter');
-      doc.fontSize(11).font('WorkSans-Bold').fillColor('#15803d').text(paidLabel, marginL + 38, paidY + 15);
+      // Bar / Kreditkarte: nur die Zahlungsart nennen (Zahlung erfolgt ggf. erst bei der Fahrt) — kein Zahlungsziel, keine Bankverbindung
+      const payY = bankStartY + 46;
+      doc.rect(marginL, payY, pageW, 44).fill('#f9fafb').stroke('#e5e7eb');
+      doc.fontSize(8).font('WorkSans').fillColor(GRAY).text(T.payment, marginL + 12, payY + 17, { lineBreak: false });
+      doc.fontSize(11).font('WorkSans-Bold').fillColor(BRAND).text(paidLabel, marginL + 110, payY + 15, { lineBreak: false });
     } else {
     doc.fontSize(10).font('WorkSans-Bold').fillColor(BRAND)
       .text(`${T.due} ${dueDateStr}`, marginL, bankStartY - 13, { width: pageW });
