@@ -573,6 +573,133 @@ export async function initializeDatabase(): Promise<void> {
         KEY idx_seo_backlinks_import (import_id, domain)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // ---- Google Ads coach (routes/ads-v2.ts, services/ads/*) ----
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_imports (
+        id INT NOT NULL AUTO_INCREMENT,
+        kind VARCHAR(20) NOT NULL,
+        filename VARCHAR(200) DEFAULT NULL,
+        rows_count INT NOT NULL DEFAULT 0,
+        period_from DATE DEFAULT NULL,
+        period_to DATE DEFAULT NULL,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_campaign_stats (
+        id INT NOT NULL AUTO_INCREMENT,
+        import_id INT NOT NULL,
+        day DATE DEFAULT NULL,
+        campaign VARCHAR(255) NOT NULL,
+        campaign_id VARCHAR(40) DEFAULT NULL,
+        status VARCHAR(40) DEFAULT NULL,
+        budget DOUBLE DEFAULT NULL,
+        cost DOUBLE NOT NULL DEFAULT 0,
+        clicks INT NOT NULL DEFAULT 0,
+        impressions INT NOT NULL DEFAULT 0,
+        conversions DOUBLE NOT NULL DEFAULT 0,
+        conv_value DOUBLE NOT NULL DEFAULT 0,
+        impr_share DOUBLE DEFAULT NULL,
+        lost_budget DOUBLE DEFAULT NULL,
+        lost_rank DOUBLE DEFAULT NULL,
+        PRIMARY KEY (id),
+        KEY idx_ads_camp_day (day, campaign(100)),
+        KEY idx_ads_camp_import (import_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_search_terms (
+        id INT NOT NULL AUTO_INCREMENT,
+        import_id INT NOT NULL,
+        term VARCHAR(500) NOT NULL,
+        keyword VARCHAR(255) DEFAULT NULL,
+        match_type VARCHAR(40) DEFAULT NULL,
+        campaign VARCHAR(255) DEFAULT NULL,
+        ad_group VARCHAR(255) DEFAULT NULL,
+        added_status VARCHAR(60) DEFAULT NULL,
+        clicks INT NOT NULL DEFAULT 0,
+        impressions INT NOT NULL DEFAULT 0,
+        cost DOUBLE NOT NULL DEFAULT 0,
+        conversions DOUBLE NOT NULL DEFAULT 0,
+        conv_value DOUBLE NOT NULL DEFAULT 0,
+        PRIMARY KEY (id),
+        KEY idx_ads_terms_import (import_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_keywords (
+        id INT NOT NULL AUTO_INCREMENT,
+        import_id INT NOT NULL,
+        keyword VARCHAR(255) NOT NULL,
+        match_type VARCHAR(40) DEFAULT NULL,
+        campaign VARCHAR(255) DEFAULT NULL,
+        ad_group VARCHAR(255) DEFAULT NULL,
+        status VARCHAR(60) DEFAULT NULL,
+        quality_score INT DEFAULT NULL,
+        max_cpc DOUBLE DEFAULT NULL,
+        clicks INT NOT NULL DEFAULT 0,
+        impressions INT NOT NULL DEFAULT 0,
+        cost DOUBLE NOT NULL DEFAULT 0,
+        conversions DOUBLE NOT NULL DEFAULT 0,
+        conv_value DOUBLE NOT NULL DEFAULT 0,
+        impr_share DOUBLE DEFAULT NULL,
+        PRIMARY KEY (id),
+        KEY idx_ads_kw_import (import_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_campaign_names (
+        campaign_id VARCHAR(40) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        PRIMARY KEY (campaign_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_coach_tasks (
+        task_key VARCHAR(191) NOT NULL,
+        status VARCHAR(10) NOT NULL,
+        title VARCHAR(500) DEFAULT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (task_key)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_changelog (
+        id INT NOT NULL AUTO_INCREMENT,
+        day DATE NOT NULL,
+        campaign VARCHAR(255) DEFAULT NULL,
+        category VARCHAR(30) NOT NULL,
+        note TEXT NOT NULL,
+        learning TINYINT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    // Seed the decisions already taken in the account (from the ads notes), once.
+    const [clCount] = await conn.query<any[]>(`SELECT COUNT(*) AS n FROM ads_changelog`);
+    if (!Number(clCount?.[0]?.n)) {
+      await conn.execute(`INSERT INTO ads_changelog (day, campaign, category, note, learning, created_at) VALUES
+        ('2026-09-16', 'Oktoberfest 2026', 'campaign', 'Oktoberfest-Kampagne gestartet (12 €/Tag, DE+EN, bis 04.10.)', 0, NOW()),
+        ('2026-09-25', 'DE', 'bidding', 'Ziel-CPA 12 € aktiviert', 1, NOW())`);
+    }
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_offline_exports (
+        id INT NOT NULL AUTO_INCREMENT,
+        rows_count INT NOT NULL DEFAULT 0,
+        value_sum DOUBLE NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS ads_offline_exported (
+        booking_id INT NOT NULL,
+        export_id INT NOT NULL,
+        PRIMARY KEY (booking_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+
     // Incoming internal links per page (from other sitemap pages) — orphan-page check
     try {
       await conn.execute(`ALTER TABLE seo_audit_pages ADD COLUMN inlinks INT DEFAULT NULL`);

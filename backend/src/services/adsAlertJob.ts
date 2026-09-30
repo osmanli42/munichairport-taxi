@@ -9,6 +9,7 @@ import { Resend } from 'resend';
 import { query, run } from '../db';
 import { computeOverview } from '../routes/ads';
 import { categoryEnabled } from './alertCenter';
+import { coachAlerts } from './ads/coach';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
@@ -73,7 +74,9 @@ async function runCheck(): Promise<void> {
     // Admin can switch ads alerts off in the System tab (services/alertCenter.ts).
     if (!(await categoryEnabled('ads'))) return;
     const r = await computeOverview({ days: 30 });
-    const highAlerts = r.alerts.filter((a) => a.severity === 'high');
+    // Coach checks (cost/CPA from uploaded reports, Final-URL-Suffix health) join the anomaly list.
+    const coach = await coachAlerts().catch(() => []);
+    const highAlerts = [...r.alerts.filter((a) => a.severity === 'high'), ...coach];
     const lowScore = r.score !== null && r.score < 50;
     if (highAlerts.length === 0 && !lowScore) return;
 

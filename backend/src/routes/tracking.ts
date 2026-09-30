@@ -117,6 +117,11 @@ async function ensureTables(): Promise<void> {
   // A/B variant assignment, frozen at session creation (INSERT-only, see /track/pageview
   // below) so a later change to the rollout percentage doesn't reshuffle an in-progress visit.
   try { await run(`ALTER TABLE visitor_sessions ADD COLUMN exp_variants VARCHAR(80) DEFAULT NULL`); } catch {}
+  // Google Ads ValueTrack params from the account's Final-URL-Suffix (kw/mt/adg/net/cr) —
+  // which keyword brought the click, so bookings can be attributed per keyword.
+  for (const col of ['ads_keyword VARCHAR(255)', 'ads_matchtype VARCHAR(10)', 'ads_adgroup VARCHAR(40)', 'ads_network VARCHAR(10)', 'ads_creative VARCHAR(40)']) {
+    try { await run(`ALTER TABLE visitor_sessions ADD COLUMN ${col} DEFAULT NULL`); } catch {}
+  }
   tablesReady = true;
 }
 
@@ -170,6 +175,18 @@ function trunc(s: string | undefined | null, max: number): string | null {
   return s.length > max ? s.slice(0, max) : s;
 }
 
+/** ValueTrack params of the Final-URL-Suffix `kw={keyword}&mt={matchtype}&adg={adgroupid}&net={network}&cr={creative}`. */
+export function adsParams(path: string) {
+  let sp: URLSearchParams;
+  try { sp = new URL(path, 'https://x').searchParams; } catch { sp = new URLSearchParams(); }
+  const v = (k: string, max: number) => {
+    const x = (sp.get(k) || '').trim();
+    // An unfilled ValueTrack placeholder ("{keyword}") means the suffix is set but Google sent nothing.
+    return x && !/^\{.*\}$/.test(x) ? x.slice(0, max) : null;
+  };
+  return { keyword: v('kw', 255)?.toLowerCase() ?? null, matchtype: v('mt', 10), adgroup: v('adg', 40), network: v('net', 10), creative: v('cr', 40) };
+}
+
 // POST /api/track/pageview
 // Body: { session_id, visitor_id, path, title?, referrer?, utm_source?, utm_medium?, utm_campaign?, gclid? }
 router.post('/track/pageview', async (req: Request, res: Response) => {
@@ -215,12 +232,14 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
       for (const row of expRows) expSettings[row.setting_key] = row.setting_value;
       const expVariants = variantString(visitor_id, expSettings) || null;
 
+      const ads = adsParams(String(path));
       await run(
         `INSERT INTO visitor_sessions
           (session_id, visitor_id, ip_hash, country, city, lat, lng, ua_browser, ua_os, ua_device,
            screen_w, screen_h, lang, is_bot,
-           referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count, exp_variants)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+           referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count, exp_variants,
+           ads_keyword, ads_matchtype, ads_adgroup, ads_network, ads_creative)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
           geo.country, geo.city, geo.lat ?? null, geo.lng ?? null,
@@ -232,6 +251,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
           trunc(referrer, 500), trunc(utm_source, 100), trunc(utm_medium, 100),
           trunc(utm_campaign, 255), trunc(gclid, 255), trunc(path, 500),
           expVariants,
+          ads.keyword, ads.matchtype, ads.adgroup, ads.network, ads.creative,
         ]
       );
     } else {

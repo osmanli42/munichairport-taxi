@@ -30,8 +30,11 @@ const isOwn = (host: string) => OWN.some((o) => host === o || host.endsWith(`.${
 /** Minimal CSV parser (quotes, comma / semicolon / tab). */
 export function parseCsv(text: string): string[][] {
   const src = text.replace(/^﻿/, '');
-  const first = src.split(/\r?\n/, 1)[0] || '';
-  const delim = [',', ';', '\t'].map((d) => [d, first.split(d).length] as const).sort((a, b) => b[1] - a[1])[0][0];
+  // Delimiter from the first lines (reports often start with a title line). Tab / semicolon win
+  // when present: German exports use „,“ as decimal separator inside semicolon files.
+  const head = src.split(/\r?\n/, 6);
+  const most = (d: string) => Math.max(...head.map((l) => l.split(d).length - 1));
+  const delim = most('\t') >= 2 ? '\t' : most(';') >= 2 ? ';' : ',';
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
