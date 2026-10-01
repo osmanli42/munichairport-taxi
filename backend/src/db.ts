@@ -583,6 +583,39 @@ export async function initializeDatabase(): Promise<void> {
         PRIMARY KEY (id)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // Google index monitor (SEO → Indexierung): URL Inspection result per sitemap URL + daily totals.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_index_pages (
+        url_hash CHAR(40) NOT NULL,
+        url VARCHAR(600) NOT NULL,
+        in_sitemap TINYINT(1) NOT NULL DEFAULT 1,
+        first_seen DATETIME NOT NULL,
+        verdict VARCHAR(40) DEFAULT NULL,
+        coverage VARCHAR(200) DEFAULT NULL,
+        indexing_state VARCHAR(40) DEFAULT NULL,
+        page_fetch VARCHAR(40) DEFAULT NULL,
+        robots VARCHAR(40) DEFAULT NULL,
+        google_canonical VARCHAR(600) DEFAULT NULL,
+        user_canonical VARCHAR(600) DEFAULT NULL,
+        last_crawl DATETIME DEFAULT NULL,
+        crawled_as VARCHAR(40) DEFAULT NULL,
+        checked_at DATETIME DEFAULT NULL,
+        error VARCHAR(255) DEFAULT NULL,
+        indexed_since DATETIME DEFAULT NULL,
+        dropped_at DATETIME DEFAULT NULL,
+        PRIMARY KEY (url_hash),
+        KEY idx_seo_index_checked (in_sitemap, checked_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS seo_index_daily (
+        date DATE NOT NULL,
+        total INT NOT NULL DEFAULT 0,
+        indexed INT NOT NULL DEFAULT 0,
+        not_indexed INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (date)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
 
     // Sprache der Sammelrechnung (Kalender: aus der Terminbeschreibung). Bestehende = Deutsch.
     try {

@@ -50,7 +50,7 @@ async function get(url: string) {
   return { status: res.status, ms: Date.now() - start, html, location: res.headers.get('location') };
 }
 
-async function sitemapUrls(): Promise<string[]> {
+export async function sitemapUrls(): Promise<string[]> {
   const xml = await (await fetch(SITEMAP, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT_MS) })).text();
   const locs = Array.from(xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)).map((m) => m[1]);
   // Sitemap index → follow child sitemaps.

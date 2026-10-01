@@ -13,6 +13,7 @@ import { gscTotals, organicFunnel, queryTable, pageTable, trackedKeywords, posit
 import { buildTasks, setTaskStatus, trackedKeywordList, SEO_TRACKER_DIR } from '../services/seo/insights';
 import { auditWithAlerts } from '../services/seo/jobs';
 import { latestSiteCheck, siteCheckOnce } from '../services/seo/sitecheck';
+import { indexOverview, indexProgress, indexReminder, inspectAndStore, runIndexCheck, setIndexMonitor, submitSitemap } from '../services/seo/indexing';
 import { backlinkOverview, backlinkReminder, importLinks, setBacklinkReminder } from '../services/seo/backlinks';
 
 const router = Router();
@@ -158,8 +159,8 @@ router.get('/backlinks', authenticateAdmin, wrap(async (req, res) => {
 
 // Things due in the SEO tab (badge on the admin tab bar).
 router.get('/reminders', authenticateAdmin, wrap(async (_req, res) => {
-  const backlinks = await backlinkReminder();
-  res.json({ count: backlinks.due ? 1 : 0, backlinks });
+  const [backlinks, indexing] = await Promise.all([backlinkReminder(), indexReminder().catch(() => ({ enabled: false, due: false, dropped: 0 }))]);
+  res.json({ count: (backlinks.due ? 1 : 0) + (indexing.due ? 1 : 0), backlinks, indexing });
 }));
 
 router.put('/backlinks/reminder', authenticateAdmin, wrap(async (req, res) => {
@@ -182,6 +183,29 @@ router.delete('/backlinks/import/:id', authenticateAdmin, wrap(async (req, res) 
   await run(`DELETE FROM seo_backlinks WHERE import_id = ?`, [id]);
   await run(`DELETE FROM seo_backlink_imports WHERE id = ?`, [id]);
   res.json({ ok: true });
+}));
+
+// Google index monitor: URL Inspection per sitemap URL, sitemap submit, on/off.
+router.get('/indexing', authenticateAdmin, wrap(async (_req, res) => { res.json(await indexOverview()); }));
+router.post('/indexing/run', authenticateAdmin, wrap(async (req, res) => {
+  runIndexCheck(!!req.body?.force).catch((e) => console.error('[admin-seo] index check:', e?.message || e));
+  await new Promise((ok) => setTimeout(ok, 300));
+  res.json({ started: true, running: indexProgress() });
+}));
+router.post('/indexing/inspect', authenticateAdmin, wrap(async (req, res) => {
+  const url = String(req.body?.url || '');
+  const st = await gscStatus();
+  if (!st.connected || !st.site) { res.status(400).json({ error: st.error || 'Search Console nicht verbunden' }); return; }
+  if (!/^https:\/\/(www\.)?flughafen-muenchen\.taxi(\/|$)/.test(url)) { res.status(400).json({ error: 'Nur URLs von flughafen-muenchen.taxi' }); return; }
+  res.json(await inspectAndStore(url, st.site));
+}));
+router.post('/indexing/sitemap', authenticateAdmin, wrap(async (_req, res) => {
+  try { await submitSitemap(); } catch (e: any) { res.status(400).json({ error: e?.message || 'Sitemap konnte nicht gesendet werden' }); return; }
+  res.json({ ok: true });
+}));
+router.put('/indexing/settings', authenticateAdmin, wrap(async (req, res) => {
+  await setIndexMonitor(req.body?.enabled !== false);
+  res.json(await indexReminder());
 }));
 
 // Website check (IONOS-style): presence, findability, security, speed.

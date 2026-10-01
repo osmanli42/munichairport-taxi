@@ -30,11 +30,13 @@ export function gscServiceEmail(): string | null {
   return serviceAccount()?.client_email || null;
 }
 
-async function api() {
+// write = sitemap submit (needs permission „Uneingeschränkt“ in Search Console); else read-only.
+export async function api(write = false) {
   const sa = serviceAccount();
   if (!sa) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON fehlt');
   const { google } = await import('googleapis');
-  const auth = new google.auth.JWT({ email: sa.client_email, key: sa.private_key, scopes: ['https://www.googleapis.com/auth/webmasters.readonly'] });
+  const scope = write ? 'https://www.googleapis.com/auth/webmasters' : 'https://www.googleapis.com/auth/webmasters.readonly';
+  const auth = new google.auth.JWT({ email: sa.client_email, key: sa.private_key, scopes: [scope] });
   return google.searchconsole({ version: 'v1', auth });
 }
 

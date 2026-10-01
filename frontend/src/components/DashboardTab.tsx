@@ -57,6 +57,8 @@ interface DashboardData {
     cardsUncharged?: UnchargedCard[];
     /** Monthly Search Console backlink export not uploaded yet (SEO → Backlinks). */
     seoBacklinks?: { lastUpload: string | null } | null;
+    /** Pages that dropped out of Google's index (SEO → Indexierung). */
+    seoIndex?: { dropped: number } | null;
     /** Weekly Google Ads report upload (Google Ads → Veri & Bağlantı) not done yet. */
     adsReports?: { lastUpload: string | null } | null;
   };
@@ -534,8 +536,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
     { key: 'openStatus', title: 'Fahrt vorbei, Status offen', hint: 'Noch „Bestätigt“ — auf „Abgeschlossen“ setzen', Icon: Receipt, tone: 'text-gray-600 bg-gray-100' },
   ];
   const seo = a.seoBacklinks || null;
+  const seoIdx = a.seoIndex || null;
   const adsRep = a.adsReports || null;
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (adsRep ? 1 : 0);
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0);
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   return (
     <Card
@@ -593,6 +596,18 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
                   <div className="text-[11px] text-red-600/80">
                     Kampagnen / Suchbegriffe / Keywords (CSV){adsRep.lastUpload ? ` · zuletzt ${new Date(adsRep.lastUpload).toLocaleDateString('de-DE')}` : ' · noch nie hochgeladen'}
                   </div>
+                </div>
+                <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
+              </div>
+            </button>
+          )}
+          {seoIdx && (
+            <button onClick={() => onGoTab('seo')} className="w-full px-5 py-3 bg-red-50/60 text-left hover:bg-red-50">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><Network size={15} /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-red-700">SEO: {seoIdx.dropped} Seite{seoIdx.dropped === 1 ? '' : 'n'} aus dem Google-Index gefallen</div>
+                  <div className="text-[11px] text-red-600/80">War indexiert, jetzt nicht mehr · SEO → Indexierung</div>
                 </div>
                 <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
               </div>

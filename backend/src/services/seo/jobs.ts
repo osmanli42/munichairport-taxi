@@ -4,6 +4,8 @@
 //   Sun   05:00  site audit → alert on new technical errors
 //   Mon   05:30  PageSpeed (Core Web Vitals)
 //   daily 05:50  website check (headers, icons, redirects, SSL, speed)
+//   daily 06:20  Google index status of every sitemap URL (switchable: SEO → Indexierung)
+//   start + 5 min  resubmit the sitemap to Google after a deploy (max. once a day, production)
 // First start: fills 16 months of Search Console history if the table is empty.
 
 import cron from 'node-cron';
@@ -13,6 +15,7 @@ import { runVitals } from './vitals';
 import { checkAuditAlerts, checkSeoAlerts } from './insights';
 import { query } from '../../db';
 import { siteCheckOnce } from './sitecheck';
+import { autoSubmitSitemap, indexMonitorEnabled, runIndexCheck } from './indexing';
 
 export async function auditWithAlerts() {
   const started = new Date(Date.now() - 1000);
@@ -49,4 +52,10 @@ export function startSeoJobs(): void {
   cron.schedule('0 5 * * 0', () => { auditWithAlerts().catch((e) => console.error('[seo] audit:', e?.message || e)); }, { timezone: 'Europe/Berlin' });
   cron.schedule('30 5 * * 1', () => { runVitals().catch(() => {}); }, { timezone: 'Europe/Berlin' });
   cron.schedule('50 5 * * *', () => { siteCheckOnce().catch((e: any) => console.error('[seo] site check:', e?.message || e)); }, { timezone: 'Europe/Berlin' });
+  setTimeout(() => { autoSubmitSitemap().catch((e: any) => console.error('[seo] sitemap submit:', e?.message || e)); }, 5 * 60_000);
+  cron.schedule('20 6 * * *', async () => {
+    try {
+      if (await indexMonitorEnabled()) await runIndexCheck();
+    } catch (e: any) { console.error('[seo] index check:', e?.message || e); }
+  }, { timezone: 'Europe/Berlin' });
 }

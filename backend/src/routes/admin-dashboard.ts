@@ -13,6 +13,7 @@ import { unchargedCards, cardDeadline } from '../services/cardChargeReminder';
 import { CalEvent } from '../services/calendarInvoice';
 import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
 import { backlinkReminder } from '../services/seo/backlinks';
+import { indexReminder } from '../services/seo/indexing';
 import { adsReminder } from '../services/ads/coach';
 
 const router = Router();
@@ -220,6 +221,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const cardsUncharged = await unchargedCards();
     // Monthly Search Console backlink export not uploaded yet (SEO → Backlinks).
     const seoBacklinks = await backlinkReminder().catch(() => null);
+    // Pages that dropped out of Google's index (SEO → Indexierung).
+    const seoIndex = await indexReminder().catch(() => null);
     // Weekly Google Ads report upload not done yet (Google Ads → Veri & Bağlantı).
     const adsReports = await adsReminder().catch(() => null);
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
@@ -273,7 +276,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intake,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, adsReports: adsReports?.due ? adsReports : null },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null },
       card_deadline: await cardDeadline(),
       recent,
       calendar,

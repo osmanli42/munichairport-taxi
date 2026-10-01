@@ -4,7 +4,7 @@
 // ranked to-do list (backend: routes/admin-seo.ts, services/seo/*).
 
 import { useCallback, useEffect, useState } from 'react';
-import { BarChart3, FileSearch, FileText, Link2, ListChecks, Network, Search, ShieldCheck, Swords, TrendingUp } from 'lucide-react';
+import { BarChart3, DatabaseZap, FileSearch, FileText, Link2, ListChecks, Network, Search, ShieldCheck, Swords, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { seoApi } from './seo/common';
 import Overview from './seo/Overview';
@@ -13,13 +13,15 @@ import Pages from './seo/Pages';
 import Technical from './seo/Technical';
 import Backlinks from './seo/Backlinks';
 import SiteCheck from './seo/SiteCheck';
+import Indexing from './seo/Indexing';
 import { Tasks, Competitors, Connect } from './seo/Extras';
 
-type Tab = 'overview' | 'keywords' | 'pages' | 'technical' | 'sitecheck' | 'backlinks' | 'competitors' | 'tasks' | 'connect';
+type Tab = 'overview' | 'keywords' | 'pages' | 'indexing' | 'technical' | 'sitecheck' | 'backlinks' | 'competitors' | 'tasks' | 'connect';
 const TABS: Array<[Tab, string, typeof Search]> = [
   ['overview', 'Genel Bakış', BarChart3],
   ['keywords', 'Anahtar Kelimeler', Search],
   ['pages', 'Sayfalar', FileText],
+  ['indexing', 'Indexierung', DatabaseZap],
   ['technical', 'Teknik', FileSearch],
   ['sitecheck', 'Website-Check', ShieldCheck],
   ['backlinks', 'Backlinkler', Network],
@@ -34,15 +36,16 @@ export default function SeoTab({ onRemindersChange }: { token?: string; onRemind
   const [status, setStatus] = useState<any>(null);
   const [openTasks, setOpenTasks] = useState<number | null>(null);
   const [backlinksDue, setBacklinksDue] = useState(false);
+  const [indexDropped, setIndexDropped] = useState(0);
   const [checkFails, setCheckFails] = useState(0);
   const loadStatus = useCallback(() => {
     seoApi('/status').then(setStatus).catch(() => {});
     seoApi('/tasks').then((j) => setOpenTasks(j.tasks.filter((t: any) => t.status === 'open').length)).catch(() => {});
-    seoApi('/reminders').then((j) => setBacklinksDue(!!j.backlinks?.due)).catch(() => {});
+    seoApi('/reminders').then((j) => { setBacklinksDue(!!j.backlinks?.due); setIndexDropped(j.indexing?.due ? j.indexing.dropped : 0); }).catch(() => {});
     seoApi('/site-check').then((j) => setCheckFails((j.latest?.checks || []).filter((c: any) => c.status === 'fail').length)).catch(() => {});
   }, []);
   const remindersChanged = useCallback(() => {
-    seoApi('/reminders').then((j) => setBacklinksDue(!!j.backlinks?.due)).catch(() => {});
+    seoApi('/reminders').then((j) => { setBacklinksDue(!!j.backlinks?.due); setIndexDropped(j.indexing?.due ? j.indexing.dropped : 0); }).catch(() => {});
     onRemindersChange?.();
   }, [onRemindersChange]);
   useEffect(() => { loadStatus(); }, [loadStatus]);
@@ -79,6 +82,7 @@ export default function SeoTab({ onRemindersChange }: { token?: string; onRemind
             {id === 'tasks' && openTasks ? <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')}>{openTasks}</span> : null}
             {id === 'connect' && !connected && status && <span className="w-2 h-2 rounded-full bg-amber-500" />}
             {id === 'sitecheck' && checkFails > 0 && <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')} title="kritik kontrol">{checkFails}</span>}
+            {id === 'indexing' && indexDropped > 0 && <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')} title="indeksten düşen sayfa">{indexDropped}</span>}
             {id === 'backlinks' && backlinksDue && <span className={cn('text-[11px] rounded-full px-1.5', tab === id ? 'bg-white/25' : 'bg-red-500 text-white')}>1</span>}
           </button>
         ))}
@@ -87,6 +91,7 @@ export default function SeoTab({ onRemindersChange }: { token?: string; onRemind
       {tab === 'overview' && <Overview days={days} onGo={(t) => setTab(t as Tab)} />}
       {tab === 'keywords' && <Keywords days={days} connected={connected} onGo={(t) => setTab(t as Tab)} />}
       {tab === 'pages' && <Pages days={days} />}
+      {tab === 'indexing' && <Indexing onRemindersChange={remindersChanged} />}
       {tab === 'technical' && <Technical />}
       {tab === 'sitecheck' && <SiteCheck />}
       {tab === 'backlinks' && <Backlinks onRemindersChange={remindersChanged} />}
