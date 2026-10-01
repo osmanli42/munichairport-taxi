@@ -93,6 +93,27 @@ async function buildRouteDetail(req: Request, route: PopularRoute) {
   };
 }
 
+// POST /api/popular-routes/city-quote — live "ab X €" for a city landing page (/blog/[citySlug]),
+// rendered on the server. Priced as a local customer (no visitor IP → no IP bypass), i.e. the
+// same price a customer from the region sees at checkout for the city centre.
+router.post('/city-quote', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const lat = Number(req.body?.lat), lng = Number(req.body?.lng), km = Number(req.body?.km);
+    const address = String(req.body?.address || '').slice(0, 200);
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || !(km > 0 && km < 1000) || !address) {
+      res.status(400).json({ error: 'lat, lng, km, address required' });
+      return;
+    }
+    const localReq = { headers: {}, socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+    const detail = await buildRouteDetail(localReq, { slug: '', city: address, distance_km: km, duration_min: 0, pickup_address: address, pickup_lat: lat, pickup_lng: lng });
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ prices: detail.prices, pflichtgebiet: detail.pflichtgebiet });
+  } catch (error) {
+    console.error('city-quote error:', error);
+    res.status(500).json({ error: 'Failed to compute price' });
+  }
+});
+
 // GET /api/popular-routes - list of curated routes with live "ab X €" prices
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
