@@ -51,7 +51,7 @@ function Row({ s, onSet, big }: { s: Src; onSet: (key: string, status: Src['stat
         {s.url && (
           <a href={s.url} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700">
-            Sayfayı aç <ExternalLink size={12} />
+            {s.url.startsWith('mailto:') ? 'E-posta yaz' : 'Sayfayı aç'} <ExternalLink size={12} />
           </a>
         )}
         {s.status === 'todo' ? (
