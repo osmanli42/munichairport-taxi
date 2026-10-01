@@ -8,6 +8,7 @@ import { AlertTriangle, BellRing, ExternalLink, Globe, Info, Link2, Trash2, Tren
 import { cn } from '@/lib/utils';
 import { Card, Switch } from '@/components/dashboard/shared';
 import { seoApi, nf, eur, shortPath, Kpi, Empty } from './common';
+import Outreach from './Outreach';
 
 const KIND: Record<string, string> = { pages: 'Verweisende Seiten', sites: 'Top-verlinkende Websites', targets: 'Top-verlinkte Seiten' };
 const SRC: Record<string, [string, string]> = {
@@ -100,6 +101,8 @@ export default function Backlinks({ onRemindersChange }: { onRemindersChange?: (
         <Kpi label={`Linkten gelen ziyaret (${days} gün)`} value={nf(refSessions)} sub={`${refs.length} site`} />
         <Kpi label="Linkten gelen rezervasyon" value={nf(refBookings)} sub={refRevenue ? eur(refRevenue) : undefined} tone="text-emerald-700" />
       </div>
+
+      <Outreach />
 
       {/* Upload */}
       <Card title="Search Console backlink verisi" icon={Upload} right={

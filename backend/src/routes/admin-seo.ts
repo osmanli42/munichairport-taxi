@@ -14,6 +14,7 @@ import { buildTasks, setTaskStatus, trackedKeywordList, SEO_TRACKER_DIR } from '
 import { auditWithAlerts } from '../services/seo/jobs';
 import { latestSiteCheck, siteCheckOnce } from '../services/seo/sitecheck';
 import { indexOverview, indexProgress, indexReminder, inspectAndStore, runIndexCheck, setIndexMonitor, submitSitemap } from '../services/seo/indexing';
+import { outreachOverview, setOutreachStatus } from '../services/seo/outreach';
 import { backlinkOverview, backlinkReminder, importLinks, setBacklinkReminder } from '../services/seo/backlinks';
 
 const router = Router();
@@ -176,6 +177,15 @@ router.post('/backlinks/import', authenticateAdmin, wrap(async (req, res) => {
   } catch (e: any) {
     res.status(400).json({ error: e?.message || 'CSV okunamadı' });
   }
+}));
+
+// Backlink building checklist (manual registrations with ready texts).
+router.get('/backlinks/outreach', authenticateAdmin, wrap(async (_req, res) => { res.json(await outreachOverview()); }));
+router.put('/backlinks/outreach/:key', authenticateAdmin, wrap(async (req, res) => {
+  const status = String(req.body?.status || '');
+  if (!['done', 'skip', 'todo'].includes(status)) { res.status(400).json({ error: 'status' }); return; }
+  await setOutreachStatus(String(req.params.key), status as 'done' | 'skip' | 'todo', req.body?.listing_url ? String(req.body.listing_url) : undefined);
+  res.json(await outreachOverview());
 }));
 
 router.delete('/backlinks/import/:id', authenticateAdmin, wrap(async (req, res) => {
