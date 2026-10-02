@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  ArrowRight, Baby, BadgeCheck, Clock, Luggage, MapPin, MessageCircle, Moon, PawPrint, Phone,
-  PlaneLanding, ShieldCheck, Sun, Sunrise, Timer, Users, CalendarClock,
+  ArrowRight, Baby, BadgeCheck, Building2, Clock, Luggage, MapPin, MessageCircle, Moon, PawPrint, Phone,
+  Plane, PlaneLanding, ShieldCheck, Sun, Sunrise, Timer, Users, CalendarClock,
 } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 import CityBooking from '@/components/city/CityBooking';
@@ -44,6 +44,13 @@ const TIMES = [
   { Icon: Sun, when: 'Tagesflüge von 8 bis 17 Uhr', text: '75 bis 90 Minuten einplanen.' },
   { Icon: Timer, when: 'Freitagnachmittag und Messezeiten', text: 'Auf der A9 ist Stau fast sicher. Besser 90 Minuten und mehr Puffer.' },
   { Icon: Moon, when: 'Nachtflüge', text: 'Kaum Verkehr, 60 Minuten reichen in der Regel.' },
+];
+
+const MEETING_POINTS = [
+  { Icon: PlaneLanding, name: 'Terminal 1, Ankunftsbereich', text: 'Ihr Fahrer wartet im Ankunftsbereich von Terminal 1 mit einem Namensschild.' },
+  { Icon: PlaneLanding, name: 'Terminal 2, Ankunftshalle', text: 'Ihr Fahrer wartet am Ausgang der Ankunftshalle von Terminal 2 mit einem Namensschild.' },
+  { Icon: Building2, name: 'München Airport Center (MAC)', text: 'Treffpunkt im München Airport Center zwischen Terminal 1 und Terminal 2.' },
+  { Icon: Plane, name: 'General Aviation Terminal (GAT)', text: 'Für Privat- und Geschäftsflüge holen wir Sie auch am General Aviation Terminal ab. Bitte bei der Buchung als Abholort wählen.' },
 ];
 
 const STEPS = [
@@ -288,41 +295,31 @@ export default async function TaxiFlughafenMuenchenPage() {
           </div>
         </section>
 
-        {/* Taxi vs S-Bahn, honest comparison */}
-        <section className="mt-14" aria-labelledby="sbahn">
-          <h2 id="sbahn" className="text-3xl font-extrabold tracking-tight text-primary-800">Taxi oder S-Bahn zum Flughafen München?</h2>
-          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-primary-800 text-white">
-                  <th className="px-4 py-3 text-left font-semibold"><span className="sr-only">Merkmal</span></th>
-                  <th className="px-4 py-3 text-center font-semibold">Festpreis-Taxi</th>
-                  <th className="px-4 py-3 text-center font-semibold">S-Bahn (S1, S8)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Fahrzeit ab Hauptbahnhof', `${hbf.min} bis 50 Min.`, '40 bis 50 Min.'],
-                  ['Preis für 1 Person', `ab ${hbfKombi}`, 'ca. 15,10 €'],
-                  ['Preis für 4 Personen', `ab ${hbfKombi} gesamt`, 'ca. 60 € (4 Tickets)'],
-                  ['Tür zu Tür', 'Ja', 'Nein, Umstieg möglich'],
-                  ['Gepäck und Kinderwagen', 'Bequem im Fahrzeug', 'Eingeschränkt'],
-                  ['Nachts und früh', 'Rund um die Uhr', 'Eingeschränkter Fahrplan'],
-                ].map(([label, taxi, sbahn], i) => (
-                  <tr key={label} className={i % 2 ? 'bg-gray-50' : ''}>
-                    <td className="px-4 py-3 font-medium text-gray-800">{label}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-primary-800">{taxi}</td>
-                    <td className="px-4 py-3 text-center text-gray-600">{sbahn}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Meeting points at the airport (texts match the driver messages sent to customers) */}
+        <section className="mt-14 rounded-2xl bg-primary-800 p-6 text-white shadow-lg md:p-10" aria-labelledby="treffpunkte">
+          <div className="max-w-2xl">
+            <h2 id="treffpunkte" className="text-3xl font-extrabold tracking-tight">Wo holt Sie Ihr Fahrer am Flughafen ab?</h2>
+            <p className="mt-3 text-base leading-relaxed text-white/85 max-w-[65ch]">
+              Bei vorgebuchten Fahrten wartet Ihr Fahrer mit Namensschild auf Sie. Kein Suchen, kein Schlangestehen.
+              Den Treffpunkt wählen Sie bei der Buchung.
+            </p>
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600 max-w-[75ch]">
-            <strong className="text-gray-900">Fazit:</strong> Die S-Bahn ist günstiger, das Taxi spart Umstiege und Schlepperei.
-            Es lohnt sich besonders mit Kindern, viel Gepäck, zu dritt oder zu viert und bei sehr frühen oder späten Flügen.
-            Das S-Bahn-Einzelticket zum Flughafen (Zone M-5) kostet laut MVV 15,10 € (Stand Juli 2026).
-          </p>
+          <ul className="mt-8 grid gap-x-10 gap-y-7 md:grid-cols-2">
+            {MEETING_POINTS.map(({ Icon, name, text }) => (
+              <li key={name} className="flex items-start gap-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-gold-400 ring-1 ring-white/15"><Icon size={22} /></span>
+                <span className="text-sm leading-relaxed"><b className="block text-base text-white">{name}</b><span className="text-white/80">{text}</span></span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-8 flex flex-col gap-4 border-t border-white/15 pt-6 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-[60ch] text-white/80">
+              Reguläre Taxis ohne Festpreis stehen an den Taxiständen vor Terminal 1 und Terminal 2 bereit.
+            </p>
+            <Link href="/treffpunkt-flughafen-muenchen" className="inline-flex items-center gap-2 font-bold text-gold-400 hover:text-gold-300">
+              Zum Treffpunkt-Guide <ArrowRight size={16} />
+            </Link>
+          </div>
         </section>
 
         {/* Booking steps as a vertical timeline */}
@@ -330,8 +327,7 @@ export default async function TaxiFlughafenMuenchenPage() {
           <div>
             <h2 id="buchen" className="text-3xl font-extrabold tracking-tight text-primary-800">Taxi zum Flughafen München buchen</h2>
             <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Bei vorgebuchten Fahrten empfängt Sie Ihr Fahrer mit Namensschild im Ankunftsbereich. Kein Suchen, kein Schlangestehen.
-              Alternativ stehen an den Taxiständen vor Terminal 1 und Terminal 2 reguläre Taxis bereit, allerdings ohne Festpreis.
+              Online buchen dauert etwa eine Minute. Die Bestätigung kommt sofort per E-Mail, bis 3 Stunden vor der Fahrt stornieren Sie kostenlos.
             </p>
           </div>
           <ol className="relative space-y-6 border-l-2 border-primary-100 pl-6">
