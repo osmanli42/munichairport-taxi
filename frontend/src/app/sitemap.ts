@@ -9,7 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = `https://${host}`;
   const locales = ['', '/en', '/tr'];
   const cityPages = allCitySlugs.map((slug) => `/blog/${slug}`);
-  const pages = ['', '/vehicles', '/business', '/about', '/contact', '/faq', '/treffpunkt-flughafen-muenchen', '/blog/taxi-flughafen-muenchen', '/oktoberfest', ...cityPages];
+  const pages = ['', '/vehicles', '/business', '/about', '/contact', '/faq', '/treffpunkt-flughafen-muenchen', '/blog/taxi-flughafen-muenchen', '/oktoberfest', '/munich-airport-to-city-centre', '/messe-muenchen-transfer', ...cityPages];
 
   const routes: MetadataRoute.Sitemap = [];
 

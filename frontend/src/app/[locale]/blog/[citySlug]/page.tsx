@@ -35,7 +35,8 @@ function route(city: CityData) {
     min: g?.min ?? city.drive_minutes,
     rush: g?.rush_min ?? null,
     night: g?.night_min ?? null,
-    road: g?.route || null,
+    // Only real main roads (A9, B301, Flughafentangente …) — Google sometimes names a street.
+    road: g?.route && /^(A|B|St)\s?\d|tangente/i.test(g.route) ? g.route.split('/')[0] : null,
     address: g?.address || `${city.nameDE}`,
   };
 }
@@ -312,7 +313,7 @@ export default async function CityBlogPage({ params }: Props) {
   const about = l === 'de'
     ? { description: city.description, history: city.history, known_for: city.known_for, sights: city.sights }
     : l === 'en'
-      ? { description: en?.description ?? city.description_en ?? '', history: en?.history ?? city.history_en ?? '', known_for: en?.known_for ?? city.known_for_en ?? '', sights: en?.sights ?? [] }
+      ? { description: en?.description ?? city.description_en ?? '', history: en?.history ?? city.history_en ?? '', known_for: en?.known_for ?? city.known_for_en ?? '', sights: en?.sights ?? city.sights }
       : local?.tr ?? null;
 
   const vehicles = [
@@ -433,9 +434,9 @@ export default async function CityBlogPage({ params }: Props) {
                       <li className="flex items-center gap-2"><Users size={14} className="text-gray-400" /> {v.pax}</li>
                       <li className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {v.bags}</li>
                     </ul>
-                    <div className="mt-3 flex items-baseline gap-1.5">
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
                       <span className="text-sm text-gray-500">{t.from}</span>
-                      <span className="text-3xl font-extrabold tracking-tight text-primary-800">{money(v.price, l)}</span>
+                      <span className="whitespace-nowrap text-3xl font-extrabold tracking-tight text-primary-800">{money(v.price, l)}</span>
                     </div>
                     <a href="#booking" className={`mt-4 rounded-lg px-3 py-2 text-center text-sm font-bold transition ${i === 1 ? 'bg-gold-400 text-primary-900 hover:bg-gold-300' : 'border-2 border-primary-800 text-primary-800 hover:bg-primary-800 hover:text-white'}`}>{t.book}</a>
                   </div>
@@ -608,6 +609,11 @@ export default async function CityBlogPage({ params }: Props) {
               </li>
             ))}
           </ul>
+          <p className="mt-5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/80">
+            <Link href={`${prefix}/munich-airport-to-city-centre`} className="hover:text-gold-300 hover:underline">{l === 'de' ? 'Ratgeber: Flughafen → Innenstadt' : l === 'tr' ? 'Rehber: Havalimanı → şehir merkezi' : 'Guide: Munich Airport → city centre'}</Link>
+            <Link href={`${prefix}/messe-muenchen-transfer`} className="hover:text-gold-300 hover:underline">{l === 'de' ? 'Messe-Transfer München' : l === 'tr' ? 'Messe München transferi' : 'Messe München transfer'}</Link>
+            <Link href={`${prefix}/treffpunkt-flughafen-muenchen`} className="hover:text-gold-300 hover:underline">{l === 'de' ? 'Treffpunkt am Flughafen' : l === 'tr' ? 'Havalimanında buluşma noktası' : 'Meeting point at the airport'}</Link>
+          </p>
         </div>
       </section>
 

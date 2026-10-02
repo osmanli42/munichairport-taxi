@@ -24,14 +24,14 @@ const en: Record<string, CityTranslationEn> = {
   },
   'taxi-ingolstadt-flughafen-muenchen': {
     description: 'Ingolstadt is the fourth-largest city in Bavaria, known as the headquarters of Audi and as a historic fortress city on the Danube.',
-    history: 'Ingolstadt was the residence of the Wittelsbach dukes and hosted Bavaria\'s first university from 1472. The massive 19th-century fortifications (Festung Ingolstadt) are still partly preserved. In the city walls the novel "Frankenstein" was inspired by Mary Shelley in 1800. Today Audi dominates the city as its largest employer.',
+    history: 'Ingolstadt was the residence of the Wittelsbach dukes and hosted Bavaria\'s first university from 1472. The massive 19th-century fortifications (Festung Ingolstadt) are still partly preserved. In Mary Shelley’s novel “Frankenstein” (1818), Victor Frankenstein studies at the University of Ingolstadt. Today Audi dominates the city as its largest employer.',
     known_for: 'Audi headquarters, university city, Danube fortress',
     sights: ['Audi Museum Mobile', 'Bavarian Army Museum in Neues Schloss', 'Liebfrauenmünster Cathedral', 'Fortress with Reduit Tilly', 'Klenzepark on the Danube'],
     intro: 'From Ingolstadt to Munich Airport it\'s approx. {km} km along the A9. Our taxi service covers the journey in around {min} minutes at a guaranteed fixed price.',
   },
   'taxi-rosenheim-flughafen-muenchen': {
     description: 'Rosenheim is an independent city in Upper Bavaria, located on the Inn River between Munich and the Alps, and serves as an important shopping and industrial centre for the region.',
-    history: 'Rosenheim emerged as a salt transshipment point on the Inn in the Middle Ages and received its town charter in 1328. Salt and timber trade made the town prosperous. In the 19th century the railway connected Rosenheim to Munich and the Brenner Pass, driving industrial development.',
+    history: 'Rosenheim emerged as a salt transshipment point on the Inn in the Middle Ages and was granted market rights in 1328 (town status since 1864). Salt and timber trade made the town prosperous. In the 19th century the railway connected Rosenheim to Munich and the Brenner Pass, driving industrial development.',
     known_for: 'Inn Valley, gateway to the Alps, glass industry',
     sights: ['Rosenheim City Museum', 'Mangfall Park and Inn embankment', 'Max-Josefs-Platz with historic arcades', 'Rosenheim Art Museum', 'Wendelstein mountain (47 km)'],
     intro: 'The journey from Rosenheim to Munich Airport covers approx. {km} km. Our taxi picks you up door-to-door and delivers you to MUC Terminal 1 or 2 in around {min} minutes.',
@@ -54,7 +54,7 @@ const en: Record<string, CityTranslationEn> = {
     description: 'Erding lies east of Munich Airport and is famous for its thermal spa, its Weissbier, and as one of the fastest-growing district towns in the Munich commuter belt.',
     history: 'Erding received its town charter in the 14th century and was an important stop on the salt road from Salzburg to Augsburg. In the 20th century the town was strongly shaped by the nearby Munich Airport, which has been operating since 1992.',
     known_for: 'Therme Erding (Germany\'s largest spa), Erdinger Weissbier, proximity to Munich Airport',
-    sights: ['Therme Erding – Germany\'s largest thermal spa', 'Old Town with Schöner Turm', 'Frauenkirche Erding', 'Erdinger Weissbräu (brewery)', 'Lengdorfer Weiher (lake)'],
+    sights: ['Therme Erding – Germany\'s largest thermal spa', 'Old Town with Schöner Turm', 'Frauenkirche Erding', 'Erdinger Weissbräu (brewery)', 'Erding Museum'],
     intro: 'Erding is just {km} km from Munich Airport. Our taxi gets you there in only {min} minutes – ideal for early morning flights.',
   },
   'taxi-ebersberg-flughafen-muenchen': {
@@ -117,7 +117,7 @@ const en: Record<string, CityTranslationEn> = {
     description: 'Germering is the largest town in Fürstenfeldbruck district, west of Munich, and one of the fastest-growing municipalities in Bavaria.',
     history: 'Germering emerged in the 20th century through the merging of several villages and grew rapidly after World War II with the influx of expellees and Munich commuters. Today it is a modern residential town with excellent infrastructure and S-Bahn links to Munich.',
     known_for: 'Munich commuter belt, fast-growing municipality, S-Bahn access',
-    sights: ['Germering Lake (recreation)', 'Stadtpark Germering', 'St.-Jakobus-Kirche', 'Wildpark Pasing (10 km)', 'Ammersee (20 km)'],
+    sights: ['Germering Lake (recreation)', 'Stadtpark Germering', 'St.-Jakobus-Kirche', 'Stadthalle Germering', 'Ammersee (20 km)'],
     intro: 'From Germering to Munich Airport the distance is approx. {km} km. Our taxi covers the route in around {min} minutes.',
   },
   'taxi-gauting-flughafen-muenchen': {
@@ -138,28 +138,28 @@ const en: Record<string, CityTranslationEn> = {
     description: 'Unterschleißheim lies north of Munich directly on the A9 motorway, known as the location of BMW Group Vehicle Technology and as a rapidly growing community.',
     history: 'Unterschleißheim was a small village until the 1960s. Through the establishment of industry and BMW, and the construction of new residential areas, the municipality grew explosively. Today it is an important business location north of Munich.',
     known_for: 'BMW proximity, north Munich, lake recreation',
-    sights: ['Unterschleißheim Gravel Lake (swimming)', 'BMW Group test facility', 'Heilig Kreuz settlement church', 'Schloss Unterschleißheim', 'Munich Airport (10 km)'],
+    sights: ['Unterschleißheim Gravel Lake (swimming)', 'BMW campus for autonomous driving', 'Schleißheim Palace (neighbouring Oberschleißheim)', 'Unterschleißheim civic centre'],
     intro: 'From Unterschleißheim to Munich Airport is just {km} km. Our taxi reaches MUC in about {min} minutes.',
   },
   'taxi-garching-flughafen-muenchen': {
     description: 'Garching bei München is a science hub with a research reactor, TU Munich campus and several Max Planck Institutes, northeast of Munich.',
-    history: 'Garching was a farming village until the 1950s. With the establishment of the TU Munich research reactor (1957) and numerous research institutions, Garching became a world-renowned science centre. Today more than 20,000 scientists and students work here.',
+    history: 'Garching was a farming village until the 1950s. With the establishment of the TU Munich research reactor (1957) and numerous research institutions, Garching became a world-renowned science centre. Today thousands of scientists and students work and study here.',
     known_for: 'TU Munich, research centre, science city',
-    sights: ['FRM II Research Reactor (tours)', 'TU Munich Garching Campus', 'Hochbrück U-Bahn terminus (design)', 'Isar Valley (recreation)', 'Olympiapark Munich (20 km)'],
+    sights: ['FRM II Research Reactor (tours)', 'TU Munich Garching Campus', 'U6 terminus Garching-Forschungszentrum', 'Isar Valley (recreation)', 'Olympiapark Munich (20 km)'],
     intro: 'From Garching to Munich Airport it\'s approx. {km} km. Our taxi covers this route in about {min} minutes.',
   },
   'taxi-ismaning-flughafen-muenchen': {
-    description: 'Ismaning lies northeast of Munich and is known as the home of several media companies, most notably Bayerischer Rundfunk (BR).',
-    history: 'Ismaning has a history of over 1,000 years. Schloss Ismaning was a summer residence of the Munich prince-bishops. In the 20th century many media companies settled here. The Ismaning fish ponds are an important bird sanctuary.',
+    description: 'Ismaning lies northeast of Munich and is known as the home of several media companies and for Ismaning Palace.',
+    history: 'Ismaning has a history of over 1,000 years. Schloss Ismaning was a summer residence of the prince-bishops of Freising. In the 20th century many media companies settled here. The Ismaning fish ponds are an important bird sanctuary.',
     known_for: 'Media hub, Schloss Ismaning, fish ponds nature reserve',
-    sights: ['Schloss Ismaning (City Museum)', 'Ismaning Fish Ponds (nature reserve)', 'Bayerischer Rundfunk (BR) headquarters', 'Schloss gardens', 'Isar Valley (recreation)'],
+    sights: ['Schloss Ismaning (City Museum)', 'Ismaning Fish Ponds (nature reserve)', 'Ismaning reservoir (bird sanctuary)', 'Schloss gardens', 'Isar Valley (recreation)'],
     intro: 'From Ismaning to Munich Airport is approx. {km} km. Our taxi reaches MUC in about {min} minutes.',
   },
   'taxi-vaterstetten-flughafen-muenchen': {
     description: 'Vaterstetten is one of the largest municipalities in Ebersberg district in the eastern Munich commuter belt.',
     history: 'Vaterstetten emerged in the 20th century through the merging of several villages and grew rapidly after World War II with the influx of expellees. Today it is a modern residential community with a direct S-Bahn connection to Munich.',
     known_for: 'Eastern Munich outskirts, S-Bahn community, Ebersberg Forest',
-    sights: ['Ebersberg Forest (nearby)', 'Schönau am Ebersberger Forst', 'Parksee Vaterstetten', 'Heilig Kreuz Parish Church', 'Ebersberg (10 km)'],
+    sights: ['Ebersberg Forest (nearby)', 'Ortsteil Baldham', 'Heilig Kreuz Parish Church', 'Ebersberg (10 km)'],
     intro: 'From Vaterstetten to Munich Airport it\'s approx. {km} km. Our taxi covers the route in about {min} minutes.',
   },
   'taxi-gilching-flughafen-muenchen': {
@@ -283,7 +283,7 @@ const en: Record<string, CityTranslationEn> = {
   },
   'taxi-regensburg-flughafen-muenchen': {
     description: 'Regensburg is the capital of the Upper Palatinate with a UNESCO World Heritage old town and is one of the best-preserved medieval cities in Europe.',
-    history: 'The Roman fortress Castra Regina (179 AD) was the main base of the Danube legion. In the Middle Ages Regensburg was the largest city north of the Alps and a venue for Imperial Diets. The Cathedral of St. Peter, the Stone Bridge (1146) and the medieval cityscape make Regensburg a UNESCO World Heritage Site.',
+    history: 'The Roman fortress Castra Regina (179 AD) was the main base of the Danube legion. In the Middle Ages Regensburg was one of the most important cities of the Empire and, from 1663 to 1806, seat of the Perpetual Imperial Diet. The Cathedral of St. Peter, the Stone Bridge (1146) and the medieval cityscape make Regensburg a UNESCO World Heritage Site.',
     known_for: 'UNESCO old town, Stone Bridge, medieval heritage',
     sights: ['Stone Bridge (1146)', 'St. Peter\'s Cathedral (Gothic)', 'UNESCO World Heritage Old Town', 'Walhalla (15 km, marble temple)', 'BMW Plant Regensburg'],
     intro: 'From Regensburg to Munich Airport it\'s approx. {km} km. Our taxi covers the route in about {min} minutes.',
@@ -297,7 +297,7 @@ const en: Record<string, CityTranslationEn> = {
   },
   'taxi-kempten-flughafen-muenchen': {
     description: 'Kempten in the Allgäu is one of Germany\'s oldest cities, known as the economic centre of the Allgäu region and for its Roman excavation sites.',
-    history: 'Kempten (Cambodunum) is one of the oldest cities north of the Alps. As a Roman provincial capital it was more significant than Augsburg. In the Middle Ages Kempten was ruled by a wealthy abbey. The double city structure (abbey town and free imperial city) is unique in Germany.',
+    history: 'Kempten (Cambodunum) is one of the oldest cities north of the Alps. In the Middle Ages Kempten was ruled by a wealthy abbey. The double city structure (abbey town and free imperial city) is unique in Germany.',
     known_for: 'Germany\'s oldest city, Roman archaeological park, Allgäu',
     sights: ['Cambodunum Archaeological Park (Roman)', 'St. Lorenz Basilica (Baroque)', 'Kempten Residenz', 'Allgäu Museum', 'Burghalde (city park)'],
     intro: 'From Kempten to Munich Airport it\'s approx. {km} km. Our taxi covers the route in about {min} minutes.',
@@ -305,7 +305,7 @@ const en: Record<string, CityTranslationEn> = {
   // Austria
   'taxi-salzburg-flughafen-muenchen': {
     description: 'Salzburg is the city of Mozart – birthplace of the composer and a UNESCO World Heritage city on the Salzach with a Baroque old town and Hohensalzburg Fortress.',
-    history: 'Salzburg was for centuries an independent prince-archbishopric made wealthy by the salt trade. Wolfgang Amadeus Mozart was born here in 1756. The Salzburg Festival (since 1920) has made it an international cultural metropolis. The Baroque old town has been a UNESCO World Heritage Site since 1997.',
+    history: 'Salzburg was for centuries an independent prince-archbishopric made wealthy by the salt trade. Wolfgang Amadeus Mozart was born here in 1756. The Salzburg Festival (since 1920) has made it an international cultural metropolis. The Baroque old town has been a UNESCO World Heritage Site since 1996.',
     known_for: 'Mozart, Salzburg Festival, UNESCO old town, Salzach River',
     sights: ['Hohensalzburg Fortress', 'Mozart\'s Birthplace', 'Salzburg Cathedral', 'Mirabell Gardens', 'Salzburg Festival (summer)'],
     intro: 'From Salzburg to Munich Airport it\'s approx. {km} km across the border. Our taxi covers the route in about {min} minutes at a fixed price.',
@@ -706,7 +706,7 @@ const en: Record<string, CityTranslationEn> = {
     intro: 'From Hallstatt to Munich Airport it\'s approx. {km} km. Our taxi covers the route in about {min} minutes.',
   },
   'taxi-schwaz-flughafen-muenchen': {
-    description: 'Schwaz was the second-largest city north of the Alps in the 15th/16th century – enriched by silver and copper mining to become the "Mother of all Mines".',
+    description: 'Schwaz was after Vienna one of the largest settlements in today’s Austria in the 15th/16th century – enriched by silver and copper mining to become the "Mother of all Mines".',
     history: 'In the 15th century Schwaz was the most important city in the Habsburg Empire after Vienna – the silver from the Schwaz mines financed Habsburg world politics. The mines once produced half of Europe\'s silver.',
     known_for: 'Silver mines, Mother of all Mines, Tyrolean silver city',
     sights: ['Schwaz Silver Mine (tours)', 'Parish Church (largest hall church in Tyrol)', 'Freundsberg Castle', 'Inn riverside promenade', 'Stallerhof Wildlife Park (zoo)'],

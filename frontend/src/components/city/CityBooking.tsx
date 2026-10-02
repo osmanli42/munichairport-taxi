@@ -14,10 +14,10 @@ const SearchBar = dynamic(() => import('@/components/SearchBar'), {
 });
 
 const AIRPORT = 'Flughafen München, 85356 München-Flughafen';
-type Mode = 'oneway' | 'return' | 'arrival';
+export type Mode = 'oneway' | 'return' | 'arrival';
 
-export default function CityBooking({ pickup, tabs, people }: { pickup: string; tabs: [string, string, string]; people: [string, string] }) {
-  const [mode, setMode] = useState<Mode>('oneway');
+export default function CityBooking({ pickup, tabs, people, initialMode = 'oneway' }: { pickup: string; tabs: [string, string, string]; people: [string, string]; initialMode?: Mode }) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const back = new Date(tomorrow);
