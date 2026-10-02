@@ -7,7 +7,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { RefreshCw, Plane, Users, Luggage, Baby, ChevronRight, X, Wallet, CreditCard, CheckCircle2, Building2 } from 'lucide-react';
+import { RefreshCw, Plane, Users, Luggage, Baby, ChevronRight, X, Wallet, CreditCard, CheckCircle2, Building2, PawPrint } from 'lucide-react';
 import RideScreen from '@/components/tracking/RideScreen';
 import { driverT, statusKey } from '@/components/tracking/driverI18n';
 import {
@@ -233,6 +233,7 @@ function DriverApp() {
             <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5"><Users size={12} /> {r.passengers}</span>
             <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5"><Luggage size={12} /> {r.luggage_count}</span>
             {r.child_seat && <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-200 px-1.5 py-0.5"><Baby size={12} /></span>}
+            {r.notes?.includes('🐾') && <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/15 text-amber-200 px-1.5 py-0.5"><PawPrint size={12} /></span>}
             {payBadge(r)}
           </div>
         </div>

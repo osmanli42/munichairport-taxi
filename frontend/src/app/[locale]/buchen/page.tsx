@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { Caveat } from 'next/font/google';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck, PawPrint } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -239,6 +239,8 @@ function BuchenContent() {
   const [childSeatBabyschale, setChildSeatBabyschale] = useState(0);
   const [childSeatKindersitz, setChildSeatKindersitz] = useState(0);
   const [childSeatSitzerhoehung, setChildSeatSitzerhoehung] = useState(0);
+  const [petEnabled, setPetEnabled] = useState(false);
+  const [petCageConfirmed, setPetCageConfirmed] = useState(false);
   const [fahrradCount, setFahrradCount] = useState(0);
   const [fahrradEnabled, setFahrradEnabled] = useState(false);
   const [fahrradPrice, setFahrradPrice] = useState(0);
@@ -545,7 +547,7 @@ function BuchenContent() {
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
     if (flightNumberRequired && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
-    if (rechnungRequired && !rechnungAdresse.trim()) errs.rechnung = rx.error;
+    if (petEnabled && !petCageConfirmed) errs.pet = L('Bitte bestätigen Sie, dass Ihr Haustier während der gesamten Fahrt im Käfig/in der Transportbox bleibt.', 'Please confirm that your pet will stay in its cage/carrier for the entire ride.', 'Lütfen evcil hayvanınızın yolculuk boyunca kafes/taşıma kutusu içinde kalacağını onaylayın.');
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -564,6 +566,12 @@ function BuchenContent() {
     }
     setSubmitState('review');
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+  }
+
+  // Haustier-Hinweis wird den Anmerkungen vorangestellt, damit Admin, Fahrer und E-Mails ihn ohne Backend-Änderung sehen
+  function buildNotesWithPet(): string | undefined {
+    const petLine = petEnabled ? '🐾 Haustier dabei – bleibt die ganze Fahrt im Käfig/in der Transportbox (vom Kunden bestätigt)' : '';
+    return [petLine, notes].filter(Boolean).join(' · ') || undefined;
   }
 
   function buildChildSeatDetails(): string {
@@ -639,7 +647,7 @@ function BuchenContent() {
         child_seat_details: childSeat ? buildChildSeatDetails() : undefined,
         luggage_count: luggageCount,
         fahrrad_count: fahrradCount,
-        notes: notes || undefined,
+        notes: buildNotesWithPet(),
         distance_km: effectiveDistanceKm,
         duration_minutes: effectiveDuration,
         pickup_lat: pickupLat ? Number(pickupLat) : undefined,
@@ -1025,6 +1033,7 @@ function BuchenContent() {
                     <p className="flex items-center gap-2.5 break-all"><Mail size={16} className="shrink-0 text-gray-500" /> {email}</p>
                     {pickupSign && <p className="flex items-center gap-2.5"><Tag size={16} className="shrink-0 text-gray-500" /> {L('Abholschild', 'Pickup sign', 'Tabela')}: {pickupSign}</p>}
                     {childSeat && <p className="flex items-center gap-2.5"><Baby size={16} className="shrink-0 text-gray-500" /> {buildChildSeatDetails() || L('Kindersitz', 'Child seat', 'Çocuk koltuğu')}</p>}
+                    {petEnabled && <p className="flex items-center gap-2.5"><PawPrint size={16} className="shrink-0 text-gray-500" /> {L('Haustier im Käfig', 'Pet in cage', 'Evcil hayvan (kafeste)')}</p>}
                     {fahrradCount > 0 && <p className="flex items-center gap-2.5"><Bike size={16} className="shrink-0 text-gray-500" /> {fahrradCount}× {L('Fahrrad', 'Bicycle', 'Bisiklet')}</p>}
                     {notes && <p className="flex items-start gap-2.5"><MessageSquare size={16} className="shrink-0 text-gray-500 mt-0.5" /> {notes}</p>}
                   </div>
@@ -1091,7 +1100,7 @@ function BuchenContent() {
           <span className="min-w-0 break-words">{text}</span>
         </div>
       );
-      const hasExtras = childSeat || fahrradCount > 0;
+      const hasExtras = childSeat || petEnabled || fahrradCount > 0;
 
       return (
         <div className="min-h-screen" style={{ background: '#f4f7fb' }}>
@@ -1263,6 +1272,12 @@ function BuchenContent() {
                               <p>{L('Kindersitz', 'Child seat', 'Çocuk koltuğu')} ({L('kostenlos', 'free', 'ücretsiz')})</p>
                               {buildChildSeatDetails() && <p className="text-gray-600">{buildChildSeatDetails().replace(/, /g, ' · ')}</p>}
                             </div>
+                          </div>
+                        )}
+                        {petEnabled && (
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 shrink-0"><PawPrint size={22} className="text-gray-900" /></span>
+                            <p className="text-sm text-gray-800">{L('Haustier im Käfig', 'Pet in cage', 'Evcil hayvan (kafeste)')}</p>
                           </div>
                         )}
                         {fahrradCount > 0 && (
@@ -1641,6 +1656,51 @@ function BuchenContent() {
                   )}
                 </div>
 
+                {/* Haustier */}
+                <div className={cn('border rounded-xl transition-colors', petEnabled ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
+                  <OptionRow
+                    checked={petEnabled}
+                    onToggle={() => {
+                      const newVal = !petEnabled;
+                      setPetEnabled(newVal);
+                      if (!newVal) {
+                        setPetCageConfirmed(false);
+                        setErrors(e => { const { pet, ...rest } = e; return rest; });
+                      }
+                    }}
+                    icon={PawPrint}
+                    title={L('Haustier dabei', 'Traveling with a pet', 'Evcil hayvan var')}
+                    sub={L('Nur in geschlossenem Käfig / Transportbox – während der ganzen Fahrt.', 'Only in a closed cage / carrier – for the entire ride.', 'Yalnızca kapalı kafes / taşıma kutusunda – yolculuk boyunca.')}
+                  />
+                  {petEnabled && (
+                    <div className="px-4 pb-4 pl-4 sm:pl-[74px]">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={petCageConfirmed}
+                        onClick={() => {
+                          const v = !petCageConfirmed;
+                          setPetCageConfirmed(v);
+                          if (v) setErrors(e => { const { pet, ...rest } = e; return rest; });
+                        }}
+                        className="flex items-start gap-3 text-left"
+                      >
+                        <span className={cn('mt-0.5 flex items-center justify-center w-5 h-5 rounded border-2 shrink-0 transition-colors', petCageConfirmed ? 'bg-primary-800 border-primary-800' : 'border-gray-400 bg-white')}>
+                          {petCageConfirmed && <Check size={13} strokeWidth={3.5} className="text-white" />}
+                        </span>
+                        <span className="text-sm text-gray-800">
+                          {L(
+                            'Ich bestätige, dass mein Haustier ausschließlich in einem geschlossenen Käfig bzw. einer Transportbox befördert wird und während der gesamten Fahrt darin bleibt.',
+                            'I confirm that my pet will be transported only in a closed cage or carrier and will stay inside it for the entire ride.',
+                            'Evcil hayvanımın yalnızca kapalı bir kafes veya taşıma kutusu içinde taşınacağını ve yolculuk boyunca içinde kalacağını onaylıyorum.'
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {errors.pet && <p className="text-red-500 text-xs">{errors.pet}</p>}
+
                 {/* Rückfahrt */}
                 {!roundtripFromErgebnisse && (
                   <div className={cn('border rounded-xl transition-colors', tripType === 'roundtrip' ? 'border-gold-400 bg-[#fffbef]' : 'border-gray-200')}>
@@ -2000,12 +2060,13 @@ function BuchenContent() {
                       <p className="text-gray-700">{kmText} km · ca. {effectiveDuration} Min.</p>
                     </div>
                   </div>
-                  {(childSeat || fahrradCount > 0) && (
+                  {(childSeat || petEnabled || fahrradCount > 0) && (
                     <div className="flex items-start gap-3">
                       <Star size={20} className="mt-0.5 shrink-0 text-gray-900" />
                       <div className="flex-1 min-w-0 text-sm">
                         <p className="text-gray-900">Extras</p>
                         {childSeat && <p className="text-gray-700">{buildChildSeatDetails() || L('Kindersitz', 'Child seat', 'Çocuk koltuğu')} ({L('kostenlos', 'free', 'ücretsiz')})</p>}
+                        {petEnabled && <p className="text-gray-700">{L('Haustier im Käfig', 'Pet in cage', 'Evcil hayvan (kafeste)')}</p>}
                         {fahrradCount > 0 && <p className="text-gray-700">{fahrradCount}× {L('Fahrrad', 'Bicycle', 'Bisiklet')}</p>}
                       </div>
                     </div>

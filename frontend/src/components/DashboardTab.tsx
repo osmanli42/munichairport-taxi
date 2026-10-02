@@ -280,6 +280,7 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
           <span className="inline-flex items-center gap-1"><Car size={12} /> {VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type}</span>
           <span className="inline-flex items-center gap-1"><Users size={12} /> {l.passengers}</span>
           {!!l.luggage_count && <span className="inline-flex items-center gap-1"><Luggage size={12} /> {l.luggage_count}</span>}
+          {l.notes?.includes('🐾') && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5" title="Haustier im Käfig">🐾 Haustier</span>}
           {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-1 font-medium text-gray-600"><PlaneLanding size={12} /> {l.flight_number}</span>}
           {l.driver_name && <span className="inline-flex items-center gap-1 text-emerald-700"><Car size={12} /> {l.driver_name}</span>}
           <span className="font-mono text-gray-400">{l.booking_number}</span>

@@ -1130,6 +1130,11 @@ export default function AdminPage() {
                                   🏢 {booking.company_name || 'Kurumsal'}
                                 </span>
                               )}
+                              {booking.notes?.includes('🐾') && (
+                                <span className="inline-flex items-center gap-1 mt-1 ml-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full" title="Haustier im Käfig (vom Kunden bestätigt)">
+                                  🐾 Haustier
+                                </span>
+                              )}
                               {/* Customer-requested invoice: sent / still pending / failed */}
                               {booking.rechnung_number ? (
                                 <span
