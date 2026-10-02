@@ -1,7 +1,8 @@
 'use client';
 
-// Booking card on a city landing page: trip-type tabs above the normal SearchBar, with the city
-// and the airport already filled in (one way to MUC, return trip, or pickup at the airport).
+// Booking card on a city landing page: trip-type tabs above the normal SearchBar. The city and "Flughafen München"
+// are pre-filled as hints only (requireSelection): like on the home page, the customer must pick a full address
+// (street + house number) from the suggestions and an airport terminal before the price is calculated.
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
@@ -13,7 +14,7 @@ const SearchBar = dynamic(() => import('@/components/SearchBar'), {
   loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[65px] rounded-2xl bg-gray-100" />,
 });
 
-const AIRPORT = 'Flughafen München, 85356 München-Flughafen';
+const AIRPORT_HINT = 'Flughafen München';
 export type Mode = 'oneway' | 'return' | 'arrival';
 
 export default function CityBooking({ pickup, tabs, people, initialMode = 'oneway' }: { pickup: string; tabs: [string, string, string]; people: [string, string]; initialMode?: Mode }) {
@@ -42,9 +43,10 @@ export default function CityBooking({ pickup, tabs, people, initialMode = 'onewa
       </div>
       <SearchBar
         key={mode}
+        requireSelection
         initialValues={{
-          pickup: toCity ? AIRPORT : pickup,
-          dropoff: toCity ? pickup : AIRPORT,
+          pickup: toCity ? AIRPORT_HINT : pickup,
+          dropoff: toCity ? pickup : AIRPORT_HINT,
           date: tomorrow.toISOString().split('T')[0],
           time: '10:00',
           passengers: 2,

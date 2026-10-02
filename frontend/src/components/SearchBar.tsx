@@ -57,7 +57,7 @@ function formatDateShort(dateStr: string, locale: string) {
 
 /* ─── Address Field ─── */
 function AddressField({
-  placeholder, value, onChange, onValidSelect, locale, icon,
+  placeholder, value, onChange, onValidSelect, locale, icon, airportOnFocus,
 }: {
   placeholder: string;
   value: string;
@@ -65,6 +65,8 @@ function AddressField({
   onValidSelect: (v: string) => void;
   locale: string;
   icon: React.ReactNode;
+  /** City landing pages pre-fill the text "Flughafen München" without a terminal: open the terminal list on focus. */
+  airportOnFocus?: boolean;
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -186,7 +188,12 @@ function AddressField({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => (showAirport || predictions.length > 0) && setOpen(true)}
+          onFocus={() => {
+            if (airportOnFocus && isAirportSearch(value) && !AIRPORT_TERMINALS.some(t => t.address === value)) {
+              setShowAirport(true); airportRef.current = true; setOpen(true); return;
+            }
+            if (showAirport || predictions.length > 0) setOpen(true);
+          }}
           placeholder={placeholder}
           className="flex-1 bg-transparent text-gray-800 text-[15px] font-medium outline-none placeholder:text-gray-400 min-w-0"
         />
@@ -498,9 +505,15 @@ interface SearchBarProps {
   };
   onSearchComplete?: (params: URLSearchParams) => void;
   compact?: boolean;
+  /**
+   * City landing pages: the pre-filled texts (city name, "Flughafen München") are only hints. Both
+   * addresses must still be picked from the suggestion list (street + house number, airport terminal),
+   * exactly like on the home page. Default false: pre-filled values count as chosen (ergebnisse back-link).
+   */
+  requireSelection?: boolean;
 }
 
-export default function SearchBar({ initialValues, onSearchComplete, compact }: SearchBarProps = {}) {
+export default function SearchBar({ initialValues, onSearchComplete, compact, requireSelection }: SearchBarProps = {}) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -525,9 +538,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
   const minDate = new Date().toISOString().split('T')[0];
 
   const [pickup, setPickup] = useState(init?.pickup || '');
-  const [pickupVal, setPickupVal] = useState(init?.pickup || '');
+  const [pickupVal, setPickupVal] = useState(requireSelection ? '' : init?.pickup || '');
   const [dropoff, setDropoff] = useState(init?.dropoff || '');
-  const [dropoffVal, setDropoffVal] = useState(init?.dropoff || '');
+  const [dropoffVal, setDropoffVal] = useState(requireSelection ? '' : init?.dropoff || '');
   const [date, setDate] = useState(init?.date || defaultDate);
   const [time, setTime] = useState(init?.time || '10:00');
   const [passengers, setPassengers] = useState(init?.passengers || 2);
@@ -694,6 +707,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
                 onChange={setPickup}
                 onValidSelect={setPickupVal}
                 locale={locale}
+                airportOnFocus={requireSelection}
               />
             </div>
 
@@ -715,6 +729,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
                 onChange={setDropoff}
                 onValidSelect={setDropoffVal}
                 locale={locale}
+                airportOnFocus={requireSelection}
               />
             </div>
 
@@ -807,6 +822,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
                 onChange={setPickup}
                 onValidSelect={setPickupVal}
                 locale={locale}
+                airportOnFocus={requireSelection}
               />
             </div>
 
@@ -826,6 +842,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact }: 
                 onChange={setDropoff}
                 onValidSelect={setDropoffVal}
                 locale={locale}
+                airportOnFocus={requireSelection}
               />
             </div>
 

@@ -201,7 +201,7 @@ export default async function TaxiFlughafenMuenchenPage() {
         <div id="booking" className="-mt-20 scroll-mt-28">
           <CityBooking pickup="München Hauptbahnhof" tabs={['Einfache Fahrt', 'Hin- und Rückfahrt', 'Abholung am Flughafen']} people={['1 bis 8 Personen', 'Kombi, Van & Großraumtaxi']} />
           <p className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-gray-500">
-            <span className="inline-flex items-center gap-1.5"><Navigation size={13} className="text-gold-600" /> Abholort ist mit München Hauptbahnhof vorausgefüllt. Straße und Hausnummer ergänzen für Ihren exakten Preis.</span>
+            <span className="inline-flex items-center gap-1.5"><Navigation size={13} className="text-gold-600" /> Bitte Straße und Hausnummer in München sowie den Terminal am Flughafen aus der Vorschlagsliste wählen. So sehen Sie Ihren exakten Festpreis.</span>
             <span className="flex items-center gap-4">
               <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-1.5 font-semibold text-primary-700 hover:underline"><Phone size={13} /> {CONTACT_INFO.phone}</a>
               <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline"><MessageCircle size={13} /> WhatsApp</a>
