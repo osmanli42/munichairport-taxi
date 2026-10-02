@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  ArrowRight, Baby, BadgeCheck, Building2, CalendarClock, Car, ChevronDown, Clock, CreditCard, Luggage, MapPin,
+  ArrowRight, Baby, BadgeCheck, Building2, Car, ChevronDown, Clock, CreditCard, Luggage, MapPin,
   MessageCircle, Navigation, PawPrint, Phone, Plane, PlaneLanding, Route, ShieldCheck, Sunrise, Timer, Users,
 } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { cityImages } from '@/lib/cityImages';
 import CityBooking from '@/components/city/CityBooking';
 import DepartureCalc from '@/components/city/DepartureCalc';
 import RouteSketch from '@/components/city/RouteSketch';
+import PriceTabs from '@/components/city/PriceTabs';
 import { eur, getAreaPrices, type PricedRow } from '@/lib/blogAirportPrices';
 
 // Same page template as the city pages (/blog/taxi-<ort>-flughafen-muenchen), for Munich itself.
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic';
 const SITE = 'https://flughafen-muenchen.taxi';
 const AIRPORT_LNG = 11.7861;
 
-const cheapestMunich = (rows: PricedRow[]) => Math.min(...rows.filter((r) => r.group === 'muenchen').map((r) => r.quote.kombi));
+const cheapestMunich = (rows: PricedRow[]) => Math.min(...rows.filter((r) => r.group === 'stadt').map((r) => r.quote.kombi));
 
 export async function generateMetadata(): Promise<Metadata> {
   const rows = await getAreaPrices();
@@ -67,8 +68,10 @@ const NEARBY_SLUGS = [
 export default async function TaxiFlughafenMuenchenPage() {
   const rows = await getAreaPrices();
   const hbf = rows.find((r) => r.key === 'hbf') as PricedRow;
-  const munich = rows.filter((r) => r.group === 'muenchen');
+  const stadt = rows.filter((r) => r.group === 'stadt');
+  const landkreis = rows.filter((r) => r.group === 'landkreis');
   const umland = rows.filter((r) => r.group === 'umland');
+  const toTab = (list: PricedRow[]) => list.map((r) => ({ key: r.key, name: r.name, href: r.href, km: r.km, min: r.min, kombi: r.quote.kombi, van: r.quote.van }));
   const from = cheapestMunich(rows);
   const anyLive = rows.some((r) => r.live);
   const stand = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: 'numeric', month: 'long', year: 'numeric' });
@@ -80,10 +83,10 @@ export default async function TaxiFlughafenMuenchenPage() {
   const rush = geo?.rush_min ?? null;
   const night = geo?.night_min ?? null;
   const road = 'A9';
-  const minKm = Math.round(Math.min(...munich.map((r) => r.km)));
-  const maxKm = Math.round(Math.max(...munich.map((r) => r.km)));
-  const minMin = Math.min(...munich.map((r) => r.min));
-  const maxMin = Math.max(...munich.map((r) => r.min));
+  const minKm = Math.round(Math.min(...stadt.map((r) => r.km)));
+  const maxKm = Math.round(Math.max(...stadt.map((r) => r.km)));
+  const minMin = Math.min(...stadt.map((r) => r.min));
+  const maxMin = Math.max(...stadt.map((r) => r.min));
 
   const hbfKombi = eur(hbf.quote.kombi);
   const vehicles = VEHICLES.flatMap((v) => (hbf.quote[v.key] ? [{ ...v, price: hbf.quote[v.key] as number }] : []));
@@ -277,16 +280,23 @@ export default async function TaxiFlughafenMuenchenPage() {
           })}
         </section>
 
-        {/* Prices by pick-up area */}
+        {/* Prices by pick-up area: all Stadtbezirke, Landkreis München, Umland */}
         <section id="preise" className="mt-8 scroll-mt-28" aria-labelledby="preise-titel">
           <h2 id="preise-titel" className="text-2xl font-extrabold text-gray-900">Was kostet ein Taxi zum Flughafen München?</h2>
           <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-gray-600">
             Bei uns zahlen Sie einen Festpreis, unabhängig von Stau oder Umwegen. Er enthält Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit.
-            Die Preise gelten für die einfache Fahrt ab Stadtmitte bzw. Ortsmitte.
+            Hier finden Sie die Preise für alle 25 Stadtbezirke Münchens und alle 29 Gemeinden im Landkreis München, berechnet ab der jeweiligen Ortsmitte.
           </p>
-          <div className="mt-5 grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
-            <PriceGroup title="Ab München" rows={munich} />
-            <PriceGroup title="Umland und Fernziele" rows={umland} />
+          <div className="mt-5">
+            <PriceTabs
+              searchLabel="Stadtteil oder Ort suchen"
+              emptyText="Kein Treffer. Den Preis für Ihre Adresse zeigt das Buchungsformular."
+              tabs={[
+                { id: 'stadt', label: 'Stadt München', hint: 'Festpreis ab Mitte des Stadtbezirks', rows: toTab(stadt) },
+                { id: 'landkreis', label: 'Landkreis München', hint: 'Festpreis ab Ortsmitte der Gemeinde', rows: toTab(landkreis) },
+                { id: 'umland', label: 'Umland und Fernziele', hint: 'Festpreis ab Ortsmitte', rows: toTab(umland) },
+              ]}
+            />
           </div>
           <p className="mt-3 max-w-[85ch] text-xs leading-relaxed text-gray-500">
             {anyLive ? `Live aus unserem Buchungssystem, Stand ${stand}. ` : ''}
@@ -432,41 +442,6 @@ export default async function TaxiFlughafenMuenchenPage() {
           </p>
         )}
       </div>
-    </div>
-  );
-}
-
-function PriceGroup({ title, rows }: { title: string; rows: PricedRow[] }) {
-  return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-      <div className="flex items-center justify-between bg-primary-800 px-4 py-3 text-white">
-        <h3 className="text-base font-bold">{title}</h3>
-        <div className="flex gap-3 pr-1 text-xs font-semibold uppercase tracking-wide text-white/80">
-          <span className="w-[5.25rem] text-right">Kombi</span>
-          <span className="w-[5.25rem] text-right">Van</span>
-        </div>
-      </div>
-      <ul className="divide-y divide-gray-100">
-        {rows.map((r) => (
-          <li key={r.key} className="flex items-center justify-between gap-3 px-4 py-3.5">
-            <div className="min-w-0">
-              {r.href ? (
-                <Link href={r.href} className="font-semibold text-gray-900 hover:text-primary-700 hover:underline">{r.name}</Link>
-              ) : (
-                <span className="font-semibold text-gray-900">{r.name}</span>
-              )}
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin size={12} /> {Math.round(r.km)} km</span>
-                <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={12} /> ca. {r.min} Min.</span>
-              </p>
-            </div>
-            <div className="flex gap-3 tabular-nums">
-              <span className="w-[5.25rem] whitespace-nowrap text-right text-base font-extrabold text-primary-800">{eur(r.quote.kombi)}</span>
-              <span className="w-[5.25rem] whitespace-nowrap text-right text-base font-bold text-gray-700">{eur(r.quote.van)}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
