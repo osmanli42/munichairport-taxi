@@ -16,6 +16,7 @@ const AIRPORT_TERMINALS = [
   { id: 'muc-t1f', label: '✈️ Terminal 1 · Modul F', address: 'Flughafen München, Terminal 1 Modul F, 85356 München-Flughafen' },
   { id: 'muc-t2',  label: '✈️ Terminal 2', address: 'Flughafen München, Terminal 2 E03, 85356 München-Flughafen' },
   { id: 'muc-mac', label: '✈️ München Airport Center (MAC)', address: 'München Airport Center, Terminalstraße Mitte, 85356 München-Flughafen' },
+  { id: 'muc-gat', label: '✈️ GAT - General Aviation Terminal', address: 'Allgemeine Luftfahrt 1, 85356 München-Flughafen' },
 ];
 
 const AIRPORT_KEYWORDS = ['flughafen', 'airport', 'terminal 1', 'terminal 2', 'terminal1', 'terminal2', 'muc ', '(muc', 'münchen flug', 'munchen flug', 'münih hava', 'munih hava', 'havalimanı', 'havaalanı'];
