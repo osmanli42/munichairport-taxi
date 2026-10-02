@@ -1,19 +1,25 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  ArrowRight, Baby, BadgeCheck, Building2, Clock, Luggage, MapPin, MessageCircle, Moon, PawPrint, Phone,
-  Plane, PlaneLanding, ShieldCheck, Sun, Sunrise, Timer, Users, CalendarClock,
+  ArrowRight, Baby, BadgeCheck, Building2, CalendarClock, Car, ChevronDown, Clock, CreditCard, Luggage, MapPin,
+  MessageCircle, Navigation, PawPrint, Phone, Plane, PlaneLanding, Route, ShieldCheck, Sunrise, Timer, Users,
 } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
+import { citiesBySlug } from '@/lib/citiesData';
+import { cityGeo } from '@/lib/citiesGeo';
+import { cityImages } from '@/lib/cityImages';
 import CityBooking from '@/components/city/CityBooking';
+import DepartureCalc from '@/components/city/DepartureCalc';
+import RouteSketch from '@/components/city/RouteSketch';
 import { eur, getAreaPrices, type PricedRow } from '@/lib/blogAirportPrices';
 
-// Prices come live from the booking price engine (cached 1 h per request), like the city pages.
+// Same page template as the city pages (/blog/taxi-<ort>-flughafen-muenchen), for Munich itself.
+// Prices come live from the booking price engine (cached 1 h per request).
 export const dynamic = 'force-dynamic';
 
 const SITE = 'https://flughafen-muenchen.taxi';
+const AIRPORT_LNG = 11.7861;
 
-const pick = (rows: PricedRow[], key: string) => rows.find((r) => r.key === key) as PricedRow;
 const cheapestMunich = (rows: PricedRow[]) => Math.min(...rows.filter((r) => r.group === 'muenchen').map((r) => r.quote.kombi));
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,16 +40,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const VEHICLES = [
-  { key: 'kombi' as const, name: 'Kombi', model: 'Mercedes E-Klasse', pax: 'bis 4 Personen', bags: 'bis 4 Koffer', best: 'Einzelreisende und Paare', photo: '/images/kombi.webp' },
-  { key: 'van' as const, name: 'Van', model: 'Mercedes Viano', pax: 'bis 7 Personen', bags: 'bis 10 Koffer', best: 'Familien und kleine Gruppen', photo: '/images/van.webp' },
-  { key: 'grossraumtaxi' as const, name: 'Großraumtaxi', model: 'Mercedes Vito', pax: 'bis 8 Personen', bags: 'bis 12 Koffer', best: 'Große Gruppen', photo: '/images/grossraumtaxi.webp' },
+  { key: 'kombi' as const, name: 'Kombi / Limousine', pax: '1 bis 3 Personen', bags: 'bis 3 Koffer', photo: '/images/kombi.webp', badge: '' },
+  { key: 'van' as const, name: 'Van', pax: '4 bis 7 Personen', bags: 'bis 8 Koffer', photo: '/images/van.webp', badge: 'Beliebt' },
+  { key: 'grossraumtaxi' as const, name: 'Großraumtaxi', pax: '8 Personen', bags: 'bis 10 Koffer', photo: '/images/grossraumtaxi.webp', badge: '' },
 ];
 
-const TIMES = [
-  { Icon: Sunrise, when: 'Frühflüge vor 8 Uhr', text: 'Wenig Verkehr. 60 Minuten Puffer genügen meist.' },
-  { Icon: Sun, when: 'Tagesflüge von 8 bis 17 Uhr', text: '75 bis 90 Minuten einplanen.' },
-  { Icon: Timer, when: 'Freitagnachmittag und Messezeiten', text: 'Auf der A9 ist Stau fast sicher. Besser 90 Minuten und mehr Puffer.' },
-  { Icon: Moon, when: 'Nachtflüge', text: 'Kaum Verkehr, 60 Minuten reichen in der Regel.' },
+const HERO_FEAT: [string, string][] = [['Festpreis', 'ohne versteckte Kosten'], ['Flugüberwachung', 'inklusive'], ['60 Min. Wartezeit', 'gratis'], ['Für Familien', 'und Gruppen bis 8']];
+const INCL: [string, string][] = [
+  ['Festpreis', 'Kein Stauzuschlag, Maut inklusive'], ['Flugüberwachung', 'Wir passen uns Verspätungen an'],
+  ['60 Min. Wartezeit gratis', 'Bei Abholung am Flughafen'], ['Meet & Greet', 'Namensschild im Ankunftsbereich'],
+  ['Kindersitz kostenlos', 'Bitte bei Buchung angeben'], ['Bar, Karte, Rechnung', 'Rechnung für Firmen'],
 ];
 
 const MEETING_POINTS = [
@@ -53,26 +59,52 @@ const MEETING_POINTS = [
   { Icon: Plane, name: 'General Aviation Terminal (GAT)', text: 'Für Privat- und Geschäftsflüge holen wir Sie auch am General Aviation Terminal ab. Bitte bei der Buchung als Abholort wählen.' },
 ];
 
-const STEPS = [
-  { title: 'Adresse eingeben', text: 'Abholort, Ziel, Datum und Uhrzeit angeben. Das dauert etwa eine Minute.' },
-  { title: 'Fahrzeug und Festpreis wählen', text: 'Kombi, Van oder Großraumtaxi wählen. Der Preis erscheint sofort.' },
-  { title: 'Bestätigung erhalten', text: 'Sie bekommen die Bestätigung per E-Mail. Bezahlt wird bar oder per Karte, ohne Aufschlag.' },
+const NEARBY_SLUGS = [
+  'taxi-freising-flughafen-muenchen', 'taxi-erding-flughafen-muenchen', 'taxi-dachau-flughafen-muenchen', 'taxi-garching-flughafen-muenchen',
+  'taxi-ismaning-flughafen-muenchen', 'taxi-unterschleissheim-flughafen-muenchen', 'taxi-augsburg-flughafen-muenchen', 'taxi-landshut-flughafen-muenchen',
 ];
 
 export default async function TaxiFlughafenMuenchenPage() {
   const rows = await getAreaPrices();
-  const hbf = pick(rows, 'hbf');
+  const hbf = rows.find((r) => r.key === 'hbf') as PricedRow;
   const munich = rows.filter((r) => r.group === 'muenchen');
   const umland = rows.filter((r) => r.group === 'umland');
   const from = cheapestMunich(rows);
   const anyLive = rows.some((r) => r.live);
   const stand = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Route card: Munich city centre (Google traffic forecast, same source as the city pages).
+  const geo = cityGeo['taxi-muenchen-flughafen-muenchen'];
+  const km = geo ? Math.round(geo.km) : 37;
+  const min = geo?.min ?? 32;
+  const rush = geo?.rush_min ?? null;
+  const night = geo?.night_min ?? null;
+  const road = 'A9';
+  const minKm = Math.round(Math.min(...munich.map((r) => r.km)));
+  const maxKm = Math.round(Math.max(...munich.map((r) => r.km)));
+  const minMin = Math.min(...munich.map((r) => r.min));
+  const maxMin = Math.max(...munich.map((r) => r.min));
+
   const hbfKombi = eur(hbf.quote.kombi);
+  const vehicles = VEHICLES.flatMap((v) => (hbf.quote[v.key] ? [{ ...v, price: hbf.quote[v.key] as number }] : []));
+  const slots = [
+    { label: 'Frühmorgens', min: night, Icon: Sunrise, bar: 'bg-emerald-500' },
+    { label: 'Normaler Verkehr', min, Icon: Users, bar: 'bg-amber-400' },
+    { label: 'Berufsverkehr', min: rush, Icon: Car, bar: 'bg-red-500' },
+  ].filter((s) => s.min);
+  const maxSlot = Math.max(...slots.map((s) => s.min || 0), 1);
+
+  const tips = [
+    { Icon: Clock, text: night ? `Frühflug? Vor 6 Uhr sind die Straßen frei, rechnen Sie ab Stadtmitte mit rund ${night} Minuten.` : 'Frühflug? Wir fahren rund um die Uhr, auch um 4 Uhr morgens.' },
+    { Icon: Route, text: rush ? `Im Berufsverkehr (7 bis 9 Uhr) dauert die Fahrt etwa ${rush} Minuten. Unser Abholzeit-Rechner berücksichtigt das.` : 'Am Vorabend buchen, wir bestätigen innerhalb weniger Minuten.' },
+    { Icon: Users, text: 'Freitagnachmittag und zu Messezeiten ist auf der A9 Stau fast sicher. Planen Sie dann 90 Minuten und mehr Puffer ein.' },
+    { Icon: Plane, text: 'Landung in MUC? Wir verfolgen Ihren Flug und warten 60 Minuten kostenlos.' },
+  ];
 
   const faqs = [
     {
       q: 'Was kostet ein Taxi vom Flughafen München in die Innenstadt?',
-      a: `Das Festpreis-Taxi kostet zwischen Flughafen und Hauptbahnhof ab ${hbfKombi} für den Kombi (bis 4 Personen) und ab ${eur(hbf.quote.van)} für den Van. Im Preis sind Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit enthalten. Den genauen Preis für Ihre Adresse zeigt das Buchungsformular sofort an.`,
+      a: `Das Festpreis-Taxi kostet zwischen Flughafen und Hauptbahnhof ab ${hbfKombi} für den Kombi (1 bis 3 Personen) und ab ${eur(hbf.quote.van)} für den Van (bis 7 Personen). Im Preis sind Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit enthalten. Den genauen Preis für Ihre Adresse zeigt das Buchungsformular sofort an.`,
     },
     {
       q: 'Wie lange dauert ein Taxi vom Flughafen München ins Zentrum?',
@@ -96,87 +128,77 @@ export default async function TaxiFlughafenMuenchenPage() {
     },
   ];
 
+  const nearby = NEARBY_SLUGS.flatMap((slug) => (citiesBySlug[slug] && cityImages[slug] ? [citiesBySlug[slug]] : []));
+  const usedImages = nearby.map((c) => c.slug);
+
   const schemas = [
     {
       '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+      '@type': 'TaxiService',
+      name: 'Taxi zum Flughafen München',
+      url: `${SITE}/blog/taxi-flughafen-muenchen`,
+      provider: { '@type': 'LocalBusiness', name: 'Flughafen-München.TAXI', telephone: CONTACT_INFO.phone, url: SITE },
+      areaServed: [{ '@type': 'City', name: 'München' }, { '@type': 'Airport', name: 'Flughafen München', iataCode: 'MUC' }],
+      offers: vehicles.map((v) => ({ '@type': 'Offer', name: `${v.name}: München Hauptbahnhof zum Flughafen`, price: v.price.toFixed(2), priceCurrency: 'EUR' })),
     },
+    { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
     {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
-        { '@type': 'ListItem', position: 2, name: 'Taxi Flughafen München' },
+        { '@type': 'ListItem', position: 1, name: 'Startseite', item: SITE },
+        { '@type': 'ListItem', position: 2, name: 'Taxi Flughafen München', item: `${SITE}/blog/taxi-flughafen-muenchen` },
       ],
-    },
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Service',
-      name: 'Taxi zum Flughafen München (Festpreis)',
-      serviceType: 'Taxi',
-      areaServed: 'München',
-      provider: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE },
-      offers: VEHICLES.filter((v) => (v.key === 'grossraumtaxi' ? hbf.quote.grossraumtaxi : true)).map((v) => ({
-        '@type': 'Offer',
-        name: `${v.name}: München Hauptbahnhof zum Flughafen`,
-        price: Number(hbf.quote[v.key]).toFixed(2),
-        priceCurrency: 'EUR',
-      })),
     },
   ];
 
   return (
     <div className="bg-gray-50">
-      {schemas.map((s, i) => (
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
-      ))}
+      {schemas.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />)}
 
-      {/* Hero: real airport photo, price and one primary action */}
+      {/* Hero: airport photo, price and the four selling points */}
       <section className="relative overflow-hidden bg-primary-900 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/hero-airport.webp"
-          alt="Fahrer öffnet am Flughafen München die Tür eines Taxis für zwei Reisende mit Koffern"
-          className="absolute inset-0 h-full w-full object-cover object-[70%_center]"
-          fetchPriority="high"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/90 via-primary-900/55 to-primary-900/5" />
+        <img src="/images/hero-airport.webp" alt="Fahrer öffnet am Flughafen München die Tür eines Taxis für zwei Reisende mit Koffern" className="absolute inset-0 h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/80 via-primary-900/45 to-primary-900/5" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-primary-900/70 to-transparent" />
         <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 md:pb-32">
           <nav className="mb-8 flex flex-wrap items-center gap-1.5 text-xs text-white/75" aria-label="Brotkrumen">
-            <Link href="/" className="hover:text-white">Home</Link>
+            <Link href="/" className="hover:text-white">Startseite</Link>
             <ArrowRight size={12} />
             <span className="text-white">Taxi Flughafen München</span>
           </nav>
-          <h1 className="max-w-5xl text-4xl font-extrabold leading-[1.08] tracking-tight drop-shadow sm:text-5xl lg:text-[3.4rem]">
-            Taxi Flughafen München: <span className="text-gold-400">Kosten, Fahrtdauer</span> und Festpreise 2026
+          <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.08] tracking-tight drop-shadow sm:text-5xl md:text-6xl">
+            Taxi <span className="text-gold-400">Flughafen München</span>: Kosten, Fahrtdauer und Festpreise 2026
           </h1>
           <p className="mt-4 max-w-xl text-lg text-white/90 drop-shadow md:text-xl">
-            Alle Festpreise ab München und Umland, live aus unserem Buchungssystem. Fahrer am Ausgang, Flugüberwachung, Kindersitz kostenlos.
+            Zuverlässig. Pünktlich. Stressfrei.<br />Festpreise ab München und Umland, live aus unserem Buchungssystem.
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-baseline gap-2 rounded-xl bg-white/10 px-4 py-2 ring-1 ring-white/20 backdrop-blur">
-              <span className="text-sm text-white/80">Ab München</span>
-              <span className="text-3xl font-extrabold text-gold-400">{eur(from)}</span>
-            </div>
-            <a href="#booking" className="rounded-xl bg-gold-400 px-6 py-3 text-sm font-bold text-primary-900 transition hover:bg-gold-300">
-              Jetzt buchen
-            </a>
+          <div className="mt-5 inline-flex flex-wrap items-baseline gap-x-2 rounded-xl bg-white/10 px-4 py-2 ring-1 ring-white/20 backdrop-blur">
+            <span className="text-sm text-white/80">Festpreis ab</span>
+            <span className="text-3xl font-extrabold text-gold-400">{eur(from)}</span>
+            <span className="hidden text-sm text-white/70 sm:inline">· {minKm} bis {maxKm} km · ca. {minMin} bis {maxMin} Min. über die A9 · rund um die Uhr</span>
           </div>
+          <ul className="mt-7 grid max-w-3xl grid-cols-2 gap-4 md:grid-cols-4">
+            {HERO_FEAT.map(([a, b], i) => {
+              const Icon = [BadgeCheck, ShieldCheck, Timer, Users][i];
+              return (
+                <li key={a} className="flex items-center gap-2.5">
+                  <Icon size={28} className="shrink-0 text-gold-400" />
+                  <span className="text-sm leading-tight"><b className="block">{a}</b><span className="text-white/75">{b}</span></span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Booking card overlapping the hero, same component as the city pages */}
+        {/* Booking card overlapping the hero */}
         <div id="booking" className="-mt-20 scroll-mt-28">
-          <CityBooking
-            pickup="München Hauptbahnhof"
-            tabs={['Einfache Fahrt', 'Hin- und Rückfahrt', 'Abholung am Flughafen']}
-            people={['1 bis 8 Personen', 'Kombi, Van und Großraumtaxi']}
-          />
+          <CityBooking pickup="München Hauptbahnhof" tabs={['Einfache Fahrt', 'Hin- und Rückfahrt', 'Abholung am Flughafen']} people={['1 bis 8 Personen', 'Kombi, Van & Großraumtaxi']} />
           <p className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-gray-500">
-            <span>Abholort ist vorausgefüllt. Mit Straße und Hausnummer sehen Sie Ihren genauen Preis.</span>
+            <span className="inline-flex items-center gap-1.5"><Navigation size={13} className="text-gold-600" /> Abholort ist mit München Hauptbahnhof vorausgefüllt. Straße und Hausnummer ergänzen für Ihren exakten Preis.</span>
             <span className="flex items-center gap-4">
               <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-1.5 font-semibold text-primary-700 hover:underline"><Phone size={13} /> {CONTACT_INFO.phone}</a>
               <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline"><MessageCircle size={13} /> WhatsApp</a>
@@ -184,208 +206,231 @@ export default async function TaxiFlughafenMuenchenPage() {
           </p>
         </div>
 
-        {/* Prices */}
-        <section className="mt-14" aria-labelledby="preise">
-          <div className="max-w-3xl">
-            <h2 id="preise" className="text-3xl font-extrabold tracking-tight text-primary-800">Was kostet ein Taxi zum Flughafen München?</h2>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Bei uns zahlen Sie einen Festpreis, unabhängig von Stau oder Umwegen. Er enthält Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit.
-              Die Preise gelten für die einfache Fahrt ab Stadtmitte bzw. Ortsmitte.
-            </p>
-          </div>
+        {/* Vehicles & prices (dark panel) + route card */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.75fr_1fr]">
+          <section className="rounded-2xl bg-primary-900 p-5 text-white shadow-lg md:p-6">
+            <h2 className="text-2xl font-extrabold">Unsere Fahrzeuge &amp; Preise</h2>
+            <p className="mt-1 text-sm text-white/80">Festpreise ab Hauptbahnhof, inklusive Maut, Flugüberwachung und Wartezeit. Den exakten Preis für Ihre Adresse zeigt das Buchungsformular sofort an.</p>
+            <div className={`mt-5 grid gap-4 ${vehicles.length === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+              {vehicles.map((v, i) => (
+                <div key={v.key} className={`relative flex flex-col overflow-hidden rounded-xl bg-white text-gray-900 ${i === 1 ? 'ring-[3px] ring-gold-400' : ''}`}>
+                  {v.badge && <span className="absolute right-2 top-2 z-10 rounded-full bg-gold-400 px-2.5 py-0.5 text-[11px] font-bold text-primary-900 shadow">{v.badge}</span>}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={v.photo} alt={v.name} loading="lazy" className="h-28 w-full object-cover" />
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="font-bold">{v.name}</div>
+                    <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                      <li className="flex items-center gap-2"><Users size={14} className="text-gray-400" /> {v.pax}</li>
+                      <li className="flex items-center gap-2"><Luggage size={14} className="text-gray-400" /> {v.bags}</li>
+                    </ul>
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                      <span className="text-sm text-gray-500">ab</span>
+                      <span className="whitespace-nowrap text-3xl font-extrabold tracking-tight text-primary-800">{eur(v.price)}</span>
+                    </div>
+                    <a href="#booking" className={`mt-4 rounded-lg px-3 py-2 text-center text-sm font-bold transition ${i === 1 ? 'bg-gold-400 text-primary-900 hover:bg-gold-300' : 'border-2 border-primary-800 text-primary-800 hover:bg-primary-800 hover:text-white'}`}>Jetzt buchen</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
 
-          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
+            <h2 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900"><Car size={24} className="text-primary-700" /> Strecke &amp; Fahrzeit</h2>
+            <div className="mt-4">
+              <RouteSketch city="München" airport="Flughafen München (MUC)" road={road} cityWest={(geo?.lng ?? 0) < AIRPORT_LNG} />
+            </div>
+            <div className="mt-4 flex flex-wrap justify-between gap-2 text-sm font-semibold text-gray-900">
+              <span className="inline-flex items-center gap-1.5"><MapPin size={16} className="text-primary-700" /> {km} km</span>
+              <span className="inline-flex items-center gap-1.5"><Route size={16} className="text-primary-700" /> {road}</span>
+              <span className="inline-flex items-center gap-1.5"><Clock size={16} className="text-primary-700" /> ~{min} Min.</span>
+            </div>
+            {slots.length > 1 && (
+              <div className="mt-5 space-y-3 border-t border-gray-100 pt-4">
+                {slots.map((s) => (
+                  <div key={s.label} className="flex items-center gap-3">
+                    <span className="flex w-36 shrink-0 items-center gap-2 text-sm text-gray-600"><s.Icon size={15} className="text-gray-400" /> {s.label}</span>
+                    <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                      <div className={`h-full rounded-full ${s.bar}`} style={{ width: `${((s.min || 0) / maxSlot) * 100}%` }} />
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-sm font-bold tabular-nums text-gray-900">{s.min} Min.</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-4 text-xs text-gray-500">Gerechnet ab Stadtmitte. Ab Hauptbahnhof sind es rund {Math.round(hbf.km)} km und etwa {hbf.min} Minuten.</p>
+          </section>
+        </div>
+
+        {/* Included strip */}
+        <section className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-gray-200 shadow-sm ring-1 ring-gray-200 md:grid-cols-3">
+          {INCL.map(([title, sub], i) => {
+            const Icon = [BadgeCheck, Plane, Timer, Users, Baby, CreditCard][i] || ShieldCheck;
+            return (
+              <div key={title} className="flex items-start gap-3 bg-white p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-100 text-primary-800"><Icon size={18} /></span>
+                <div className="min-w-0">
+                  <div className="hyphens-auto break-words text-[13px] font-bold text-gray-900 sm:text-sm">{title}</div>
+                  <div className="text-xs text-gray-500">{sub}</div>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+
+        {/* Prices by pick-up area */}
+        <section id="preise" className="mt-8 scroll-mt-28" aria-labelledby="preise-titel">
+          <h2 id="preise-titel" className="text-2xl font-extrabold text-gray-900">Was kostet ein Taxi zum Flughafen München?</h2>
+          <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-gray-600">
+            Bei uns zahlen Sie einen Festpreis, unabhängig von Stau oder Umwegen. Er enthält Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit.
+            Die Preise gelten für die einfache Fahrt ab Stadtmitte bzw. Ortsmitte.
+          </p>
+          <div className="mt-5 grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
             <PriceGroup title="Ab München" rows={munich} />
             <PriceGroup title="Umland und Fernziele" rows={umland} />
           </div>
-          <p className="mt-4 text-xs leading-relaxed text-gray-500 max-w-[75ch]">
+          <p className="mt-3 max-w-[85ch] text-xs leading-relaxed text-gray-500">
             {anyLive ? `Live aus unserem Buchungssystem, Stand ${stand}. ` : ''}
             Den genauen Preis für Ihre Adresse zeigt das Buchungsformular. Kindersitz kostenlos, Fahrradtransport auf Anfrage.
           </p>
         </section>
 
-        {/* Fixed price vs taximeter */}
-        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-start">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-primary-800">Festpreis statt Taxameter</h2>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Der amtliche Münchner Taxitarif besteht aus <strong className="text-gray-900">5,90 € Grundgebühr</strong> plus Kilometerpreis, dazu kommt Wartezeit im Stau.
-              Bei einer Fahrt nach Taxameter steht der Endbetrag erst am Ziel fest und schwankt mit dem Verkehr.
+        {/* Fixed price | Tips | FAQ */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+            <h2 className="text-2xl font-extrabold text-gray-900">Festpreis statt Taxameter</h2>
+            <p className="mt-3 text-sm leading-relaxed text-gray-700">
+              Der amtliche Münchner Taxitarif besteht aus 5,90 € Grundgebühr plus Kilometerpreis, dazu kommt Wartezeit im Stau.
+              Bei einer Fahrt nach Taxameter steht der Endbetrag erst am Ziel fest. Mit unserem Festpreis kennen Sie ihn schon bei der Buchung.
             </p>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Mit unserem Festpreis kennen Sie den Betrag schon bei der Buchung. Er ändert sich nicht durch Wartezeiten oder Umwege.
-            </p>
-          </div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {[
-              { Icon: BadgeCheck, t: 'Preis vor der Buchung', d: 'Keine Überraschung am Ziel' },
-              { Icon: PlaneLanding, t: 'Flugüberwachung', d: 'Abholzeit passt sich an' },
-              { Icon: Clock, t: '60 Minuten Wartezeit', d: 'Bei Verspätung kostenlos' },
-              { Icon: ShieldCheck, t: 'Kostenlose Stornierung', d: 'Bis 3 Stunden vor der Fahrt' },
-            ].map(({ Icon, t, d }) => (
-              <li key={t} className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
-                <Icon size={22} className="mt-0.5 shrink-0 text-primary-700" />
-                <span className="text-sm leading-snug"><b className="block text-gray-900">{t}</b><span className="text-gray-600">{d}</span></span>
-              </li>
-            ))}
-          </ul>
-        </section>
+            <dl className="mt-5 grid grid-cols-2 gap-3">
+              {[['5,90 €', 'Grundgebühr Münchner Taxitarif'], ['60 Min.', 'Wartezeit am Flughafen gratis'], ['3 Std.', 'Kostenlos stornieren vor Abholung'], ['Maut', 'im Festpreis enthalten']].map(([v, k]) => (
+                <div key={k}><dd className="text-sm font-bold text-gray-900">{v}</dd><dt className="text-[11px] text-gray-500">{k}</dt></div>
+              ))}
+            </dl>
+          </section>
 
-        {/* Vehicles: one lead vehicle, two supporting, not three equal cards */}
-        <section className="mt-14" aria-labelledby="fahrzeuge">
-          <h2 id="fahrzeuge" className="text-3xl font-extrabold tracking-tight text-primary-800">Welches Fahrzeug passt zu Ihrer Reise?</h2>
-          <p className="mt-3 text-base text-gray-600 max-w-[65ch]">Preise ab Hauptbahnhof, jeweils für das ganze Fahrzeug.</p>
-          <div className="mt-8 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-            {VEHICLES.map((v, i) => {
-              const price = hbf.quote[v.key];
-              if (!price) return null;
-              const lead = i === 0;
-              return (
-                <article
-                  key={v.key}
-                  className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 ${lead ? 'lg:row-span-2' : 'sm:flex'}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={v.photo}
-                    alt={`${v.name}, ${v.model}`}
-                    loading="lazy"
-                    className={lead ? 'h-56 w-full object-cover sm:h-72' : 'h-44 w-full object-cover sm:h-auto sm:w-2/5'}
-                  />
-                  <div className="flex flex-1 flex-col p-5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <h3 className="text-xl font-extrabold text-gray-900">{v.name}</h3>
-                      <p className="text-sm text-gray-500">ab <span className="text-2xl font-extrabold tracking-tight text-primary-800">{eur(price)}</span></p>
-                    </div>
-                    <p className="text-sm text-gray-500">{v.model}</p>
-                    <ul className="mt-3 space-y-1.5 text-sm text-gray-700">
-                      <li className="flex items-center gap-2"><Users size={15} className="text-gray-400" /> {v.pax}</li>
-                      <li className="flex items-center gap-2"><Luggage size={15} className="text-gray-400" /> {v.bags}</li>
-                      <li className="flex items-center gap-2"><BadgeCheck size={15} className="text-gray-400" /> Ideal für {v.best}</li>
-                    </ul>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Travel time and when to leave */}
-        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.2fr]" aria-labelledby="fahrtdauer">
-          <div>
-            <h2 id="fahrtdauer" className="text-3xl font-extrabold tracking-tight text-primary-800">Wie lange dauert die Fahrt?</h2>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Der Flughafen München (MUC) liegt rund <strong className="text-gray-900">{Math.round(hbf.km)} Kilometer</strong> nordöstlich des Hauptbahnhofs in der Gemeinde Freising.
-              Die Hauptroute führt über die A9. Je nach Tageszeit dauert die Fahrt <strong className="text-gray-900">{hbf.min} bis 50 Minuten</strong>.
-            </p>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Die Fahrzeit für jeden Abholort finden Sie in der Preistabelle oben. Wir überwachen Ihren Flug und passen die Abholzeit bei Verspätung automatisch an.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
-            <h3 className="text-lg font-extrabold text-gray-900">Wann sollten Sie losfahren?</h3>
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+            <h2 className="text-2xl font-extrabold text-gray-900">Tipps für Ihre Fahrt</h2>
             <ul className="mt-4 space-y-4">
-              {TIMES.map(({ Icon, when, text }) => (
-                <li key={when} className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700"><Icon size={18} /></span>
-                  <span className="text-sm leading-snug"><b className="block text-gray-900">{when}</b><span className="text-gray-600">{text}</span></span>
+              {tips.map(({ Icon, text }) => (
+                <li key={text} className="flex gap-3 text-sm leading-relaxed text-gray-700">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700"><Icon size={17} /></span>{text}
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
+          </section>
 
-        {/* Meeting points at the airport (texts match the driver messages sent to customers) */}
-        <section className="mt-14 rounded-2xl bg-primary-800 p-6 text-white shadow-lg md:p-10" aria-labelledby="treffpunkte">
-          <div className="max-w-2xl">
-            <h2 id="treffpunkte" className="text-3xl font-extrabold tracking-tight">Wo holt Sie Ihr Fahrer am Flughafen ab?</h2>
-            <p className="mt-3 text-base leading-relaxed text-white/85 max-w-[65ch]">
-              Bei vorgebuchten Fahrten wartet Ihr Fahrer mit Namensschild auf Sie. Kein Suchen, kein Schlangestehen.
-              Den Treffpunkt wählen Sie bei der Buchung.
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+            <h2 className="text-2xl font-extrabold text-gray-900">Häufige Fragen</h2>
+            <div className="mt-4 space-y-2">
+              {faqs.map(({ q, a }) => (
+                <details key={q} className="group rounded-lg ring-1 ring-gray-200 open:ring-gold-300">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-gray-800">
+                    {q}<span className="shrink-0 text-lg leading-none text-gray-400 transition group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="px-3 pb-3 text-sm leading-relaxed text-gray-600">{a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Ride details and meeting points | pick-up time calculator */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
+            <h2 className="text-2xl font-extrabold text-gray-900">Ihre Fahrt zum Flughafen München</h2>
+            <p className="mt-3 leading-relaxed text-gray-700">
+              Der Flughafen München (MUC) liegt rund {km} km nordöstlich der Stadtmitte in der Gemeinde Freising, die Hauptroute führt über die A9.
+              Bei normalem Verkehr dauert die Fahrt etwa {min} Minuten{rush ? `, im morgendlichen Berufsverkehr etwa ${rush} Minuten` : ''}{night ? ` und frühmorgens nur rund ${night} Minuten` : ''}.
+              Bei vorgebuchten Fahrten wartet Ihr Fahrer mit Namensschild auf Sie, kein Suchen, kein Schlangestehen.
             </p>
+            <h3 className="mt-5 text-sm font-bold uppercase tracking-wider text-gold-700">Treffpunkte am Flughafen</h3>
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
+              {MEETING_POINTS.map(({ Icon, name, text }) => (
+                <li key={name} className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700"><Icon size={18} /></span>
+                  <span className="text-sm leading-relaxed text-gray-700"><b className="block text-gray-900">{name}</b>{text}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
+              <span>Reguläre Taxis ohne Festpreis stehen an den Taxiständen vor Terminal 1 und Terminal 2 bereit.</span>
+              <Link href="/treffpunkt-flughafen-muenchen" className="inline-flex items-center gap-1.5 font-bold text-primary-700 hover:underline">Zum Treffpunkt-Guide <ArrowRight size={14} /></Link>
+            </p>
+
+            <details className="group mt-5 border-t border-gray-100 pt-4">
+              <summary className="flex cursor-pointer list-none items-center gap-2 font-bold text-gray-900">
+                Mit Kind &amp; Haustier
+                <ChevronDown size={16} className="text-gold-600 transition group-open:rotate-180" />
+              </summary>
+              <div className="mt-3 grid gap-4 text-sm leading-relaxed text-gray-700 sm:grid-cols-2">
+                <p className="flex gap-2"><Baby size={18} className="mt-0.5 shrink-0 text-primary-700" /><span><b className="text-gray-900">Kindersitz kostenlos.</b> Babyschale, Kindersitz und Sitzerhöhung auf Anfrage, bitte bei der Buchung angeben. In Deutschland gilt die Kindersitzpflicht auch im Taxi.</span></p>
+                <p className="flex gap-2"><PawPrint size={18} className="mt-0.5 shrink-0 text-primary-700" /><span><b className="text-gray-900">Haustiere im Käfig.</b> Sie reisen im geschlossenen Käfig oder in der Transportbox und bleiben darin, solange die Fahrt dauert. Bitte bei der Buchung unter Extras angeben. Assistenzhunde sind ausgenommen.</span></p>
+              </div>
+            </details>
+          </section>
+          <DepartureCalc
+            min={min}
+            rush={rush}
+            night={night}
+            t={{ title: 'Wann sollen wir Sie abholen?', flightTime: 'Abflugzeit', flightType: 'Flug', eu: 'Schengen / EU', intl: 'Interkontinental', result: 'Empfohlene Abholzeit', drive: 'Fahrt', airport: 'Am Flughafen', buffer: 'Puffer', note: 'Faustregel: 2 Std. vor EU-Flügen, 3 Std. vor Langstrecke am Flughafen sein. Bitte die Empfehlung Ihrer Airline beachten.', unit: 'Min.' }}
+          />
+        </div>
+      </div>
+
+      {/* More routes with city photos (dark band) */}
+      <section className="relative mt-12 overflow-hidden bg-primary-900 py-10 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/hero-airport.webp" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-15" />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-2xl font-extrabold">Weitere Taxi-Strecken zum Flughafen München</h2>
+            <a href="#preise" className="rounded-lg px-4 py-2 text-sm font-bold ring-1 ring-white/40 hover:bg-white hover:text-primary-900">Alle Preise ansehen →</a>
           </div>
-          <ul className="mt-8 grid gap-x-10 gap-y-7 md:grid-cols-2">
-            {MEETING_POINTS.map(({ Icon, name, text }) => (
-              <li key={name} className="flex items-start gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-gold-400 ring-1 ring-white/15"><Icon size={22} /></span>
-                <span className="text-sm leading-relaxed"><b className="block text-base text-white">{name}</b><span className="text-white/80">{text}</span></span>
+          <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+            {nearby.map((c) => (
+              <li key={c.slug}>
+                <Link href={`/blog/${c.slug}`} className="group block h-full overflow-hidden rounded-xl bg-white text-gray-900 shadow transition hover:-translate-y-0.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/images/cities/${c.slug}-sm.webp`} alt={c.nameDE} loading="lazy" className="h-20 w-full object-cover" />
+                  <div className="flex items-center justify-between gap-1 p-2.5">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold">{c.nameDE}</span>
+                      <span className="block text-[11px] text-gray-500">→ MUC · {Math.round(cityGeo[c.slug]?.km ?? c.distance_km)} km</span>
+                    </span>
+                    <ArrowRight size={14} className="shrink-0 text-gray-400 group-hover:text-gold-600" />
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
-          <div className="mt-8 flex flex-col gap-4 border-t border-white/15 pt-6 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-[60ch] text-white/80">
-              Reguläre Taxis ohne Festpreis stehen an den Taxiständen vor Terminal 1 und Terminal 2 bereit.
-            </p>
-            <Link href="/treffpunkt-flughafen-muenchen" className="inline-flex items-center gap-2 font-bold text-gold-400 hover:text-gold-300">
-              Zum Treffpunkt-Guide <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
+          <p className="mt-5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/80">
+            <Link href="/munich-airport-to-city-centre" className="hover:text-gold-300 hover:underline">Ratgeber: Flughafen → Innenstadt</Link>
+            <Link href="/messe-muenchen-transfer" className="hover:text-gold-300 hover:underline">Messe-Transfer München</Link>
+            <Link href="/treffpunkt-flughafen-muenchen" className="hover:text-gold-300 hover:underline">Treffpunkt am Flughafen</Link>
+          </p>
+        </div>
+      </section>
 
-        {/* Booking steps as a vertical timeline */}
-        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.2fr]" aria-labelledby="buchen">
-          <div>
-            <h2 id="buchen" className="text-3xl font-extrabold tracking-tight text-primary-800">Taxi zum Flughafen München buchen</h2>
-            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
-              Online buchen dauert etwa eine Minute. Die Bestätigung kommt sofort per E-Mail, bis 3 Stunden vor der Fahrt stornieren Sie kostenlos.
-            </p>
-          </div>
-          <ol className="relative space-y-6 border-l-2 border-primary-100 pl-6">
-            {STEPS.map(({ title, text }, i) => (
-              <li key={title} className="relative">
-                <span className="absolute -left-[2.15rem] flex h-8 w-8 items-center justify-center rounded-full bg-primary-800 text-sm font-bold text-white ring-4 ring-gray-50">{i + 1}</span>
-                <p className="font-bold text-gray-900">{title}</p>
-                <p className="mt-1 text-sm text-gray-600 max-w-[60ch]">{text}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Children and pets */}
-        <section className="mt-14 grid gap-5 md:grid-cols-2">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
-            <h2 className="flex items-center gap-2 text-xl font-extrabold text-gray-900"><Baby size={22} className="text-primary-700" /> Mit Kind</h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Der Kindersitz ist bei uns kostenlos: Babyschale, Kindersitz und Sitzerhöhung auf Anfrage. Bitte bei der Buchung angeben.
-              In Deutschland gilt die Kindersitzpflicht auch im Taxi.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
-            <h2 className="flex items-center gap-2 text-xl font-extrabold text-gray-900"><PawPrint size={22} className="text-primary-700" /> Mit Haustier</h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Haustiere reisen im geschlossenen Käfig oder in der Transportbox und bleiben darin, solange die Fahrt dauert.
-              Bitte bei der Buchung unter Extras angeben. Assistenzhunde sind ausgenommen.
-            </p>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="mt-14" aria-labelledby="faq">
-          <h2 id="faq" className="text-3xl font-extrabold tracking-tight text-primary-800">Häufige Fragen zum Taxi Flughafen München</h2>
-          <div className="mt-6 space-y-3 max-w-3xl">
-            {faqs.map((f) => (
-              <details key={f.q} className="group rounded-xl bg-white ring-1 ring-gray-200">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-gray-900">
-                  {f.q}
-                  <span className="shrink-0 text-primary-700 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
-                </summary>
-                <p className="px-5 pb-4 text-sm leading-relaxed text-gray-600">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="mb-16 mt-14 rounded-2xl bg-gradient-to-br from-primary-800 to-primary-900 p-8 text-center text-white md:p-10">
-          <h2 className="text-2xl font-extrabold md:text-3xl">Bereit für Ihre Fahrt?</h2>
-          <p className="mx-auto mt-2 max-w-xl text-primary-100">Festpreis berechnen, in einer Minute buchen. Pünktlich, professionell, rund um die Uhr.</p>
+      {/* Final CTA */}
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <section className="rounded-3xl bg-gradient-to-br from-gold-400 to-gold-500 p-8 text-center md:p-12">
+          <h2 className="text-2xl font-extrabold text-primary-900 md:text-3xl">Jetzt Taxi zum Flughafen München buchen</h2>
+          <p className="mt-2 text-primary-900/80">Festpreis ab {eur(from)} · rund um die Uhr · Sofortbestätigung</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <a href="#booking" className="rounded-xl bg-gold-400 px-8 py-3 font-bold text-primary-900 transition hover:bg-gold-300">Jetzt buchen</a>
-            <a href={CONTACT_INFO.phoneHref} className="flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-8 py-3 font-bold text-white transition hover:bg-white/20">
+            <a href="#booking" className="rounded-xl bg-primary-900 px-8 py-3 font-bold text-white transition hover:bg-primary-800">Preis berechnen →</a>
+            <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-primary-900 px-8 py-3 font-bold text-primary-900 transition hover:bg-primary-900 hover:text-white">
               <Phone size={18} /> {CONTACT_INFO.phone}
             </a>
           </div>
         </section>
+        {usedImages.length > 0 && (
+          <p className="mt-6 text-[10px] leading-relaxed text-gray-400">
+            Bildnachweis: {usedImages.map((s, i) => (
+              <span key={s}>{i > 0 && ' · '}{citiesBySlug[s]?.nameDE}: {cityImages[s].artist} (<a href={cityImages[s].source} target="_blank" rel="noopener noreferrer nofollow" className="underline">{cityImages[s].license}</a>)</span>
+            ))} · Wikimedia Commons
+          </p>
+        )}
       </div>
     </div>
   );
