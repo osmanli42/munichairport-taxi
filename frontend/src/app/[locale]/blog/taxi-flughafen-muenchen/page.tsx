@@ -1,374 +1,431 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Phone } from 'lucide-react';
+import {
+  ArrowRight, Baby, BadgeCheck, Clock, Luggage, MapPin, MessageCircle, Moon, PawPrint, Phone,
+  PlaneLanding, ShieldCheck, Sun, Sunrise, Timer, Users, CalendarClock,
+} from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
+import CityBooking from '@/components/city/CityBooking';
+import { eur, getAreaPrices, type PricedRow } from '@/lib/blogAirportPrices';
 
-export const metadata: Metadata = {
-  title: { absolute: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026' },
-  description:
-    'Was kostet ein Taxi zum Flughafen München? Alle Festpreise 2026, Fahrtdauer aus verschiedenen Stadtteilen und Tipps für eine stressfreie Anreise.',
-  alternates: {
-    canonical: '/blog/taxi-flughafen-muenchen',
-  },
-};
+// Prices come live from the booking price engine (cached 1 h per request), like the city pages.
+export const dynamic = 'force-dynamic';
 
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'Was kostet ein Taxi vom Flughafen München in die Innenstadt?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Ein Festpreis-Taxi von Flughafen-muenchen.TAXI kostet vom Hauptbahnhof/Innenstadt zum Flughafen München ab 88 € für einen Kombi. Van und Großraumtaxi sind für Gruppen ab 4 Personen verfügbar.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Wie lange dauert ein Taxi vom Flughafen München ins Zentrum?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Die Fahrt vom Flughafen München (MUC) in die Münchner Innenstadt dauert je nach Verkehrslage 35 bis 50 Minuten. Die Straßenstrecke beträgt ca. 38 km über die A9.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Was passiert bei Flugverspätung?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Wir überwachen Ihren Flug in Echtzeit und warten bis zu 60 Minuten kostenlos auf Sie. Bei Verspätungen passen wir die Abholzeit automatisch an – kein Aufpreis.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Gibt es Kindersitze im Taxi zum Flughafen München?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Ja, Kindersitze (Babyschale, Kindersitz, Sitzerhöhung) sind bei uns kostenlos. Bitte bei der Buchung angeben.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Wie früh sollte ich das Taxi zum Flughafen München bestellen?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Empfehlenswert ist eine Vorbestellung 24–48 Stunden im Voraus. Planen Sie die Abfahrt mindestens 60–90 Minuten vor dem Check-in ein.',
-      },
-    },
-  ],
-};
+const SITE = 'https://flughafen-muenchen.taxi';
 
-const breadcrumbSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://flughafen-muenchen.taxi' },
-    { '@type': 'ListItem', position: 2, name: 'Taxi Flughafen München' },
-  ],
-};
+const pick = (rows: PricedRow[], key: string) => rows.find((r) => r.key === key) as PricedRow;
+const cheapestMunich = (rows: PricedRow[]) => Math.min(...rows.filter((r) => r.group === 'muenchen').map((r) => r.quote.kombi));
 
-const PRICES = [
-  { area: 'München Hauptbahnhof / Innenstadt', km: 38, kombi: 88, van: 94 },
-  { area: 'Schwabing / Maxvorstadt', km: 35, kombi: 82, van: 87 },
-  { area: 'Bogenhausen / Haidhausen', km: 32, kombi: 75, van: 80 },
-  { area: 'Pasing / Sendling', km: 45, kombi: 103, van: 109 },
-  { area: 'Unterschleißheim', km: 15, kombi: 40, van: 43 },
-  { area: 'Garching', km: 12, kombi: 33, van: 36 },
-  { area: 'Freising', km: 10, kombi: 29, van: 32 },
-  { area: 'Augsburg', km: 85, kombi: 187, van: 197 },
-  { area: 'Salzburg', km: 145, kombi: 313, van: 329 },
+export async function generateMetadata(): Promise<Metadata> {
+  const rows = await getAreaPrices();
+  const from = eur(cheapestMunich(rows));
+  return {
+    title: { absolute: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026' },
+    description: `Taxi zum Flughafen München ab ${from} Festpreis: alle Preise aus München und Umland, Fahrtdauer, Fahrzeuge und Tipps. 24/7, mit Flugüberwachung.`,
+    alternates: { canonical: '/blog/taxi-flughafen-muenchen' },
+    openGraph: {
+      title: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026',
+      description: `Festpreise ab ${from}, Fahrer am Ausgang, Kindersitz kostenlos.`,
+      url: `${SITE}/blog/taxi-flughafen-muenchen`,
+      images: [{ url: `${SITE}/images/hero-airport.webp` }],
+      type: 'article',
+    },
+  };
+}
+
+const VEHICLES = [
+  { key: 'kombi' as const, name: 'Kombi', model: 'Mercedes E-Klasse', pax: 'bis 4 Personen', bags: 'bis 4 Koffer', best: 'Einzelreisende und Paare', photo: '/images/kombi.webp' },
+  { key: 'van' as const, name: 'Van', model: 'Mercedes Viano', pax: 'bis 7 Personen', bags: 'bis 10 Koffer', best: 'Familien und kleine Gruppen', photo: '/images/van.webp' },
+  { key: 'grossraumtaxi' as const, name: 'Großraumtaxi', model: 'Mercedes Vito', pax: 'bis 8 Personen', bags: 'bis 12 Koffer', best: 'Große Gruppen', photo: '/images/grossraumtaxi.webp' },
 ];
 
-export default function TaxiFlughafenMuenchenPage() {
+const TIMES = [
+  { Icon: Sunrise, when: 'Frühflüge vor 8 Uhr', text: 'Wenig Verkehr. 60 Minuten Puffer genügen meist.' },
+  { Icon: Sun, when: 'Tagesflüge von 8 bis 17 Uhr', text: '75 bis 90 Minuten einplanen.' },
+  { Icon: Timer, when: 'Freitagnachmittag und Messezeiten', text: 'Auf der A9 ist Stau fast sicher. Besser 90 Minuten und mehr Puffer.' },
+  { Icon: Moon, when: 'Nachtflüge', text: 'Kaum Verkehr, 60 Minuten reichen in der Regel.' },
+];
+
+const STEPS = [
+  { title: 'Adresse eingeben', text: 'Abholort, Ziel, Datum und Uhrzeit angeben. Das dauert etwa eine Minute.' },
+  { title: 'Fahrzeug und Festpreis wählen', text: 'Kombi, Van oder Großraumtaxi wählen. Der Preis erscheint sofort.' },
+  { title: 'Bestätigung erhalten', text: 'Sie bekommen die Bestätigung per E-Mail. Bezahlt wird bar oder per Karte, ohne Aufschlag.' },
+];
+
+export default async function TaxiFlughafenMuenchenPage() {
+  const rows = await getAreaPrices();
+  const hbf = pick(rows, 'hbf');
+  const munich = rows.filter((r) => r.group === 'muenchen');
+  const umland = rows.filter((r) => r.group === 'umland');
+  const from = cheapestMunich(rows);
+  const anyLive = rows.some((r) => r.live);
+  const stand = new Date().toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: 'numeric', month: 'long', year: 'numeric' });
+  const hbfKombi = eur(hbf.quote.kombi);
+
+  const faqs = [
+    {
+      q: 'Was kostet ein Taxi vom Flughafen München in die Innenstadt?',
+      a: `Das Festpreis-Taxi kostet zwischen Flughafen und Hauptbahnhof ab ${hbfKombi} für den Kombi (bis 4 Personen) und ab ${eur(hbf.quote.van)} für den Van. Im Preis sind Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit enthalten. Den genauen Preis für Ihre Adresse zeigt das Buchungsformular sofort an.`,
+    },
+    {
+      q: 'Wie lange dauert ein Taxi vom Flughafen München ins Zentrum?',
+      a: `Die Fahrt zwischen Flughafen München (MUC) und Hauptbahnhof dauert je nach Verkehr etwa ${hbf.min} bis 50 Minuten. Die Strecke beträgt rund ${Math.round(hbf.km)} Kilometer, meist über die A9.`,
+    },
+    {
+      q: 'Was passiert bei Flugverspätung?',
+      a: 'Wir überwachen Ihren Flug in Echtzeit und warten bis zu 60 Minuten kostenlos auf Sie. Bei Verspätungen passen wir die Abholzeit automatisch an, ohne Aufpreis.',
+    },
+    {
+      q: 'Gibt es Kindersitze im Taxi zum Flughafen München?',
+      a: 'Ja, Kindersitze (Babyschale, Kindersitz, Sitzerhöhung) sind bei uns kostenlos. Bitte bei der Buchung angeben.',
+    },
+    {
+      q: 'Darf ich mein Haustier im Taxi mitnehmen?',
+      a: 'Ja. Haustiere werden ausschließlich in einem geschlossenen Käfig bzw. einer Transportbox befördert und bleiben während der gesamten Fahrt darin. Bitte bei der Buchung unter Extras angeben und bestätigen. Assistenzhunde sind von dieser Regel ausgenommen.',
+    },
+    {
+      q: 'Wie früh sollte ich das Taxi zum Flughafen München bestellen?',
+      a: 'Empfehlenswert ist eine Vorbestellung 24 bis 48 Stunden im Voraus. Planen Sie die Abfahrt mindestens 60 bis 90 Minuten vor dem Check-in ein.',
+    },
+  ];
+
+  const schemas = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+        { '@type': 'ListItem', position: 2, name: 'Taxi Flughafen München' },
+      ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Service',
+      name: 'Taxi zum Flughafen München (Festpreis)',
+      serviceType: 'Taxi',
+      areaServed: 'München',
+      provider: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE },
+      offers: VEHICLES.filter((v) => (v.key === 'grossraumtaxi' ? hbf.quote.grossraumtaxi : true)).map((v) => ({
+        '@type': 'Offer',
+        name: `${v.name}: München Hauptbahnhof zum Flughafen`,
+        price: Number(hbf.quote[v.key]).toFixed(2),
+        priceCurrency: 'EUR',
+      })),
+    },
+  ];
+
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+    <div className="bg-gray-50">
+      {schemas.map((s, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
+      ))}
 
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-
-        {/* Breadcrumb */}
-        <nav className="text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-primary-600">Home</Link>
-          <span className="mx-2">›</span>
-          <span>Taxi Flughafen München</span>
-        </nav>
-
-        {/* Header */}
-        <header className="mb-10">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary-600 leading-tight mb-4">
-            Taxi Flughafen München: Kosten, Fahrtdauer & Festpreise 2026
+      {/* Hero: real airport photo, price and one primary action */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/hero-airport.webp"
+          alt="Fahrer öffnet am Flughafen München die Tür eines Taxis für zwei Reisende mit Koffern"
+          className="absolute inset-0 h-full w-full object-cover object-[70%_center]"
+          fetchPriority="high"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/90 via-primary-900/55 to-primary-900/5" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-primary-900/70 to-transparent" />
+        <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 md:pb-32">
+          <nav className="mb-8 flex flex-wrap items-center gap-1.5 text-xs text-white/75" aria-label="Brotkrumen">
+            <Link href="/" className="hover:text-white">Home</Link>
+            <ArrowRight size={12} />
+            <span className="text-white">Taxi Flughafen München</span>
+          </nav>
+          <h1 className="max-w-5xl text-4xl font-extrabold leading-[1.08] tracking-tight drop-shadow sm:text-5xl lg:text-[3.4rem]">
+            Taxi Flughafen München: <span className="text-gold-400">Kosten, Fahrtdauer</span> und Festpreise 2026
           </h1>
-          <p className="text-lg text-gray-600 leading-relaxed">
-            Ob früher Morgenflieger oder später Nachtflug – ein zuverlässiges Taxi zum Flughafen München
-            ist für viele Reisende die bequemste Option. In diesem Ratgeber erfahren Sie alles Wichtige:
-            Was kostet die Fahrt? Wie lange dauert sie? Und warum lohnt sich ein Festpreis-Taxi?
+          <p className="mt-4 max-w-xl text-lg text-white/90 drop-shadow md:text-xl">
+            Alle Festpreise ab München und Umland, live aus unserem Buchungssystem. Fahrer am Ausgang, Flugüberwachung, Kindersitz kostenlos.
           </p>
-        </header>
-
-        {/* CTA Box */}
-        <div className="bg-primary-600 text-white rounded-2xl p-6 mb-10 flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-1">
-            <p className="font-bold text-lg">Jetzt Festpreis berechnen</p>
-            <p className="text-primary-200 text-sm">In 60 Sekunden online buchen – Festpreis, kein Stress.</p>
-          </div>
-          <div className="flex gap-3 shrink-0">
-            <Link
-              href="/#booking"
-              className="bg-gold-400 hover:bg-gold-500 text-primary-600 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors"
-            >
-              Preis berechnen →
-            </Link>
-            <a
-              href={CONTACT_INFO.phoneHref}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors"
-            >
-              <Phone size={14} />
-              Anrufen
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-baseline gap-2 rounded-xl bg-white/10 px-4 py-2 ring-1 ring-white/20 backdrop-blur">
+              <span className="text-sm text-white/80">Ab München</span>
+              <span className="text-3xl font-extrabold text-gold-400">{eur(from)}</span>
+            </div>
+            <a href="#booking" className="rounded-xl bg-gold-400 px-6 py-3 text-sm font-bold text-primary-900 transition hover:bg-gold-300">
+              Jetzt buchen
             </a>
           </div>
         </div>
+      </section>
 
-        {/* Content */}
-        <div className="prose prose-gray max-w-none">
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Wie weit ist der Flughafen München vom Stadtzentrum entfernt?
-          </h2>
-          <p>
-            Der Flughafen München (MUC) liegt rund <strong>38 Kilometer nördlich</strong> der Münchner Innenstadt
-            in der Gemeinde Freising. Die Hauptroute führt über die A9 – je nach Tageszeit und Verkehr dauert
-            die Fahrt <strong>35 bis 50 Minuten</strong>.
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+        {/* Booking card overlapping the hero, same component as the city pages */}
+        <div id="booking" className="-mt-20 scroll-mt-28">
+          <CityBooking
+            pickup="München Hauptbahnhof"
+            tabs={['Einfache Fahrt', 'Hin- und Rückfahrt', 'Abholung am Flughafen']}
+            people={['1 bis 8 Personen', 'Kombi, Van und Großraumtaxi']}
+          />
+          <p className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-gray-500">
+            <span>Abholort ist vorausgefüllt. Mit Straße und Hausnummer sehen Sie Ihren genauen Preis.</span>
+            <span className="flex items-center gap-4">
+              <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-1.5 font-semibold text-primary-700 hover:underline"><Phone size={13} /> {CONTACT_INFO.phone}</a>
+              <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline"><MessageCircle size={13} /> WhatsApp</a>
+            </span>
           </p>
+        </div>
 
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Was kostet ein Taxi zum Flughafen München? Festpreise 2026
-          </h2>
-          <p>
-            Bei uns zahlen Sie immer einen <strong>Festpreis</strong> – unabhängig von Staus oder Umwegen.
-            Der genaue Preis hängt von Ihrem Abholort ab:
+        {/* Prices */}
+        <section className="mt-14" aria-labelledby="preise">
+          <div className="max-w-3xl">
+            <h2 id="preise" className="text-3xl font-extrabold tracking-tight text-primary-800">Was kostet ein Taxi zum Flughafen München?</h2>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Bei uns zahlen Sie einen Festpreis, unabhängig von Stau oder Umwegen. Er enthält Maut, Gepäck, Flugüberwachung und 60 Minuten Wartezeit.
+              Die Preise gelten für die einfache Fahrt ab Stadtmitte bzw. Ortsmitte.
+            </p>
+          </div>
+
+          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
+            <PriceGroup title="Ab München" rows={munich} />
+            <PriceGroup title="Umland und Fernziele" rows={umland} />
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-gray-500 max-w-[75ch]">
+            {anyLive ? `Live aus unserem Buchungssystem, Stand ${stand}. ` : ''}
+            Den genauen Preis für Ihre Adresse zeigt das Buchungsformular. Kindersitz kostenlos, Fahrradtransport auf Anfrage.
           </p>
+        </section>
 
-          {/* Price table */}
-          <div className="overflow-x-auto my-6">
-            <table className="w-full text-sm border-collapse">
+        {/* Fixed price vs taximeter */}
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight text-primary-800">Festpreis statt Taxameter</h2>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Der amtliche Münchner Taxitarif besteht aus <strong className="text-gray-900">5,90 € Grundgebühr</strong> plus Kilometerpreis, dazu kommt Wartezeit im Stau.
+              Bei einer Fahrt nach Taxameter steht der Endbetrag erst am Ziel fest und schwankt mit dem Verkehr.
+            </p>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Mit unserem Festpreis kennen Sie den Betrag schon bei der Buchung. Er ändert sich nicht durch Wartezeiten oder Umwege.
+            </p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {[
+              { Icon: BadgeCheck, t: 'Preis vor der Buchung', d: 'Keine Überraschung am Ziel' },
+              { Icon: PlaneLanding, t: 'Flugüberwachung', d: 'Abholzeit passt sich an' },
+              { Icon: Clock, t: '60 Minuten Wartezeit', d: 'Bei Verspätung kostenlos' },
+              { Icon: ShieldCheck, t: 'Kostenlose Stornierung', d: 'Bis 3 Stunden vor der Fahrt' },
+            ].map(({ Icon, t, d }) => (
+              <li key={t} className="flex items-start gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+                <Icon size={22} className="mt-0.5 shrink-0 text-primary-700" />
+                <span className="text-sm leading-snug"><b className="block text-gray-900">{t}</b><span className="text-gray-600">{d}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Vehicles: one lead vehicle, two supporting, not three equal cards */}
+        <section className="mt-14" aria-labelledby="fahrzeuge">
+          <h2 id="fahrzeuge" className="text-3xl font-extrabold tracking-tight text-primary-800">Welches Fahrzeug passt zu Ihrer Reise?</h2>
+          <p className="mt-3 text-base text-gray-600 max-w-[65ch]">Preise ab Hauptbahnhof, jeweils für das ganze Fahrzeug.</p>
+          <div className="mt-8 grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+            {VEHICLES.map((v, i) => {
+              const price = hbf.quote[v.key];
+              if (!price) return null;
+              const lead = i === 0;
+              return (
+                <article
+                  key={v.key}
+                  className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 ${lead ? 'lg:row-span-2' : 'sm:flex'}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={v.photo}
+                    alt={`${v.name}, ${v.model}`}
+                    loading="lazy"
+                    className={lead ? 'h-56 w-full object-cover sm:h-72' : 'h-44 w-full object-cover sm:h-auto sm:w-2/5'}
+                  />
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="text-xl font-extrabold text-gray-900">{v.name}</h3>
+                      <p className="text-sm text-gray-500">ab <span className="text-2xl font-extrabold tracking-tight text-primary-800">{eur(price)}</span></p>
+                    </div>
+                    <p className="text-sm text-gray-500">{v.model}</p>
+                    <ul className="mt-3 space-y-1.5 text-sm text-gray-700">
+                      <li className="flex items-center gap-2"><Users size={15} className="text-gray-400" /> {v.pax}</li>
+                      <li className="flex items-center gap-2"><Luggage size={15} className="text-gray-400" /> {v.bags}</li>
+                      <li className="flex items-center gap-2"><BadgeCheck size={15} className="text-gray-400" /> Ideal für {v.best}</li>
+                    </ul>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Travel time and when to leave */}
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.2fr]" aria-labelledby="fahrtdauer">
+          <div>
+            <h2 id="fahrtdauer" className="text-3xl font-extrabold tracking-tight text-primary-800">Wie lange dauert die Fahrt?</h2>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Der Flughafen München (MUC) liegt rund <strong className="text-gray-900">{Math.round(hbf.km)} Kilometer</strong> nordöstlich des Hauptbahnhofs in der Gemeinde Freising.
+              Die Hauptroute führt über die A9. Je nach Tageszeit dauert die Fahrt <strong className="text-gray-900">{hbf.min} bis 50 Minuten</strong>.
+            </p>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Die Fahrzeit für jeden Abholort finden Sie in der Preistabelle oben. Wir überwachen Ihren Flug und passen die Abholzeit bei Verspätung automatisch an.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
+            <h3 className="text-lg font-extrabold text-gray-900">Wann sollten Sie losfahren?</h3>
+            <ul className="mt-4 space-y-4">
+              {TIMES.map(({ Icon, when, text }) => (
+                <li key={when} className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700"><Icon size={18} /></span>
+                  <span className="text-sm leading-snug"><b className="block text-gray-900">{when}</b><span className="text-gray-600">{text}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* Taxi vs S-Bahn, honest comparison */}
+        <section className="mt-14" aria-labelledby="sbahn">
+          <h2 id="sbahn" className="text-3xl font-extrabold tracking-tight text-primary-800">Taxi oder S-Bahn zum Flughafen München?</h2>
+          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary-600 text-white">
-                  <th className="text-left px-4 py-3 rounded-tl-lg">Abholort</th>
-                  <th className="text-center px-4 py-3">Entfernung</th>
-                  <th className="text-center px-4 py-3">Kombi</th>
-                  <th className="text-center px-4 py-3 rounded-tr-lg">Van</th>
+                <tr className="bg-primary-800 text-white">
+                  <th className="px-4 py-3 text-left font-semibold"><span className="sr-only">Merkmal</span></th>
+                  <th className="px-4 py-3 text-center font-semibold">Festpreis-Taxi</th>
+                  <th className="px-4 py-3 text-center font-semibold">S-Bahn (S1, S8)</th>
                 </tr>
               </thead>
               <tbody>
-                {PRICES.map((row, i) => (
-                  <tr key={row.area} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-3 font-medium text-gray-800">{row.area}</td>
-                    <td className="px-4 py-3 text-center text-gray-500">~{row.km} km</td>
-                    <td className="px-4 py-3 text-center font-bold text-primary-600">ab {row.kombi} €</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-700">ab {row.van} €</td>
+                {[
+                  ['Fahrzeit ab Hauptbahnhof', `${hbf.min} bis 50 Min.`, '40 bis 50 Min.'],
+                  ['Preis für 1 Person', `ab ${hbfKombi}`, 'ca. 15,10 €'],
+                  ['Preis für 4 Personen', `ab ${hbfKombi} gesamt`, 'ca. 60 € (4 Tickets)'],
+                  ['Tür zu Tür', 'Ja', 'Nein, Umstieg möglich'],
+                  ['Gepäck und Kinderwagen', 'Bequem im Fahrzeug', 'Eingeschränkt'],
+                  ['Nachts und früh', 'Rund um die Uhr', 'Eingeschränkter Fahrplan'],
+                ].map(([label, taxi, sbahn], i) => (
+                  <tr key={label} className={i % 2 ? 'bg-gray-50' : ''}>
+                    <td className="px-4 py-3 font-medium text-gray-800">{label}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-primary-800">{taxi}</td>
+                    <td className="px-4 py-3 text-center text-gray-600">{sbahn}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-gray-500 -mt-2 mb-6">
-            * Preise für einfache Fahrt inkl. Gepäck. Kindersitz kostenlos auf Anfrage. Fahrradtransport auf Anfrage.
+          <p className="mt-3 text-sm leading-relaxed text-gray-600 max-w-[75ch]">
+            <strong className="text-gray-900">Fazit:</strong> Die S-Bahn ist günstiger, das Taxi spart Umstiege und Schlepperei.
+            Es lohnt sich besonders mit Kindern, viel Gepäck, zu dritt oder zu viert und bei sehr frühen oder späten Flügen.
+            Das S-Bahn-Einzelticket zum Flughafen (Zone M-5) kostet laut MVV 15,10 € (Stand Juli 2026).
           </p>
+        </section>
 
-          <h3 className="text-xl font-bold text-gray-800 mt-8 mb-3">Festpreis – volle Planungssicherheit</h3>
-          <p>
-            Der amtliche Münchner Taxitarif liegt bei <strong>5,90 € Grundgebühr + Kilometerpreis</strong>, plus
-            Wartezeit im Stau. Bei einer Fahrt nach Taxameter steht der Endbetrag erst am Ziel fest und kann je nach
-            Verkehrslage schwanken.
-          </p>
-          <p>
-            Mit unserem Festpreis kennen Sie den Betrag schon bei der Buchung – transparent, planbar und ohne Aufschlag
-            für Wartezeiten oder Umwege. Sie zahlen genau den vereinbarten Preis.
-          </p>
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Wie lange dauert die Taxifahrt zum Flughafen München?
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
-            {[
-              { from: 'München Innenstadt / Hbf', time: '35–50 Min.' },
-              { from: 'Schwabing / Maxvorstadt', time: '35–45 Min.' },
-              { from: 'Pasing / Sendling', time: '40–55 Min.' },
-              { from: 'Garching', time: '20–30 Min.' },
-              { from: 'Unterschleißheim', time: '20–30 Min.' },
-              { from: 'Freising', time: '15–20 Min.' },
-            ].map(({ from, time }) => (
-              <div key={from} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                <span className="text-sm text-gray-700">{from}</span>
-                <span className="text-sm font-bold text-primary-600 ml-4 shrink-0">{time}</span>
-              </div>
-            ))}
+        {/* Booking steps as a vertical timeline */}
+        <section className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.2fr]" aria-labelledby="buchen">
+          <div>
+            <h2 id="buchen" className="text-3xl font-extrabold tracking-tight text-primary-800">Taxi zum Flughafen München buchen</h2>
+            <p className="mt-3 text-base leading-relaxed text-gray-600 max-w-[65ch]">
+              Bei vorgebuchten Fahrten empfängt Sie Ihr Fahrer mit Namensschild im Ankunftsbereich. Kein Suchen, kein Schlangestehen.
+              Alternativ stehen an den Taxiständen vor Terminal 1 und Terminal 2 reguläre Taxis bereit, allerdings ohne Festpreis.
+            </p>
           </div>
-
-          <h3 className="text-xl font-bold text-gray-800 mt-8 mb-3">Tipps für eine pünktliche Anreise</h3>
-          <ul className="space-y-2 text-gray-700">
-            <li><strong>Frühflüge (vor 8 Uhr):</strong> Wenig Verkehr – 60 Minuten Puffer genügen meist.</li>
-            <li><strong>Tagesflüge (8–17 Uhr):</strong> 75–90 Minuten einplanen.</li>
-            <li><strong>Freitagnachmittag & Messzeiten:</strong> Stau auf der A9 fast garantiert – 90+ Minuten Puffer.</li>
-            <li><strong>Nachtflüge:</strong> Wenig Verkehr, 60 Minuten reichen in der Regel.</li>
-          </ul>
-          <p className="mt-3">
-            Wir überwachen Ihren Flug in Echtzeit und passen die Abholzeit bei Verspätungen automatisch an.
-          </p>
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Taxi Flughafen München buchen – so einfach geht's
-          </h2>
-          <ol className="space-y-4 my-4">
-            {[
-              { step: '1', title: 'Adresse eingeben', text: 'Abholort, Ziel, Datum und Uhrzeit eingeben – dauert 60 Sekunden.' },
-              { step: '2', title: 'Fahrzeug & Festpreis wählen', text: 'Kombi, Van oder Großraumtaxi wählen. Ihr Preis wird sofort angezeigt.' },
-              { step: '3', title: 'Bestätigung erhalten', text: 'Sofortige E-Mail-Bestätigung. Bezahlung bar oder per Karte – ohne Aufschlag.' },
-            ].map(({ step, title, text }) => (
-              <li key={step} className="flex gap-4 items-start">
-                <span className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm shrink-0">
-                  {step}
-                </span>
-                <div>
-                  <p className="font-semibold text-gray-800">{title}</p>
-                  <p className="text-gray-600 text-sm">{text}</p>
-                </div>
+          <ol className="relative space-y-6 border-l-2 border-primary-100 pl-6">
+            {STEPS.map(({ title, text }, i) => (
+              <li key={title} className="relative">
+                <span className="absolute -left-[2.15rem] flex h-8 w-8 items-center justify-center rounded-full bg-primary-800 text-sm font-bold text-white ring-4 ring-gray-50">{i + 1}</span>
+                <p className="font-bold text-gray-900">{title}</p>
+                <p className="mt-1 text-sm text-gray-600 max-w-[60ch]">{text}</p>
               </li>
             ))}
           </ol>
+        </section>
 
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Welches Fahrzeug passt zu Ihrer Reise?
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
-            {[
-              { name: 'Kombi', model: 'Mercedes E-Klasse', persons: 'bis 4 Personen', luggage: 'bis 4 Koffer', best: 'Einzelreisende & Paare' },
-              { name: 'Van / Minibus', model: 'Mercedes Viano', persons: 'bis 7 Personen', luggage: 'bis 10 Koffer', best: 'Familien & Gruppen' },
-              { name: 'Großraumtaxi', model: 'Mercedes Vito', persons: 'bis 8 Personen', luggage: 'bis 12 Koffer', best: 'Große Gruppen' },
-            ].map((v) => (
-              <div key={v.name} className="border border-gray-200 rounded-xl p-4">
-                <p className="font-bold text-primary-600 text-lg mb-1">{v.name}</p>
-                <p className="text-xs text-gray-400 mb-3">{v.model}</p>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p>👥 {v.persons}</p>
-                  <p>🧳 {v.luggage}</p>
-                  <p>✓ Ideal für: {v.best}</p>
-                </div>
-              </div>
-            ))}
+        {/* Children and pets */}
+        <section className="mt-14 grid gap-5 md:grid-cols-2">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
+            <h2 className="flex items-center gap-2 text-xl font-extrabold text-gray-900"><Baby size={22} className="text-primary-700" /> Mit Kind</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Der Kindersitz ist bei uns kostenlos: Babyschale, Kindersitz und Sitzerhöhung auf Anfrage. Bitte bei der Buchung angeben.
+              In Deutschland gilt die Kindersitzpflicht auch im Taxi.
+            </p>
           </div>
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Taxi zum Flughafen München mit Kind
-          </h2>
-          <p>
-            Reisen Sie mit Kindern? Bei uns ist der <strong>Kindersitz kostenlos</strong> – Babyschale,
-            Kindersitz und Sitzerhöhung auf Anfrage. Bitte bei der Buchung angeben.
-            In Deutschland gilt die Kindersitzpflicht auch im Taxi.
-          </p>
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Taxi vom Flughafen München – Abholung bei der Ankunft
-          </h2>
-          <p>
-            Bei vorgebuchten Fahrten empfängt Sie Ihr Fahrer mit einem Namensschild im Ankunftsbereich –
-            kein Suchen, kein Schlangestehen. Wir überwachen Ihren Flug und warten bis zu
-            <strong> 60 Minuten kostenlos</strong> bei Verspätungen.
-          </p>
-          <p className="mt-2">
-            Alternativ: An den Taxiständen direkt vor den Ankunftshallen von <strong>Terminal 1</strong> und
-            <strong> Terminal 2</strong> stehen reguläre Taxis bereit – jedoch ohne Festpreis.
-          </p>
-
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-4">
-            Taxi vs. S-Bahn zum Flughafen München
-          </h2>
-          <div className="overflow-x-auto my-4">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-4 py-3"></th>
-                  <th className="text-center px-4 py-3 font-bold text-primary-600">Festpreis-Taxi</th>
-                  <th className="text-center px-4 py-3 font-bold text-gray-600">S-Bahn (S1/S8)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {[
-                  ['Fahrzeit', '35–50 Min.', '40–50 Min.'],
-                  ['Preis (1 Person)', 'ab 88 €', 'ca. 13 €'],
-                  ['Preis (4 Personen)', 'ab 88 €', 'ca. 52 €'],
-                  ['Haustür-Service', '✓', '✗'],
-                  ['Gepäck', 'Unbegrenzt', 'Begrenzt'],
-                  ['Kinderwagen', '✓', 'Eingeschränkt'],
-                  ['24/7 verfügbar', '✓', 'Eingeschränkt'],
-                  ['Bei Flugverspätung', 'Flexibel', 'Starrer Fahrplan'],
-                ].map(([label, taxi, sbahn]) => (
-                  <tr key={label} className="even:bg-gray-50">
-                    <td className="px-4 py-2.5 font-medium text-gray-700">{label}</td>
-                    <td className="px-4 py-2.5 text-center text-primary-600 font-medium">{taxi}</td>
-                    <td className="px-4 py-2.5 text-center text-gray-500">{sbahn}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200 md:p-6">
+            <h2 className="flex items-center gap-2 text-xl font-extrabold text-gray-900"><PawPrint size={22} className="text-primary-700" /> Mit Haustier</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Haustiere reisen im geschlossenen Käfig oder in der Transportbox und bleiben darin, solange die Fahrt dauert.
+              Bitte bei der Buchung unter Extras angeben. Assistenzhunde sind ausgenommen.
+            </p>
           </div>
-          <p className="text-sm text-gray-600">
-            <strong>Fazit:</strong> Ab 2 Personen ist das Festpreis-Taxi pro Person günstiger als die S-Bahn –
-            und deutlich komfortabler mit Gepäck.
-          </p>
+        </section>
 
-          {/* FAQ */}
-          <h2 className="text-2xl font-bold text-primary-600 mt-10 mb-6">
-            Häufige Fragen zum Taxi Flughafen München
-          </h2>
-          <div className="space-y-4">
-            {faqSchema.mainEntity.map((faq) => (
-              <details key={faq.name} className="border border-gray-200 rounded-xl group">
-                <summary className="px-5 py-4 cursor-pointer font-semibold text-gray-800 list-none flex justify-between items-center">
-                  {faq.name}
-                  <span className="text-primary-600 group-open:rotate-180 transition-transform shrink-0 ml-3">▾</span>
+        {/* FAQ */}
+        <section className="mt-14" aria-labelledby="faq">
+          <h2 id="faq" className="text-3xl font-extrabold tracking-tight text-primary-800">Häufige Fragen zum Taxi Flughafen München</h2>
+          <div className="mt-6 space-y-3 max-w-3xl">
+            {faqs.map((f) => (
+              <details key={f.q} className="group rounded-xl bg-white ring-1 ring-gray-200">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-gray-900">
+                  {f.q}
+                  <span className="shrink-0 text-primary-700 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
                 </summary>
-                <p className="px-5 pb-4 text-gray-600 text-sm leading-relaxed">
-                  {faq.acceptedAnswer.text}
-                </p>
+                <p className="px-5 pb-4 text-sm leading-relaxed text-gray-600">{f.a}</p>
               </details>
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Final CTA */}
-        <div className="mt-12 bg-gradient-to-br from-primary-600 to-primary-800 text-white rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold mb-2">Bereit für Ihre Fahrt?</h2>
-          <p className="text-primary-200 mb-6">
-            Jetzt Festpreis berechnen und in 60 Sekunden online buchen.
-            Pünktlich, professionell, 24/7.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/#booking"
-              className="bg-gold-400 hover:bg-gold-500 text-primary-600 px-8 py-3 rounded-xl font-bold transition-colors"
-            >
-              Jetzt online buchen →
-            </Link>
-            <a
-              href={CONTACT_INFO.phoneHref}
-              className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white px-8 py-3 rounded-xl font-bold transition-colors"
-            >
-              <Phone size={18} />
-              {CONTACT_INFO.phone}
+        <section className="mb-16 mt-14 rounded-2xl bg-gradient-to-br from-primary-800 to-primary-900 p-8 text-center text-white md:p-10">
+          <h2 className="text-2xl font-extrabold md:text-3xl">Bereit für Ihre Fahrt?</h2>
+          <p className="mx-auto mt-2 max-w-xl text-primary-100">Festpreis berechnen, in einer Minute buchen. Pünktlich, professionell, rund um die Uhr.</p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <a href="#booking" className="rounded-xl bg-gold-400 px-8 py-3 font-bold text-primary-900 transition hover:bg-gold-300">Jetzt buchen</a>
+            <a href={CONTACT_INFO.phoneHref} className="flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-8 py-3 font-bold text-white transition hover:bg-white/20">
+              <Phone size={18} /> {CONTACT_INFO.phone}
             </a>
           </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function PriceGroup({ title, rows }: { title: string; rows: PricedRow[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+      <div className="flex items-center justify-between bg-primary-800 px-4 py-3 text-white">
+        <h3 className="text-base font-bold">{title}</h3>
+        <div className="flex gap-3 pr-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+          <span className="w-[5.25rem] text-right">Kombi</span>
+          <span className="w-[5.25rem] text-right">Van</span>
         </div>
-      </article>
-    </>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-center justify-between gap-3 px-4 py-3.5">
+            <div className="min-w-0">
+              {r.href ? (
+                <Link href={r.href} className="font-semibold text-gray-900 hover:text-primary-700 hover:underline">{r.name}</Link>
+              ) : (
+                <span className="font-semibold text-gray-900">{r.name}</span>
+              )}
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap"><MapPin size={12} /> {Math.round(r.km)} km</span>
+                <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={12} /> ca. {r.min} Min.</span>
+              </p>
+            </div>
+            <div className="flex gap-3 tabular-nums">
+              <span className="w-[5.25rem] whitespace-nowrap text-right text-base font-extrabold text-primary-800">{eur(r.quote.kombi)}</span>
+              <span className="w-[5.25rem] whitespace-nowrap text-right text-base font-bold text-gray-700">{eur(r.quote.van)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
