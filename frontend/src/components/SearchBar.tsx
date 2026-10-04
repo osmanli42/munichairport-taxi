@@ -34,11 +34,17 @@ function hasAirportCode(input: string): boolean {
   const words = input.toLowerCase().trim().split(/[^a-z0-9äöüß]+/);
   return AIRPORT_CODES.some(code => words.includes(code));
 }
+// Hotels, restaurants etc. near the airport ("Novotel München Airport", "Hilton Munich Airport") are normal
+// pick-up addresses: a brand/venue word in the input means "address search", not "the airport itself".
+const VENUE_WORDS = /\b(hotel|novotel|hilton|sheraton|kempinski|ibis|mercure|moxy|marriott|holiday inn|leonardo|motel|pension|gasthof|gasthaus|restaurant|apartments?)\b/i;
 function isAirportSearch(input: string): boolean {
+  if (VENUE_WORDS.test(input)) return false;
   if (hasAirportCode(input)) return true;
   return AIRPORT_KEYWORDS.some(kw => input.toLowerCase().trim().includes(kw));
 }
-function isAirportResult(description: string): boolean {
+function isAirportResult(description: string, types?: string[]): boolean {
+  // Keep hotels and other venues whose name merely contains the airport name.
+  if (types?.includes('lodging') || VENUE_WORDS.test(description)) return false;
   return AIRPORT_FILTER_KEYWORDS.some(kw => description.toLowerCase().includes(kw));
 }
 
@@ -105,7 +111,7 @@ function AddressField({
       const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=${locale}`);
       const data = await res.json();
       if (airportRef.current) return;
-      setPredictions((data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description)));
+      setPredictions((data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description, p.types)));
       setOpen(true);
     } catch { setPredictions([]); } finally { setLoading(false); }
   }, [locale]);
