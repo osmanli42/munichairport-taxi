@@ -36,7 +36,7 @@ function hasAirportCode(input: string): boolean {
 }
 // Hotels, restaurants etc. near the airport ("Novotel München Airport", "Hilton Munich Airport") are normal
 // pick-up addresses: a brand/venue word in the input means "address search", not "the airport itself".
-const VENUE_WORDS = /\b(hotel|novotel|hilton|sheraton|kempinski|ibis|mercure|moxy|marriott|holiday inn|leonardo|motel|pension|gasthof|gasthaus|restaurant|apartments?)\b/i;
+const VENUE_WORDS = /(?:^|[^a-zäöüß])(hotel|hotels|novotel|hilton|sheraton|kempinski|ibis|mercure|moxy|marriott|courtyard|residence inn|fairfield|aloft|element|holiday inn|crowne plaza|best western|hampton|radisson|park inn|steigenberger|maritim|dorint|nh|meli[aá]|premier inn|b&b|motel one|motel|leonardo|wyndham|ramada|hyatt|intercity|westin|pullman|sofitel|accor|intercontinental|lindner|arcotel|jufa|a&o|hostel|herberge|resort|lodge|suites?|residenz|apartments?|boardinghouse|boarding house|pension|gasthof|gasthaus|landhotel|landgasthof|g[aä]stehaus|wirtshaus|restaurant|caf[eé])(?![a-zäöüß])/i;
 function isAirportSearch(input: string): boolean {
   if (VENUE_WORDS.test(input)) return false;
   if (hasAirportCode(input)) return true;
