@@ -428,3 +428,148 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
   const subject = `🚕 Neue Buchung · ${out.day} ${out.time} · ${money(b.price)} · ${adminPay(b.payment_method)} · ${b.name}`;
   return { subject, html };
 }
+
+// ---- cancellation -----------------------------------------------------------------------
+// Same wording as the previous cancellation mails, in the booking-mail layout.
+
+const CANCEL: Record<Lang, Record<string, string>> = {
+  de: {
+    subject: 'Stornierungsbestätigung', status: 'Buchung storniert', hello: 'Hallo',
+    intro: 'Ihre Buchung wurde erfolgreich storniert. Wir bedauern, dass Sie Ihre Reise nicht antreten können.',
+    details: 'Stornierte Fahrt', outbound: 'Hinfahrt', ret: 'Rückfahrt', when: 'Datum & Uhrzeit',
+    outro: 'Wir hoffen, Sie bald wieder bei uns begrüßen zu dürfen. Für Ihre nächste Reise stehen wir Ihnen jederzeit gerne zur Verfügung.',
+    newBooking: 'Neue Buchung', questions: 'Fragen? Wir sind rund um die Uhr erreichbar.', call: 'Anrufen',
+  },
+  en: {
+    subject: 'Cancellation confirmation', status: 'Booking cancelled', hello: 'Hello',
+    intro: 'Your booking has been successfully cancelled. We are sorry you cannot make your journey this time.',
+    details: 'Cancelled trip', outbound: 'Outbound', ret: 'Return', when: 'Date & time',
+    outro: 'We hope to welcome you again soon. For your next trip, we are always happy to assist you.',
+    newBooking: 'New booking', questions: 'Questions? We are available around the clock.', call: 'Call',
+  },
+  tr: {
+    subject: 'İptal onayı', status: 'Rezervasyon iptal edildi', hello: 'Merhaba',
+    intro: 'Rezervasyonunuz başarıyla iptal edildi. Bu seyahati gerçekleştiremeyeceğiniz için üzgünüz.',
+    details: 'İptal edilen yolculuk', outbound: 'Gidiş', ret: 'Dönüş', when: 'Tarih & saat',
+    outro: 'Sizi yakında tekrar misafir etmekten mutluluk duyarız. Bir sonraki yolculuğunuz için her zaman hizmetinizdeyiz.',
+    newBooking: 'Yeni rezervasyon', questions: 'Sorularınız mı var? 7/24 ulaşabilirsiniz.', call: 'Ara',
+  },
+};
+
+function cancelledTrip(b: BookingNotificationData, lang: Lang, c: Record<string, string>): string {
+  const t = T[lang];
+  const out = when(b.pickup_datetime, lang);
+  const back = b.trip_type === 'roundtrip' && b.return_datetime ? when(b.return_datetime, lang) : null;
+  const dateBlock = (label: string, w: { day: string; time: string }) => `
+    <td style="vertical-align:top;padding-right:12px">
+      <div style="font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      <div style="font-size:15px;color:${C.muted};font-weight:600;margin-top:2px;text-decoration:line-through">${esc(w.day)}</div>
+      <div style="font-size:24px;color:${C.muted};font-weight:800;line-height:1.1;text-decoration:line-through">${esc(w.time)}</div>
+    </td>`;
+  return `
+    ${heading(c.details)}
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
+      ${dateBlock(back ? c.outbound : c.when, out)}
+      ${back ? dateBlock(c.ret, back) : ''}
+    </tr></table>
+    ${route(b, t)}
+    <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label[lang]}</div>`;
+}
+
+export function customerCancellationEmail(b: BookingNotificationData): { subject: string; html: string } {
+  const lang: Lang = (['de', 'en', 'tr'].includes(b.language) ? b.language : 'de') as Lang;
+  const c = CANCEL[lang];
+  const html = `
+<div style="background:#eef1f5;padding:20px 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid ${C.line}">
+  <tr><td style="background:${C.navy};padding:22px 20px 20px">
+    <img src="${SITE}/images/logo-wide-400.webp" width="200" alt="Flughafen-München.TAXI" style="display:block;border:0;max-width:200px;height:auto">
+    <div style="margin-top:18px">
+      <span style="display:inline-block;background:#ef4444;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px">✕ ${c.status}</span>
+    </div>
+    <div style="font-size:22px;color:#fff;font-weight:700;margin-top:10px">${c.hello} ${esc(String(b.name || '').trim())},</div>
+    <div style="font-size:14px;color:#cbd5e1;margin-top:6px;line-height:1.5">${c.intro}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:12px">${T[lang].bookingNo}: <span style="color:${C.gold};font-weight:700;letter-spacing:.03em">${esc(b.booking_number)}</span></div>
+  </td></tr>
+
+  <tr><td style="height:16px"></td></tr>
+
+  ${card(cancelledTrip(b, lang, c))}
+
+  ${card(`
+    <div style="font-size:14px;color:${C.text};line-height:1.55">${c.outro}</div>
+    <div style="margin-top:14px">${button(`${SITE}${lang === 'de' ? '' : `/${lang}`}`, `🚕 ${c.newBooking}`)}</div>
+  `, `background:${C.goldSoft};border-color:#f1e2b8`)}
+
+  <tr><td style="padding:6px 20px 22px">
+    <div style="background:${C.navy};border-radius:14px;padding:18px">
+      <div style="font-size:14px;color:#fff;font-weight:600">${c.questions}</div>
+      <div style="margin-top:10px">
+        <a href="${PHONE_LINK}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:${C.gold};color:${C.navy};font-size:14px;font-weight:700;text-decoration:none">📞 ${c.call}</a>
+        <a href="${WHATSAPP}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:#25d366;color:#fff;font-size:14px;font-weight:700;text-decoration:none">💬 WhatsApp</a>
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;margin-top:10px">${PHONE} · <a href="mailto:${MAIL}" style="color:#cbd5e1">${MAIL}</a></div>
+    </div>
+  </td></tr>
+
+  <tr><td style="padding:0 20px 22px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6">
+    Flughafen-München.TAXI · Eisvogelweg 2 · 85356 Freising<br>
+    <a href="${SITE}${lang === 'de' ? '' : `/${lang}`}" style="color:#9ca3af">flughafen-muenchen.taxi</a>
+  </td></tr>
+</table>
+</div>`;
+  const out = when(b.pickup_datetime, lang);
+  return { subject: `❌ ${c.subject}: ${out.day} ${out.time} · ${b.booking_number}`, html };
+}
+
+/** Admin mail when the customer cancels on the manage-booking page. */
+export function adminCancellationEmail(b: BookingNotificationData): { subject: string; html: string } {
+  const out = when(b.pickup_datetime, 'de');
+  const back = b.trip_type === 'roundtrip' && b.return_datetime ? when(b.return_datetime, 'de') : null;
+  const phoneDigits = String(b.phone || '').replace(/[^\d]/g, '');
+  const html = `
+<div style="background:#eef1f5;padding:16px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid ${C.line}">
+  <tr><td style="background:#991b1b;padding:18px 20px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td>
+        <div style="font-size:12px;color:#fecaca;font-weight:700;letter-spacing:.08em;text-transform:uppercase">✕ Storniert durch Kunden · ${esc(b.booking_number)}</div>
+        <div style="font-size:15px;color:#fee2e2;margin-top:6px">${esc(out.day)}</div>
+        <div style="font-size:28px;color:#fff;font-weight:800;line-height:1.1">${esc(out.time)}</div>
+        ${back ? `<div style="font-size:14px;color:#fecaca;margin-top:2px">⇄ Rückfahrt ${esc(back.day)} · ${esc(back.time)}</div>` : ''}
+      </td>
+      <td style="text-align:right;vertical-align:top;white-space:nowrap">
+        <div style="font-size:22px;color:#fff;font-weight:800;text-decoration:line-through">${money(b.price)}</div>
+        <span style="display:inline-block;margin-top:4px;background:#fff;color:#991b1b;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px">${adminPay(b.payment_method)}</span>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <tr><td style="padding:14px 20px 4px">
+    ${b.phone ? button(`tel:${b.phone}`, '📞 Anrufen') : ''}
+    ${phoneDigits ? button(`https://wa.me/${phoneDigits}`, '💬 WhatsApp', false) : ''}
+    ${button(`${SITE}/admin`, 'Admin öffnen', false)}
+  </td></tr>
+
+  <tr><td style="height:12px"></td></tr>
+
+  ${card(`
+    ${heading('Stornierte Fahrt')}
+    ${route(b, T.de)}
+    <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label.de} · 👤 ${b.passengers}</div>
+  `)}
+
+  ${card(`
+    ${heading('Kunde')}
+    ${infoRows([
+      ['Name', esc(b.name)],
+      b.phone ? ['Telefon', `<a href="tel:${esc(b.phone)}" style="color:${C.navy2}">${esc(formatPhoneDisplay(b.phone))}</a>`] : null,
+      b.email ? ['E-Mail', `<a href="mailto:${esc(b.email)}" style="color:${C.navy2}">${esc(b.email)}</a>`] : null,
+    ])}
+  `)}
+
+  <tr><td style="padding:4px 20px 18px;font-size:11px;color:#9ca3af;text-align:center">Selbstservice-Stornierung · automatisch erstellt</td></tr>
+</table>
+</div>`;
+  return { subject: `❌ Storniert durch Kunden · ${out.day} ${out.time} · ${money(b.price)} · ${b.name}`, html };
+}

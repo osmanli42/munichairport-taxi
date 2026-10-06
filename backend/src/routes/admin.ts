@@ -318,6 +318,8 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
       language: booking.language || 'de',
       child_seat: !!booking.child_seat,
       luggage_count: booking.luggage_count || 0,
+      trip_type: booking.trip_type || undefined,
+      return_datetime: booking.return_datetime || undefined,
     }).catch(err => console.error('Cancellation email error:', err));
   }
 

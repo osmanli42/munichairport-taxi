@@ -1122,6 +1122,8 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       language: booking.language || 'de',
       child_seat: !!booking.child_seat,
       luggage_count: booking.luggage_count || 0,
+      trip_type: booking.trip_type || undefined,
+      return_datetime: booking.return_datetime || undefined,
     };
     if (booking.email) {
       sendCancellationEmail(notificationData).catch(err => console.error('Self-service cancellation email error:', err));

@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
-import { customerConfirmationEmail, adminNotificationEmail } from './bookingEmailTemplates';
+import { customerConfirmationEmail, adminNotificationEmail, customerCancellationEmail, adminCancellationEmail } from './bookingEmailTemplates';
 
 dotenv.config();
 
@@ -51,15 +51,6 @@ export interface BookingNotificationData {
   auto_discount_amount?: number;
   auto_discount_show_in_email?: boolean;
   rechnung_adresse?: string;   // set when the customer asked for an invoice (PDF after the ride)
-}
-
-function getVehicleLabel(vehicle_type: string, lang: string): string {
-  const labels: Record<string, Record<string, string>> = {
-    kombi: { de: 'Kombi (1-4 Personen)', en: 'Kombi (1-4 persons)', tr: 'Kombi (1-4 kişi)' },
-    van: { de: 'Van/Minibus (1-7 Personen)', en: 'Van/Minibus (1-7 persons)', tr: 'Van/Minibüs (1-7 kişi)' },
-    grossraumtaxi: { de: 'Großraumtaxi (1-8 Personen)', en: 'Large Taxi (1-8 persons)', tr: 'Büyük Taksi (1-8 kişi)' },
-  };
-  return labels[vehicle_type]?.[lang] || vehicle_type;
 }
 
 function formatPrice(price: number): string {
@@ -377,158 +368,25 @@ export async function sendMarketingEmail(
 }
 
 // Cancellation email to customer
+// Cancellation mails (customer DE/EN/TR, admin on self-service) — layout in bookingEmailTemplates.ts
 export async function sendCancellationEmail(booking: BookingNotificationData): Promise<void> {
+  const { subject, html } = customerCancellationEmail(booking);
   const resend = new Resend(RESEND_API_KEY);
-  const lang = booking.language || 'de';
-  const formattedDate = formatDateTime(booking.pickup_datetime);
-
-  const t: Record<string, Record<string, string>> = {
-    de: {
-      subject: `Stornierungsbestätigung ${booking.booking_number} – Flughafen-muenchen.TAXI`,
-      title: 'Ihre Buchung wurde storniert',
-      greeting: 'Hallo',
-      intro: 'Ihre Buchung wurde erfolgreich storniert. Wir bedauern, dass Sie Ihre Reise nicht antreten können.',
-      details: 'Stornierte Buchung',
-      pickup: 'Abholung',
-      destination: 'Ziel',
-      datetime: 'Datum & Uhrzeit',
-      vehicle: 'Fahrzeug',
-      bookingNr: 'Buchungsnummer',
-      outro: 'Wir hoffen, Sie bald wieder bei uns begrüßen zu dürfen. Für Ihre nächste Reise stehen wir Ihnen jederzeit gerne zur Verfügung.',
-      newBooking: 'Neue Buchung',
-      contact: 'Fragen? Kontaktieren Sie uns:',
-      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-    },
-    en: {
-      subject: `Cancellation Confirmation ${booking.booking_number} – Flughafen-muenchen.TAXI`,
-      title: 'Your booking has been cancelled',
-      greeting: 'Hello',
-      intro: 'Your booking has been successfully cancelled. We are sorry you cannot make your journey this time.',
-      details: 'Cancelled Booking',
-      pickup: 'Pickup',
-      destination: 'Destination',
-      datetime: 'Date & Time',
-      vehicle: 'Vehicle',
-      bookingNr: 'Booking Number',
-      outro: 'We hope to welcome you again soon. For your next trip, we are always happy to assist you.',
-      newBooking: 'New Booking',
-      contact: 'Questions? Contact us:',
-      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-    },
-    tr: {
-      subject: `İptal Onayı ${booking.booking_number} – Flughafen-muenchen.TAXI`,
-      title: 'Rezervasyonunuz iptal edildi',
-      greeting: 'Merhaba',
-      intro: 'Rezervasyonunuz başarıyla iptal edildi. Bu seyahati gerçekleştiremeyeceğiniz için üzgünüz.',
-      details: 'İptal Edilen Rezervasyon',
-      pickup: 'Alış Noktası',
-      destination: 'Hedef',
-      datetime: 'Tarih & Saat',
-      vehicle: 'Araç',
-      bookingNr: 'Rezervasyon Numarası',
-      outro: 'Sizi yakında tekrar misafir etmekten mutluluk duyarız. Bir sonraki yolculuğunuz için her zaman hizmetinizdeyiz.',
-      newBooking: 'Yeni Rezervasyon',
-      contact: 'Sorular için bize ulaşın:',
-      footer: 'Flughafen-muenchen.TAXI | Eisvogelweg 2, 85356 Freising',
-    },
-  };
-
-  const l = t[lang] ?? t['de'];
-  const vehicleLabel = getVehicleLabel(booking.vehicle_type, lang);
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  body { font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; }
-  .header { background: #1a365d; color: white; padding: 24px; text-align: center; }
-  .header h1 { margin: 0; font-size: 22px; }
-  .badge { background: #f6c644; color: #1a365d; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; margin-top: 8px; }
-  .content { padding: 24px; }
-  .intro { background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 20px; }
-  .section { background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 16px 0; }
-  .section h3 { margin: 0 0 12px; color: #1a365d; font-size: 16px; border-bottom: 2px solid #f6c644; padding-bottom: 8px; }
-  .row { display: flex; justify-content: space-between; margin: 8px 0; border-bottom: 1px solid #eee; padding-bottom: 6px; }
-  .label { color: #666; font-size: 14px; }
-  .value { font-weight: bold; font-size: 14px; text-align: right; max-width: 60%; }
-  .outro-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
-  .btn { display: inline-block; background: #1a365d; color: white !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 12px; }
-  .contact-box { background: #1a365d; color: white; border-radius: 8px; padding: 16px; text-align: center; margin-top: 20px; }
-  .contact-box a { color: #f6c644; text-decoration: none; font-weight: bold; }
-  .footer { text-align: center; padding: 16px; color: #999; font-size: 12px; border-top: 1px solid #eee; margin-top: 20px; }
-</style>
-</head>
-<body>
-  <div class="header">
-    <h1>Flughafen-muenchen.TAXI</h1>
-    <p style="margin:8px 0 4px">${l.title}</p>
-    <span class="badge">${booking.booking_number}</span>
-  </div>
-  <div class="content">
-    <div class="intro">
-      <strong>${l.greeting} ${booking.name},</strong><br><br>
-      ${l.intro}
-    </div>
-
-    <div class="section">
-      <h3>${l.details}</h3>
-      <div class="row"><span class="label">${l.pickup}:</span><span class="value">${addressIcon(booking.pickup_address)}${booking.pickup_address}</span></div>
-      <div class="row"><span class="label">${l.destination}:</span><span class="value">${addressIcon(booking.dropoff_address)}${booking.dropoff_address}</span></div>
-      <div class="row"><span class="label">${l.datetime}:</span><span class="value">${formattedDate}</span></div>
-      <div class="row"><span class="label">${l.vehicle}:</span><span class="value">${vehicleLabel}</span></div>
-    </div>
-
-    <div class="outro-box">
-      <p style="margin:0 0 4px;color:#1a365d;">${l.outro}</p>
-      <a href="https://flughafen-muenchen.taxi" class="btn">🚕 ${l.newBooking}</a>
-    </div>
-
-    <div class="contact-box">
-      <p style="margin:0 0 8px;">${l.contact}</p>
-      <p style="margin:0;"><a href="tel:+4915141620000">+49 151 4162 0000</a> &nbsp;|&nbsp; <a href="mailto:info@flughafen-muenchen.taxi">info@flughafen-muenchen.taxi</a></p>
-    </div>
-  </div>
-  <div class="footer"><p>${l.footer}</p></div>
-</body>
-</html>`;
-
   await resend.emails.send({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: booking.email,
-    subject: l.subject,
+    subject,
     html,
   });
 }
 
 export async function sendAdminCancellationEmail(booking: BookingNotificationData): Promise<void> {
+  const { subject, html } = adminCancellationEmail(booking);
   const resend = new Resend(RESEND_API_KEY);
-  const formattedDate = formatDateTime(booking.pickup_datetime);
-  const vehicleLabel = getVehicleLabel(booking.vehicle_type, 'de');
-
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
-  <div style="background: #ef4444; color: white; padding: 16px 24px;">
-    <h2 style="margin:0;">Kunde hat Buchung storniert (Selbstservice)</h2>
-  </div>
-  <div style="padding: 24px;">
-    <p><strong>Buchungsnummer:</strong> ${booking.booking_number}</p>
-    <p><strong>Kunde:</strong> ${booking.name} (${booking.email}${booking.phone ? ', ' + formatPhoneDisplay(booking.phone) : ''})</p>
-    <p><strong>Abholung:</strong> ${booking.pickup_address}</p>
-    <p><strong>Ziel:</strong> ${booking.dropoff_address}</p>
-    <p><strong>Datum & Uhrzeit:</strong> ${formattedDate}</p>
-    <p><strong>Fahrzeug:</strong> ${vehicleLabel}</p>
-    <p><strong>Preis:</strong> ${booking.price} €</p>
-  </div>
-</body>
-</html>`;
-
   await resend.emails.send({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: ADMIN_EMAIL,
-    subject: `Stornierung durch Kunden: ${booking.booking_number}`,
+    subject,
     html,
   });
 }
