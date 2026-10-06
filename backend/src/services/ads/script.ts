@@ -92,6 +92,8 @@ function line(values) {
   }).join(',');
 }
 function eur(micros) { return (Number(micros || 0) / 1000000).toFixed(2); }
+// With automated bidding (target CPA etc.) Google reports a 0.01 placeholder instead of a real max. CPC.
+function bid(micros) { var m = Number(micros || 0); return m > 10000 ? (m / 1000000).toFixed(2) : ''; }
 function pct(x) { return x === null || x === undefined || x === '' ? '' : (Number(x) * 100).toFixed(2); }
 function word(s) { s = String(s || ''); return s ? s.charAt(0) + s.slice(1).toLowerCase() : ''; }
 function rows(gaql, map) {
@@ -142,7 +144,7 @@ function keywords(range, from, to) {
       var m = r.metrics || {};
       var c = r.adGroupCriterion;
       return [c.keyword.text, word(c.keyword.matchType), r.campaign.name, r.adGroup.name, word(c.status),
-        c.qualityInfo ? c.qualityInfo.qualityScore : '', eur(c.effectiveCpcBidMicros), m.clicks, m.impressions, eur(m.costMicros),
+        c.qualityInfo ? c.qualityInfo.qualityScore : '', bid(c.effectiveCpcBidMicros), m.clicks, m.impressions, eur(m.costMicros),
         m.conversions, m.conversionsValue, pct(m.searchImpressionShare)];
     })).join('\\n');
 }
