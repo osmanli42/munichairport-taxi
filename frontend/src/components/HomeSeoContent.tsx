@@ -21,7 +21,7 @@ type Copy = {
 const COPY: Record<'de' | 'en' | 'tr', Copy> = {
   de: {
     eyebrow: 'Flughafentransfer München',
-    h2: 'Taxi Flughafen München – zum Festpreis, rund um die Uhr',
+    h2: 'Flughafentaxi München zum Festpreis, rund um die Uhr',
     intro:
       'Ob Abflug oder Ankunft: Mit Flughafen-muenchen.TAXI buchen Sie Ihr Taxi zum Flughafen München (MUC) online in weniger als einer Minute. Der Preis wird vor der Buchung berechnet und bleibt fest – auch bei Stau oder Umleitung.',
     blocks: [
@@ -30,7 +30,7 @@ const COPY: Record<'de' | 'en' | 'tr', Copy> = {
       { h3: 'Fahrtzeit & Strecke', p: 'Von der Münchner Innenstadt zum Flughafen sind es rund 38 km über die A9 – je nach Verkehr 35 bis 50 Minuten. Wir fahren aus ganz Bayern, Österreich und der Schweiz.' },
       { h3: 'Für Familien, Gruppen & Firmen', p: 'Kindersitz kostenlos auf Anfrage, Van bis 7 und Großraumtaxi bis 8 Personen mit viel Platz für Gepäck. Firmenkunden erhalten eine Sammelrechnung.' },
     ],
-    guide: 'Ratgeber: Was kostet ein Taxi zum Flughafen München?',
+    guide: 'Taxi Flughafen München: alle Preise und Fahrzeiten',
     meeting: 'Treffpunkte am Flughafen München',
     citiesTitle: 'Beliebte Strecken zum Flughafen München',
     faqTitle: 'Häufige Fragen zum Taxi Flughafen München',

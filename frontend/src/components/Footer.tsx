@@ -7,9 +7,9 @@ import { CONTACT_INFO } from '@/lib/utils';
 const caveat = Caveat({ subsets: ['latin'], weight: ['600'], display: 'swap' });
 
 const TEXT = {
-  de: { quick: 'Schnellzugriff', badgeA: 'Sicher. Pünktlich.', badgeB: 'Professionell.', signature: 'Mehr als ein Taxi.', business: 'Business Service' },
-  en: { quick: 'Quick links', badgeA: 'Safe. Punctual.', badgeB: 'Professional.', signature: 'More than a taxi.', business: 'Business Service' },
-  tr: { quick: 'Hızlı erişim', badgeA: 'Güvenli. Dakik.', badgeB: 'Profesyonel.', signature: 'Taksiden fazlası.', business: 'Kurumsal Hizmet' },
+  de: { quick: 'Schnellzugriff', badgeA: 'Sicher. Pünktlich.', badgeB: 'Professionell.', signature: 'Mehr als ein Taxi.', business: 'Business Service', guide: 'Taxi Flughafen München' },
+  en: { quick: 'Quick links', badgeA: 'Safe. Punctual.', badgeB: 'Professional.', signature: 'More than a taxi.', business: 'Business Service', guide: 'Munich Airport taxi prices' },
+  tr: { quick: 'Hızlı erişim', badgeA: 'Güvenli. Dakik.', badgeB: 'Profesyonel.', signature: 'Taksiden fazlası.', business: 'Kurumsal Hizmet', guide: 'Havalimanı taksi fiyatları' },
 } as const;
 
 export default function Footer() {
@@ -65,6 +65,7 @@ export default function Footer() {
                 <li><Link href={lp('/contact')} className={linkCls}>{nav('contact')}</Link></li>
                 <li><Link href={lp('/treffpunkt-flughafen-muenchen')} className={linkCls}>{t('meetingPoint')}</Link></li>
                 <li><Link href={lp('/buchung-verwalten')} className={linkCls}>{t('manageBooking')}</Link></li>
+                <li><Link href={lp('/blog/taxi-flughafen-muenchen')} className={linkCls}>{tx.guide}</Link></li>
               </ul>
             </div>
           </div>

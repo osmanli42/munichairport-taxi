@@ -125,7 +125,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
   const roadEn = r.road ? ` via the ${r.road}` : '';
   const roadTr = r.road ? ` ${r.road} üzerinden` : '';
   if (l === 'en') return {
-    home: 'Home', blog: 'Airport transfers', crumb: `Taxi ${c} – Munich Airport`,
+    home: 'Home', blog: 'Munich Airport taxi', crumb: `Taxi ${c} – Munich Airport`,
     tagline: ['Reliable. Punctual. Stress-free.', `Your direct transfer from ${c} to Munich Airport.`],
     heroFeat: [['Fixed price', 'no hidden costs'], ['Flight monitoring', 'included'], ['60 min waiting', 'free of charge'], ['Families & groups', 'up to 8 people']],
     tabs: ['One way', 'Return trip', 'From the airport'] as [string, string, string], people: ['1–8 passengers', 'Saloon, van & large taxi'] as [string, string],
@@ -181,7 +181,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
     ctaTitle: `Book your taxi from ${c} now`, ctaSub: `Fixed price from ${m(p.kombi)} · 24/7 · instant confirmation`, ctaBook: 'Calculate price',
   };
   if (l === 'tr') return {
-    home: 'Ana sayfa', blog: 'Havalimanı transferi', crumb: `${c} – Münih Havalimanı taksi`,
+    home: 'Ana sayfa', blog: 'Münih Havalimanı taksi', crumb: `${c} – Münih Havalimanı taksi`,
     tagline: ['Güvenilir. Dakik. Stressiz.', `${c}’dan Münih Havalimanı’na doğrudan transfer.`],
     heroFeat: [['Sabit fiyat', 'gizli ücret yok'], ['Uçuş takibi', 'dahil'], ['60 dk bekleme', 'ücretsiz'], ['Aile ve gruplar', '8 kişiye kadar']],
     tabs: ['Tek yön', 'Gidiş-dönüş', 'Havalimanından'] as [string, string, string], people: ['1–8 kişi', 'Binek, Van ve büyük taksi'] as [string, string],
@@ -237,7 +237,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
     ctaTitle: `${c}’dan taksinizi şimdi ayırtın`, ctaSub: `Sabit fiyat ${m(p.kombi)}’dan · 7/24 · anında onay`, ctaBook: 'Fiyat hesapla',
   };
   return {
-    home: 'Startseite', blog: 'Flughafentransfer', crumb: `Taxi ${c} – Flughafen München`,
+    home: 'Startseite', blog: 'Taxi Flughafen München', crumb: `Taxi ${c} – Flughafen München`,
     tagline: ['Zuverlässig. Pünktlich. Stressfrei.', `Ihr direkter Transfer von ${c} zum Münchner Flughafen.`],
     heroFeat: [['Festpreis', 'ohne versteckte Kosten'], ['Flugüberwachung', 'inklusive'], ['60 Min. Wartezeit', 'gratis'], ['Für Familien', 'und Gruppen bis 8']],
     tabs: ['Einfache Fahrt', 'Hin- und Rückfahrt', 'Abholung am Flughafen'] as [string, string, string], people: ['1–8 Personen', 'Kombi, Van & Großraumtaxi'] as [string, string],

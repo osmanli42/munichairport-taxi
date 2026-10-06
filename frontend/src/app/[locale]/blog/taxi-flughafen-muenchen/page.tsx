@@ -26,12 +26,13 @@ const cheapestMunich = (rows: PricedRow[]) => Math.min(...rows.filter((r) => r.g
 export async function generateMetadata(): Promise<Metadata> {
   const rows = await getAreaPrices();
   const from = eur(cheapestMunich(rows));
+  const title = `Taxi Flughafen München ab ${from}: Preise & Fahrzeit`;
   return {
-    title: { absolute: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026' },
+    title: { absolute: title },
     description: `Taxi zum Flughafen München ab ${from} Festpreis: alle Preise aus München und Umland, Fahrtdauer, Fahrzeuge und Tipps. 24/7, mit Flugüberwachung.`,
     alternates: { canonical: '/blog/taxi-flughafen-muenchen' },
     openGraph: {
-      title: 'Taxi Flughafen München: Kosten, Dauer & Festpreis 2026',
+      title,
       description: `Festpreise ab ${from}, Fahrer am Ausgang, Kindersitz kostenlos.`,
       url: `${SITE}/blog/taxi-flughafen-muenchen`,
       images: [{ url: `${SITE}/images/hero-airport.webp` }],
@@ -143,6 +144,18 @@ export default async function TaxiFlughafenMuenchenPage() {
       provider: { '@type': 'LocalBusiness', name: 'Flughafen-München.TAXI', telephone: CONTACT_INFO.phone, url: SITE },
       areaServed: [{ '@type': 'City', name: 'München' }, { '@type': 'Airport', name: 'Flughafen München', iataCode: 'MUC' }],
       offers: vehicles.map((v) => ({ '@type': 'Offer', name: `${v.name}: München Hauptbahnhof zum Flughafen`, price: v.price.toFixed(2), priceCurrency: 'EUR' })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: 'Taxi Flughafen München: Kosten, Fahrtdauer und Festpreise',
+      image: `${SITE}/images/hero-airport.webp`,
+      datePublished: '2026-10-02',
+      // Prices on this page are live, so the content is current on every request.
+      dateModified: new Date().toISOString().slice(0, 10),
+      author: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE },
+      publisher: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE, logo: { '@type': 'ImageObject', url: `${SITE}/icon.png` } },
+      mainEntityOfPage: `${SITE}/blog/taxi-flughafen-muenchen`,
     },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
     {
