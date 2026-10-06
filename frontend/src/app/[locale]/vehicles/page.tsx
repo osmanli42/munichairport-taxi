@@ -1,5 +1,6 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
+import { VehiclesGuide } from '@/components/PageGuide';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Users, ArrowRight, Plane, Check } from 'lucide-react';
@@ -260,6 +261,8 @@ export default function VehiclesPage() {
           </div>
         </div>
       </section>
+
+      <div className="bg-white"><VehiclesGuide locale={locale} /></div>
 
       {/* Koyu CTA seridi */}
       <section style={{ background: '#0f1b2d' }}>

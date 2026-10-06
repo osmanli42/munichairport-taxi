@@ -1,5 +1,6 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
+import { AboutGuide } from '@/components/PageGuide';
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
 import {
@@ -316,6 +317,7 @@ export default function AboutPage() {
         </div>
 
       </div>
+      <AboutGuide locale={locale} />
     </div>
   );
 }
