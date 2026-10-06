@@ -55,6 +55,7 @@ export default function Footer() {
             <div className="grid grid-cols-2 gap-x-6 whitespace-nowrap">
               <ul className="space-y-2.5 text-sm text-white/80">
                 <li><Link href={lp('/')} className={linkCls}>{nav('home')}</Link></li>
+                <li><Link href={lp('/leistungen')} className={linkCls}>{nav('services')}</Link></li>
                 <li><Link href={lp('/vehicles')} className={linkCls}>{nav('vehicles')}</Link></li>
                 <li><Link href={lp('/business')} className={linkCls}>{tx.business}</Link></li>
                 <li><Link href={lp('/faq')} className={linkCls}>{nav('faq')}</Link></li>
