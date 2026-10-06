@@ -229,10 +229,10 @@ export default function SystemTab({ token }: { token: string }) {
     setAlertSaving(false);
   };
 
-  const previewCalendarMail = async () => {
+  const previewMail = async (path: 'calendar-alert-preview' | 'daily-summary-preview') => {
     setCalPreview({ subject: '…', html: '', empty: false });
     try {
-      const r = await fetch(`${API_BASE}/admin/system-stats/calendar-alert-preview`, {
+      const r = await fetch(`${API_BASE}/admin/system-stats/${path}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await r.json();
@@ -658,7 +658,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['pm2', '⚙️ Çöken PM2 servisi', 'Durdurulan servisler (aşağıdaki listeden veya pm2 stop ile) uyarı üretmez.'],
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
-                ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra dünün özeti tek e-postada: ziyaret, rezervasyon ve web + Kalender-Fahrt toplamı (dün ve bu ay düne kadar; adet ve €).'],
+                ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra dünün özeti: toplam fahrt ve ciro (web/sistem + Kalender), önceki güne ve geçen aya göre değişim, web sitesi rakamları, dün gelen rezervasyonlar ve Kalender fahrt’ları listesi.'],
                 ['seo', '🔎 SEO', 'Takip edilen kelime 5+ sıra düşerse veya organik tıklama haftalık %30+ düşerse; site taramasında yeni kritik hata (sayfa hatası, noindex, kırık link) çıkarsa. Günde en fazla bir e-posta.'],
                 ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
                   ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
@@ -669,6 +669,11 @@ export default function SystemTab({ token }: { token: string }) {
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-800">{label}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
+                    {key === 'daily_summary' && (
+                      <button onClick={() => previewMail('daily-summary-preview')} className="mt-1.5 text-xs font-semibold text-blue-600 hover:underline">
+                        E-postayı önizle
+                      </button>
+                    )}
                     {key === 'calendar_new' && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-700">
                         <label className="inline-flex items-center gap-2">
@@ -696,7 +701,7 @@ export default function SystemTab({ token }: { token: string }) {
                             </select>
                           </label>
                         )}
-                        <button onClick={previewCalendarMail} className="font-semibold text-blue-600 hover:underline">
+                        <button onClick={() => previewMail('calendar-alert-preview')} className="font-semibold text-blue-600 hover:underline">
                           E-postayı önizle
                         </button>
                       </div>
