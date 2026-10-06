@@ -59,6 +59,8 @@ const PAYMENT: Record<string, Record<Lang, string>> = {
   ueberweisung: { de: 'Überweisung', en: 'Bank transfer', tr: 'Havale' },
 };
 const payLabel = (m: string, l: Lang) => PAYMENT[m]?.[l] || PAYMENT.cash[l];
+const ADMIN_PAY: Record<string, string> = { cash: 'Bar', card: 'Kreditkarte', rechnung: 'Rechnung', invoice: 'Rechnung', ueberweisung: 'Überweisung' };
+const adminPay = (m: string) => ADMIN_PAY[m] || 'Bar';
 
 const T: Record<Lang, Record<string, string>> = {
   de: {
@@ -351,7 +353,7 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
       </td>
       <td style="text-align:right;vertical-align:top;white-space:nowrap">
         <div style="font-size:24px;color:#fff;font-weight:800">${money(b.price)}</div>
-        <span style="display:inline-block;margin-top:4px;background:${pb};color:${pf};font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px">${payLabel(b.payment_method, 'de')}</span>
+        <span style="display:inline-block;margin-top:4px;background:${pb};color:${pf};font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px">${adminPay(b.payment_method)}</span>
       </td>
     </tr></table>
   </td></tr>
@@ -402,6 +404,6 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
 </table>
 </div>`;
 
-  const subject = `🚕 Neue Buchung · ${out.day} ${out.time} · ${money(b.price)} · ${payLabel(b.payment_method, 'de')} · ${b.name}`;
+  const subject = `🚕 Neue Buchung · ${out.day} ${out.time} · ${money(b.price)} · ${adminPay(b.payment_method)} · ${b.name}`;
   return { subject, html };
 }
