@@ -72,6 +72,7 @@ const T: Record<Lang, Record<string, string>> = {
     rtDiscount: 'Rabatt Hin- & Rückfahrt', approach: 'Anfahrt', bike: 'Fahrrad', base: 'Grundpreis', promo: 'Rabattcode',
     payment: 'Zahlung', cardHint: 'Die Karte wird am Tag vor der Fahrt belastet.', fixed: 'Festpreis — der Preis steht bei der Buchung fest.',
     details: 'Details', passengers: 'Personen', luggage: 'Gepäck', vehicle: 'Fahrzeug', flight: 'Flugnummer',
+    pet: 'Haustier', petYes: 'Ja, im Käfig / in der Transportbox', invoice: 'Rechnung an', invoiceHint: 'Die Rechnung (PDF) senden wir Ihnen nach der Fahrt per E-Mail.',
     sign: 'Abholschild', child: 'Kindersitz', childYes: 'Ja, kostenlos', notes: 'Ihre Anmerkungen', pieces: 'Stück',
     next: 'So geht es weiter',
     step1: 'Wir prüfen Ihre Buchung und melden uns bei Rückfragen.',
@@ -91,6 +92,7 @@ const T: Record<Lang, Record<string, string>> = {
     rtDiscount: 'Round-trip discount', approach: 'Approach fee', bike: 'Bicycle', base: 'Base price', promo: 'Promo code',
     payment: 'Payment', cardHint: 'Your card is charged the day before the ride.', fixed: 'Fixed price — agreed when you book.',
     details: 'Details', passengers: 'Passengers', luggage: 'Luggage', vehicle: 'Vehicle', flight: 'Flight number',
+    pet: 'Pet', petYes: 'Yes, in a cage / carrier', invoice: 'Invoice to', invoiceHint: 'We e-mail you the invoice (PDF) after the ride.',
     sign: 'Name sign', child: 'Child seat', childYes: 'Yes, free of charge', notes: 'Your notes', pieces: 'pcs',
     next: 'What happens next',
     step1: 'We check your booking and get in touch if anything is unclear.',
@@ -110,6 +112,7 @@ const T: Record<Lang, Record<string, string>> = {
     rtDiscount: 'Gidiş-dönüş indirimi', approach: 'Yaklaşım ücreti', bike: 'Bisiklet', base: 'Temel fiyat', promo: 'Promosyon kodu',
     payment: 'Ödeme', cardHint: 'Kartınızdan yolculuktan bir gün önce çekilir.', fixed: 'Sabit fiyat — rezervasyonda belirlenir.',
     details: 'Detaylar', passengers: 'Yolcu', luggage: 'Bagaj', vehicle: 'Araç', flight: 'Uçuş numarası',
+    pet: 'Evcil hayvan', petYes: 'Evet, kafeste / taşıma kutusunda', invoice: 'Fatura adresi', invoiceHint: 'Faturayı (PDF) yolculuktan sonra e-postayla göndeririz.',
     sign: 'Karşılama tabelası', child: 'Çocuk koltuğu', childYes: 'Evet, ücretsiz', notes: 'Notlarınız', pieces: 'adet',
     next: 'Bundan sonra',
     step1: 'Rezervasyonunuzu kontrol ediyoruz; sorumuz olursa size ulaşırız.',
@@ -123,6 +126,14 @@ const T: Record<Lang, Record<string, string>> = {
 };
 
 const localePath = (lang: Lang, path: string) => `${SITE}${lang === 'de' ? '' : `/${lang}`}${path}`;
+
+// The booking form puts the pet confirmation in front of the customer's notes
+// ("🐾 Haustier dabei – … · <notes>"); shown as its own line, the rest stays a note.
+function splitPet(notes: string | undefined): { pet: boolean; rest: string } {
+  const n = String(notes || '');
+  const m = n.match(/^🐾[^·]*(?:·\s*)?/);
+  return m ? { pet: true, rest: n.slice(m[0].length).trim() } : { pet: false, rest: n };
+}
 
 // ---- building blocks ------------------------------------------------------------------
 
@@ -199,6 +210,7 @@ export function customerConfirmationEmail(b: BookingNotificationData): { subject
   const vehicle = VEHICLE[b.vehicle_type] || VEHICLE.kombi;
   const airportPickup = isAirport(b.pickup_address) || (!!back && isAirport(b.dropoff_address));
   const firstName = String(b.name || '').trim();
+  const { pet, rest: notes } = splitPet(b.notes);
 
   const dateBlock = (label: string, w: { day: string; time: string }) => `
     <td style="vertical-align:top;padding-right:12px">
@@ -265,15 +277,19 @@ export function customerConfirmationEmail(b: BookingNotificationData): { subject
     <div style="margin-top:8px;font-size:12px;color:${C.green}">✓ ${t.fixed}</div>
   `, `background:${C.goldSoft};border-color:#f1e2b8`)}
 
-  ${b.flight_number || b.pickup_sign || b.child_seat || b.notes ? card(`
+  ${b.flight_number || b.pickup_sign || b.child_seat || b.notes || b.rechnung_adresse ? card(`
     ${heading(t.details)}
     ${infoRows([
       b.flight_number ? [t.flight, esc(b.flight_number)] : null,
       b.pickup_sign ? [t.sign, esc(b.pickup_sign)] : null,
       b.child_seat ? [t.child, `${t.childYes}${b.child_seat_details ? ` — ${esc(b.child_seat_details)}` : ''}`] : null,
+      pet ? [t.pet, t.petYes] : null,
     ])}
-    ${b.notes ? `<div style="margin-top:10px;font-size:13px;color:${C.muted}">${t.notes}:</div>
-      <div style="font-size:14px;color:${C.text};margin-top:3px;line-height:1.5">${esc(b.notes)}</div>` : ''}
+    ${b.rechnung_adresse ? `<div style="margin-top:10px;font-size:13px;color:${C.muted}">${t.invoice}:</div>
+      <div style="font-size:14px;color:${C.text};margin-top:3px;line-height:1.5">${esc(b.rechnung_adresse).replace(/\n/g, '<br>')}</div>
+      <div style="font-size:12px;color:${C.muted};margin-top:4px">${t.invoiceHint}</div>` : ''}
+    ${notes ? `<div style="margin-top:10px;font-size:13px;color:${C.muted}">${t.notes}:</div>
+      <div style="font-size:14px;color:${C.text};margin-top:3px;line-height:1.5">${esc(notes)}</div>` : ''}
   `) : ''}
 
   ${card(`
@@ -332,6 +348,9 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
   if (b.child_seat) flags.push(`👶 Kindersitz${b.child_seat_details ? `: ${esc(b.child_seat_details)}` : ''}`);
   if (b.fahrrad_count && b.fahrrad_count > 0) flags.push(`🚲 ${b.fahrrad_count}× Fahrrad`);
   if (b.pickup_sign) flags.push(`🪧 Abholschild: ${esc(b.pickup_sign)}`);
+  const { pet, rest: notes } = splitPet(b.notes);
+  if (pet) flags.push('🐾 Haustier dabei — im Käfig / in der Transportbox (vom Kunden bestätigt)');
+  if (b.rechnung_adresse) flags.push('🧾 Rechnung gewünscht — PDF geht nach der Fahrt automatisch raus');
 
   const payColor: Record<string, [string, string]> = {
     cash: ['#ecfdf5', '#047857'], card: ['#eff6ff', '#1d4ed8'], rechnung: ['#f5f3ff', '#6d28d9'],
@@ -388,7 +407,9 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
       b.flight_number ? ['Flug', `${esc(b.flight_number)} ${b.flight_validated === '1' ? `<span style="color:${C.green}">✓ ${esc(b.flight_info || 'bestätigt')}</span>` : '<span style="color:#b45309">⚠ nicht verifiziert</span>'}`] : null,
       ['Sprache', esc(String(b.language || 'de').toUpperCase())],
     ])}
-    ${b.notes ? `<div style="margin-top:10px;background:${C.soft};border-radius:10px;padding:10px 12px;font-size:14px;color:${C.text};line-height:1.5"><b>Anmerkung:</b> ${esc(b.notes)}</div>` : ''}
+    ${b.rechnung_adresse ? `<div style="margin-top:10px;font-size:13px;color:${C.muted}">Rechnungsadresse:</div>
+      <div style="font-size:14px;color:${C.text};margin-top:3px;line-height:1.5">${esc(b.rechnung_adresse).replace(/\n/g, '<br>')}</div>` : ''}
+    ${notes ? `<div style="margin-top:10px;background:${C.soft};border-radius:10px;padding:10px 12px;font-size:14px;color:${C.text};line-height:1.5"><b>Anmerkung:</b> ${esc(notes)}</div>` : ''}
   `)}
 
   ${card(`

@@ -564,6 +564,7 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
     auto_discount_amount: autoAmount > 0 ? autoAmount : undefined,
     auto_discount_show_in_email: autoShow,
     company_name: companyName,
+    rechnung_adresse: booking.rechnung_required ? booking.rechnung_adresse || undefined : undefined,
     night_confirm: false,
   });
 

@@ -50,6 +50,7 @@ export interface BookingNotificationData {
   auto_discount_name?: string;
   auto_discount_amount?: number;
   auto_discount_show_in_email?: boolean;
+  rechnung_adresse?: string;   // set when the customer asked for an invoice (PDF after the ride)
 }
 
 function getVehicleLabel(vehicle_type: string, lang: string): string {

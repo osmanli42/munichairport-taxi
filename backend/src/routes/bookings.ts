@@ -715,6 +715,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       auto_discount_name: autoDiscountName || undefined,
       auto_discount_amount: autoDiscountAmount > 0 ? autoDiscountAmount : undefined,
       auto_discount_show_in_email: showAutoDiscountInEmail,
+      rechnung_adresse: rechnungRequired ? rechnungAdresseClean || undefined : undefined,
     };
 
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
