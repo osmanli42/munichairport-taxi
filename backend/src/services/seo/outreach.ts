@@ -144,6 +144,16 @@ export const SOURCES: Source[] = [
     how: 'Şehrin resmi portalı; rakip flughafentaxi-muenchen.eu burada. Kayıt e-postayla: ad/adres/telefon/website + kısa açıklama gönder, ücretsiz temel kaydı ve link’li kaydın fiyatını sor. Ücretliyse önce bana sor.' },
   { key: 'taximat', name: 'taximat.de (Taxi-Verzeichnis)', group: 'directory', url: 'mailto:info@taximat.de?subject=Neuer%20Eintrag%3A%20Flughafen-M%C3%BCnchen.TAXI%20(Freising)', domain: 'taximat.de', minutes: 5,
     how: 'Taksi firmalarına özel rehber, kayıt ücretsiz ve e-postayla. Website linki vermiyor ama ad/adres/telefon kaydı (NAP) olarak işe yarar. E-postaya Firmenname, Adresse, Telefon, Website, Kurzbeschreibung yapıştır.' },
+  // golocal data partners (golocal.de/partner), 6 Oct 2026. GoYellow and CleverDialer take their data from
+  // Gelbe Seiten / Das Telefonbuch, so they need no entry of their own.
+  { key: 'telefonbuch', name: 'Das Telefonbuch', group: 'directory', url: 'https://www.dastelefonbuch.de/Firmeneintrag', domain: 'dastelefonbuch.de', minutes: 6,
+    how: 'Ücretsiz „Grundeintrag“ (0 €). Das Örtliche kaydını yaptıysan önce adınla ara — zaten çıkıyorsa sadece website’in doğru olduğunu kontrol et. GoYellow ve Clever Dialer verilerini buradan ve Gelbe Seiten’den alır.' },
+  { key: 'kennstdueinen', name: 'KennstDuEinen', group: 'reviews', url: 'https://www.kennstdueinen.de/serviceProvider/registerForm', domain: 'kennstdueinen.de', minutes: 6,
+    how: 'Yorum portalı, ücretsiz kayıt. Kategori „Taxi“ / „Flughafentransfer“, website + Kurzbeschreibung DE. Ücretli „Premium“ teklifini geç.' },
+  { key: 'dialo', name: 'Dialo / Bundes-Telefonbuch', group: 'directory', url: 'https://www.bundes-telefonbuch.de/firma/grund-eintrag', domain: 'dialo.de', minutes: 6,
+    how: 'Ücretsiz „Grundeintrag“ (dialo.de’nin kayıt formu buraya yönlendiriyor). Ücretli paketleri seçme.' },
+  { key: 'opendi', name: 'Opendi (Stadtbranchenbuch)', group: 'directory', url: 'https://form.opendi.com/', domain: 'opendi.de', minutes: 8,
+    how: 'Ücretsiz kayıt, e-postana doğrulama linki gelir. Tek kayıt Opendi + stadtbranchenbuch.com gibi 5 portalda görünür. Website, açıklama, açılış saatleri (24 Std.) gir.' },
   { key: 'facebook', name: 'Facebook Seite', group: 'social', url: 'https://www.facebook.com/pages/create', domain: 'facebook.com', minutes: 10,
     how: 'Varsa güncelle. Kategori „Taxiunternehmen“, website + telefon + açıklama, kapak fotoğrafı araç.' },
   { key: 'linkedin', name: 'LinkedIn Unternehmensseite', group: 'social', url: 'https://www.linkedin.com/company/setup/new/', domain: 'linkedin.com', minutes: 8,
