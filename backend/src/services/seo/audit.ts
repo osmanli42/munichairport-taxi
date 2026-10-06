@@ -43,11 +43,25 @@ export const ISSUE_LABELS: Record<string, string> = {
 const hash = (...p: string[]) => crypto.createHash('sha1').update(p.join('\u0001')).digest('hex');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function get(url: string) {
+async function getOnce(url: string) {
   const start = Date.now();
   const res = await fetch(url, { redirect: 'manual', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT_MS) });
   const html = res.status >= 200 && res.status < 300 ? await res.text() : '';
   return { status: res.status, ms: Date.now() - start, html, location: res.headers.get('location') };
+}
+
+// A deploy restarts the frontend and nginx answers 502 for a few seconds. Retry server errors and
+// network failures before reporting them, so an audit that overlaps a deploy shows no false errors.
+async function get(url: string) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const r = await getOnce(url);
+      if (r.status < 500 || attempt >= 4) return r;
+    } catch (e) {
+      if (attempt >= 4) throw e;
+    }
+    await sleep(20_000);
+  }
 }
 
 export async function sitemapUrls(): Promise<string[]> {

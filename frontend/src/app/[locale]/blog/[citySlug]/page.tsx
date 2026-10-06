@@ -77,21 +77,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const r = route(city);
   const p = await livePrices(city);
   const fit = (...variants: string[]) => variants.find((v) => v.length <= 60) ?? variants[variants.length - 1];
+  // Google cuts meta descriptions after about 160 characters: long town names fall back to shorter wording.
+  const fitDesc = (...variants: string[]) => variants.find((v) => v.length <= 160) ?? variants[variants.length - 1];
   const c = city.nameDE;
   const price = money(p.kombi, l);
   const copy = l === 'en'
     ? {
         title: fit(`Taxi ${c} to Munich Airport – Fixed Price ${price}`, `Taxi ${c} to Munich Airport – from ${price}`, `Taxi ${c} – Munich Airport from ${price}`, `Taxi ${c} to Munich Airport`, `Taxi ${c} – MUC Airport`),
-        description: `Taxi from ${c} to Munich Airport (MUC): ${r.km} km, approx. ${r.min} min. Fixed price from ${price}, 24/7, flight monitoring – see your exact price and book online.`,
+        description: fitDesc(
+          `Taxi from ${c} to Munich Airport (MUC): ${r.km} km, approx. ${r.min} min. Fixed price from ${price}, 24/7, flight monitoring – see your exact price and book online.`,
+          `Taxi from ${c} to Munich Airport: ${r.km} km, approx. ${r.min} min. Fixed price from ${price}, 24/7, flight monitoring. See your price and book online.`,
+          `Taxi ${c} to Munich Airport: ${r.km} km, ${r.min} min. Fixed price from ${price}, 24/7 with flight monitoring. Book online.`,
+        ),
       }
     : l === 'tr'
       ? {
           title: fit(`${c} Münih Havalimanı Taksi – Sabit Fiyat ${price}`, `${c} Münih Havalimanı Taksi – ${price}'dan`, `${c} Münih Havalimanı Taksi`, `${c} – MUC Taksi`),
-          description: `${c} – Münih Havalimanı (MUC) taksi: ${r.km} km, yaklaşık ${r.min} dk. Sabit fiyat ${price}'dan, 7/24, uçuş takibi – fiyatınızı görün ve online rezervasyon yapın.`,
+          description: fitDesc(
+            `${c} – Münih Havalimanı (MUC) taksi: ${r.km} km, yaklaşık ${r.min} dk. Sabit fiyat ${price}'dan, 7/24, uçuş takibi – fiyatınızı görün ve online rezervasyon yapın.`,
+            `${c} – Münih Havalimanı taksi: ${r.km} km, yaklaşık ${r.min} dk. Sabit fiyat ${price}'dan, 7/24, uçuş takibi. Fiyatınızı görün, online rezervasyon yapın.`,
+            `${c} – Münih Havalimanı taksi: ${r.km} km, ${r.min} dk. Sabit fiyat ${price}'dan, 7/24 uçuş takibiyle. Online rezervasyon.`,
+          ),
         }
       : {
           title: fit(`Taxi ${c} Flughafen München – Festpreis ${price}`, `Taxi ${c} Flughafen München – ab ${price}`, `Taxi ${c} – Flughafen München ab ${price}`, `Taxi ${c} Flughafen München`, `Taxi ${c} – Flughafen MUC`),
-          description: `Taxi von ${c} zum Flughafen München (MUC): ${r.km} km, ca. ${r.min} Min. Festpreis ab ${price}, 24/7, Flugüberwachung – Preis sofort sehen und online buchen.`,
+          description: fitDesc(
+            `Taxi von ${c} zum Flughafen München (MUC): ${r.km} km, ca. ${r.min} Min. Festpreis ab ${price}, 24/7, Flugüberwachung – Preis sofort sehen und online buchen.`,
+            `Taxi von ${c} zum Flughafen München: ${r.km} km, ca. ${r.min} Min. Festpreis ab ${price}, 24/7, Flugüberwachung. Preis sofort sehen und online buchen.`,
+            `Taxi ${c} zum Flughafen München: ${r.km} km, ca. ${r.min} Min. Festpreis ab ${price}, 24/7 mit Flugüberwachung. Jetzt online buchen.`,
+          ),
         };
   return {
     title: { absolute: copy.title },

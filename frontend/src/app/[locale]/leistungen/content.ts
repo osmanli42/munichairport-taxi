@@ -35,8 +35,8 @@ export const FAR: { region: Record<Lang, string>; places: (readonly [string, str
 
 export function texts(l: Lang, p: Prices) {
   if (l === 'en') return {
-    metaTitle: 'Our services – airport, ski & trade fair transfer | Munich Airport Taxi',
-    metaDesc: 'Airport transfer, trade fair transfer, ski transfer to Kitzbühel & Ischgl, long distance to Austria, group shuttles, courier and patient rides – at fixed prices from Munich Airport.',
+    metaTitle: 'Our services: airport, trade fair & ski transfers, Munich',
+    metaDesc: 'Airport and trade fair transfers, ski transfers to Kitzbühel and Ischgl, long distance to Austria, group shuttles, courier and patient rides at fixed prices.',
     home: 'Home', crumb: 'Services',
     eyebrow: 'Our services',
     h1a: 'More than an', h1b: 'airport taxi',
@@ -76,8 +76,8 @@ export function texts(l: Lang, p: Prices) {
     ctaTitle: 'Which ride can we take on for you?', ctaSub: 'Fixed prices · licensed taxis · 24/7', ctaBook: 'Calculate price', credits: 'Photos',
   };
   if (l === 'tr') return {
-    metaTitle: 'Hizmetlerimiz – havalimanı, kayak & fuar transferi | Münih Havalimanı Taksi',
-    metaDesc: 'Havalimanı transferi, fuar transferi, Kitzbühel & Ischgl kayak transferi, Avusturya’ya uzun mesafe, grup shuttle, kurye ve hasta yolculukları – Münih Havalimanı’ndan sabit fiyatla.',
+    metaTitle: 'Hizmetlerimiz: havalimanı, fuar ve kayak transferi, Münih',
+    metaDesc: 'Havalimanı ve fuar transferi, Kitzbühel ve Ischgl kayak transferi, Avusturya’ya uzun mesafe, grup shuttle, kurye ve hasta yolculukları, sabit fiyatla.',
     home: 'Ana sayfa', crumb: 'Hizmetler',
     eyebrow: 'Hizmetlerimiz',
     h1a: 'Bir havalimanı', h1b: 'taksisinden fazlası',
@@ -117,8 +117,8 @@ export function texts(l: Lang, p: Prices) {
     ctaTitle: 'Hangi yolculuğunuzu üstlenelim?', ctaSub: 'Sabit fiyat · ruhsatlı taksi · 7/24', ctaBook: 'Fiyat hesapla', credits: 'Fotoğraflar',
   };
   return {
-    metaTitle: 'Leistungen – Flughafen-, Ski- & Messe-Transfer | Flughafen-München.TAXI',
-    metaDesc: 'Flughafentransfer, Messe-Transfer, Ski-Transfer nach Kitzbühel & Ischgl, Fernfahrten nach Österreich, Gruppen-Shuttle, Kurier- und Krankenfahrten – zum Festpreis ab Flughafen München.',
+    metaTitle: 'Leistungen: Flughafen-, Messe- & Ski-Transfer ab München',
+    metaDesc: 'Flughafentransfer, Messe-Transfer, Ski-Transfer nach Kitzbühel und Ischgl, Fernfahrten nach Österreich, Gruppen, Kurier- und Krankenfahrten zum Festpreis.',
     home: 'Startseite', crumb: 'Leistungen',
     eyebrow: 'Unsere Leistungen',
     h1a: 'Mehr als ein', h1b: 'Flughafentaxi',

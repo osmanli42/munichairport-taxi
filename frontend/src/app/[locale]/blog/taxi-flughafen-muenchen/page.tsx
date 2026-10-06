@@ -30,7 +30,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { absolute: title },
     description: `Taxi zum Flughafen München ab ${from} Festpreis: alle Preise aus München und Umland, Fahrtdauer, Fahrzeuge und Tipps. 24/7, mit Flugüberwachung.`,
-    alternates: { canonical: '/blog/taxi-flughafen-muenchen' },
+    alternates: {
+      canonical: '/blog/taxi-flughafen-muenchen',
+      languages: { de: `${SITE}/blog/taxi-flughafen-muenchen`, 'x-default': `${SITE}/blog/taxi-flughafen-muenchen` },
+    },
     openGraph: {
       title,
       description: `Festpreise ab ${from}, Fahrer am Ausgang, Kindersitz kostenlos.`,
