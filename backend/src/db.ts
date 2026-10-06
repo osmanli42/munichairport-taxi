@@ -504,6 +504,19 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Google Calendar events already seen by the new-ride mail (services/calendarRideAlert.ts);
+    // pending = waiting for the once-a-day mail, snapshot = what that mail shows.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS calendar_ride_alerts (
+        uid VARCHAR(255) NOT NULL,
+        ride_time VARCHAR(16) NOT NULL,
+        pending TINYINT(1) NOT NULL DEFAULT 0,
+        snapshot TEXT NULL,
+        seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (uid)
+      )
+    `);
+
     // SEO (services/seo/*): Search Console data, site audit, page speed, task states.
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS seo_gsc_daily (

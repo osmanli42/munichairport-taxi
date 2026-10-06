@@ -68,7 +68,8 @@ const PM2_INFO: Record<string, { label: string; what: string; ifStopped: string;
 };
 
 // Mirrors backend services/alertCenter.ts
-type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo';
+type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
+  | 'calendar_new';
 interface AlertCfg {
   enabled: boolean;
   categories: Record<AlertCategory, boolean>;
@@ -77,9 +78,15 @@ interface AlertCfg {
   server_cooldown_hours: number;
   business_cooldown_hours: number;
   card_charge_deadline?: string;
+  calendar_new_mode?: 'instant' | 'daily';
+  calendar_new_time?: string;
   email_to?: string;
 }
 const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
+// 00:00 is shown as 24:00 — the mail at midnight closes the day.
+const CALENDAR_NEW_TIMES = Array.from({ length: 48 }, (_, i) =>
+  `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
+const timeLabel = (t: string) => (t === '00:00' ? '24:00' : t);
 import {
   Server, Cpu, HardDrive, MemoryStick, RefreshCw, Mail,
   CheckCircle2, AlertTriangle, XCircle, Clock, Activity,
@@ -167,6 +174,7 @@ export default function SystemTab({ token }: { token: string }) {
   const [dismissingStuck, setDismissingStuck] = useState<string>('');
   const [pm2Busy, setPm2Busy] = useState<string>('');
   const [pm2Msg, setPm2Msg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [calPreview, setCalPreview] = useState<{ subject: string; html: string; empty: boolean; error?: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -193,7 +201,8 @@ export default function SystemTab({ token }: { token: string }) {
         setAlertSettings({
           enabled: ad.enabled, categories: ad.categories, down_after_minutes: ad.down_after_minutes,
           reminder_hours: ad.reminder_hours, server_cooldown_hours: ad.server_cooldown_hours,
-          business_cooldown_hours: ad.business_cooldown_hours, card_charge_deadline: ad.card_charge_deadline, email_to: ad.email_to,
+          business_cooldown_hours: ad.business_cooldown_hours, card_charge_deadline: ad.card_charge_deadline,
+          calendar_new_mode: ad.calendar_new_mode, calendar_new_time: ad.calendar_new_time, email_to: ad.email_to,
         });
       }
       setLastUpdated(new Date());
@@ -218,6 +227,19 @@ export default function SystemTab({ token }: { token: string }) {
       });
     } catch {}
     setAlertSaving(false);
+  };
+
+  const previewCalendarMail = async () => {
+    setCalPreview({ subject: '…', html: '', empty: false });
+    try {
+      const r = await fetch(`${API_BASE}/admin/system-stats/calendar-alert-preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      setCalPreview(r.ok ? d : { subject: '', html: '', empty: true, error: d.error || 'Önizleme alınamadı' });
+    } catch {
+      setCalPreview({ subject: '', html: '', empty: true, error: 'Önizleme alınamadı' });
+    }
   };
 
   useEffect(() => { load(); }, [load]);
@@ -638,12 +660,47 @@ export default function SystemTab({ token }: { token: string }) {
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
                 ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
                 ['seo', '🔎 SEO', 'Takip edilen kelime 5+ sıra düşerse veya organik tıklama haftalık %30+ düşerse; site taramasında yeni kritik hata (sayfa hatası, noindex, kırık link) çıkarsa. Günde en fazla bir e-posta.'],
+                ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
+                  ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
+                  : 'Google Takvim’e her yeni fahrt eklendiğinde 5–10 dakika içinde e-posta: tarih, saat, adres, fiyat, not, takvim linki. Web rezervasyonları zaten kendi e-postasını gönderdiği için dahil değil.'],
                 ['card_charge', '💳 Kart çekilmedi', `Saat ${alertSettings.card_charge_deadline || '20:15'}’te yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle); dashboard’da da o saatten sonra kırmızı uyarı. Müşteri hatırlatmaları 20:00’de gider.`],
               ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
                 <div key={key} className="flex items-start gap-3 px-3 py-2.5">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-800">{label}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
+                    {key === 'calendar_new' && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-700">
+                        <label className="inline-flex items-center gap-2">
+                          <Mail size={13} className="text-blue-500" /> Gönderim
+                          <select
+                            value={alertSettings.calendar_new_mode || 'instant'}
+                            onChange={(e) => saveAlertSettings({ calendar_new_mode: e.target.value as 'instant' | 'daily' })}
+                            disabled={alertSaving}
+                            className="border border-gray-300 rounded-lg px-2 py-0.5 text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
+                          >
+                            <option value="instant">Her yeni fahrt’ta hemen</option>
+                            <option value="daily">Günde bir kez (toplu)</option>
+                          </select>
+                        </label>
+                        {alertSettings.calendar_new_mode === 'daily' && (
+                          <label className="inline-flex items-center gap-2">
+                            <Clock size={13} className="text-blue-500" /> Saat
+                            <select
+                              value={alertSettings.calendar_new_time || '00:00'}
+                              onChange={(e) => saveAlertSettings({ calendar_new_time: e.target.value })}
+                              disabled={alertSaving}
+                              className="border border-gray-300 rounded-lg px-2 py-0.5 text-xs font-semibold bg-white focus:ring-2 focus:ring-blue-400 outline-none"
+                            >
+                              {[...CALENDAR_NEW_TIMES.slice(1), '00:00'].map((o) => <option key={o} value={o}>{timeLabel(o)}</option>)}
+                            </select>
+                          </label>
+                        )}
+                        <button onClick={previewCalendarMail} className="font-semibold text-blue-600 hover:underline">
+                          E-postayı önizle
+                        </button>
+                      </div>
+                    )}
                     {key === 'card_charge' && (
                       <label className="mt-1.5 inline-flex items-center gap-2 text-xs text-gray-700">
                         <Clock size={13} className="text-blue-500" /> Kontrol saati
@@ -692,6 +749,22 @@ export default function SystemTab({ token }: { token: string }) {
               ))}
             </div>
             {alertSaving && <div className="text-xs text-gray-400 mt-2">kaydediliyor…</div>}
+            {calPreview && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCalPreview(null)}>
+                <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-100">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-500">Önizleme — gönderilmedi · alıcı {alertSettings.email_to || 'info@flughafen-muenchen.taxi'}</div>
+                      <div className="text-sm font-semibold text-gray-800 break-words">{calPreview.subject}</div>
+                    </div>
+                    <button onClick={() => setCalPreview(null)} className="text-gray-400 hover:text-gray-700" aria-label="Kapat"><XCircle size={20} /></button>
+                  </div>
+                  {calPreview.html
+                    ? <iframe title="E-posta önizleme" srcDoc={calPreview.html} className="w-full flex-1 min-h-[60vh] border-0" />
+                    : <div className="p-6 text-sm text-gray-600">{calPreview.error || (calPreview.subject === '…' ? 'yükleniyor…' : 'Takvimde şu an bu e-postaya girecek fahrt yok — bu durumda e-posta gönderilmez.')}</div>}
+                </div>
+              </div>
+            )}
           </>
         )}
 

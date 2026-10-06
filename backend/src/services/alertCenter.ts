@@ -9,8 +9,9 @@
 
 import { query, run } from '../db';
 
-export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo';
-export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge', 'seo'];
+export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
+  | 'calendar_new';
+export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge', 'seo', 'calendar_new'];
 
 export interface AlertConfig {
   enabled: boolean;
@@ -20,10 +21,16 @@ export interface AlertConfig {
   server_cooldown_hours: number;    // RAM / swap / disk / CPU
   business_cooldown_hours: number;  // error spike, no bookings, slow page, PM2
   card_charge_deadline: string;     // HH:mm Berlin — tomorrow's card rides must be charged by then
+  calendar_new_mode: 'instant' | 'daily';  // new Google Calendar rides: each at once, or one mail a day
+  calendar_new_time: string;        // HH:mm Berlin for the daily mail ('00:00' = midnight)
 }
 
 // After the customer reminders at 20:00; the check job runs until 23:55.
 export const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
+
+// Every half hour, 00:00 … 23:30.
+export const CALENDAR_NEW_TIMES = Array.from({ length: 48 }, (_, i) =>
+  `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
 
 export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   enabled: true,
@@ -37,12 +44,15 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
     daily_summary: true,
     card_charge: true,
     seo: true,
+    calendar_new: true,
   },
   down_after_minutes: 6,
   reminder_hours: 12,
   server_cooldown_hours: 24,
   business_cooldown_hours: 6,
   card_charge_deadline: '20:15',
+  calendar_new_mode: 'instant',
+  calendar_new_time: '00:00',
 };
 
 let cache: { cfg: AlertConfig; at: number } | null = null;
@@ -66,6 +76,8 @@ function merge(raw: any): AlertConfig {
     server_cooldown_hours: clamp(raw?.server_cooldown_hours, 1, 168, d.server_cooldown_hours),
     business_cooldown_hours: clamp(raw?.business_cooldown_hours, 1, 168, d.business_cooldown_hours),
     card_charge_deadline: CARD_DEADLINE_OPTIONS.includes(raw?.card_charge_deadline) ? raw.card_charge_deadline : d.card_charge_deadline,
+    calendar_new_mode: raw?.calendar_new_mode === 'daily' ? 'daily' : d.calendar_new_mode,
+    calendar_new_time: CALENDAR_NEW_TIMES.includes(raw?.calendar_new_time) ? raw.calendar_new_time : d.calendar_new_time,
   };
 }
 

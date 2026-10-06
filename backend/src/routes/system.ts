@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 import { query } from '../db';
+import { calendarAlertPreview } from '../services/calendarRideAlert';
 import {
   getAlertConfig, saveAlertConfig, shouldSendAlert, resetCooldown, listCooldowns, getStateValue, setStateValue,
 } from '../services/alertCenter';
@@ -209,6 +210,17 @@ router.post('/admin/system-stats/alert-settings', authenticateAdmin, async (req:
   try {
     const cfg = await saveAlertConfig(req.body || {});
     res.json({ ok: true, ...cfg });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// The calendar-ride mail with real calendar data, shown in the System tab before anything is sent.
+router.get('/admin/system-stats/calendar-alert-preview', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const out = await calendarAlertPreview();
+    if (!out) { res.status(409).json({ error: 'Google Kalender bağlı değil' }); return; }
+    res.json(out);
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }
