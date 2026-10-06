@@ -154,7 +154,7 @@ export default function DataTab({ onChanged }: { onChanged?: () => void }) {
           <div className="p-5 text-sm text-gray-600 space-y-2">
             <p>Bir kez eklenir; her reklam tıklamasında hangi kelime/eşleme tipi/ağ olduğu kaydedilir → kelime başına <b>gerçek rezervasyon ve ciro</b>. Teklif stratejisini ve öğrenmeyi etkilemez.</p>
             <ol className="list-decimal pl-5 space-y-0.5 text-gray-700">
-              <li>Google Ads → Verwaltung (🔧) → <b>Kontoeinstellungen</b></li>
+              <li>Google Ads → Verwaltung (⚙️ sol menüde) → <b>Kontoeinstellungen</b></li>
               <li><b>Tracking</b> → „Final-URL-Suffix“ alanına yapıştır → Speichern</li>
             </ol>
             <CopyBox text={d.finalUrlSuffix} />
