@@ -1245,4 +1245,179 @@ export const cityLocal: Record<string, CityLocal> = {
               ]
         }
   },
+  'taxi-gauting-flughafen-muenchen': {
+    route: {
+      de: 'Von Gauting im Würmtal fahren wir über die A99 und die A92 im Bogen um München herum zum Flughafen, ohne Stadtverkehr. Für die rund 55 km brauchen Sie meist knapp 40 Minuten, im Berufsverkehr etwa 47. Mit der S6 und Umstieg in München dauert es mit Koffern deutlich länger.',
+      en: 'From Gauting in the Würm valley we drive round Munich on the A99 and A92 to the airport, avoiding city traffic. The roughly 55 km usually take just under 40 minutes, around 47 in rush hour. By S6 with a change in Munich it takes much longer with luggage.',
+      tr: 'Würm vadisindeki Gauting’den A99 ve A92 otoyollarıyla Münih’in etrafından dolaşarak, şehir trafiğine girmeden havalimanına gidiyoruz. Yaklaşık 55 km genellikle 40 dakikadan kısa sürer, iş trafiğinde 47 dakika civarı. S6 ile Münih’te aktarma yaparak valizle çok daha uzun sürer.',
+    },
+    pickups: {
+      de: ['Bahnhof Gauting', 'Ortszentrum & Rathaus', 'Stockdorf (S-Bahnhof)', 'Buchendorf', 'Unterbrunn & Hausen', 'Königswiesen'],
+      en: ['Gauting railway station', 'Town centre & town hall', 'Stockdorf (S-Bahn station)', 'Buchendorf', 'Unterbrunn & Hausen', 'Königswiesen'],
+      tr: ['Gauting tren istasyonu', 'Merkez & belediye binası', 'Stockdorf (S-Bahn istasyonu)', 'Buchendorf', 'Unterbrunn & Hausen', 'Königswiesen'],
+    },
+    tips: {
+      de: [
+        'Frühflug? Vor 6 Uhr ist der Autobahnring frei, rechnen Sie mit gut 38 Minuten.',
+        'Abflug zwischen 7 und 9 Uhr: Planen Sie wegen des Berufsverkehrs auf der A99 rund 10 Minuten Puffer ein.',
+        'Familien mit viel Gepäck fahren im Van bis 7 Personen zum Festpreis, kein zweites Taxi nötig.',
+      ],
+      en: [
+        'Early flight? Before 6 am the motorway ring is clear, allow a good 38 minutes.',
+        'Departing between 7 and 9 am: allow about 10 extra minutes for rush hour on the A99.',
+        'Families with lots of luggage travel in a van for up to 7 people at a fixed price, no second taxi needed.',
+      ],
+      tr: [
+        'Erken uçuş mu? Saat 6’dan önce otoyol çevresi boştur, yaklaşık 38 dakika hesaplayın.',
+        'Saat 7 ile 9 arası kalkış: A99’daki iş trafiği için 10 dakika kadar pay bırakın.',
+        'Bol valizli aileler 7 kişilik Van ile sabit fiyata gider, ikinci taksiye gerek yok.',
+      ],
+    },
+    tr: {
+      description: 'Gauting, Münih’in güneybatısında, Würm nehri vadisinde yer alan ve Starnberg ilçesine bağlı bir belediyedir. Stockdorf, Buchendorf ve Unterbrunn gibi mahalleleri vardır; S6 hattıyla Münih’e bağlıdır.',
+      history: 'Würm vadisi çok eski bir yerleşim alanıdır. Bir efsaneye göre Büyük Karl, Gauting yakınlarındaki Reismühle’de doğmuştur. Bugün Gauting, yeşil çevresi ve Münih’e yakınlığıyla sevilen sakin bir yerleşim yeridir.',
+      known_for: 'Würm vadisi, Reismühle efsanesi, Münih’e yakın sakin yaşam',
+      sights: ['Würm nehri kıyısındaki yürüyüş yolları', 'Reismühle', 'Gauting merkezi ve belediye binası', 'Kreuzlinger Forst ormanı'],
+    },
+  },
+  'taxi-poing-flughafen-muenchen': {
+    route: {
+      de: 'Von Poing fahren wir nach Norden auf die Flughafentangente Ost und von dort ohne Autobahn direkt zu den Terminals. Für die rund 33 km brauchen Sie meist eine halbe Stunde, auch im Berufsverkehr kaum länger, weil die Strecke den Münchner Stau umgeht. Öffentlich geht es nur mit Umsteigen.',
+      en: 'From Poing we head north onto the Flughafentangente Ost and from there straight to the terminals without using the motorway. The roughly 33 km usually take half an hour, hardly longer in rush hour because the route avoids Munich traffic. By public transport you always have to change.',
+      tr: 'Poing’den kuzeye, Flughafentangente Ost yoluna çıkıp otoyola girmeden doğrudan terminallere gidiyoruz. Yaklaşık 33 km genellikle yarım saat sürer; güzergâh Münih trafiğine girmediği için iş saatlerinde de pek uzamaz. Toplu taşımayla her zaman aktarma gerekir.',
+    },
+    pickups: {
+      de: ['S-Bahnhof Poing', 'S-Bahnhof Grub', 'Bergfeld', 'Ortszentrum & Rathaus', 'Wildpark Poing', 'Angelbrechting'],
+      en: ['Poing S-Bahn station', 'Grub S-Bahn station', 'Bergfeld', 'Town centre & town hall', 'Wildpark Poing', 'Angelbrechting'],
+      tr: ['Poing S-Bahn istasyonu', 'Grub S-Bahn istasyonu', 'Bergfeld', 'Merkez & belediye binası', 'Wildpark Poing', 'Angelbrechting'],
+    },
+    tips: {
+      de: [
+        'Die Fahrt über die Flughafentangente ist auch morgens zwischen 7 und 9 Uhr verlässlich: rund 30 Minuten.',
+        'Für Frühflüge holen wir Sie rund um die Uhr ab, auch um 4 Uhr morgens.',
+        'Bei der Ankunft wartet Ihr Fahrer mit Namensschild, bei Verspätung bis zu 60 Minuten kostenlos.',
+      ],
+      en: [
+        'The Flughafentangente route is reliable even between 7 and 9 am: about 30 minutes.',
+        'For early flights we pick you up around the clock, even at 4 am.',
+        'On arrival your driver waits with a name sign, up to 60 minutes free of charge if your flight is late.',
+      ],
+      tr: [
+        'Flughafentangente güzergâhı sabah 7 ile 9 arasında da güvenilirdir: yaklaşık 30 dakika.',
+        'Erken uçuşlar için günün her saati, sabah 4’te bile sizi alırız.',
+        'Varışta şoförünüz isim tabelasıyla bekler; uçuş gecikirse 60 dakikaya kadar ücretsiz.',
+      ],
+    },
+    tr: {
+      description: 'Poing, Münih’in doğusunda, Ebersberg ilçesinde yer alan ve son yıllarda hızla büyüyen bir belediyedir. S2 hattının Poing ve Grub istasyonlarıyla Münih’e bağlıdır.',
+      history: 'Poing uzun süre küçük bir tarım köyüydü. 1990’lardan itibaren, özellikle Bergfeld gibi yeni mahallelerle birlikte genç ailelerin tercih ettiği bir yerleşim yerine dönüştü.',
+      known_for: 'Wildpark Poing, genç aileler, hızlı büyüyen yerleşim',
+      sights: ['Wildpark Poing (yaban hayatı parkı)', 'Bergfeld mahallesi ve parkları', 'Poing merkezi'],
+    },
+  },
+  'taxi-eching-flughafen-muenchen': {
+    route: {
+      de: 'Von Eching geht es über die A92 Richtung Osten direkt zum Flughafen. Mit rund 17 km und etwa 13 Minuten gehört Eching zu den kürzesten Strecken, auch im Berufsverkehr. Mit der S-Bahn müssen Sie in Neufahrn umsteigen.',
+      en: 'From Eching we take the A92 east straight to the airport. At about 17 km and roughly 13 minutes it is one of the shortest routes, even in rush hour. By S-Bahn you have to change in Neufahrn.',
+      tr: 'Eching’den A92 otoyolu ile doğuya, doğrudan havalimanına gidiyoruz. Yaklaşık 17 km ve 13 dakika ile, iş trafiğinde bile en kısa güzergâhlardan biridir. S-Bahn ile Neufahrn’da aktarma yapmanız gerekir.',
+    },
+    pickups: {
+      de: ['S-Bahnhof Eching', 'Ortszentrum & Bürgerhaus', 'Dietersheim', 'Günzenhausen', 'Gewerbegebiet Eching-Ost', 'Hotels in Eching'],
+      en: ['Eching S-Bahn station', 'Town centre & Bürgerhaus', 'Dietersheim', 'Günzenhausen', 'Eching-Ost business park', 'Hotels in Eching'],
+      tr: ['Eching S-Bahn istasyonu', 'Merkez & Bürgerhaus', 'Dietersheim', 'Günzenhausen', 'Eching-Ost sanayi bölgesi', 'Eching’deki oteller'],
+    },
+    tips: {
+      de: [
+        'Kurze Strecke, fester Preis: Den genauen Preis für Ihre Adresse sehen Sie sofort im Buchungsformular.',
+        'Hotelgäste in Eching: Wir holen Sie direkt am Hoteleingang ab, auch vor dem ersten Frühstück.',
+        'Geschäftsreisende aus dem Gewerbegebiet können per Rechnung zahlen.',
+      ],
+      en: [
+        'Short route, fixed price: the booking form shows the exact price for your address straight away.',
+        'Hotel guests in Eching: we pick you up at the hotel entrance, even before breakfast is served.',
+        'Business travellers from the business park can pay by invoice.',
+      ],
+      tr: [
+        'Kısa güzergâh, sabit fiyat: Adresinizin kesin fiyatını rezervasyon formunda hemen görürsünüz.',
+        'Eching’de otelde kalanlar: Sizi otel girişinden alırız, kahvaltı başlamadan önce bile.',
+        'Sanayi bölgesinden iş seyahati yapanlar faturayla ödeyebilir.',
+      ],
+    },
+    tr: {
+      description: 'Eching, Münih ile Freising arasında, Freising ilçesine bağlı bir belediyedir. S1 hattı ve A92 ile A9 otoyollarına yakınlığıyla bölgenin önemli iş ve alışveriş noktalarından biridir.',
+      history: 'Eching kökleri eskiye dayanan bir Bavyera köyüdür. Otoyol bağlantıları ve havalimanına yakınlığı sayesinde son on yıllarda büyüyerek sanayi ve alışveriş bölgeleri olan canlı bir belediyeye dönüştü.',
+      known_for: 'Echinger See gölü, alışveriş merkezleri, havalimanına yakınlık',
+      sights: ['Echinger See (yüzme gölü)', 'Bürgerhaus Eching', 'Dietersheim ve Günzenhausen köyleri'],
+    },
+  },
+  'taxi-feldkirchen-flughafen-muenchen': {
+    route: {
+      de: 'Feldkirchen liegt im Osten Münchens, direkt neben der Messe Riem. Zum Flughafen sind es rund 39 km, meist knapp eine halbe Stunde, auch im Berufsverkehr kaum länger. Mit der S2 und Umstieg dauert es mit Gepäck deutlich länger.',
+      en: 'Feldkirchen lies in the east of Munich, right next to the Messe Riem trade fair grounds. The airport is about 39 km away, usually just under half an hour, hardly longer in rush hour. By S2 with a change it takes much longer with luggage.',
+      tr: 'Feldkirchen, Münih’in doğusunda, Messe Riem fuar alanının hemen yanındadır. Havalimanına yaklaşık 39 km, genellikle yarım saatten kısa sürer, iş trafiğinde de pek uzamaz. S2 ile aktarmalı yolculuk valizle çok daha uzun sürer.',
+    },
+    pickups: {
+      de: ['S-Bahnhof Feldkirchen', 'Ortszentrum & Rathaus', 'Gewerbegebiet Feldkirchen', 'Hotels an der Messe', 'Messe München (Eingang Ost)', 'Heimstetten (Nachbarort)'],
+      en: ['Feldkirchen S-Bahn station', 'Town centre & town hall', 'Feldkirchen business park', 'Hotels near the trade fair', 'Messe München (East entrance)', 'Heimstetten (neighbouring village)'],
+      tr: ['Feldkirchen S-Bahn istasyonu', 'Merkez & belediye binası', 'Feldkirchen sanayi bölgesi', 'Fuar yakınındaki oteller', 'Messe München (Doğu girişi)', 'Heimstetten (komşu köy)'],
+    },
+    tips: {
+      de: [
+        'Zu Messezeiten sind Hotels und Straßen um die Messe voll: Buchen Sie Ihre Fahrt am Vortag.',
+        'Für Aussteller mit Material: Im Großraumtaxi ist Platz für bis zu 8 Personen und viel Gepäck.',
+        'Firmen können Fahrten per Rechnung zahlen, auf Wunsch als Sammelrechnung.',
+      ],
+      en: [
+        'During trade fairs, hotels and roads around the Messe are busy: book your ride the day before.',
+        'Exhibitors with equipment: the large taxi takes up to 8 people and plenty of luggage.',
+        'Companies can pay by invoice, also as a monthly collective invoice.',
+      ],
+      tr: [
+        'Fuar dönemlerinde fuar çevresindeki oteller ve yollar doludur: Yolculuğunuzu bir gün önceden ayırtın.',
+        'Malzemeli fuar katılımcıları: Büyük taksi 8 kişiye ve bol bagaja yer sunar.',
+        'Firmalar faturayla, isterse aylık toplu faturayla ödeyebilir.',
+      ],
+    },
+    tr: {
+      description: 'Feldkirchen, Münih’in doğu sınırında, Münih ilçesine (Landkreis München) bağlı bir belediyedir. Messe München fuar alanına komşudur ve S2 hattıyla şehre bağlıdır.',
+      history: 'Feldkirchen eski bir Bavyera köyüdür. 1998’de yakındaki Riem’de yeni fuar alanının açılmasıyla birlikte otel ve iş bölgeleri gelişti.',
+      known_for: 'Messe München’e yakınlık, oteller, iş bölgeleri',
+      sights: ['Feldkirchen merkezi ve kilisesi', 'Messe München fuar alanı (komşu)', 'Riemer Park (komşu)'],
+    },
+  },
+  'taxi-lech-am-arlberg-flughafen-muenchen': {
+    route: {
+      de: 'Von Lech am Arlberg zum Flughafen München sind es rund 307 km, meist gut drei Stunden über die A96. Wir fahren Sie ohne Umsteigen von der Hoteltür bis zum Terminal, mit Skigepäck und Festpreis. Mit Bahn und Bus dauert die Reise mit mehreren Umstiegen deutlich länger.',
+      en: 'From Lech am Arlberg to Munich Airport it is about 307 km, usually a good three hours via the A96. We drive you from your hotel door to the terminal without changes, with ski luggage and at a fixed price. By train and bus the journey takes much longer with several changes.',
+      tr: 'Lech am Arlberg’den Münih Havalimanı’na yaklaşık 307 km, A96 üzerinden genellikle üç saatten biraz fazla sürer. Sizi kayak bagajınızla, aktarmasız ve sabit fiyatla otel kapısından terminale götürüyoruz. Tren ve otobüsle birkaç aktarmalı yolculuk çok daha uzun sürer.',
+    },
+    pickups: {
+      de: ['Hotels in Lech', 'Oberlech', 'Zürs am Arlberg', 'Zug', 'Ortszentrum Lech', 'Ferienwohnungen & Chalets'],
+      en: ['Hotels in Lech', 'Oberlech', 'Zürs am Arlberg', 'Zug', 'Lech village centre', 'Holiday apartments & chalets'],
+      tr: ['Lech’teki oteller', 'Oberlech', 'Zürs am Arlberg', 'Zug', 'Lech merkezi', 'Tatil evleri & şaleler'],
+    },
+    tips: {
+      de: [
+        'Samstag ist in den Skiorten Bettenwechsel: Planen Sie für den Rückflug mehr Zeit ein.',
+        'Nach starkem Schneefall kann der Flexenpass zeitweise gesperrt sein. Wir behalten die Lage im Blick und melden uns, falls sich die Abholzeit ändert.',
+        'Ski und Snowboards fahren mit: Bitte geben Sie das Skigepäck bei der Buchung an, für Gruppen gibt es Van und Großraumtaxi.',
+      ],
+      en: [
+        'Saturday is changeover day in the ski resorts: allow extra time for your return flight.',
+        'After heavy snowfall the Flexen Pass can be closed for a while. We keep an eye on the situation and let you know if the pickup time changes.',
+        'Skis and snowboards travel with you: please mention ski luggage when booking; vans and large taxis are available for groups.',
+      ],
+      tr: [
+        'Cumartesi kayak merkezlerinde konaklama değişim günüdür: Dönüş uçuşu için daha fazla zaman ayırın.',
+        'Yoğun kar yağışından sonra Flexenpass geçici olarak kapanabilir. Durumu takip eder, alış saati değişirse size haber veririz.',
+        'Kayak ve snowboardlar da yanınızda: Rezervasyonda kayak bagajını belirtin; gruplar için Van ve büyük taksi var.',
+      ],
+    },
+    tr: {
+      description: 'Lech am Arlberg, Avusturya’nın Vorarlberg eyaletinde, Arlberg dağlarında yer alan küçük ama dünyaca ünlü bir kayak köyüdür. Zürs, Oberlech ve Zug ile birlikte Ski Arlberg kayak bölgesinin parçasıdır.',
+      history: 'Lech, 14. yüzyılda yüksek dağ vadilerine yerleşen Walser’ler tarafından kuruldu. 20. yüzyılda kayak turizmiyle büyüyerek Alplerin en bilinen kış tatil yerlerinden biri oldu.',
+      known_for: 'Ski Arlberg, lüks kış tatili, Weißer Ring kayak turu',
+      sights: ['Ski Arlberg kayak bölgesi', 'Weißer Ring kayak turu', 'St. Nikolaus kilisesi', 'Skyspace Lech (James Turrell)', 'Oberlech ve Zürs'],
+    },
+  },
 };
