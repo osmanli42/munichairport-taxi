@@ -162,6 +162,13 @@ export default function BookingFunnelTracker() {
     // window.fetch yalnızca KENDİ API origin'imize giden istekler için sarılır; hata yoksa
     // hiçbir şey gönderilmez ve orijinal davranış aynen korunur (hata da yeniden fırlatılır).
     const origFetch = window.fetch;
+    // Requests the page itself cancels are not failures: the booking page re-asks for the price
+    // on every keystroke (e-mail → returning-customer discount) and aborts the previous request,
+    // and leaving or backgrounding the page (iOS: "Load failed") cuts open requests. Counted as
+    // errors, these made up ~85 % of the "technical errors" in the daily summary.
+    let leaving = false;
+    const onLeave = () => { leaving = true; };
+    const onBack = () => { leaving = false; };   // restored from the back/forward cache
     const apiOrigin = (() => { try { return new URL(API_BASE).origin; } catch { return ''; } })();
     const wrappedFetch: typeof window.fetch = async (input, init) => {
       let url = '';
@@ -177,7 +184,9 @@ export default function BookingFunnelTracker() {
         }
         return res;
       } catch (err: any) {
-        if (isOwnApi && !isTracking) {
+        const cancelled = err?.name === 'AbortError' || !!init?.signal?.aborted
+          || leaving || document.visibilityState === 'hidden';
+        if (isOwnApi && !isTracking && !cancelled) {
           const method = (init?.method || 'GET').toUpperCase();
           push('api_error', `${method} ${shortPath(url)} network`);
           flush();
@@ -206,8 +215,10 @@ export default function BookingFunnelTracker() {
     document.addEventListener('copy', onCopy);
 
     const timer = window.setInterval(flush, FLUSH_INTERVAL_MS);
-    const onHide = () => flush();
+    const onHide = () => { leaving = true; flush(); };
     window.addEventListener('pagehide', onHide);
+    window.addEventListener('beforeunload', onLeave);
+    window.addEventListener('pageshow', onBack);
 
     return () => {
       flush();
@@ -223,6 +234,8 @@ export default function BookingFunnelTracker() {
       window.removeEventListener('error', onError);
       window.removeEventListener('unhandledrejection', onRejection);
       window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('beforeunload', onLeave);
+      window.removeEventListener('pageshow', onBack);
     };
   }, [pathname]);
 
