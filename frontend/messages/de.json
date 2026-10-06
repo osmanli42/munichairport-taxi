@@ -507,6 +507,48 @@
     "ctaTitle": "Bereit für Ihren Flughafentransfer?",
     "ctaSubtitle": "Festpreis, pünktlich und mit persönlichem Empfang – jetzt buchen.",
     "ctaBook": "Jetzt buchen",
-    "ctaCall": "Anrufen"
+    "ctaCall": "Anrufen",
+    "quickT1": "Terminal 1",
+    "quickT2": "Terminal 2",
+    "processTitle": "In 3 Schritten zu Ihrem Fahrer",
+    "processSubtitle": "Egal ob Terminal 1 oder 2 – so läuft jede Abholung ab.",
+    "process": [
+      {
+        "title": "Landen & Gepäck holen",
+        "text": "Lassen Sie sich Zeit. Wir werden automatisch über eine frühere Landung oder eine Verspätung informiert."
+      },
+      {
+        "title": "Kurz Bescheid geben",
+        "text": "Sobald Sie Ihr Gepäck haben und sich auf den Weg zum Ausgang machen, schreiben Sie uns per WhatsApp oder rufen Sie an."
+      },
+      {
+        "title": "Fahrer in ca. 5 Minuten da",
+        "text": "Ihr Fahrer empfängt Sie mit Ihrem Namensschild am Treffpunkt Ihres Terminals."
+      }
+    ],
+    "notifyHint": "Bitte nennen Sie Ihren Namen und Ihr Terminal (bei Terminal 1 auch das Modul).",
+    "whatsapp": "WhatsApp schreiben",
+    "call": "Anrufen",
+    "meetingSpot": "Treffpunkt",
+    "maxFive": "Ihr Fahrer ist in ca. 5 Minuten am Treffpunkt",
+    "t2Spot": "Ankunftsbereich Terminal 2 – auf Höhe von Starbucks Coffee",
+    "t2Steps": [
+      "Gepäck abholen.",
+      "Bescheid geben, sobald Sie Ihr Gepäck haben und sich auf den Weg zum Starbucks machen.",
+      "Nach der Gepäckausgabe geradeaus durch den Zoll gehen und rechts abbiegen. Der Treffpunkt ist auf Höhe von Starbucks Coffee – dort empfängt Sie Ihr Fahrer mit Ihrem Namensschild."
+    ],
+    "t1Spot": "Ausgang Ihres Moduls (A–E) – draußen gleich rechts",
+    "t1Steps": [
+      "Gepäck in Ihrem Ankunftsmodul (A, B, C, D oder E) abholen.",
+      "Auf dem Weg zum Ausgang kurz per WhatsApp oder Anruf Bescheid geben.",
+      "Nach der Gepäckausgabe geradeaus gehen, die Terminalhalle verlassen und rechts abbiegen – dort ist der markierte Treffpunktbereich (siehe Foto)."
+    ],
+    "flowBaggage": "Gepäck",
+    "flowNotify": "Bescheid geben",
+    "flowStarbucks": "Starbucks",
+    "flowOutsideRight": "Draußen rechts",
+    "promiseTitle": "Darauf können Sie sich verlassen",
+    "photoT1": "Treffpunkt Terminal 1: nach dem Verlassen der Terminalhalle rechts (markiert)",
+    "photoT2": "Treffpunkt Terminal 2: Starbucks Coffee"
   }
 }

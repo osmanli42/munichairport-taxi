@@ -507,6 +507,48 @@
     "ctaTitle": "Ready for your airport transfer?",
     "ctaSubtitle": "Fixed price, punctual and with a personal welcome – book now.",
     "ctaBook": "Book now",
-    "ctaCall": "Call"
+    "ctaCall": "Call",
+    "quickT1": "Terminal 1",
+    "quickT2": "Terminal 2",
+    "processTitle": "Find your driver in 3 steps",
+    "processSubtitle": "Terminal 1 or 2 – every pickup works like this.",
+    "process": [
+      {
+        "title": "Land & collect your luggage",
+        "text": "Take your time. We are automatically informed about an early landing or a delay."
+      },
+      {
+        "title": "Let us know",
+        "text": "As soon as you have your luggage and are on your way to the exit, send us a WhatsApp message or give us a call."
+      },
+      {
+        "title": "Driver there in about 5 minutes",
+        "text": "Your driver meets you at your terminal’s meeting point with a sign showing your name."
+      }
+    ],
+    "notifyHint": "Please tell us your name and your terminal (for Terminal 1 also the module).",
+    "whatsapp": "Message on WhatsApp",
+    "call": "Call",
+    "meetingSpot": "Meeting point",
+    "maxFive": "Your driver is at the meeting point in about 5 minutes",
+    "t2Spot": "Terminal 2 arrivals – next to Starbucks Coffee",
+    "t2Steps": [
+      "Collect your luggage.",
+      "Let us know as soon as you have your luggage and are on your way to Starbucks.",
+      "After the baggage claim, walk straight ahead through customs and turn right. The meeting point is next to Starbucks Coffee – your driver meets you there with a sign showing your name."
+    ],
+    "t1Spot": "Exit of your module (A–E) – outside, directly to the right",
+    "t1Steps": [
+      "Collect your luggage in your arrival module (A, B, C, D or E).",
+      "On your way to the exit, let us know via WhatsApp or phone.",
+      "After leaving the baggage claim, walk straight ahead, exit the terminal building and turn right – the marked meeting area is there (see photo)."
+    ],
+    "flowBaggage": "Luggage",
+    "flowNotify": "Let us know",
+    "flowStarbucks": "Starbucks",
+    "flowOutsideRight": "Outside, right",
+    "promiseTitle": "What you can rely on",
+    "photoT1": "Meeting point Terminal 1: outside the terminal building, to the right (marked)",
+    "photoT2": "Meeting point Terminal 2: Starbucks Coffee"
   }
 }

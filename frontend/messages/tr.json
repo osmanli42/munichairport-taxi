@@ -507,6 +507,48 @@
     "ctaTitle": "Havalimanı transferinize hazır mısınız?",
     "ctaSubtitle": "Sabit fiyat, zamanında ve kişisel karşılama ile – hemen rezervasyon yapın.",
     "ctaBook": "Hemen rezervasyon yap",
-    "ctaCall": "Ara"
+    "ctaCall": "Ara",
+    "quickT1": "Terminal 1",
+    "quickT2": "Terminal 2",
+    "processTitle": "3 adımda şoförünüze ulaşın",
+    "processSubtitle": "Terminal 1 veya 2 – her karşılama böyle işler.",
+    "process": [
+      {
+        "title": "İnin ve bagajınızı alın",
+        "text": "Acele etmeyin. Erken iniş veya rötar olursa otomatik olarak haberimiz olur."
+      },
+      {
+        "title": "Bize haber verin",
+        "text": "Bagajınızı alıp çıkışa doğru yola çıktığınızda WhatsApp’tan yazın veya bizi arayın."
+      },
+      {
+        "title": "Şoför yaklaşık 5 dakikada orada",
+        "text": "Şoförünüz sizi terminalinizdeki buluşma noktasında adınızın yazılı olduğu tabelayla karşılar."
+      }
+    ],
+    "notifyHint": "Lütfen adınızı ve terminalinizi (Terminal 1’de modülü de) belirtin.",
+    "whatsapp": "WhatsApp’tan yaz",
+    "call": "Ara",
+    "meetingSpot": "Buluşma noktası",
+    "maxFive": "Şoförünüz yaklaşık 5 dakika içinde buluşma noktasında",
+    "t2Spot": "Terminal 2 geliş alanı – Starbucks Coffee’nin hizası",
+    "t2Steps": [
+      "Bagajınızı alın.",
+      "Bagajınızı alıp Starbucks’a doğru yola çıktığınızda bize haber verin.",
+      "Bagaj alanından sonra düz ilerleyip gümrükten geçin ve sağa dönün. Buluşma noktası Starbucks Coffee’nin hizasında – şoförünüz sizi orada adınızın yazılı olduğu tabelayla karşılar."
+    ],
+    "t1Spot": "Modülünüzün çıkışı (A–E) – dışarıda hemen sağda",
+    "t1Steps": [
+      "Bagajınızı indiğiniz modülde (A, B, C, D veya E) alın.",
+      "Çıkışa doğru giderken WhatsApp’tan veya telefonla haber verin.",
+      "Bagaj alanından sonra düz ilerleyin, terminal binasından çıkın ve sağa dönün – işaretli buluşma alanı orada (fotoğrafa bakın)."
+    ],
+    "flowBaggage": "Bagaj",
+    "flowNotify": "Haber ver",
+    "flowStarbucks": "Starbucks",
+    "flowOutsideRight": "Dışarıda sağda",
+    "promiseTitle": "Güvenebileceğiniz hizmet",
+    "photoT1": "Terminal 1 buluşma noktası: terminal binasından çıkınca sağda (işaretli)",
+    "photoT2": "Terminal 2 buluşma noktası: Starbucks Coffee"
   }
 }
