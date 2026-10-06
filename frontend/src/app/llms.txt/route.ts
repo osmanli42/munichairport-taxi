@@ -59,14 +59,6 @@ export async function GET() {
     const metered = Math.round((meter.base + r.km * meter.perKm) * 2) / 2;
     return [`| ${r.name} to Munich Airport (${Math.round(r.km)} km) | ${eur(r.quote.kombi)} | ${eur(metered)} | ${pct(r.quote.kombi, metered)}% cheaper |`];
   }).join('\n');
-  // Groups of 5 to 7: one van instead of two regular taxis (a regular taxi takes up to 4 passengers).
-  const groupRows = (['hbf', 'augsburg'] as const).flatMap((key) => {
-    const r = byKey[key];
-    if (!r) return [];
-    const twoTaxis = key === 'hbf' ? 2 * r.quote.kombi : 2 * (Math.round((meter.base + r.km * meter.perKm) * 2) / 2);
-    return [`| ${key === 'hbf' ? 'Munich Hauptbahnhof' : r.name} to Munich Airport | ${eur(r.quote.van)} | ${eur(twoTaxis)} | ${pct(r.quote.van, twoTaxis)}% cheaper |`];
-  }).join('\n');
-
   const cityLinks = Object.keys(cityLocal)
     .filter((slug) => citiesBySlug[slug])
     .map((slug) => `- [Taxi ${citiesBySlug[slug].name} to Munich Airport](${SITE}/en/blog/${slug}): fixed price, distance, travel time, pickup tips`)
@@ -121,19 +113,15 @@ Munich city districts start at ${eur(from)} (sedan). Munich Hauptbahnhof to the 
 
 ## Compared with a regular taxi
 
-Within Munich, Landkreis München, Freising and Erding (the mandatory taxi tariff area) our prices follow the official taxi tariff, including the official fixed fares Munich Hauptbahnhof to the airport (${eur(hbf.quote.kombi)}) and Messe München to the airport (90 €). The difference is the service: pre-booked, driver waiting with a name sign, flight monitoring, 60 minutes free waiting, free child seats.
+Munich Hauptbahnhof to the airport costs ${eur(hbf.quote.kombi)} and Messe München to the airport 90 €, the same as the Munich taxi fixed fares. The difference is the service: pre-booked, driver waiting with a name sign, flight monitoring, 60 minutes free waiting, free child seats.
 
-Outside that area the price is a free fixed price and is below the taxi meter (${eur(meter.base)} plus ${eur(meter.perKm)} per km):
+For long-distance rides outside Munich, Landkreis München, Freising and Erding our fixed price is below the taxi meter tariff (${eur(meter.base)} plus ${eur(meter.perKm)} per km):
 
 | Route | Our fixed price (sedan) | Taxi meter | Difference |
 |---|---|---|---|
 ${meterRows}
 
-Groups of 5 to 7 people: a regular taxi takes up to 4 passengers, so a group needs two taxis. One van for up to 7 passengers costs much less:
-
-| Route | One van (up to 7 pax) | Two regular taxis | Difference |
-|---|---|---|---|
-${groupRows}
+Groups of 5 to 7 people: a regular taxi takes up to 4 passengers and large taxis are not always available at the taxi rank. A pre-booked van (4 to 7 passengers) is guaranteed, for example Munich Hauptbahnhof to the airport ${eur(hbf.quote.van)}.
 
 ## What is included
 
