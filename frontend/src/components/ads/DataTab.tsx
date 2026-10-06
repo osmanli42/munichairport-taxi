@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Download, KeyRound, Link2, Settings2, Tag, Trash2, Upload, Wallet } from 'lucide-react';
+import { AlertTriangle, Bot, CheckCircle2, Download, KeyRound, Link2, RefreshCw, Settings2, Tag, Trash2, Upload, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, Switch } from '@/components/dashboard/shared';
 import { Empty } from '@/components/seo/common';
@@ -144,6 +144,8 @@ export default function DataTab({ onChanged }: { onChanged?: () => void }) {
         </div>
       </Card>
 
+      <ScriptCard />
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         {/* Final URL suffix */}
         <Card title="Kelime takibi (Final-URL-Suffix)" icon={Link2} right={tagged
@@ -251,5 +253,57 @@ export default function DataTab({ onChanged }: { onChanged?: () => void }) {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Weekly reports without uploads: a Google Ads Script posts them to /api/ads-script/import.
+function ScriptCard() {
+  const [d, setD] = useState<{ script: string; last: any } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState('');
+  useEffect(() => { adsApi('/script').then(setD).catch((e) => setErr(e.message)); }, []);
+  async function rotate() {
+    if (!confirm('Yeni anahtar oluşturulsun mu? Google Ads\'teki script, yeni kod yapıştırılana kadar çalışmaz.')) return;
+    setD(await adsApi('/script/rotate', { method: 'POST' }));
+    setOpen(true);
+  }
+  const last = d?.last;
+  const ok = last?.results?.length && last.results.every((r: any) => r.ok);
+  return (
+    <Card title="Otomatik rapor (Google Ads Script)" icon={Bot} right={last
+      ? <span className={cn('inline-flex items-center gap-1 text-xs font-semibold', ok ? 'text-emerald-700' : 'text-red-600')}>
+          {ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} son gönderim {fmt(last.at)}
+        </span>
+      : <span className="text-xs text-gray-400">henüz kurulmadı</span>}>
+      <div className="p-5 text-sm text-gray-600 space-y-3">
+        <p>Kurulunca üç rapor (Kampanyalar günlük, Suchbegriffe, Keywords; son 30 gün) her pazartesi sabahı kendiliğinden gelir; CSV yüklemeye gerek kalmaz. Script sadece rapor okur, reklam hesabında hiçbir şeyi değiştirmez.</p>
+        <ol className="list-decimal pl-5 space-y-1 text-gray-700">
+          <li>Google Ads → <b>Tools</b> → Massenaktionen → <b>Scripts</b> → ➕ <b>Neues Script</b></li>
+          <li>Editördeki her şeyi silip aşağıdaki kodu yapıştır, adı: „Admin Wochenbericht“</li>
+          <li><b>Autorisieren</b> → hesabını seç → Zulassen; sonra <b>Vorschau</b> yerine doğrudan <b>Ausführen</b></li>
+          <li>Script listesinde Häufigkeit: <b>Wöchentlich, Montag, 6–7 Uhr</b></li>
+        </ol>
+        {last?.results && (
+          <ul className="text-xs space-y-0.5">
+            {last.results.map((r: any) => (
+              <li key={r.filename} className={r.ok ? 'text-gray-600' : 'text-red-600'}>
+                {r.ok ? `✓ ${KIND[r.kind] || r.kind}: ${num(r.rows)} satır${r.from ? ` (${r.from} – ${r.to})` : ''}` : `✗ ${r.filename}: ${r.error}`}
+              </li>
+            ))}
+          </ul>
+        )}
+        {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>}
+        <div className="flex items-center gap-4">
+          <button onClick={() => setOpen((v) => !v)} disabled={!d} className="text-xs font-semibold text-primary-600 hover:underline disabled:opacity-50">
+            {open ? 'Kodu gizle' : 'Script kodunu göster'}
+          </button>
+          <button onClick={rotate} disabled={!d} className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">
+            <RefreshCw size={12} /> Anahtarı yenile
+          </button>
+        </div>
+        {open && d && <CopyBox text={d.script} label="Kodu kopyala" />}
+        <p className="text-xs text-gray-400">Kod gizli bir anahtar içerir; başkasıyla paylaşma. Sızdıysa „Anahtarı yenile“ ve yeni kodu yapıştır.</p>
+      </div>
+    </Card>
   );
 }

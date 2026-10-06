@@ -9,6 +9,7 @@ import { audience, campaigns, cockpit, keywords, searchTerms, settings, tracking
 import { deleteImport, importAdsReport, listImports } from '../services/ads/imports';
 import { adsReminder, buildCoach, FINAL_URL_SUFFIX, learningGuard, setTaskStatus } from '../services/ads/coach';
 import { buildExport, exportStatus } from '../services/ads/offline';
+import { buildScript, lastScriptRun, scriptToken } from '../services/ads/script';
 
 const router = Router();
 const days = (v: unknown) => ([7, 14, 30, 90].includes(Number(v)) ? Number(v) : 30);
@@ -107,6 +108,13 @@ router.get('/offline-export', authenticateAdmin, wrap(async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="google-ads-offline-conversions-${new Date().toISOString().slice(0, 10)}.csv"`);
   res.setHeader('X-Rows', String(out.rows));
   res.send(out.csv);
+}));
+
+router.get('/script', authenticateAdmin, wrap(async (_req, res) => {
+  res.json({ script: buildScript(await scriptToken()), last: await lastScriptRun() });
+}));
+router.post('/script/rotate', authenticateAdmin, wrap(async (_req, res) => {
+  res.json({ script: buildScript(await scriptToken(true)), last: await lastScriptRun() });
 }));
 
 router.get('/reminders', authenticateAdmin, wrap(async (_req, res) => {
