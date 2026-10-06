@@ -104,6 +104,7 @@ export default async function LocaleLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
+              '@id': `${baseUrl}/#website`,
               'name': 'Flughafen München TAXI',
               'alternateName': 'Munich Airport Taxi',
               'url': baseUrl,

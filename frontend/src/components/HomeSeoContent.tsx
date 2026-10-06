@@ -108,6 +108,11 @@ const CITIES: { slug: string; name: string }[] = [
   { slug: 'taxi-innsbruck-flughafen-muenchen', name: 'Innsbruck' },
 ];
 
+// Date the home page content last changed (shown to search engines as dateModified).
+// Update it together with real content changes on the home page, not on every deploy.
+const HOME_UPDATED = '2026-10-06';
+const SITE = 'https://flughafen-muenchen.taxi';
+
 export default function HomeSeoContent({ locale }: { locale: string }) {
   const c = COPY[(locale as keyof typeof COPY)] ?? COPY.de;
   const prefix = locale === 'de' ? '' : `/${locale}`;
@@ -122,9 +127,21 @@ export default function HomeSeoContent({ locale }: { locale: string }) {
     })),
   };
 
+  const webPageSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    '@id': `${SITE}${prefix}/#webpage`,
+    url: `${SITE}${prefix || '/'}`,
+    inLanguage: locale,
+    dateModified: HOME_UPDATED,
+    isPartOf: { '@id': `${SITE}/#website` },
+    publisher: { '@id': `${SITE}/#organization` },
+  };
+
   return (
     <section className="py-16 bg-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }} />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <p className="text-xs font-bold tracking-[.18em] uppercase mb-3 text-gold-500">{c.eyebrow}</p>
@@ -156,7 +173,7 @@ export default function HomeSeoContent({ locale }: { locale: string }) {
                   className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-1.5 text-sm text-gray-700 hover:border-gold-400 hover:text-primary-700 transition-colors"
                 >
                   <MapPin size={14} className="text-gold-500" />
-                  Taxi {city.name}
+                  {city.name}
                 </Link>
               </li>
             ))}
