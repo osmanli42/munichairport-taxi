@@ -4184,6 +4184,7 @@ export default function AdminPage() {
                   </p>
                   <button
                     onClick={async () => {
+                      if (!window.confirm(`Bestätigungs-E-Mail an ${editingBooking.email || '—'} senden?`)) return;
                       try {
                         await adminApi.resendConfirmation(editingBooking.id);
                         alert('Bestätigungs-E-Mail wurde gesendet.');

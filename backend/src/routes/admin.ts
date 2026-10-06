@@ -493,7 +493,34 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
     return;
   }
 
+  // A cancelled booking must not get a "booking received" mail.
+  if (booking.status === 'cancelled') {
+    res.status(409).json({ error: 'Stornierte Buchung — keine Bestätigung gesendet.' });
+    return;
+  }
+
   const { sendCustomerConfirmation } = await import('../services/notifications');
+
+  // Discounts as booked, so the mail shows the same breakdown as the first confirmation:
+  // the stored price is after discount, base_total is the price before it.
+  const promoAmount = Number(booking.discount_amount) || 0;
+  const autoAmount = Number(booking.auto_discount_amount) || 0;
+  let autoName: string | undefined;
+  let autoShow = false;
+  if (autoAmount > 0) {
+    const [rule] = booking.auto_discount_id
+      ? await query<{ name: string }>('SELECT name FROM auto_discounts WHERE id = ?', [booking.auto_discount_id])
+      : [];
+    autoName = rule?.name;
+    const [showRow] = await query<{ setting_value: string }>(
+      "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_show_in_email'");
+    autoShow = showRow?.setting_value === '1';
+  }
+
+  const [company] = booking.company_id
+    ? await query<{ company_name: string }>('SELECT company_name FROM companies WHERE id = ?', [booking.company_id])
+    : [];
+  const companyName = company?.company_name || undefined;
 
   const [priceRow] = await query<{ fahrrad_price: number; child_seat_price: number }>(
     'SELECT fahrrad_price, child_seat_price FROM prices WHERE vehicle_type = ?',
@@ -531,7 +558,12 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
     anfahrt_cost: booking.anfahrt_cost || undefined,
     zwischenstopp_address: booking.zwischenstopp_address || undefined,
     promo_code: booking.promo_code || undefined,
-    discount_amount: booking.discount_amount || undefined,
+    discount_amount: promoAmount > 0 ? promoAmount : undefined,
+    base_total: promoAmount > 0 || autoAmount > 0 ? Number(booking.price) + promoAmount + autoAmount : undefined,
+    auto_discount_name: autoName,
+    auto_discount_amount: autoAmount > 0 ? autoAmount : undefined,
+    auto_discount_show_in_email: autoShow,
+    company_name: companyName,
     night_confirm: false,
   });
 
