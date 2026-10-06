@@ -153,8 +153,8 @@ export default async function TaxiFlughafenMuenchenPage() {
       datePublished: '2026-10-02',
       // Prices on this page are live, so the content is current on every request.
       dateModified: new Date().toISOString().slice(0, 10),
-      author: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE },
-      publisher: { '@type': 'Organization', name: 'Flughafen-München.TAXI', url: SITE, logo: { '@type': 'ImageObject', url: `${SITE}/icon.png` } },
+      author: { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Flughafen-München.TAXI', url: SITE },
+      publisher: { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Flughafen-München.TAXI', url: SITE, logo: { '@type': 'ImageObject', url: `${SITE}/icon.png` } },
       mainEntityOfPage: `${SITE}/blog/taxi-flughafen-muenchen`,
     },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },

@@ -107,6 +107,42 @@ export default async function LocaleLayout({
               'name': 'Flughafen München TAXI',
               'alternateName': 'Munich Airport Taxi',
               'url': baseUrl,
+              'publisher': { '@id': `${baseUrl}/#organization` },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              '@id': `${baseUrl}/#organization`,
+              'name': 'Flughafen-München.TAXI',
+              'alternateName': ['Flughafen München TAXI', 'Munich Airport Taxi'],
+              'url': baseUrl,
+              'logo': { '@type': 'ImageObject', 'url': `${baseUrl}/icon.png` },
+              'image': `${baseUrl}/images/hero-airport.webp`,
+              'description': 'Festpreis-Taxi und Flughafentransfer zum und vom Flughafen München (MUC), rund um die Uhr. Sitz in Freising.',
+              'telephone': '+4915141620000',
+              'email': 'info@flughafen-muenchen.taxi',
+              'address': {
+                '@type': 'PostalAddress',
+                'streetAddress': 'Eisvogelweg 2',
+                'addressLocality': 'Freising',
+                'postalCode': '85356',
+                'addressRegion': 'Bayern',
+                'addressCountry': 'DE',
+              },
+              'contactPoint': [{
+                '@type': 'ContactPoint',
+                'telephone': '+4915141620000',
+                'email': 'info@flughafen-muenchen.taxi',
+                'contactType': 'customer service',
+                'areaServed': ['DE', 'AT'],
+                'availableLanguage': ['German', 'English', 'Turkish'],
+                'hoursAvailable': { '@type': 'OpeningHoursSpecification', 'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 'opens': '00:00', 'closes': '23:59' },
+              }],
             }),
           }}
         />
@@ -135,6 +171,7 @@ export default async function LocaleLayout({
               'openingHours': 'Mo-Su 00:00-24:00',
               'priceRange': '€€',
               '@id': `${baseUrl}/#taxiservice`,
+              'parentOrganization': { '@id': `${baseUrl}/#organization` },
               'logo': `${baseUrl}/images/logo-wide.webp`,
               'image': `${baseUrl}/images/hero-airport.webp`,
               'areaServed': [
