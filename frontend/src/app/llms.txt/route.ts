@@ -24,8 +24,23 @@ const FARE_ROWS: [key: string, label: string][] = [
   ['salzburg', 'Salzburg, Austria'],
 ];
 
+const _API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = _API.endsWith('/api') ? _API : `${_API}/api`;
+
+/** Taxi meter tariff for a regular taxi (kombi row of the mandatory tariff set in the admin). */
+async function meterTariff(): Promise<{ base: number; perKm: number }> {
+  try {
+    const res = await fetch(`${API_URL}/pflichtgebiet`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10000) });
+    const kombi = (await res.json())?.tarife?.find((t: { vehicle_type: string }) => t.vehicle_type === 'kombi');
+    if (kombi?.grundgebuehr > 0 && kombi?.min_per_km > 0) return { base: kombi.grundgebuehr, perKm: kombi.min_per_km };
+  } catch { /* fall through */ }
+  return { base: 5.9, perKm: 2.45 };
+}
+
+const pct = (ours: number, theirs: number) => Math.round((1 - ours / theirs) * 100);
+
 export async function GET() {
-  const rows = await getAreaPrices();
+  const [rows, meter] = await Promise.all([getAreaPrices(), meterTariff()]);
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r])) as Record<string, PricedRow>;
   const hbf = byKey.hbf;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
@@ -35,6 +50,21 @@ export async function GET() {
     const r = byKey[key];
     if (!r) return [];
     return [`| ${label} | ${Math.round(r.km)} km | approx. ${r.min} min | ${eur(r.quote.kombi)} | ${eur(r.quote.van)} |`];
+  }).join('\n');
+
+  // Long distance (outside the mandatory tariff area): fixed price vs. what the taxi meter would show.
+  const meterRows = (['augsburg', 'salzburg'] as const).flatMap((key) => {
+    const r = byKey[key];
+    if (!r) return [];
+    const metered = Math.round((meter.base + r.km * meter.perKm) * 2) / 2;
+    return [`| ${r.name} to Munich Airport (${Math.round(r.km)} km) | ${eur(r.quote.kombi)} | ${eur(metered)} | ${pct(r.quote.kombi, metered)}% cheaper |`];
+  }).join('\n');
+  // Groups of 5 to 7: one van instead of two regular taxis (a regular taxi takes up to 4 passengers).
+  const groupRows = (['hbf', 'augsburg'] as const).flatMap((key) => {
+    const r = byKey[key];
+    if (!r) return [];
+    const twoTaxis = key === 'hbf' ? 2 * r.quote.kombi : 2 * (Math.round((meter.base + r.km * meter.perKm) * 2) / 2);
+    return [`| ${key === 'hbf' ? 'Munich Hauptbahnhof' : r.name} to Munich Airport | ${eur(r.quote.van)} | ${eur(twoTaxis)} | ${pct(r.quote.van, twoTaxis)}% cheaper |`];
   }).join('\n');
 
   const cityLinks = Object.keys(cityLocal)
@@ -88,6 +118,22 @@ Starting prices for one way, calculated by the booking system on ${today}. The e
 ${fareTable}
 
 Munich city districts start at ${eur(from)} (sedan). Munich Hauptbahnhof to the airport is about ${Math.round(hbf.km)} km via the A9, approximately ${hbf.min} to 50 minutes depending on traffic.
+
+## Compared with a regular taxi
+
+Within Munich, Landkreis München, Freising and Erding (the mandatory taxi tariff area) our prices follow the official taxi tariff, including the official fixed fares Munich Hauptbahnhof to the airport (${eur(hbf.quote.kombi)}) and Messe München to the airport (90 €). The difference is the service: pre-booked, driver waiting with a name sign, flight monitoring, 60 minutes free waiting, free child seats.
+
+Outside that area the price is a free fixed price and is below the taxi meter (${eur(meter.base)} plus ${eur(meter.perKm)} per km):
+
+| Route | Our fixed price (sedan) | Taxi meter | Difference |
+|---|---|---|---|
+${meterRows}
+
+Groups of 5 to 7 people: a regular taxi takes up to 4 passengers, so a group needs two taxis. One van for up to 7 passengers costs much less:
+
+| Route | One van (up to 7 pax) | Two regular taxis | Difference |
+|---|---|---|---|
+${groupRows}
 
 ## What is included
 
