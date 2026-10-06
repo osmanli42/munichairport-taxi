@@ -7,6 +7,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 import { query } from '../db';
 import { calendarAlertPreview } from '../services/calendarRideAlert';
+import { berlinDateSql } from '../utils/berlinTime';
 import {
   getAlertConfig, saveAlertConfig, shouldSendAlert, resetCooldown, listCooldowns, getStateValue, setStateValue,
 } from '../services/alertCenter';
@@ -453,17 +454,46 @@ async function sendDailySummary(): Promise<void> {
       GROUP BY target ORDER BY n DESC LIMIT 3`
   );
 
+  // Rides that only exist in the Google Calendar (phone, partners), from the mirror table
+  // calendar_rides (synced every 15 min) — kind 'ride' = not a copy of a web booking.
+  const yesterday = berlinDateSql(-1);
+  const today = berlinDateSql(0);
+  const monthStart = `${today.slice(0, 8)}01`;
+  const [cal] = await query<any>(
+    `SELECT
+       SUM(LEFT(ride_time, 10) = ?) AS y_n, SUM(CASE WHEN LEFT(ride_time, 10) = ? THEN price END) AS y_eur,
+       SUM(LEFT(ride_time, 10) = ? AND price IS NULL) AS y_np,
+       SUM(LEFT(ride_time, 10) = ?) AS t_n, SUM(CASE WHEN LEFT(ride_time, 10) = ? THEN price END) AS t_eur,
+       SUM(LEFT(ride_time, 10) = ? AND price IS NULL) AS t_np,
+       SUM(LEFT(ride_time, 10) BETWEEN ? AND ?) AS m_n,
+       SUM(CASE WHEN LEFT(ride_time, 10) BETWEEN ? AND ? THEN price END) AS m_eur,
+       SUM(LEFT(ride_time, 10) BETWEEN ? AND ? AND price IS NULL) AS m_np
+       FROM calendar_rides WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`,
+    [yesterday, yesterday, yesterday, today, today, today,
+     monthStart, yesterday, monthStart, yesterday, monthStart, yesterday,
+     `${yesterday < monthStart ? yesterday : monthStart}T00:00`, `${today}T23:59`]
+  );
+  const eur = (v: unknown) => `${(Number(v) || 0).toFixed(2).replace('.', ',')} €`;
+  // Rides entered without a price are named, so a low total is not mistaken for cheap rides.
+  const calLine = (n: unknown, v: unknown, noPrice: unknown) =>
+    `${Number(n) || 0} fahrt · ${eur(v)}${Number(noPrice) ? ` (${Number(noPrice)} fiyatsız)` : ''}`;
+
   const sessions = Number(t?.sessions || 0);
   const bookings = Number(t?.bookings || 0);
   const rate = sessions > 0 ? `${((bookings / sessions) * 100).toFixed(1)}%` : '—';
 
   await sendAlert(
-    `Günlük özet — ${sessions} oturum, ${bookings} rezervasyon`,
+    `Günlük özet — ${sessions} oturum, ${bookings} rezervasyon, ${Number(cal?.y_n) || 0} Kalender-Fahrt`,
     `Dün (${dayKey}):
   Oturum:       ${sessions}
   Rezervasyon:  ${bookings}  (dönüşüm ${rate})
   Telefona dönen: ${Number(t?.calls || 0)}
   Teknik hata:  ${Number(t?.tech_errors || 0)}
+
+Kalender-Fahrten (Google Takvim, web rezervasyonları hariç):
+  Dün:          ${calLine(cal?.y_n, cal?.y_eur, cal?.y_np)}
+  Bugün planlı: ${calLine(cal?.t_n, cal?.t_eur, cal?.t_np)}
+  Bu ay (${monthStart.slice(8, 10)}.${monthStart.slice(5, 7)}.–dün): ${today === monthStart ? '—' : calLine(cal?.m_n, cal?.m_eur, cal?.m_np)}
 
 En çok dokunulan form alanları:
 ${fields.length ? fields.map((f: any) => `  - ${f.target} × ${f.n}`).join('\n') : '  (veri yok)'}`

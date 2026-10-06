@@ -658,7 +658,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['pm2', '⚙️ Çöken PM2 servisi', 'Durdurulan servisler (aşağıdaki listeden veya pm2 stop ile) uyarı üretmez.'],
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
-                ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta.'],
+                ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra tek e-posta: dünkü ziyaret/rezervasyon + Kalender-Fahrt toplamları (dün, bugün planlı, bu ay; adet ve €).'],
                 ['seo', '🔎 SEO', 'Takip edilen kelime 5+ sıra düşerse veya organik tıklama haftalık %30+ düşerse; site taramasında yeni kritik hata (sayfa hatası, noindex, kırık link) çıkarsa. Günde en fazla bir e-posta.'],
                 ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
                   ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
