@@ -125,7 +125,7 @@ Groups of 5 to 7 people: a regular taxi takes up to 4 passengers and large taxis
 
 ## What is included
 
-- Fixed price confirmed before booking, no taximeter
+- Fixed price confirmed before booking
 - Flight monitoring: pickup time is adjusted to delays automatically
 - 60 minutes free waiting time after landing
 - Meet and greet with a name sign in the arrivals area of Terminal 1 or Terminal 2
