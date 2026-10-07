@@ -56,6 +56,7 @@ export default function B2BTab({ token }: { token: string }) {
   const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid'>('all');
   const [mahnModal, setMahnModal] = useState<{ invoice: Invoice; mahngebuehr: string } | null>(null);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
+  const [monthEndReminder, setMonthEndReminder] = useState(true);
   const [applicationsEnabled, setApplicationsEnabled] = useState(true);
   const [msg, setMsg] = useState('');
   const [newFirmaModal, setNewFirmaModal] = useState(false);
@@ -94,6 +95,7 @@ export default function B2BTab({ token }: { token: string }) {
       if (res.ok) {
         const d = await res.json();
         setTrackingEnabled(d.portal_tracking_enabled !== '0');
+        setMonthEndReminder(d.month_end_invoice_reminder !== '0');
         setApplicationsEnabled(d.b2b_applications_enabled !== '0');
       }
     } catch (e) { console.error(e); }
@@ -254,6 +256,16 @@ export default function B2BTab({ token }: { token: string }) {
     });
     setTrackingEnabled(!trackingEnabled);
     flash(`Tracking ${newVal === '1' ? 'aktiviert' : 'deaktiviert'}`);
+  };
+
+  const toggleMonthEndReminder = async () => {
+    const newVal = monthEndReminder ? '0' : '1';
+    await fetch(`${API}/settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ month_end_invoice_reminder: newVal }),
+    });
+    setMonthEndReminder(!monthEndReminder);
+    flash(`Monatsende-Erinnerung ${newVal === '1' ? 'aktiviert' : 'deaktiviert'}`);
   };
 
   const toggleApplications = async () => {
@@ -539,6 +551,16 @@ export default function B2BTab({ token }: { token: string }) {
             <button onClick={toggleTracking}
               className={`relative w-12 h-6 rounded-full transition-colors ${trackingEnabled ? 'bg-green-500' : 'bg-gray-300'}`}>
               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${trackingEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+            <div>
+              <p className="font-medium text-gray-900">Monatsende-Erinnerung für Rechnungen</p>
+              <p className="text-sm text-gray-500">Ab dem letzten Tag des Monats roter Hinweis im Dashboard (Handlungsbedarf), solange Sammelrechnungen oder Rechnungsfahrten aus dem Kalender noch offen sind</p>
+            </div>
+            <button onClick={toggleMonthEndReminder}
+              className={`relative w-12 h-6 rounded-full transition-colors ${monthEndReminder ? 'bg-green-500' : 'bg-gray-300'}`}>
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${monthEndReminder ? 'left-[26px]' : 'left-0.5'}`} />
             </button>
           </div>
           <div className="flex items-center justify-between py-3">

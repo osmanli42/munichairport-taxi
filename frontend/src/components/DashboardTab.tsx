@@ -61,6 +61,11 @@ interface DashboardData {
     seoIndex?: { dropped: number } | null;
     /** Weekly Google Ads report upload (Google Ads → Veri & Bağlantı) not done yet. */
     adsReports?: { lastUpload: string | null } | null;
+    /** Month over (or its last day): Sammelrechnungen / calendar Rechnung rides not sent yet. */
+    monthEndInvoices?: {
+      companies: Array<{ company_id: number; company_name: string; month: string; rides: number; total: number }>;
+      calendar: Array<{ month: string; rides: number }>;
+    } | null;
   };
   card_deadline?: string;
   recent: Recent[];
@@ -539,7 +544,10 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
   const seo = a.seoBacklinks || null;
   const seoIdx = a.seoIndex || null;
   const adsRep = a.adsReports || null;
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0);
+  const monthEnd = a.monthEndInvoices || null;
+  const monthEndCount = monthEnd ? monthEnd.companies.length + monthEnd.calendar.length : 0;
+  const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   return (
     <Card
@@ -582,6 +590,46 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
                         {c.company_id ? 'Firmenkarte' : c.card_last4 ? `${(c.card_brand || 'Karte').toUpperCase()} •••• ${c.card_last4}` : c.legacy_card ? 'alte Karte – manuell' : 'keine Karte hinterlegt'}
                         {c.charge_status === 'failed' && <span className="text-red-600 font-sans"> · fehlgeschlagen{c.charge_error ? `: ${c.charge_error}` : ''}</span>}
                       </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {monthEnd && monthEndCount > 0 && (
+            <div className="px-5 py-3 bg-red-50/60">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500 animate-pulse"><FileText size={15} /></span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-red-700">Monatsende: Rechnungen senden <span className="font-normal">({monthEndCount})</span></div>
+                  <div className="text-[11px] text-red-600/80">Gesammelte Fahrten des Monats sind noch nicht abgerechnet</div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {monthEnd.companies.map((c) => (
+                  <li key={`${c.company_id}-${c.month}`}>
+                    <button onClick={() => onGoTab('b2b')} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                      <div className="flex items-center gap-2">
+                        <Building2 size={13} className="shrink-0 text-red-500" />
+                        <span className="truncate font-medium text-gray-800">{c.company_name}</span>
+                        <span className="shrink-0 text-gray-500">{monthName(c.month)} · {c.rides} Fahrt{c.rides === 1 ? '' : 'en'}</span>
+                        <span className="ml-auto shrink-0 font-semibold text-gray-900">{formatPrice(c.total)}</span>
+                        <ChevronRight size={13} className="shrink-0 text-gray-300" />
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-red-600/80">Sammelrechnung fehlt · B2B Business</div>
+                    </button>
+                  </li>
+                ))}
+                {monthEnd.calendar.map((c) => (
+                  <li key={`cal-${c.month}`}>
+                    <button onClick={() => onGoTab('kalender')} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays size={13} className="shrink-0 text-red-500" />
+                        <span className="truncate font-medium text-gray-800">Google Kalender</span>
+                        <span className="shrink-0 text-gray-500">{monthName(c.month)} · {c.rides} Rechnungsfahrt{c.rides === 1 ? '' : 'en'}</span>
+                        <ChevronRight size={13} className="ml-auto shrink-0 text-gray-300" />
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-red-600/80">Noch nicht abgerechnet · Kalender</div>
                     </button>
                   </li>
                 ))}

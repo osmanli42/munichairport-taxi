@@ -384,7 +384,23 @@ async function loadOpenState(calendarId: string, from: string, to: string) {
 // nach Rechnung/Ausblenden sofort verwerfen.
 const OPEN_COUNT_TTL_MS = 10 * 60 * 1000;
 let openCountCache: { count: number; at: number } | null = null;
-const invalidateOpenCount = () => { openCountCache = null; };
+const invalidateOpenCount = () => { openCountCache = null; openMonthsCache = null; };
+
+// The same open (already driven, not yet invoiced) Rechnung rides, counted per ride month —
+// for the month-end reminder on the dashboard (services/monthEndInvoices.ts).
+let openMonthsCache: { months: Record<string, number>; at: number } | null = null;
+export async function calendarOpenInvoiceMonths(): Promise<Record<string, number> | null> {
+  if (openMonthsCache && Date.now() - openMonthsCache.at < OPEN_COUNT_TTL_MS) return openMonthsCache.months;
+  const calendarId = hasServiceAccount() ? await calendarIdSetting() : null;
+  if (!calendarId) return null;
+  const state = await loadOpenState(calendarId, defaultRange().from, berlinNow().slice(0, 10));
+  const months: Record<string, number> = {};
+  const add = (t: string) => { if (t && t <= state.now) months[t.slice(0, 7)] = (months[t.slice(0, 7)] || 0) + 1; };
+  state.openEvents.forEach((e) => add(e.start || ''));
+  state.unbilledRows.forEach((b: any) => add(toLocalDateTime(b.pickup_datetime)));
+  openMonthsCache = { months, at: Date.now() };
+  return months;
+}
 
 router.get('/open-count', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

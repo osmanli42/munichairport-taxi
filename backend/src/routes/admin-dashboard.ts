@@ -4,6 +4,7 @@
 // while created_at is a UTC DATETIME and the server clock is UTC. Every calendar boundary
 // here is therefore taken from the Berlin clock (utils/berlinTime), never from new Date().
 
+import { monthEndInvoices } from '../services/monthEndInvoices';
 import { Router, Response } from 'express';
 import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
@@ -225,6 +226,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const seoIndex = await indexReminder().catch(() => null);
     // Weekly Google Ads report upload not done yet (Google Ads → Veri & Bağlantı).
     const adsReports = await adsReminder().catch(() => null);
+    const monthEnd = await monthEndInvoices().catch(() => null);
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
@@ -276,7 +278,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intake,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd },
       card_deadline: await cardDeadline(),
       recent,
       calendar,
