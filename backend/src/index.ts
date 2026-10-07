@@ -21,6 +21,7 @@ import { startSeoJobs } from './services/seo/jobs';
 import adminDashboardWidgetsRouter from './routes/admin-dashboard-widgets';
 import recordingRouter from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
+import securityRouter from './routes/security';
 import adsRouter from './routes/ads';
 import adsV2Router from './routes/ads-v2';
 import adsScriptRouter from './routes/ads-script';
@@ -123,6 +124,7 @@ app.use('/api/admin/tracking', adminTrackingRouter);
 app.use('/api', trackingRouter);
 app.use('/api', recordingRouter);
 app.use('/api', systemRouter);
+app.use('/api', securityRouter);
 app.use('/api', liveAssistRouter);
 
 // Error handler

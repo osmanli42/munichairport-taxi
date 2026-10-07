@@ -10,8 +10,8 @@
 import { query, run } from '../db';
 
 export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
-  | 'calendar_new';
-export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge', 'seo', 'calendar_new'];
+  | 'calendar_new' | 'security';
+export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge', 'seo', 'calendar_new', 'security'];
 
 export interface AlertConfig {
   enabled: boolean;
@@ -45,6 +45,8 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
     card_charge: true,
     seo: true,
     calendar_new: true,
+    // Read by the server-side watchdog /usr/local/sbin/sec-watch (it mails on its own).
+    security: true,
   },
   down_after_minutes: 6,
   reminder_hours: 12,

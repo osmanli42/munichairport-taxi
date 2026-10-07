@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import PasswordChangeCard from './PasswordChangeCard';
+import SecurityCard from './SecurityCard';
 
 // What each PM2 process is, in plain words (checked against the VPS: pm2 cwd/script and
 // the nginx site that routes to its port), what happens if it is stopped, and why some
@@ -69,7 +70,7 @@ const PM2_INFO: Record<string, { label: string; what: string; ifStopped: string;
 
 // Mirrors backend services/alertCenter.ts
 type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
-  | 'calendar_new';
+  | 'calendar_new' | 'security';
 interface AlertCfg {
   enabled: boolean;
   categories: Record<AlertCategory, boolean>;
@@ -175,6 +176,7 @@ export default function SystemTab({ token }: { token: string }) {
   const [pm2Busy, setPm2Busy] = useState<string>('');
   const [pm2Msg, setPm2Msg] = useState<{ ok: boolean; text: string } | null>(null);
   const [calPreview, setCalPreview] = useState<{ subject: string; html: string; empty: boolean; error?: string } | null>(null);
+  const [secWarnings, setSecWarnings] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -362,6 +364,7 @@ export default function SystemTab({ token }: { token: string }) {
   if (offlinePm2.length > 0) overallWarnings.push(`${offlinePm2.length} servis çöktü`);
   const failedHealth = (health?.latest || []).filter((h) => h.status === 'fail');
   for (const h of failedHealth) overallWarnings.push(`${h.label}: ${h.message}`);
+  overallWarnings.push(...secWarnings);
 
   return (
     <div className="space-y-6">
@@ -401,6 +404,8 @@ export default function SystemTab({ token }: { token: string }) {
           </div>
         )}
       </div>
+
+      <SecurityCard token={token} onWarnings={setSecWarnings} />
 
       {/* Site Health */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -663,6 +668,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
                   ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
                   : 'Google Takvim’e her yeni fahrt eklendiğinde 5–10 dakika içinde e-posta: tarih, saat, adres, fiyat, not, takvim linki. Web rezervasyonları zaten kendi e-postasını gönderdiği için dahil değil.'],
+                ['security', '🛡️ Güvenlik bekçisi', 'Sunucuda şüpheli bir şey görülürse (gizli program, madenci, yeni SSH anahtarı, şifreli giriş, kapatılan firewall…) hemen e-posta. Aynı sorun için günde en fazla bir hatırlatma. Kapalıyken de kontrol sürer, yalnızca e-posta gitmez — yukarıdaki „Sunucu Güvenliği“ kartında görünür.'],
                 ['card_charge', '💳 Kart çekilmedi', `Saat ${alertSettings.card_charge_deadline || '20:15'}’te yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle); dashboard’da da o saatten sonra kırmızı uyarı. Müşteri hatırlatmaları 20:00’de gider.`],
               ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
                 <div key={key} className="flex items-start gap-3 px-3 py-2.5">
