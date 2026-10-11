@@ -8,7 +8,7 @@ import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords, getClientIp } from '../utils/ipGeo';
 import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLimit';
-import { assertTransferAllowed, InvoiceCustomer } from './invoiceCustomers';
+import { assertTransferAllowed, InvoiceCustomer, rememberInvoiceAddress } from './invoiceCustomers';
 import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
@@ -530,6 +530,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // Rechnungskunde mit Überweisung: ohne eigene Eingabe gilt die hinterlegte Firmenadresse,
     // und die Rechnung geht nach der Fahrt immer automatisch raus (autoRechnungJob).
     const rechnungAdresseClean = rechnungAdresseInput || (transferCustomer?.rechnung_adresse || null);
+    // Überweisung ohne Rechnungsadresse (weder eingegeben noch hinterlegt) wird nicht angenommen —
+    // die Rechnung muss an eine Firmenanschrift gehen. Das Formular prüft dasselbe vorher.
+    if (transferCustomer && !rechnungAdresseClean) {
+      res.status(400).json({ error: 'Für die Zahlung per Überweisung ist eine Rechnungsadresse erforderlich.', field: 'rechnung' });
+      return;
+    }
     const rechnungRequired = (rechnung_required && rechnungAdresseClean) || transferCustomer ? 1 : 0;
 
     // Derive the canonical form of the phone number. Advisory only: an unparseable
@@ -737,6 +743,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not
     // awaited: the customer's confirmation must not wait on an external lookup.
     enrichBookingLineType(result.insertId, phoneE164).catch(err => console.error('Phone lookup error:', err));
+    // Rechnungskunde hat eine (neue) Adresse eingegeben → beim nächsten Mal vorhanden
+    if (transferCustomer && rechnungAdresseInput && rechnungAdresseInput !== transferCustomer.rechnung_adresse) {
+      rememberInvoiceAddress(transferCustomer.id, rechnungAdresseInput).catch(err => console.error('Invoice address save error:', err));
+    }
 
     res.status(201).json({
       success: true,

@@ -112,6 +112,11 @@ export async function assertTransferAllowed(
   return { ok: true, customer };
 }
 
+/** Zuletzt bei einer Überweisungs-Buchung eingegebene Rechnungsadresse für das nächste Mal merken. */
+export async function rememberInvoiceAddress(customerId: number, adresse: string): Promise<void> {
+  await run(`UPDATE invoice_customers SET rechnung_adresse = ? WHERE id = ?`, [adresse.slice(0, 500), customerId]);
+}
+
 // ---------- Öffentlich: Anzeige im /buchen-Formular ----------
 const ELIG_MAX = 30;
 const ELIG_WINDOW_MS = 15 * 60_000;

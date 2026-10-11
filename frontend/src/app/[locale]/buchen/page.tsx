@@ -391,6 +391,8 @@ function BuchenContent() {
   // Der Server prüft E-Mail + Telefon gegen invoice_customers (routes/invoiceCustomers.ts)
   // und prüft beim Buchen erneut — diese Abfrage steuert nur, ob die Option sichtbar ist.
   const [transferEligible, setTransferEligible] = useState(false);
+  // Hat der Kunde schon eine hinterlegte Rechnungsadresse? Sonst ist sie bei Überweisung Pflicht.
+  const [transferHasAddress, setTransferHasAddress] = useState(false);
   useEffect(() => {
     const mail = email.trim();
     const tel = toSubmitValue(phone, phoneCountry);
@@ -406,7 +408,7 @@ function BuchenContent() {
         body: JSON.stringify({ email: mail, phone: tel }),
       })
         .then(r => (r.ok ? r.json() : { eligible: false }))
-        .then(d => { if (!cancelled) setTransferEligible(!!d.eligible); })
+        .then(d => { if (!cancelled) { setTransferEligible(!!d.eligible); setTransferHasAddress(!!d.has_address); } })
         .catch(() => { if (!cancelled) setTransferEligible(false); });
     }, 600);
     return () => { cancelled = true; clearTimeout(id); };
@@ -659,13 +661,28 @@ function BuchenContent() {
     if (!email.trim() || !email.includes('@')) errs.email = tx.err_email;
     if (flightNumberRequired && !flightNumber.trim()) errs.flightNumber = locale === 'de' ? 'Flugnummer erforderlich' : locale === 'en' ? 'Flight number required' : 'Uçuş numarası gerekli';
     if (flightNumberRequired && !pickupSign.trim()) errs.pickupSign = locale === 'de' ? 'Abholschild erforderlich' : locale === 'en' ? 'Pickup sign required' : 'Tabela gerekli';
+    if (transferNeedsAddress()) errs.rechnung = L('Für die Zahlung per Überweisung ist eine Rechnungsadresse erforderlich.', 'A billing address is required for payment by bank transfer.', 'Havale ile ödeme için fatura adresi zorunludur.');
     if (petEnabled && !petCageConfirmed) errs.pet = L('Bitte bestätigen Sie, dass Ihr Haustier während der gesamten Fahrt im Käfig/in der Transportbox bleibt.', 'Please confirm that your pet will stay in its cage/carrier for the entire ride.', 'Lütfen evcil hayvanınızın yolculuk boyunca kafes/taşıma kutusu içinde kalacağını onaylayın.');
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
 
+  // Überweisung braucht eine Rechnungsadresse — eingegeben oder beim Kunden hinterlegt
+  function transferNeedsAddress(): boolean {
+    return payment === 'ueberweisung' && !transferHasAddress && !(rechnungRequired && rechnungAdresse.trim());
+  }
+
   async function handleContinueToReview() {
-    if (!validate()) return;
+    if (!validate()) {
+      // Fehlende Rechnungsadresse bei Überweisung: Eingabefenster direkt öffnen
+      if (transferNeedsAddress()) {
+        setRechnungRequired(true);
+        setRechnungDraft(rechnungAdresse);
+        setShowRechnungBeispiel(false);
+        setShowRechnungModal(true);
+      }
+      return;
+    }
     if (payment === 'card') {
       setCardSubmitting(true);
       const result = await cardFieldRef.current?.confirmCard();
@@ -2021,9 +2038,16 @@ function BuchenContent() {
                   <Landmark size={18} className="shrink-0 mt-0.5" />
                   <span>
                     {L(
-                      'Sie zahlen bequem per Überweisung: Die Rechnung kommt nach der Fahrt per E-Mail an Ihre hinterlegte Rechnungsadresse, Zahlungsziel 7 Tage. Beim Fahrer ist nichts zu bezahlen.',
-                      'Pay conveniently by bank transfer: the invoice is e-mailed after the ride to your stored billing address, payable within 7 days. Nothing to pay to the driver.',
-                      'Havale ile ödersiniz: fatura yolculuktan sonra kayıtlı fatura adresinize e-postayla gelir, ödeme süresi 7 gün. Şoföre ödeme yapılmaz.'
+                      'Sie zahlen bequem per Überweisung: Die Rechnung kommt nach der Fahrt per E-Mail, Zahlungsziel 7 Tage. Beim Fahrer ist nichts zu bezahlen.',
+                      'Pay conveniently by bank transfer: the invoice is e-mailed after the ride, payable within 7 days. Nothing to pay to the driver.',
+                      'Havale ile ödersiniz: fatura yolculuktan sonra e-postayla gelir, ödeme süresi 7 gün. Şoföre ödeme yapılmaz.'
+                    )}
+                    {!transferHasAddress && !(rechnungRequired && rechnungAdresse.trim()) && (
+                      <span className="block mt-1.5 font-semibold text-red-700">
+                        {L('Bitte geben Sie oben unter „Rechnung für Ihr Unternehmen?“ Ihre Rechnungsadresse an — bei Überweisung Pflicht.',
+                           'Please enter your billing address above under “Invoice for your company?” — required for bank transfer.',
+                           'Lütfen yukarıda „Şirketiniz için fatura?“ altında fatura adresinizi girin — havalede zorunludur.')}
+                      </span>
                     )}
                   </span>
                 </div>
