@@ -163,7 +163,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', night_cancel_enabled: '1', night_cancel_start: '22', night_cancel_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1549,6 +1549,77 @@ export default function AdminPage() {
                             const updated = await adminApi.updateSettings({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end });
                             setSettings(updated);
                             setPriceSuccess('Nachtzeitraum aktualisiert');
+                            setTimeout(() => setPriceSuccess(''), 3000);
+                          } catch { }
+                          setSettingsSaving(false);
+                        }}
+                        disabled={settingsSaving}
+                        className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        {settingsSaving ? '...' : 'Speichern'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {/* Night cancellation (Buchung verwalten) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="font-semibold text-gray-700">🌙📞 Nacht-Stornierung</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Storniert ein Kunde in diesem Zeitfenster (Münchner Zeit) über „Buchung verwalten“ eine Fahrt, die beginnt, bevor das Zeitfenster endet (+1 Std.), ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Spätere Fahrten (z. B. in zwei Tagen) bleiben online stornierbar. Standard: 22–07 Uhr.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.night_cancel_enabled === '0' ? '1' : '0';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ night_cancel_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Nacht-Stornierung aktiviert' : 'Nacht-Stornierung deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.night_cancel_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.night_cancel_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                  {settings.night_cancel_enabled !== '0' && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-gray-600">Von</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        value={settings.night_cancel_start || '22'}
+                        onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_start: e.target.value }))}
+                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                      <span className="text-sm text-gray-600">Uhr bis</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        value={settings.night_cancel_end || '7'}
+                        onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_end: e.target.value }))}
+                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                      <span className="text-sm text-gray-600">Uhr</span>
+                      <button
+                        onClick={async () => {
+                          setSettingsSaving(true);
+                          try {
+                            const updated = await adminApi.updateSettings({ night_cancel_start: settings.night_cancel_start || '22', night_cancel_end: settings.night_cancel_end || '7' });
+                            setSettings(updated);
+                            setPriceSuccess('Nacht-Stornierung: Zeitraum aktualisiert');
                             setTimeout(() => setPriceSuccess(''), 3000);
                           } catch { }
                           setSettingsSaving(false);

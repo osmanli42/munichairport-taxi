@@ -523,28 +523,34 @@ export function customerCancellationEmail(b: BookingNotificationData): { subject
 }
 
 /** Admin mail when the customer cancels on the manage-booking page. */
-export function adminCancellationEmail(b: BookingNotificationData): { subject: string; html: string } {
+// variant 'night_request': Kunde wollte nachts online stornieren — gesperrt, Fahrt ist NOCH AKTIV.
+export function adminCancellationEmail(b: BookingNotificationData, variant: 'cancelled' | 'night_request' = 'cancelled'): { subject: string; html: string } {
+  const night = variant === 'night_request';
   const out = when(b.pickup_datetime, 'de');
   const back = b.trip_type === 'roundtrip' && b.return_datetime ? when(b.return_datetime, 'de') : null;
   const phoneDigits = String(b.phone || '').replace(/[^\d]/g, '');
   const html = `
 <div style="background:#eef1f5;padding:16px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid ${C.line}">
-  <tr><td style="background:#991b1b;padding:18px 20px">
+  <tr><td style="background:${night ? '#b45309' : '#991b1b'};padding:18px 20px">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td>
-        <div style="font-size:12px;color:#fecaca;font-weight:700;letter-spacing:.08em;text-transform:uppercase">✕ Storniert durch Kunden · ${esc(b.booking_number)}</div>
+        <div style="font-size:12px;color:#fecaca;font-weight:700;letter-spacing:.08em;text-transform:uppercase">${night ? '⚠ Nacht · Stornierungswunsch · noch NICHT storniert' : '✕ Storniert durch Kunden'} · ${esc(b.booking_number)}</div>
         <div style="font-size:15px;color:#fee2e2;margin-top:6px">${esc(out.day)}</div>
         <div style="font-size:28px;color:#fff;font-weight:800;line-height:1.1">${esc(out.time)}</div>
         ${back ? `<div style="font-size:14px;color:#fecaca;margin-top:2px">⇄ Rückfahrt ${esc(back.day)} · ${esc(back.time)}</div>` : ''}
       </td>
       <td style="text-align:right;vertical-align:top;white-space:nowrap">
-        <div style="font-size:22px;color:#fff;font-weight:800;text-decoration:line-through">${money(b.price)}</div>
+        <div style="font-size:22px;color:#fff;font-weight:800;${night ? '' : 'text-decoration:line-through'}">${money(b.price)}</div>
         <span style="display:inline-block;margin-top:4px;background:#fff;color:#991b1b;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px">${adminPay(b.payment_method)}</span>
       </td>
     </tr></table>
   </td></tr>
 
+  ${night ? `<tr><td style="padding:14px 20px 0"><div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:12px 14px;font-size:14px;color:#78350f;line-height:1.5">
+    <b>Der Kunde möchte diese Fahrt stornieren.</b> Online-Storno ist nachts gesperrt (Nacht-Stornierung) —
+    der Kunde wurde gebeten, <b>jetzt anzurufen</b>. Die Fahrt ist <b>weiterhin aktiv</b>, bis du sie im Admin stornierst.
+    Ruft er nicht an: bitte zurückrufen und klären.</div></td></tr>` : ''}
   <tr><td style="padding:14px 20px 4px">
     ${b.phone ? button(`tel:${b.phone}`, '📞 Anrufen') : ''}
     ${phoneDigits ? button(`https://wa.me/${phoneDigits}`, '💬 WhatsApp', false) : ''}
@@ -554,7 +560,7 @@ export function adminCancellationEmail(b: BookingNotificationData): { subject: s
   <tr><td style="height:12px"></td></tr>
 
   ${card(`
-    ${heading('Stornierte Fahrt')}
+    ${heading(night ? 'Betroffene Fahrt (noch aktiv)' : 'Stornierte Fahrt')}
     ${route(b, T.de)}
     <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label.de} · 👤 ${b.passengers}</div>
   `)}
@@ -568,8 +574,13 @@ export function adminCancellationEmail(b: BookingNotificationData): { subject: s
     ])}
   `)}
 
-  <tr><td style="padding:4px 20px 18px;font-size:11px;color:#9ca3af;text-align:center">Selbstservice-Stornierung · automatisch erstellt</td></tr>
+  <tr><td style="padding:4px 20px 18px;font-size:11px;color:#9ca3af;text-align:center">${night ? 'Nacht-Stornierungswunsch über „Buchung verwalten“' : 'Selbstservice-Stornierung'} · automatisch erstellt</td></tr>
 </table>
 </div>`;
-  return { subject: `❌ Storniert durch Kunden · ${out.day} ${out.time} · ${money(b.price)} · ${b.name}`, html };
+  return {
+    subject: night
+      ? `⚠️ NACHT: Kunde möchte stornieren – ruft an · ${out.day} ${out.time} · ${b.name}`
+      : `❌ Storniert durch Kunden · ${out.day} ${out.time} · ${money(b.price)} · ${b.name}`,
+    html,
+  };
 }

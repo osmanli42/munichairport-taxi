@@ -17,6 +17,7 @@ import { resolveAutoDiscount, countCustomerBookings, countVisitorSessions, ruleL
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
+import { berlinWallNow, rideBeforeNightEnds } from '../utils/nightWindow';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -1020,6 +1021,39 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
 
 const CANCEL_FREE_HOURS = 3;
 
+// Nacht-Stornierung (Admin → Preise): Online-Storno in „Buchung verwalten“ ist gesperrt,
+// wenn es JETZT (Münchner Zeit) im Nachtfenster liegt UND die Fahrt startet, bevor das
+// Nachtfenster endet (+1 Std. Puffer) — also bevor wir wach sind und reagieren können.
+// Beispiel 22–07 Uhr: um 23 Uhr eine Fahrt um 03 Uhr → nur telefonisch; eine Fahrt in zwei
+// Tagen um 04 Uhr oder morgen Abend → normales Online-Storno.
+const NIGHT_CANCEL_BUFFER_H = 1;
+async function nightCancelPhoneRequired(pickup: any): Promise<boolean> {
+  const rows = await query<{ setting_key: string; setting_value: string }>(
+    "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('night_cancel_enabled', 'night_cancel_start', 'night_cancel_end')"
+  );
+  const cfg: Record<string, string> = {};
+  for (const r of rows) cfg[r.setting_key] = r.setting_value;
+  if ((cfg['night_cancel_enabled'] ?? '1') !== '1') return false;
+  const start = parseInt(cfg['night_cancel_start'] ?? '22', 10);
+  const end = parseInt(cfg['night_cancel_end'] ?? '7', 10);
+  // pickup_datetime ist Münchner Wandzeit ohne Zeitzone; mysql2 liefert ein Date in lokaler
+  // Server-Zeit → die lokalen Felder sind genau die gespeicherten Werte.
+  let pickupWall: number;
+  if (pickup instanceof Date) {
+    pickupWall = Date.UTC(pickup.getFullYear(), pickup.getMonth(), pickup.getDate(), pickup.getHours(), pickup.getMinutes());
+  } else {
+    const m = String(pickup).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (!m) return false;
+    pickupWall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  }
+  const now = berlinWallNow();
+  return rideBeforeNightEnds({
+    nowWall: now.wall, nowHour: now.hour, dayStart: now.dayStart, pickupWall, start, end, bufferH: NIGHT_CANCEL_BUFFER_H,
+  });
+}
+// Pro Buchung höchstens eine Warn-Mail je 30 Min. (Kunde klickt evtl. mehrfach)
+const nightCancelWarned = new Map<number, number>();
+
 // Brute-force protection for the self-service endpoints. booking_number is
 // MAT{YYMMDD}-{4 digits}, i.e. only 9000 values per booking day, so someone who knows
 // a customer's email could otherwise walk the keyspace and read their booking, cancel
@@ -1083,7 +1117,9 @@ router.post('/manage/lookup', async (req: Request, res: Response): Promise<void>
       return;
     }
     rateKeys.forEach(clearRateLimit);
-    res.json(sanitizeBookingForCustomer(booking));
+    const out: any = sanitizeBookingForCustomer(booking);
+    out.night_phone_required = out.can_cancel_free ? await nightCancelPhoneRequired(booking.pickup_datetime).catch(() => false) : false;
+    res.json(out);
   } catch (error) {
     console.error('Booking manage lookup error:', error);
     res.status(500).json({ error: 'Failed to fetch booking' });
@@ -1128,9 +1164,7 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    await run("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [booking.id]);
-
-    const { sendCancellationEmail, sendAdminCancellationEmail } = await import('../services/notifications');
+    const { sendCancellationEmail, sendAdminCancellationEmail, sendAdminNightCancelRequestEmail } = await import('../services/notifications');
     const notificationData = {
       booking_number: booking.booking_number,
       name: booking.name,
@@ -1149,6 +1183,19 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       trip_type: booking.trip_type || undefined,
       return_datetime: booking.return_datetime || undefined,
     };
+
+    // Nachts: nicht stornieren, Admin warnen, Kunde muss anrufen
+    if (await nightCancelPhoneRequired(booking.pickup_datetime).catch(() => false)) {
+      const last = nightCancelWarned.get(booking.id) || 0;
+      if (Date.now() - last > 30 * 60_000) {
+        nightCancelWarned.set(booking.id, Date.now());
+        sendAdminNightCancelRequestEmail(notificationData).catch(err => console.error('Night cancel request email error:', err));
+      }
+      res.status(409).json({ error: 'night_phone_required', phone: '+4915141620000' });
+      return;
+    }
+
+    await run("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [booking.id]);
     if (booking.email) {
       sendCancellationEmail(notificationData).catch(err => console.error('Self-service cancellation email error:', err));
     }

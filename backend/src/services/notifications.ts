@@ -392,6 +392,18 @@ export async function sendAdminCancellationEmail(booking: BookingNotificationDat
   });
 }
 
+// Nacht-Stornierung: Kunde wollte online stornieren, das ist nachts gesperrt — Admin sofort warnen
+export async function sendAdminNightCancelRequestEmail(booking: BookingNotificationData): Promise<void> {
+  const { subject, html } = adminCancellationEmail(booking, 'night_request');
+  const resend = new Resend(RESEND_API_KEY);
+  await resend.emails.send({
+    from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+  });
+}
+
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {
   const resend = new Resend(RESEND_API_KEY);
   const lang = ['de', 'en', 'tr'].includes(booking.language) ? booking.language : 'de';

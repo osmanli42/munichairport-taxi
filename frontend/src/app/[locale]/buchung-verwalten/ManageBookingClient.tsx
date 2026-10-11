@@ -21,6 +21,8 @@ interface ManagedBooking {
   trip_type?: string;
   return_datetime?: string;
   can_cancel_free: boolean;
+  /** Nacht-Stornierung: Fahrt beginnt, bevor wir morgens wach sind → nur telefonisch */
+  night_phone_required?: boolean;
   rechnung_number?: string | null;
   rechnung_sent_at?: string | null;
 }
@@ -85,6 +87,19 @@ export default function ManageBookingClient() {
     }
   }
 
+  // Nacht-Stornierung: Server warnt das Büro per E-Mail; der Kunde muss anrufen (WhatsApp wird nachts evtl. nicht gelesen)
+  const [nightNotified, setNightNotified] = useState(false);
+  function notifyNightCancel() {
+    if (!booking || nightNotified) return;
+    setNightNotified(true);
+    fetch(`${API_URL}/bookings/manage/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_number: booking.booking_number, email: email.trim() }),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   async function handleCancel() {
     if (!booking) return;
     setCancelling(true);
@@ -95,6 +110,15 @@ export default function ManageBookingClient() {
         body: JSON.stringify({ booking_number: booking.booking_number, email: email.trim() }),
       });
       if (!res.ok) {
+        // Seite war vor Beginn des Nachtfensters geladen: jetzt gilt „nur telefonisch“
+        const data = await res.json().catch(() => ({}));
+        if (data?.error === 'night_phone_required') {
+          setBooking({ ...booking, night_phone_required: true });
+          setNightNotified(true);
+          setConfirming(false);
+          setCancelling(false);
+          return;
+        }
         setCancelResult('error');
         setCancelling(false);
         return;
@@ -287,7 +311,21 @@ export default function ManageBookingClient() {
             ) : (
               <div className="mt-6 border-t border-gray-100 pt-6">
                 <h3 className="font-bold text-gray-900 mb-2">{t('cancelSectionTitle')}</h3>
-                {booking.can_cancel_free ? (
+                {booking.can_cancel_free && booking.night_phone_required ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+                    <p className="font-semibold flex items-center gap-2"><AlertTriangle size={16} className="shrink-0" /> {t('nightCancelTitle')}</p>
+                    <p className="mt-1.5 text-amber-800">{t('nightCancelText')}</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <a href={CONTACT_INFO.phoneHref} onClick={notifyNightCancel}
+                        className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold px-4 py-2.5 rounded-lg">
+                        <Phone size={15} /> {t('nightCancelCall')} · {CONTACT_INFO.phone}
+                      </a>
+                    </div>
+                    {nightNotified && (
+                      <p className="mt-3 text-xs text-green-700 flex items-center gap-1.5"><CheckCircle2 size={13} /> {t('nightCancelNotified')}</p>
+                    )}
+                  </div>
+                ) : booking.can_cancel_free ? (
                   <>
                     <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
                       <Ban size={14} className="text-green-600" /> {t('cancelFreeText')}
