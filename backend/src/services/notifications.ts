@@ -9,6 +9,15 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || FROM_EMAIL;
 
+// Rides imported from the Google Calendar carry our own address (freisingtaxi@gmail.com) as the
+// "customer" e-mail. Customer mails for those (reminder, confirmation, cancellation) must reach the
+// admin inbox only, never that Gmail account — so an own address is swapped for ADMIN_EMAIL.
+const OWN_ADDRESS = /^freisingtaxi@gmail\.com$|@flughafen-muenchen\.taxi$|@flughafen-muenchen-taxi\.de$|@taxifreising\.de$/i;
+export function customerRecipient(email: string | undefined | null): string {
+  const e = String(email || '').trim();
+  return !e || OWN_ADDRESS.test(e) ? ADMIN_EMAIL : e;
+}
+
 export interface BookingNotificationData {
   booking_number: string;
   name: string;
@@ -94,7 +103,7 @@ export async function sendCustomerConfirmation(booking: BookingNotificationData)
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
-    to: booking.email,
+    to: customerRecipient(booking.email),
     subject,
     html,
   });
@@ -374,7 +383,7 @@ export async function sendCancellationEmail(booking: BookingNotificationData): P
   const resend = new Resend(RESEND_API_KEY);
   await resend.emails.send({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
-    to: booking.email,
+    to: customerRecipient(booking.email),
     subject,
     html,
   });
@@ -513,7 +522,7 @@ export async function sendReminderEmail(booking: BookingNotificationData): Promi
 
   await resend.emails.send({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
-    to: booking.email,
+    to: customerRecipient(booking.email),
     subject,
     html,
   });
