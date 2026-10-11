@@ -11,7 +11,9 @@ function extractCountryCode(addr: string): 'DE' | 'AT' | 'CH' | 'IT' {
 
 const _k1 = process.env.GOOGLE_MAPS_API_KEY || '';
 const _k2 = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const GOOGLE_API_KEY = _k1.length > 35 ? _k1 : _k2.length > 35 ? _k2 : 'AIzaSyA7wWp8hvzPOVGUsy4pTFVgTzF9QBkmFxI';
+// Nur aus der Umgebung — kein fest eingebauter Ersatzschlüssel (das Repo ist öffentlich).
+const GOOGLE_API_KEY = _k1.length > 35 ? _k1 : _k2.length > 35 ? _k2 : '';
+if (!GOOGLE_API_KEY) console.warn('[maps] GOOGLE_MAPS_API_KEY not set — address search and routing will fail');
 
 // Geocode a free-text address to coordinates. Used as a server-side fallback
 // (e.g. Pflichtfahrgebiet radius check) when the frontend did not send coords.
@@ -33,19 +35,6 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
     return null;
   }
 }
-
-// GET /api/maps/debug-key (temporary)
-router.get('/debug-key', (req: Request, res: Response): void => {
-  const key1 = process.env.GOOGLE_MAPS_API_KEY || '';
-  const key2 = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-  res.json({
-    GOOGLE_MAPS_API_KEY_len: key1.length,
-    GOOGLE_MAPS_API_KEY_start: key1.substring(0, 10),
-    NEXT_PUBLIC_len: key2.length,
-    NEXT_PUBLIC_start: key2.substring(0, 10),
-    NEXT_PUBLIC_end: key2.substring(key2.length - 6),
-  });
-});
 
 // GET /api/maps/geocode?address=... — public, resolve an address to coordinates
 router.get('/geocode', async (req: Request, res: Response): Promise<void> => {
