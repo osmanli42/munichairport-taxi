@@ -143,6 +143,8 @@ function BuchenContent() {
   const [nightEnd, setNightEnd] = useState(7);
   const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
   const [phoneValidationEnabled, setPhoneValidationEnabled] = useState(true);
+  // Admin → Einstellungen "Formular merken" (booking_form_restore_enabled)
+  const [formRestoreEnabled, setFormRestoreEnabled] = useState(true);
   // checkout_v2 A/B variant — computed client-side (synchronous, same hash as the
   // server) so there's no flash of variant A before a network round trip resolves.
   // The server independently recomputes and persists the authoritative variant from
@@ -157,6 +159,7 @@ function BuchenContent() {
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
+      if (s.booking_form_restore_enabled === '0') setFormRestoreEnabled(false);
       const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
       setCheckoutV2(assignVariant(visitorId, 'checkout_v2', s.experiment_checkout_v2) === 'b');
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
@@ -303,6 +306,86 @@ function BuchenContent() {
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; promoBase: number } | null>(null);
   const [promoError, setPromoError] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
+
+  // --- Formular merken ---------------------------------------------------------------
+  // Replay (Okt. 2026): Kunden füllen "Ihre Angaben" aus, gehen zu /ergebnisse zurück, um
+  // ein anderes Fahrzeug anzusehen, und finden das Formular danach leer vor. Die Eingaben
+  // werden deshalb im sessionStorage DIESES Tabs gehalten: nur im Browser, nie auf dem
+  // Server, beim Schließen des Tabs weg, nach erfolgreicher Buchung gelöscht.
+  // Kartendaten liegen in Stripe Elements und werden hier nie berührt.
+  const FORM_DRAFT_KEY = 'mt_buchen_form';
+  const FORM_DRAFT_MAX_AGE_MS = 24 * 3600 * 1000;
+  const [formDraftReady, setFormDraftReady] = useState(false);
+  const restoredLuggageRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!settingsLoaded || formDraftReady) return;
+    if (!formRestoreEnabled) {
+      try { sessionStorage.removeItem(FORM_DRAFT_KEY); } catch { /* ignore */ }
+      setFormDraftReady(true);
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(FORM_DRAFT_KEY);
+      const d = raw ? JSON.parse(raw) : null;
+      if (d && typeof d === 'object' && Date.now() - Number(d.ts || 0) < FORM_DRAFT_MAX_AGE_MS) {
+        // Nur leere Felder füllen — falls der Kunde in den ersten Millisekunden schon tippt.
+        const str = (v: unknown) => (typeof v === 'string' ? v : '');
+        if (!firstName && str(d.firstName)) setFirstName(str(d.firstName));
+        if (!lastName && str(d.lastName)) setLastName(str(d.lastName));
+        if (!phone && str(d.phone)) { setPhone(str(d.phone)); if (str(d.phoneCountry)) setPhoneCountry(d.phoneCountry as CountryCode); }
+        if (!email && str(d.email)) setEmail(str(d.email));
+        if (!flightNumber && str(d.flightNumber)) setFlightNumber(str(d.flightNumber));
+        if (!pickupSign && str(d.pickupSign)) setPickupSign(str(d.pickupSign));
+        if (!notes && str(d.notes)) { setNotes(str(d.notes)); setShowNotes(true); }
+        if (typeof d.luggageCount === 'number') restoredLuggageRef.current = d.luggageCount;
+        if (d.payment === 'card' || d.payment === 'cash') setPayment(d.payment);
+        if (d.childSeat === true) {
+          setChildSeat(true);
+          setChildSeatDetails(str(d.childSeatDetails));
+          setChildSeatBabyschale(Number(d.childSeatBabyschale) || 0);
+          setChildSeatKindersitz(Number(d.childSeatKindersitz) || 0);
+          setChildSeatSitzerhoehung(Number(d.childSeatSitzerhoehung) || 0);
+        }
+        if (d.petEnabled === true) { setPetEnabled(true); setPetCageConfirmed(d.petCageConfirmed === true); }
+        if (Number(d.fahrradCount) > 0) setFahrradCount(Number(d.fahrradCount));
+        if (d.rechnungRequired === true && str(d.rechnungAdresse)) { setRechnungRequired(true); setRechnungAdresse(str(d.rechnungAdresse)); }
+      }
+    } catch { /* ignore */ }
+    setFormDraftReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded, formRestoreEnabled]);
+
+  // Gepäck an das Limit des Fahrzeugs anpassen — das Limit kommt evtl. erst nach dem Wiederherstellen
+  // (Standard 10, danach z. B. 4 für Kombi), deshalb bei jeder Limit-Änderung erneut begrenzen.
+  useEffect(() => {
+    const v = restoredLuggageRef.current;
+    if (v == null || !formDraftReady) return;
+    setLuggageCount(Math.max(0, Math.min(v, maxLuggage)));
+  }, [formDraftReady, maxLuggage]);
+
+  useEffect(() => {
+    if (!formDraftReady || !formRestoreEnabled) return;
+    if (submitState === 'success') {
+      try { sessionStorage.removeItem(FORM_DRAFT_KEY); } catch { /* ignore */ }
+      return;
+    }
+    const id = setTimeout(() => {
+      try {
+        sessionStorage.setItem(FORM_DRAFT_KEY, JSON.stringify({
+          ts: Date.now(),
+          firstName, lastName, phone, phoneCountry, email, flightNumber, pickupSign, notes,
+          luggageCount, payment,
+          childSeat, childSeatDetails, childSeatBabyschale, childSeatKindersitz, childSeatSitzerhoehung,
+          petEnabled, petCageConfirmed, fahrradCount,
+          rechnungRequired, rechnungAdresse,
+        }));
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(id);
+  }, [formDraftReady, formRestoreEnabled, submitState, firstName, lastName, phone, phoneCountry, email, flightNumber,
+      pickupSign, notes, luggageCount, payment, childSeat, childSeatDetails, childSeatBabyschale, childSeatKindersitz,
+      childSeatSitzerhoehung, petEnabled, petCageConfirmed, fahrradCount, rechnungRequired, rechnungAdresse]);
 
   useEffect(() => {
     fetch(`${API_URL}/promotions/active`)

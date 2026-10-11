@@ -169,6 +169,8 @@ export async function initializeDatabase(): Promise<void> {
       ['reminder_time', '18:00'],
       ['flight_validation_enabled', '1'],
       ['phone_validation_enabled', '1'],
+      // /buchen merkt sich Formulareingaben im sessionStorage (Zurück zu /ergebnisse)
+      ['booking_form_restore_enabled', '1'],
       ['portal_tracking_enabled', '1'],
       ['b2b_applications_enabled', '1'],
       // A/B rollout percentage for the /buchen checkout redesign — 'off' until Adım 3 ships.
