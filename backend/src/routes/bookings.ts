@@ -17,7 +17,7 @@ import { resolveAutoDiscount, countCustomerBookings, countVisitorSessions, ruleL
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
-import { berlinWallNow, rideBeforeNightEnds } from '../utils/nightWindow';
+import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -1026,7 +1026,6 @@ const CANCEL_FREE_HOURS = 3;
 // Nachtfenster endet (+1 Std. Puffer) — also bevor wir wach sind und reagieren können.
 // Beispiel 22–07 Uhr: um 23 Uhr eine Fahrt um 03 Uhr → nur telefonisch; eine Fahrt in zwei
 // Tagen um 04 Uhr oder morgen Abend → normales Online-Storno.
-const NIGHT_CANCEL_BUFFER_H = 1;
 async function nightCancelPhoneRequired(pickup: any): Promise<boolean> {
   const rows = await query<{ setting_key: string; setting_value: string }>(
     "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('night_cancel_enabled', 'night_cancel_start', 'night_cancel_end')"
@@ -1034,8 +1033,9 @@ async function nightCancelPhoneRequired(pickup: any): Promise<boolean> {
   const cfg: Record<string, string> = {};
   for (const r of rows) cfg[r.setting_key] = r.setting_value;
   if ((cfg['night_cancel_enabled'] ?? '1') !== '1') return false;
-  const start = parseInt(cfg['night_cancel_start'] ?? '22', 10);
-  const end = parseInt(cfg['night_cancel_end'] ?? '7', 10);
+  // z. B. 20:30–08:30: wer in diesem Zeitraum storniert und dessen Fahrt vor 08:30 beginnt, muss anrufen
+  const start = parseClock(cfg['night_cancel_start'] ?? '20:30');
+  const end = parseClock(cfg['night_cancel_end'] ?? '08:30');
   // pickup_datetime ist Münchner Wandzeit ohne Zeitzone; mysql2 liefert ein Date in lokaler
   // Server-Zeit → die lokalen Felder sind genau die gespeicherten Werte.
   let pickupWall: number;
@@ -1048,7 +1048,7 @@ async function nightCancelPhoneRequired(pickup: any): Promise<boolean> {
   }
   const now = berlinWallNow();
   return rideBeforeNightEnds({
-    nowWall: now.wall, nowHour: now.hour, dayStart: now.dayStart, pickupWall, start, end, bufferH: NIGHT_CANCEL_BUFFER_H,
+    nowWall: now.wall, nowMinute: now.minuteOfDay, dayStart: now.dayStart, pickupWall, start, end,
   });
 }
 // Pro Buchung höchstens eine Warn-Mail je 30 Min. (Kunde klickt evtl. mehrfach)

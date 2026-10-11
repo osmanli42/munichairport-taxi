@@ -173,8 +173,8 @@ export async function initializeDatabase(): Promise<void> {
       ['booking_form_restore_enabled', '1'],
       // Nacht-Stornierung: Online-Storno nachts gesperrt, Kunde muss anrufen (routes/bookings.ts)
       ['night_cancel_enabled', '1'],
-      ['night_cancel_start', '22'],
-      ['night_cancel_end', '7'],
+      ['night_cancel_start', '20:30'],
+      ['night_cancel_end', '08:30'],
       ['portal_tracking_enabled', '1'],
       ['b2b_applications_enabled', '1'],
       // A/B rollout percentage for the /buchen checkout redesign — 'off' until Adım 3 ships.

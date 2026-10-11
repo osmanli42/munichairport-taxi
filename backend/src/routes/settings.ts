@@ -70,10 +70,17 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
-      if (key === 'night_confirm_start' || key === 'night_confirm_end' || key === 'night_cancel_start' || key === 'night_cancel_end') {
+      if (key === 'night_confirm_start' || key === 'night_confirm_end') {
         const num = parseInt(String(value), 10);
         if (isNaN(num) || num < 0 || num > 24) {
           res.status(400).json({ error: `${key} must be an integer between 0 and 24` });
+          return;
+        }
+      }
+
+      if (key === 'night_cancel_start' || key === 'night_cancel_end') {
+        if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(String(value))) {
+          res.status(400).json({ error: `${key} must be a time HH:MM` });
           return;
         }
       }

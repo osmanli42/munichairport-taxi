@@ -112,6 +112,12 @@ function autoRechnungViaZahlungsart(booking: Booking, settings: Record<string, s
 
 const EMPTY_BOOKING_FILTERS = { status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', repeat: '', same_as: '', same_as_label: '', sort: '' };
 
+// Nacht-Stornierung: <input type="time"> braucht HH:MM (ältere Werte waren ganze Stunden wie "22")
+const toClock = (v: string | undefined, fallback: string): string => {
+  const m = String(v ?? '').trim().match(/^(\d{1,2})(?::(\d{2}))?$/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2] ?? '00'}` : fallback;
+};
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
@@ -163,7 +169,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', night_cancel_enabled: '1', night_cancel_start: '22', night_cancel_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', night_cancel_enabled: '1', night_cancel_start: '20:30', night_cancel_end: '08:30', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1566,7 +1572,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <label className="font-semibold text-gray-700">🌙📞 Nacht-Stornierung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Storniert ein Kunde in diesem Zeitfenster (Münchner Zeit) über „Buchung verwalten“ eine Fahrt, die beginnt, bevor das Zeitfenster endet (+1 Std.), ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Spätere Fahrten (z. B. in zwei Tagen) bleiben online stornierbar. Standard: 22–07 Uhr.</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Storniert ein Kunde zwischen „Von“ und „Bis“ (Münchner Zeit) über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online. Standard: 20:30–08:30 Uhr.</p>
                     </div>
                     <button
                       onClick={async () => {
@@ -1596,28 +1602,24 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm text-gray-600">Von</span>
                       <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={settings.night_cancel_start || '22'}
+                        type="time"
+                        value={toClock(settings.night_cancel_start, '20:30')}
                         onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_start: e.target.value }))}
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
                       <span className="text-sm text-gray-600">Uhr bis</span>
                       <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={settings.night_cancel_end || '7'}
+                        type="time"
+                        value={toClock(settings.night_cancel_end, '08:30')}
                         onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_end: e.target.value }))}
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
                       <span className="text-sm text-gray-600">Uhr</span>
                       <button
                         onClick={async () => {
                           setSettingsSaving(true);
                           try {
-                            const updated = await adminApi.updateSettings({ night_cancel_start: settings.night_cancel_start || '22', night_cancel_end: settings.night_cancel_end || '7' });
+                            const updated = await adminApi.updateSettings({ night_cancel_start: toClock(settings.night_cancel_start, '20:30'), night_cancel_end: toClock(settings.night_cancel_end, '08:30') });
                             setSettings(updated);
                             setPriceSuccess('Nacht-Stornierung: Zeitraum aktualisiert');
                             setTimeout(() => setPriceSuccess(''), 3000);
