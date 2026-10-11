@@ -17,6 +17,7 @@
  *   POST   /api/admin/invoice-customers          { booking_id }
  *   PATCH  /api/admin/invoice-customers/:id      { active?, max_open?, rechnung_adresse?, note? }
  *   DELETE /api/admin/invoice-customers/:id
+ *   GET    /api/admin/invoice-customers/check/:bookingId   — Plausibilitätsprüfung vor der Freischaltung
  * Öffentlich:
  *   POST   /api/invoice-customers/eligibility    { email, phone }
  */
@@ -26,6 +27,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { parsePhone } from '../utils/phone';
 import { isRateLimited, registerFailure } from '../utils/rateLimit';
 import { getClientIp } from '../utils/ipGeo';
+import { promises as dns } from 'dns';
 
 const router = Router();
 
@@ -170,6 +172,113 @@ router.get('/admin/invoice-customers/by-booking/:bookingId', authenticateAdmin, 
       : [];
     const open = c ? await openTransfers(c.email) : 0;
     res.json({ customer: c || null, open_transfers: open, can_approve: !!(e && p) });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// ---------- Plausibilitätsprüfung (vor der Freischaltung) ----------
+// Prüft NICHT, ob die Firma im Handelsregister steht — nur zwei kostenlose Signale:
+//  1) E-Mail: Firmen-Domain statt Freemail, Domain empfängt Mails (MX), passt zum Firmennamen
+//  2) Rechnungsadresse: Google Geocoding findet die Anschrift (Straße + Hausnummer)
+const FREEMAIL = new Set([
+  'gmail.com', 'googlemail.com', 'web.de', 'gmx.de', 'gmx.net', 'gmx.at', 'gmx.ch', 'gmx.com', 't-online.de',
+  'yahoo.com', 'yahoo.de', 'ymail.com', 'outlook.com', 'outlook.de', 'hotmail.com', 'hotmail.de', 'live.com', 'live.de',
+  'msn.com', 'icloud.com', 'me.com', 'mac.com', 'mail.de', 'freenet.de', 'aol.com', 'aol.de', 'posteo.de', 'posteo.net',
+  'mailbox.org', 'protonmail.com', 'proton.me', 'arcor.de', 'online.de', '1und1.de', 'vodafone.de', 'kabelmail.de',
+  'yandex.com', 'yandex.ru', 'mail.ru', 'gmx.ch', 'bluewin.ch', 'icloud.de',
+]);
+const LEGAL_FORMS = /\b(gmbh|mbh|ag|kg|kgaa|se|ug|ohg|gbr|ev|e\.v\.|co|und|and|haftungsbeschränkt|holding|group|gruppe|deutschland|germany|international)\b/g;
+
+const translit = (t: string) => t.toLowerCase()
+  .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+
+function companyMatchesDomain(company: string, domain: string): boolean {
+  const label = translit(domain.split('.').slice(0, -1).join('.')).replace(/[^a-z0-9]/g, '');
+  const words = translit(company).replace(LEGAL_FORMS, ' ').split(/[^a-z0-9]+/).filter(w => w.length >= 3);
+  if (!label || !words.length) return false;
+  // "BSH Hausgeräte GmbH" ↔ bsh-group.com: ein markantes Wort steckt in der Domain (oder umgekehrt)
+  return words.some(w => label.includes(w) || (label.length >= 3 && w.includes(label)));
+}
+
+async function hasMx(domain: string): Promise<boolean | null> {
+  try {
+    const r = await Promise.race([
+      dns.resolveMx(domain),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+    ]);
+    return Array.isArray(r) && r.length > 0;
+  } catch (e: any) {
+    // ENOTFOUND/ENODATA = Domain nimmt keine Mails an; Timeout = unbekannt
+    return e?.message === 'timeout' ? null : false;
+  }
+}
+
+async function geocodeCheck(adresse: string): Promise<any> {
+  const key = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  if (!key) return { checked: false, reason: 'no_key' };
+  // Erste Zeile ist der Firmenname, ggf. folgt eine Personenzeile — Google sucht nur die Anschrift
+  const lines = adresse.split('\n').map(l => l.trim()).filter(Boolean);
+  const addrLines = lines.filter(l => /\d/.test(l) || /^(deutschland|germany|österreich|schweiz)$/i.test(l));
+  const query = (addrLines.length ? addrLines : lines.slice(1)).join(', ');
+  if (!query) return { checked: false, reason: 'empty' };
+  try {
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.set('address', query);
+    url.searchParams.set('region', 'de');
+    url.searchParams.set('language', 'de');
+    url.searchParams.set('key', key);
+    const r = await fetch(url.toString());
+    const d: any = await r.json();
+    const g = d.results?.[0];
+    if (d.status !== 'OK' || !g) return { checked: true, found: false, query };
+    const comp = (t: string) => g.address_components?.find((c: any) => c.types?.includes(t))?.long_name || '';
+    const exact = !g.partial_match && ['ROOFTOP', 'RANGE_INTERPOLATED'].includes(g.geometry?.location_type);
+    const inputPlz = (query.match(/\b\d{5}\b/) || [])[0] || '';
+    return {
+      checked: true,
+      found: true,
+      exact,
+      has_street_number: !!comp('street_number'),
+      plz_matches: !inputPlz || !comp('postal_code') || inputPlz === comp('postal_code'),
+      formatted: g.formatted_address,
+      query,
+    };
+  } catch {
+    return { checked: false, reason: 'error' };
+  }
+}
+
+router.get('/admin/invoice-customers/check/:bookingId', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTable();
+    const [b] = await query<any>(`SELECT email, phone, phone_e164, rechnung_adresse FROM bookings WHERE id = ?`, [req.params.bookingId]);
+    if (!b) { res.status(404).json({ error: 'not found' }); return; }
+    const e = normEmail(b.email);
+    const p = b.phone_e164 || normPhone(b.phone);
+    const [c] = e && p
+      ? await query<any>(`SELECT rechnung_adresse FROM invoice_customers WHERE email = ? AND phone_e164 = ? LIMIT 1`, [e, p])
+      : [];
+    const adresse: string = b.rechnung_adresse || c?.rechnung_adresse || '';
+    const company = adresse.split('\n').map((l: string) => l.trim()).filter(Boolean)[0] || '';
+
+    const domain = e.includes('@') ? e.split('@')[1] : '';
+    const freemail = !!domain && FREEMAIL.has(domain);
+    const [mx, address] = await Promise.all([
+      domain ? hasMx(domain) : Promise.resolve(null),
+      adresse ? geocodeCheck(adresse) : Promise.resolve({ checked: false, reason: 'no_address' }),
+    ]);
+
+    res.json({
+      email: {
+        domain,
+        freemail,
+        mx,
+        company,
+        company_match: !!domain && !freemail && !!company && companyMatchesDomain(company, domain),
+      },
+      address,
+    });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }

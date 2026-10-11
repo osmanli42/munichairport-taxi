@@ -3,7 +3,7 @@
 // Rechnungskunden (Überweisung für freigeschaltete Privatkunden) — Admin-Bausteine.
 // Backend: backend/src/routes/invoiceCustomers.ts
 import { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Landmark, Loader2, Trash2 } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, CheckCircle2, HelpCircle, Landmark, Loader2, Trash2 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const authHeaders = (): Record<string, string> => {
@@ -22,6 +22,67 @@ interface Customer {
   created_at: string;
   open_transfers?: number;
   bookings_total?: number;
+}
+
+interface CheckResult {
+  email: { domain: string; freemail: boolean; mx: boolean | null; company: string; company_match: boolean };
+  address: { checked: boolean; reason?: string; found?: boolean; exact?: boolean; has_street_number?: boolean; plz_matches?: boolean; formatted?: string };
+}
+
+type Level = 'ok' | 'warn' | 'unknown';
+function CheckRow({ level, children }: { level: Level; children: React.ReactNode }) {
+  const Icon = level === 'ok' ? CheckCircle2 : level === 'warn' ? AlertTriangle : HelpCircle;
+  const cls = level === 'ok' ? 'text-emerald-600' : level === 'warn' ? 'text-amber-600' : 'text-gray-400';
+  return (
+    <div className="flex items-start gap-1.5 text-xs text-gray-700">
+      <Icon size={13} className={`${cls} mt-[1px] shrink-0`} />
+      <span className="min-w-0">{children}</span>
+    </div>
+  );
+}
+
+/** Kostenlose Plausibilitätsprüfung: Firmen-E-Mail + existierende Rechnungsadresse. */
+function PlausibilityChecks({ bookingId }: { bookingId: number }) {
+  const [r, setR] = useState<CheckResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let off = false;
+    fetch(`${API}/admin/invoice-customers/check/${bookingId}`, { headers: authHeaders() })
+      .then(x => x.json()).then(d => { if (!off && d?.email) setR(d); })
+      .catch(() => {}).finally(() => { if (!off) setLoading(false); });
+    return () => { off = true; };
+  }, [bookingId]);
+
+  if (loading) return <div className="text-xs text-gray-400 flex items-center gap-1 mt-2"><Loader2 size={12} className="animate-spin" /> Prüfe E-Mail und Adresse…</div>;
+  if (!r) return null;
+  const e = r.email;
+  const a = r.address;
+
+  let emailLevel: Level; let emailText: string;
+  if (!e.domain) { emailLevel = 'warn'; emailText = 'Keine E-Mail-Adresse'; }
+  else if (e.freemail) { emailLevel = 'warn'; emailText = `Private E-Mail (${e.domain}) — keine Firmenadresse`; }
+  else if (e.mx === false) { emailLevel = 'warn'; emailText = `Domain ${e.domain} empfängt keine E-Mails`; }
+  else if (e.company_match) { emailLevel = 'ok'; emailText = `Firmen-E-Mail @${e.domain} passt zu „${e.company}“`; }
+  else if (e.company) { emailLevel = 'unknown'; emailText = `Firmen-Domain @${e.domain}${e.mx ? ' (empfängt Mails)' : ''} — Name „${e.company}“ nicht erkennbar in der Domain`; }
+  else { emailLevel = 'ok'; emailText = `Firmen-Domain @${e.domain}${e.mx ? ' (empfängt Mails)' : ''}`; }
+
+  let addrLevel: Level; let addrText: string;
+  if (!a.checked) {
+    addrLevel = a.reason === 'no_address' || a.reason === 'empty' ? 'warn' : 'unknown';
+    addrText = a.reason === 'no_address' ? 'Keine Rechnungsadresse angegeben'
+      : a.reason === 'empty' ? 'Rechnungsadresse unvollständig (keine Straße / PLZ)'
+      : 'Adressprüfung nicht möglich';
+  } else if (!a.found) { addrLevel = 'warn'; addrText = 'Rechnungsadresse bei Google nicht gefunden'; }
+  else if (a.exact && a.has_street_number && a.plz_matches) { addrLevel = 'ok'; addrText = `Adresse existiert: ${a.formatted}`; }
+  else { addrLevel = 'unknown'; addrText = `Nur ungefähr gefunden${a.plz_matches === false ? ' (PLZ weicht ab)' : ''}: ${a.formatted}`; }
+
+  return (
+    <div className="mt-2 space-y-1 border-t border-black/5 pt-2">
+      <CheckRow level={emailLevel}>{emailText}</CheckRow>
+      <CheckRow level={addrLevel}>{addrText}</CheckRow>
+      <div className="text-[10px] text-gray-400 pl-5">Hinweis: prüft E-Mail und Anschrift, nicht den Handelsregistereintrag.</div>
+    </div>
+  );
 }
 
 /** Karte im Buchungsdetail: Kunde für Überweisung freischalten / Status anzeigen. */
@@ -118,6 +179,7 @@ export function InvoiceCustomerBookingCard({ bookingId, isCompany }: { bookingId
           </button>
         </div>
       )}
+      <PlausibilityChecks bookingId={bookingId} />
       {err && <div className="text-xs text-red-600 mt-1">{err}</div>}
     </div>
   );
