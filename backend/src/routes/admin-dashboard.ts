@@ -41,6 +41,8 @@ const lastLegSql = `CASE WHEN b.trip_type = 'roundtrip' AND b.return_datetime IS
   THEN b.return_datetime ELSE b.pickup_datetime END`;
 
 const DAYS_AHEAD = 7;
+// Day a calendar ride was taken: Google's "created"; older mirror rows without it fall back to the ride time.
+const ENTERED = `COALESCE(NULLIF(entered_at, ''), ride_time)`;
 const CHART_DAYS = 14;
 
 // ---- Google Kalender ---------------------------------------------------------------
@@ -202,6 +204,29 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       }
       if (date >= chartStart && chartMap.has(date)) add(chartMap.get(date)!, price);
     }
+    // "Neue Buchungen" = rides taken: calendar-only rides count on the day they were entered in the
+    // calendar (Google "created"), next to the web bookings. Only today / yesterday / the 7-day
+    // windows and the chart get them; the month cards keep adding the calendar by ride date below.
+    const includeCalendar = await includeCalendarInStats();
+    const intakeCalendar = { today: agg(), yesterday: agg(), week: agg() };
+    if (includeCalendar) {
+      const entries = await query<{ at: string; price: number | null }>(
+        `SELECT ${ENTERED} AS at, price FROM calendar_rides WHERE kind = 'ride' AND ${ENTERED} >= ?`,
+        [`${prevWeekStart}T00:00`]);
+      for (const e of entries) {
+        const date = e.at.slice(0, 10);
+        const time = `${e.at.slice(11, 16)}:00`;
+        const price = Number(e.price) || 0;
+        if (date === today) { add(intake.today, price); add(intakeCalendar.today, price); }
+        if (date === yesterday) {
+          add(intake.yesterday, price); add(intakeCalendar.yesterday, price);
+          if (time <= nowTime) add(intake.yesterdaySameTime, price);
+        }
+        if (date >= weekStart) { add(intake.week, price); add(intakeCalendar.week, price); }
+        else if (date >= prevWeekStart) add(intake.prevWeek, price);
+        if (date >= chartStart && chartMap.has(date)) add(chartMap.get(date)!, price);
+      }
+    }
     const chart = Array.from(chartMap.entries()).map(([date, a]) => ({ date, ...a }));
 
     // All-time booking total (the "Gesamt" card of the old dashboard).
@@ -260,7 +285,6 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const calendar = await loadCalendar(today, lastDay);
 
     // Calendar-only rides this month up to now (by ride date), for the month card.
-    const includeCalendar = await includeCalendarInStats();
     const calSum = async (from: string, to: string) => {
       const [r] = await query<{ count: number; priced: number; revenue: number }>(`
         SELECT COUNT(*) AS count, COUNT(price) AS priced, COALESCE(SUM(price), 0) AS revenue
@@ -276,6 +300,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       today,
       legs,
       intake,
+      intakeCalendar,
       chart,
       month: { month, payment, status },
       attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd },
@@ -290,6 +315,67 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
   } catch (error) {
     console.error('[admin-dashboard]', error);
     res.status(500).json({ error: 'Failed to load dashboard' });
+  }
+});
+
+// GET /api/admin/dashboard/day?date=YYYY-MM-DD&mode=booked|driven — what one day brought in:
+// web/system bookings plus calendar-only rides. booked = taken that day (booking date / entered
+// in the calendar), driven = rides of that day (pickup date; a round trip's whole price sits on
+// the outbound day).
+router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const date = String(req.query.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { res.status(400).json({ error: 'date required (YYYY-MM-DD)' }); return; }
+    const mode = req.query.mode === 'driven' ? 'driven' : 'booked';
+    const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${berlinDateSql(0)}T00:00:00Z`)) / 86_400_000);
+
+    const bookings = mode === 'booked'
+      ? await query<any>(`
+          SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
+                 b.price, b.payment_method, c.company_name
+            FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+           WHERE b.status <> 'cancelled' AND b.created_at >= ? AND b.created_at < ?
+           ORDER BY b.created_at`,
+          [berlinMidnightUtcSql(offset), berlinMidnightUtcSql(offset + 1)])
+      : await query<any>(`
+          SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
+                 b.price, b.payment_method, c.company_name
+            FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+           WHERE b.status <> 'cancelled' AND LEFT(b.pickup_datetime, 10) = ?
+           ORDER BY b.pickup_datetime`, [date]);
+
+    const includeCalendar = await includeCalendarInStats();
+    const rides = !includeCalendar ? [] : await query<any>(`
+      SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price
+        FROM calendar_rides
+       WHERE kind = 'ride' AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
+       ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
+      [`${date}T00:00`, `${date}T23:59`]);
+
+    const webRevenue = bookings.reduce((s, b) => s + (Number(b.price) || 0), 0);
+    const calRevenue = rides.reduce((s, r) => s + (Number(r.price) || 0), 0);
+    res.json({
+      date, mode, calendar_enabled: includeCalendar,
+      web: {
+        count: bookings.length, revenue: webRevenue,
+        items: bookings.map((b) => ({
+          id: b.id, booking_number: b.booking_number, name: b.name, from: b.pickup_address, to: b.dropoff_address,
+          pickup: wall(b.pickup_datetime), trip_type: b.trip_type, price: Number(b.price) || 0,
+          payment_method: b.payment_method, company: b.company_name || null,
+        })),
+      },
+      calendar: {
+        count: rides.length, revenue: calRevenue, unpriced: rides.filter((r) => r.price == null).length,
+        items: rides.map((r) => ({
+          ride_time: r.ride_time, entered: r.entered, summary: String(r.summary || '').slice(0, 80),
+          from: r.pickup_address, to: r.dropoff_address, price: r.price == null ? null : Number(r.price),
+        })),
+      },
+      total: { count: bookings.length + rides.length, revenue: webRevenue + calRevenue },
+    });
+  } catch (error) {
+    console.error('[admin-dashboard/day]', error);
+    res.status(500).json({ error: 'Failed to load day' });
   }
 });
 

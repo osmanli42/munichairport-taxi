@@ -19,6 +19,7 @@ import {
 import QuickActions from './dashboard/QuickActions';
 import EventsStrip from './dashboard/EventsStrip';
 import FlightBoard from './dashboard/FlightBoard';
+import DayArchive from './dashboard/DayArchive';
 import DriverPlan from './dashboard/DriverPlan';
 import CapacityHeatmap, { CapacityEntry } from './dashboard/CapacityHeatmap';
 import MissedCustomers from './dashboard/MissedCustomers';
@@ -50,6 +51,8 @@ interface DashboardData {
   today: string;
   legs: Leg[];
   intake: Record<'today' | 'yesterdaySameTime' | 'yesterday' | 'week' | 'prevWeek' | 'mtd' | 'prevMtd' | 'prevMonth', Agg>;
+  /** The part of today / yesterday / the 7 days that was entered in the Google Calendar (already inside `intake`). */
+  intakeCalendar?: Record<'today' | 'yesterday' | 'week', Agg>;
   chart: Array<{ date: string } & Agg>;
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
   attention: Record<AttentionKey, Leg[]> & {
@@ -136,7 +139,7 @@ const WIDGETS: Array<[string, string]> = [
   ['charges', 'Morgen abbuchen'], ['drivers', 'Fahrer-Einsatzplan'], ['missed', 'Verpasste Kunden'],
   ['forecast', 'Monatsprognose'], ['funnel', 'Website heute'], ['receivables', 'Offene Forderungen'],
   ['capacity', 'Auslastung 7 Tage'], ['chart', 'Buchungseingang'], ['month', 'Monat im Überblick'],
-  ['recent', 'Letzte Buchungen'], ['reports', 'Finanzamt-Bericht'],
+  ['recent', 'Letzte Buchungen'], ['reports', 'Finanzamt-Bericht'], ['archive', 'Tagesarchiv'],
 ];
 const HIDDEN_KEY = 'dash_hidden_widgets';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -1241,7 +1244,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           Icon={CalendarDays}
           tone="bg-sky-50 text-sky-600"
           value={formatPrice(it.today.revenue)}
-          sub={`${it.today.count} Buchung${it.today.count === 1 ? '' : 'en'} · gestern gesamt ${it.yesterday.count}`}
+          sub={`${it.today.count} Buchung${it.today.count === 1 ? '' : 'en'}${data.intakeCalendar?.today.count ? ` (${data.intakeCalendar.today.count} aus Kalender)` : ''} · gestern gesamt ${it.yesterday.count}${data.intakeCalendar?.yesterday.count ? ` (${data.intakeCalendar.yesterday.count} aus Kalender)` : ''}`}
           footer={<DeltaChip cur={it.today.revenue} prev={it.yesterdaySameTime.revenue} suffix="vs. gestern bis jetzt" />}
         />
         <Kpi
@@ -1249,7 +1252,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           Icon={TrendingUp}
           tone="bg-emerald-50 text-emerald-600"
           value={formatPrice(it.week.revenue)}
-          sub={`${it.week.count} Buchungen`}
+          sub={`${it.week.count} Buchungen${data.intakeCalendar?.week.count ? ` (${data.intakeCalendar.week.count} aus Kalender)` : ''}`}
           footer={<DeltaChip cur={it.week.revenue} prev={it.prevWeek.revenue} suffix="vs. 7 Tage davor" />}
         />
         <Kpi
@@ -1278,8 +1281,10 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         />
       </div>
       <p className="-mt-3 text-[11px] text-gray-400">
-        Umsätze nach Buchungsdatum (ohne Stornos). Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
+        Umsätze nach Buchungsdatum (ohne Stornos){data.calendar?.enabled && showCal ? ' — Kalender-Fahrten zählen dort an dem Tag, an dem sie eingetragen wurden' : ''}. Fahrplan: Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
       </p>
+
+      {show('archive') && <DayArchive />}
 
       {/* Schedule + side column */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
