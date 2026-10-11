@@ -5,8 +5,9 @@
  * Grundsatz aus routes/admin.ts bleibt bestehen: Überweisung ist öffentlich NICHT
  * buchbar, sonst könnte jeder ohne Bezahlung buchen. Ausnahme nur für Einträge in
  * invoice_customers, und auch dann nur, wenn E-Mail UND Telefon (E.164) zusammen passen,
- * höchstens `max_open` unbezahlte Überweisungs-Buchungen offen sind und der Schalter
- * `invoice_customers_enabled` an ist. Die Prüfung passiert serverseitig beim Buchen
+ * höchstens `max_open` unbezahlte Überweisungs-Buchungen offen sind. Bewusst KEIN globaler
+ * Schalter: die Freischaltung durch den Admin ist maßgeblich und wird pro Kunde gesteuert
+ * (pausieren / entziehen / löschen). Die Prüfung passiert serverseitig beim Buchen
  * (assertTransferAllowed) — die öffentliche Abfrage dient nur der Anzeige im Formular
  * und gibt keine gespeicherten Daten (Adresse etc.) heraus.
  *
@@ -59,12 +60,6 @@ const normPhone = (p: unknown): string | null => {
   return r.ok ? r.e164 : null;
 };
 
-async function featureEnabled(): Promise<boolean> {
-  const [row] = await query<{ setting_value: string }>(
-    `SELECT setting_value FROM settings WHERE setting_key = 'invoice_customers_enabled'`
-  );
-  return (row?.setting_value ?? '1') !== '0';
-}
 
 export interface InvoiceCustomer {
   id: number;
@@ -106,7 +101,6 @@ async function openTransfers(email: string): Promise<number> {
 export async function assertTransferAllowed(
   email: unknown, phone: unknown
 ): Promise<{ ok: true; customer: InvoiceCustomer } | { ok: false; error: string }> {
-  if (!(await featureEnabled())) return { ok: false, error: 'Invalid payment method' };
   const customer = await findCustomer(email, phone);
   if (!customer) return { ok: false, error: 'Invalid payment method' };
   if ((await openTransfers(customer.email)) >= customer.max_open) {
@@ -132,7 +126,6 @@ router.post('/invoice-customers/eligibility', async (req: Request, res: Response
     if (keys.some(k => isRateLimited(k, ELIG_MAX))) { res.json({ eligible: false }); return; }
     keys.forEach(k => registerFailure(k, ELIG_WINDOW_MS));
 
-    if (!(await featureEnabled())) { res.json({ eligible: false }); return; }
     const customer = await findCustomer(email, phone);
     if (!customer) { res.json({ eligible: false }); return; }
     const limitReached = (await openTransfers(customer.email)) >= customer.max_open;

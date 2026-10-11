@@ -161,7 +161,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', invoice_customers_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1573,37 +1573,10 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
-                {/* Rechnungskunden (Überweisung) toggle */}
+                {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
                 <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">🏦 Überweisung für Rechnungskunden</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Kunden, die du im Buchungsdetail freischaltest, sehen auf /buchen zusätzlich „Überweisung“ — nur wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse. Ausgeschaltet: niemand sieht die Option.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.invoice_customers_enabled === '0' ? '1' : '0';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ invoice_customers_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Überweisung für Rechnungskunden aktiviert' : 'Überweisung für Rechnungskunden deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.invoice_customers_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.invoice_customers_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
+                  <label className="font-semibold text-gray-700">🏦 Rechnungskunden (Überweisung)</label>
+                  <p className="text-xs text-gray-500 mt-0.5">Kunden, die du im Buchungsdetail freischaltest („Als Rechnungskunde freischalten“), sehen auf /buchen zusätzlich „Überweisung“ — nur wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse. Einzelne Kunden hier pausieren oder löschen.</p>
                   <InvoiceCustomersList />
                 </div>
                 {/* Social Proof Toast toggle */}
