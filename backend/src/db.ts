@@ -847,6 +847,10 @@ export async function initializeDatabase(): Promise<void> {
         KEY idx_calendar_rides_kind (kind, ride_time)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // When the entry was made in the calendar (Google's "created", Berlin wall clock): the
+    // daily summary and dashboard count a calendar ride on the day it was taken, not driven.
+    try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN entered_at CHAR(16) DEFAULT NULL`); } catch { /* exists */ }
+    try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_entered (kind, entered_at)`); } catch { /* exists */ }
 
     // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
     await conn.execute(`

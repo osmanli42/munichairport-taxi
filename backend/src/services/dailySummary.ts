@@ -11,6 +11,9 @@ import { berlinDateSql, berlinMidnightUtcSql } from '../utils/berlinTime';
 
 type Sum = { n: number; eur: number; noPrice: number };
 
+// Day a calendar ride was taken; older mirror rows without Google's "created" fall back to the ride time.
+const ENTERED = `COALESCE(NULLIF(entered_at, ''), ride_time)`;
+
 const num = (v: unknown) => Number(v) || 0;
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const eur = (v: number, digits = 2) =>
@@ -34,11 +37,14 @@ async function bookingSum(from: string, to: string): Promise<Sum> {
   return { n: num(r?.n), eur: num(r?.eur), noPrice: 0 };
 }
 
-/** Calendar-only rides on [from, to] (Berlin dates, inclusive). */
+/**
+ * Calendar-only rides ENTERED in the calendar on [from, to] (Berlin dates, inclusive) — counted
+ * on the day they were taken (Google's "created"), whatever date the ride itself has.
+ */
 async function calendarSum(from: string, to: string): Promise<Sum> {
   const [r] = await query<any>(
     `SELECT COUNT(*) AS n, COALESCE(SUM(price), 0) AS eur, SUM(price IS NULL) AS no_price
-       FROM calendar_rides WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`,
+       FROM calendar_rides WHERE kind = 'ride' AND ${ENTERED} BETWEEN ? AND ?`,
     [`${from}T00:00`, `${to}T23:59`]);
   return { n: num(r?.n), eur: num(r?.eur), noPrice: num(r?.no_price) };
 }
@@ -160,7 +166,7 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
     [from, to]);
   const calRides = await query<any>(
     `SELECT ride_time, summary, pickup_address, dropoff_address, price FROM calendar_rides
-      WHERE kind = 'ride' AND ride_time BETWEEN ? AND ? ORDER BY ride_time`,
+      WHERE kind = 'ride' AND ${ENTERED} BETWEEN ? AND ? ORDER BY ${ENTERED}`,
     [`${day}T00:00`, `${day}T23:59`]);
 
   const sessions = num(site?.sessions);
@@ -188,7 +194,10 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
   });
   const calendarRows = calRides.map((r) => `
       <tr>
-        <td style="padding:10px 10px 10px 0;border-bottom:1px solid ${C.line};vertical-align:top;white-space:nowrap;font-weight:700;color:${C.navy}">${esc(String(r.ride_time).slice(11, 16))}</td>
+        <td style="padding:10px 10px 10px 0;border-bottom:1px solid ${C.line};vertical-align:top;white-space:nowrap;color:${C.navy}">
+          <div style="font-size:11px;color:${C.muted}">Fahrt ${esc(dm(String(r.ride_time).slice(0, 10)))}</div>
+          <div style="font-weight:700">${esc(String(r.ride_time).slice(11, 16))}</div>
+        </td>
         <td style="padding:10px 0;border-bottom:1px solid ${C.line};vertical-align:top">
           <div style="font-weight:600;color:${C.text}">${esc(String(r.summary || 'Kalender-Fahrt').slice(0, 80))}</div>
           ${r.pickup_address || r.dropoff_address ? `<div style="color:#374151;margin-top:2px">${esc(short(r.pickup_address) || '?')} → ${esc(short(r.dropoff_address) || '?')}</div>` : ''}
@@ -203,7 +212,7 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
     : 'veri yok';
   const noPriceNote = (s: Sum) => (s.noPrice ? ` · ${s.noPrice} fiyatsız` : '');
 
-  const subject = `📊 Günlük özet ${dm(day)} — ${dayTotal.n} fahrt · ${eur(dayTotal.eur, 0)} (web ${webDay.n} · takvim ${calDay.n})`;
+  const subject = `📊 Günlük özet ${dm(day)} — ${dayTotal.n} fahrt alındı · ${eur(dayTotal.eur, 0)} (web ${webDay.n} · takvim ${calDay.n})`;
 
   const html = `
 <div style="background:#eef1f5;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
@@ -211,7 +220,7 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
     <tr><td style="background:${C.navy};padding:22px 24px">
       <div style="font-size:12px;color:${C.gold};font-weight:700;letter-spacing:.08em;text-transform:uppercase">Flughafen-München.TAXI · Günlük özet</div>
       <div style="font-size:22px;color:#fff;font-weight:700;margin-top:6px">${esc(TR_WEEKDAY(day))}, ${dmy(day)}</div>
-      <div style="font-size:13px;color:#cbd5e1;margin-top:4px">Dünün rakamları — web/sistem rezervasyonları + Google Takvim fahrt’ları</div>
+      <div style="font-size:13px;color:#cbd5e1;margin-top:4px">Dün alınan fahrt’lar — web/sistem rezervasyonları + takvime eklenenler (fahrt tarihi fark etmez)</div>
     </td></tr>
 
     <tr><td style="padding:16px 18px 0">
@@ -222,7 +231,7 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
         </tr>
         <tr>
           ${tile('Web / sistem', eur(webDay.eur, 0), `${webDay.n} rezervasyon geldi (iptaller hariç)`)}
-          ${tile('Kalender', eur(calDay.eur, 0), `${calDay.n} takvim fahrt’ı${noPriceNote(calDay)}`)}
+          ${tile('Kalender', eur(calDay.eur, 0), `${calDay.n} takvime eklendi${noPriceNote(calDay)}`)}
         </tr>
       </table>
     </td></tr>
@@ -263,12 +272,12 @@ export async function buildDailySummary(): Promise<{ subject: string; html: stri
     ${section(`Dün gelen rezervasyonlar (${bookingRows.length})`, listTable(bookingRows, 'Dün yeni rezervasyon gelmedi.'),
       cancelled ? `${cancelled} iptal hariç` : '')}
 
-    ${section(`Dünkü Kalender fahrt’ları (${calendarRows.length})`, listTable(calendarRows, 'Dün takvimde (web rezervasyonu olmayan) fahrt yoktu.'))}
+    ${section(`Dün takvime eklenen fahrt’lar (${calendarRows.length})`, listTable(calendarRows, 'Dün takvime (web rezervasyonu olmayan) fahrt eklenmedi.'), 'fahrt tarihi gelecekte olabilir')}
 
     <tr><td style="padding:24px">
       <a href="https://flughafen-muenchen.taxi/admin" style="display:inline-block;background:${C.navy};color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 18px;border-radius:10px">Dashboard’u aç</a>
       <div style="font-size:11px;color:#9ca3af;margin-top:16px;line-height:1.5">
-        Web/sistem: gelen güne göre, iptaller hariç · Kalender: fahrt gününe göre, web rezervasyonlarının takvim kopyaları hariç — dashboard’daki ay kartıyla aynı hesap.<br>
+        Her fahrt alındığı gün sayılır: Web/sistem rezervasyonun geldiği gün, Kalender takvime eklendiği gün (iptaller ve web rezervasyonlarının takvim kopyaları hariç) — dashboard’daki kartlarla aynı hesap.<br>
         Kapatma: Admin → System → E-posta Uyarıları → „Günlük özet“.
       </div>
     </td></tr>

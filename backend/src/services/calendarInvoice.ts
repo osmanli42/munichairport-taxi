@@ -15,6 +15,8 @@ export interface CalEvent {
   summary: string;
   description: string;
   location: string;
+  /** When the entry was made in Google Calendar (Berlin wall clock 'YYYY-MM-DDTHH:mm'). */
+  created?: string | null;
 }
 
 export type EventState = 'open' | 'sent' | 'paid' | 'cancelled' | 'none';
@@ -130,6 +132,7 @@ export async function fetchEventsRange(
         summary: ev.summary || '',
         description: ev.description || '',
         location: ev.location || '',
+        created: ev.created ? toBerlinLocal(new Date(ev.created)) : null,
       });
     }
     pageToken = res.data.nextPageToken || undefined;
