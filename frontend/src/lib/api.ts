@@ -55,6 +55,8 @@ export interface BookingFormData {
 export interface Booking {
   id: number;
   booking_number: string;
+  /** Wie oft dieser Kunde (gleiche E-Mail oder Telefon) insgesamt gebucht hat — nur in der Admin-Liste */
+  customer_booking_count?: number;
   status: 'new' | 'confirmed' | 'completed' | 'cancelled';
   pickup_address: string;
   dropoff_address: string;
@@ -378,6 +380,8 @@ export const adminApi = {
     paid?: string;
     source?: string;
     trip?: string;
+    repeat?: string;
+    same_as?: string;
     sort?: string;
     page?: number;
     limit?: number;

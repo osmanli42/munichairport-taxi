@@ -12,6 +12,7 @@ import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../service
 import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql, berlinDateSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
 import { ensureInvoiceCustomersTable } from './invoiceCustomers';
+import { isOwnEmail, ownEmailSql, OWN_PHONE_E164 } from '../utils/recipient';
 
 
 
@@ -101,12 +102,22 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       paid,
       source,
       trip,
+      repeat,
+      same_as,
       sort,
       page = '1',
       limit = '20',
     } = req.query as Record<string, string>;
 
-    let sql = 'SELECT bookings.*, companies.company_name AS company_name FROM bookings LEFT JOIN companies ON bookings.company_id = companies.id WHERE 1=1';
+    // Gleicher Kunde = gleiche E-Mail ODER gleiche Telefonnummer (E.164) — viele Stammkunden
+    // buchen mal mit privater, mal mit Firmen-E-Mail, aber mit derselben Handynummer.
+    // Eigene Adressen/Büronummer (Kalender-Importe, manuelle Fahrten) zählen nicht als Kunde.
+    const SAME_CUSTOMER = `((LOWER(b2.email) = LOWER(bookings.email) AND NOT ${ownEmailSql('bookings.email')})
+        OR (bookings.phone_e164 IS NOT NULL AND bookings.phone_e164 <> '' AND bookings.phone_e164 <> '${OWN_PHONE_E164}'
+            AND b2.phone_e164 = bookings.phone_e164))`;
+    const CUSTOMER_COUNT = `(SELECT COUNT(*) FROM bookings b2 WHERE b2.status <> 'cancelled' AND ${SAME_CUSTOMER})`;
+    const SELECT_LIST = `bookings.*, companies.company_name AS company_name, ${CUSTOMER_COUNT} AS customer_booking_count`;
+    let sql = `SELECT ${SELECT_LIST} FROM bookings LEFT JOIN companies ON bookings.company_id = companies.id WHERE 1=1`;
     const params: (string | number)[] = [];
 
     if (status) {
@@ -187,13 +198,36 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
     };
     if (TRIP_SQL[trip]) sql += ` AND ${TRIP_SQL[trip]}`;
 
+    // Häufigkeit: wie oft hat dieser Kunde insgesamt (nicht storniert) gebucht
+    const REPEAT_SQL: Record<string, string> = {
+      repeat2: `${CUSTOMER_COUNT} >= 2`,
+      repeat3: `${CUSTOMER_COUNT} >= 3`,
+      once: `${CUSTOMER_COUNT} <= 1`,
+    };
+    if (REPEAT_SQL[repeat]) sql += ` AND ${REPEAT_SQL[repeat]}`;
+
+    // Alle Buchungen desselben Kunden wie Buchung #same_as (gleiche Regel wie customer_booking_count)
+    const sameAsId = parseInt(same_as || '', 10);
+    if (sameAsId > 0) {
+      const [ref] = await query<{ email: string | null; phone_e164: string | null }>(
+        'SELECT email, phone_e164 FROM bookings WHERE id = ?', [sameAsId]
+      );
+      if (ref) {
+        const ownMail = isOwnEmail(ref.email);
+        const phone = ref.phone_e164 && ref.phone_e164 !== OWN_PHONE_E164 ? ref.phone_e164 : '';
+        sql += " AND ((? <> '' AND LOWER(bookings.email) = LOWER(?)) OR (? <> '' AND bookings.phone_e164 = ?))";
+        const mail = ownMail ? '' : (ref.email || '');
+        params.push(mail, mail, phone, phone);
+      }
+    }
+
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
     // Summe der gefilterten (nicht stornierten) Buchungen — z. B. Monatsabrechnung prüfen
     const countSql = sql.replace(
-      'SELECT bookings.*, companies.company_name AS company_name',
+      `SELECT ${SELECT_LIST}`,
       "SELECT COUNT(*) as count, COALESCE(SUM(CASE WHEN bookings.status <> 'cancelled' THEN bookings.price ELSE 0 END), 0) as total_price"
     );
     const [countResult] = await query<{ count: number; total_price: number }>(countSql, params);

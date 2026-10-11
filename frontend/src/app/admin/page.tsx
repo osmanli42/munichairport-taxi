@@ -110,6 +110,8 @@ function autoRechnungViaZahlungsart(booking: Booking, settings: Record<string, s
   return end.getTime() >= since.getTime() ? pm : null;
 }
 
+const EMPTY_BOOKING_FILTERS = { status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', repeat: '', same_as: '', same_as_label: '', sort: '' };
+
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
@@ -126,7 +128,7 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pagination, setPagination] = useState<{ total: number; page: number; pages: number; total_price?: number }>({ total: 0, page: 1, pages: 1 });
   const [prices, setPrices] = useState<Price[]>([]);
-  const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', sort: '' });
+  const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', repeat: '', same_as: '', same_as_label: '', sort: '' });
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
@@ -363,7 +365,8 @@ export default function AdminPage() {
   const loadBookings = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const data = await adminApi.getBookings({ ...filters, page, limit: 15 });
+      const { same_as_label: _label, ...query } = filters;
+      const data = await adminApi.getBookings({ ...query, page, limit: 15 });
       setBookings(data.bookings);
       setPagination(data.pagination);
     } catch (err) {
@@ -1080,7 +1083,7 @@ export default function AdminPage() {
                     Suchen
                   </button>
                   <button
-                    onClick={() => { setFilters({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', sort: '' }); }}
+                    onClick={() => { setFilters({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', repeat: '', same_as: '', same_as_label: '', sort: '' }); }}
                     className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm transition-colors"
                     title="Filter zurücksetzen"
                   >
@@ -1089,7 +1092,7 @@ export default function AdminPage() {
                 </div>
               </div>
               {/* Erweiterte Filter: Zahlung, Kunde, Rechnung, Quelle … */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-3">
                 {([
                   ['payment', 'Zahlungsart: alle', [['cash', 'Bar'], ['card', 'Kreditkarte'], ['ueberweisung', 'Überweisung'], ['rechnung', 'Auf Rechnung (B2B)']]],
                   ['customer', 'Kunde: alle', [['private', 'Privatkunde'], ['company', 'Firmenkunde (B2B)'], ['invoice', 'Rechnungskunde']]],
@@ -1097,6 +1100,7 @@ export default function AdminPage() {
                   ['paid', 'Bezahlung: alle', [['transfer_open', 'Überweisung offen'], ['transfer_paid', 'Überweisung bezahlt'], ['card_paid', 'Karte belastet'], ['card_failed', 'Karte fehlgeschlagen']]],
                   ['source', 'Quelle: alle', [['web', 'Website'], ['portal', 'Firmenportal'], ['calendar', 'Kalender'], ['admin', 'Admin / manuell']]],
                   ['trip', 'Fahrt: alle', [['oneway', 'Einfache Fahrt'], ['roundtrip', 'Hin & Rück'], ['flight', 'Mit Flugnummer']]],
+                  ['repeat', 'Häufigkeit: alle', [['repeat2', 'Stammkunde (2+ Buchungen)'], ['repeat3', 'Vielfahrer (3+ Buchungen)'], ['once', 'Einmalkunde']]],
                   ['sort', 'Neueste Buchung zuerst', [['pickup_asc', 'Abholzeit aufsteigend'], ['pickup_desc', 'Abholzeit absteigend'], ['price_desc', 'Höchster Preis zuerst']]],
                 ] as [keyof typeof filters, string, [string, string][]][]).map(([key, placeholder, opts]) => (
                   <select
@@ -1133,9 +1137,17 @@ export default function AdminPage() {
                   <span>· Summe <b className="text-gray-900">{Number(pagination.total_price).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</b> <span className="text-xs text-gray-400">(ohne stornierte)</span></span>
                 )}
                 {(() => {
-                  const n = (['status', 'vehicle_type', 'search', 'date_from', 'payment', 'customer', 'rechnung', 'paid', 'source', 'trip'] as const).filter(k => filters[k]).length;
+                  const n = (['status', 'vehicle_type', 'search', 'date_from', 'payment', 'customer', 'rechnung', 'paid', 'source', 'trip', 'repeat', 'same_as'] as const).filter(k => filters[k]).length;
                   return n > 0 ? <span className="text-primary-700 font-medium">· {n} Filter aktiv</span> : null;
                 })()}
+                {filters.same_as && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-sky-100 text-sky-800 font-medium px-2 py-0.5 rounded-full">
+                    🔁 Alle Buchungen von {filters.same_as_label || 'diesem Kunden'}
+                    <button type="button" onClick={() => setFilters(p => ({ ...p, same_as: '', same_as_label: '' }))} className="ml-0.5 hover:text-sky-950" title="Kundenfilter entfernen">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
                 {filters.date_from && (
                   <span className="text-xs text-gray-400">
                     · Abholtag {filters.date_from}{filters.date_to && filters.date_to !== filters.date_from ? ` bis ${filters.date_to}` : ''}
@@ -1182,7 +1194,25 @@ export default function AdminPage() {
                             <td className="py-3 px-4 font-mono text-xs text-primary-600">{booking.booking_number}</td>
                             <td className="py-3 px-4 text-xs">{formatDateTime(booking.pickup_datetime)}</td>
                             <td className="py-3 px-4">
-                              <div className="font-medium text-gray-900">{booking.name}</div>
+                              <div className="font-medium text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                {booking.name}
+                                {/* Stammkunde: Klick zeigt alle Buchungen dieses Kunden (über E-Mail bzw. Telefon) */}
+                                {(booking.customer_booking_count ?? 0) >= 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setFilters({ ...EMPTY_BOOKING_FILTERS, same_as: String(booking.id), same_as_label: booking.name })}
+                                    title={`${booking.customer_booking_count} Buchungen von diesem Kunden — klicken zeigt alle`}
+                                    className={cn(
+                                      'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition-colors',
+                                      (booking.customer_booking_count ?? 0) >= 3
+                                        ? 'bg-violet-100 text-violet-800 hover:bg-violet-200'
+                                        : 'bg-sky-100 text-sky-800 hover:bg-sky-200'
+                                    )}
+                                  >
+                                    🔁 {booking.customer_booking_count}×
+                                  </button>
+                                )}
+                              </div>
                               <div className="text-xs text-gray-500">{booking.phone}</div>
                               {booking.company_id && (
                                 <span className="inline-flex items-center gap-1 mt-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
