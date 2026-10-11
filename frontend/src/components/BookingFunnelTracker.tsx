@@ -169,11 +169,14 @@ export default function BookingFunnelTracker() {
     let leaving = false;
     const onLeave = () => { leaving = true; };
     const onBack = () => { leaving = false; };   // restored from the back/forward cache
-    const apiOrigin = (() => { try { return new URL(API_BASE).origin; } catch { return ''; } })();
+    // Nur echte API-Aufrufe (…/api/…) zählen. Früher reichte derselbe Origin: liegt die API
+    // unter der Website-Domain, wurden Next.js-Seitenwechsel/Prefetches (GET /about, /agb …)
+    // bei Netzabbruch als "API-Fehler" gezählt (9. Okt.: 65 Fehler aus 3 Sitzungen).
+    const apiPrefix = (() => { try { const u = new URL(API_BASE); return `${u.origin}${u.pathname.replace(/\/$/, '')}/`; } catch { return ''; } })();
     const wrappedFetch: typeof window.fetch = async (input, init) => {
       let url = '';
       try { url = typeof input === 'string' ? input : (input as Request).url || String(input); } catch {}
-      const isOwnApi = !!apiOrigin && url.startsWith(apiOrigin);
+      const isOwnApi = !!apiPrefix && url.startsWith(apiPrefix);
       // Kendi izleme çağrılarımız hariç tutulur — hata döngüsü oluşmasın
       const isTracking = /\/track\//.test(url);
       try {
@@ -197,8 +200,18 @@ export default function BookingFunnelTracker() {
     window.fetch = wrappedFetch;
 
     // --- 8) Sessiz teknik hatalar ---
-    const onError = (e: ErrorEvent) => push('js_error', `${e.message || 'error'} @ ${(e.filename || '').split('/').pop()}:${e.lineno || 0}`);
-    const onRejection = (e: PromiseRejectionEvent) => push('js_error', `unhandled: ${String((e.reason as any)?.message || e.reason || '').slice(0, 120)}`);
+    // Microsofts Link-Scanner (Outlook SafeLinks/Bing, Rechenzentren Dublin/Quincy) wirft beim
+    // Prüfen von Links "Object Not Found Matching Id:N, MethodName:update" — kein Kundenfehler.
+    const isScannerNoise = (msg: string) => /Object Not Found Matching Id:\d+, MethodName:/.test(msg);
+    const onError = (e: ErrorEvent) => {
+      if (isScannerNoise(e.message || '')) return;
+      push('js_error', `${e.message || 'error'} @ ${(e.filename || '').split('/').pop()}:${e.lineno || 0}`);
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const msg = String((e.reason as any)?.message || e.reason || '');
+      if (isScannerNoise(msg)) return;
+      push('js_error', `unhandled: ${msg.slice(0, 120)}`);
+    };
 
     document.addEventListener('focusin', onFocusIn, true);
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-field-error'], subtree: true, childList: true });

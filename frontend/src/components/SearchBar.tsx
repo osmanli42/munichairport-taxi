@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel } from 'lucide-react';
+import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -63,7 +63,7 @@ function formatDateShort(dateStr: string, locale: string) {
 
 /* ─── Address Field ─── */
 function AddressField({
-  placeholder, value, onChange, onValidSelect, locale, icon, airportOnFocus,
+  placeholder, value, onChange, onValidSelect, locale, icon, airportOnFocus, openSignal,
 }: {
   placeholder: string;
   value: string;
@@ -73,6 +73,8 @@ function AddressField({
   icon: React.ReactNode;
   /** City landing pages pre-fill the text "Flughafen München" without a terminal: open the terminal list on focus. */
   airportOnFocus?: boolean;
+  /** Wird erhöht, wenn "Suchen" ohne gewählten Vorschlag gedrückt wurde: Feld fokussieren und Vorschlagsliste öffnen. */
+  openSignal?: number;
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,6 +86,7 @@ function AddressField({
   const airportRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const errorMsg: Record<string, string> = {
     de: 'Bitte genaue Adresse mit Straße und Hausnummer eingeben',
@@ -115,6 +118,23 @@ function AddressField({
       setOpen(true);
     } catch { setPredictions([]); } finally { setLoading(false); }
   }, [locale]);
+
+  // "Suchen" ohne Auswahl: Statt nur einer Fehlermeldung die Vorschläge direkt wieder zeigen.
+  // Replay-Analyse (Okt. 2026): ~260 Sitzungen/Monat tippten eine Adresse, wählten keinen
+  // Vorschlag und sahen nur "Bitte Abholadresse auswählen" — ein Drittel brach danach ab.
+  // SearchBar rendert Desktop- und Mobilfassung gleichzeitig; nur das sichtbare Feld reagiert.
+  useEffect(() => {
+    if (!openSignal) return;
+    const el = inputRef.current;
+    if (!el || el.offsetParent === null) return;
+    el.focus();
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    if (value.trim().length >= 3) {
+      if (showAirport || predictions.length > 0) setOpen(true);
+      else fetchPredictions(value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -190,6 +210,7 @@ function AddressField({
       <div className="flex items-center gap-2 h-full bg-white px-4 py-3">
         <span className="shrink-0">{icon}</span>
         <input
+          ref={inputRef}
           type="text"
           value={value}
           onChange={handleChange}
@@ -552,6 +573,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
   const [passengers, setPassengers] = useState(init?.passengers || 2);
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
+  // Zähler: erhöhen = betreffendes Adressfeld öffnet seine Vorschlagsliste (AddressField.openSignal)
+  const [openFrom, setOpenFrom] = useState(0);
+  const [openTo, setOpenTo] = useState(0);
 
   // Settings (stadtfahrt toggle + min advance hours)
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
@@ -588,13 +612,15 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
 
   const labels: Record<string, {
     from: string; to: string; search: string; searching: string;
-    errFrom: string; errTo: string; errDate: string; errRoute: string; errAirport: string;
+    errFrom: string; errTo: string; errPick: string; errDate: string; errRoute: string; errAirport: string;
+    call: string;
     arrival: string; addReturn: string; returnFlight: string;
     swap: string; persons: string; person: string;
   }> = {
     de: {
       from: 'Abholadresse...', to: 'Zieladresse...', search: 'Suchen', searching: 'Suchen...',
       errFrom: 'Bitte Abholadresse auswählen', errTo: 'Bitte Zieladresse auswählen',
+      errPick: 'Bitte tippen Sie auf eine Adresse aus der Vorschlagsliste', call: 'Jetzt anrufen',
       errDate: 'Bitte Datum auswählen', errRoute: 'Route konnte nicht berechnet werden. Bitte wählen Sie eine Adresse aus der Vorschlagsliste.',
       errAirport: 'Wir bieten nur Flughafentransfers an. Bitte wählen Sie den Flughafen München oder eine Adresse in der Nähe (Oberding, Hallbergmoos, Freising) als Abhol- oder Zielort.',
       arrival: 'Hinfahrt', addReturn: 'Rückfahrt hinzufügen', returnFlight: 'Rückfahrt',
@@ -603,6 +629,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     en: {
       from: 'Pickup address...', to: 'Destination...', search: 'Search', searching: 'Searching...',
       errFrom: 'Please select a pickup address', errTo: 'Please select a destination',
+      errPick: 'Please tap an address from the suggestion list', call: 'Call now',
       errDate: 'Please select a date', errRoute: 'Could not calculate route. Please pick an address from the suggestion list.',
       errAirport: 'We only offer airport transfers. Please select Munich Airport or a nearby address (Oberding, Hallbergmoos, Freising) as pickup or destination.',
       arrival: 'Flight arrival', addReturn: 'Add a return', returnFlight: 'Return flight',
@@ -611,6 +638,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     tr: {
       from: 'Alış adresi...', to: 'Varış adresi...', search: 'Ara', searching: 'Aranıyor...',
       errFrom: 'Lütfen alış adresi seçin', errTo: 'Lütfen varış adresi seçin',
+      errPick: 'Lütfen öneri listesinden bir adrese dokunun', call: 'Hemen ara',
       errDate: 'Lütfen tarih seçin', errRoute: 'Rota hesaplanamadı. Lütfen öneri listesinden bir adres seçin.',
       errAirport: 'Sadece havalimanı transferi sunuyoruz. Lütfen Münih Havalimanı veya yakın bir adres (Oberding, Hallbergmoos, Freising) seçin.',
       arrival: 'Gidiş', addReturn: 'Dönüş ekle', returnFlight: 'Dönüş',
@@ -646,8 +674,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     // the suggestion list (mouse or keyboard) — never fall back to raw typed
     // text here, since Google's Distance Matrix can silently "resolve" vague
     // text to the wrong nearby place and produce a wrong fare.
-    if (!pickupVal) { setFormError(l.errFrom); return; }
-    if (!dropoffVal) { setFormError(l.errTo); return; }
+    // Getippt, aber kein Vorschlag gewählt → Liste öffnen und genau das sagen.
+    if (!pickupVal) { setFormError(pickup.trim() ? `${l.errFrom}: ${l.errPick}` : l.errFrom); setOpenFrom(n => n + 1); return; }
+    if (!dropoffVal) { setFormError(dropoff.trim() ? `${l.errTo}: ${l.errPick}` : l.errTo); setOpenTo(n => n + 1); return; }
     if (!date) { setFormError(l.errDate); return; }
     if (isTooSoon(date, time)) { setFormError(advanceWarning); return; }
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
@@ -712,6 +741,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 value={pickup}
                 onChange={setPickup}
                 onValidSelect={setPickupVal}
+                openSignal={openFrom}
                 locale={locale}
                 airportOnFocus={requireSelection}
               />
@@ -734,6 +764,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 value={dropoff}
                 onChange={setDropoff}
                 onValidSelect={setDropoffVal}
+                openSignal={openTo}
                 locale={locale}
                 airportOnFocus={requireSelection}
               />
@@ -827,6 +858,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 value={pickup}
                 onChange={setPickup}
                 onValidSelect={setPickupVal}
+                openSignal={openFrom}
                 locale={locale}
                 airportOnFocus={requireSelection}
               />
@@ -847,6 +879,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 value={dropoff}
                 onChange={setDropoff}
                 onValidSelect={setDropoffVal}
+                openSignal={openTo}
                 locale={locale}
                 airportOnFocus={requireSelection}
               />
@@ -923,7 +956,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       </div>
 
       {/* Error */}
-      {formError && (
+      {formError && formError !== advanceWarning && (
         /* data-field / data-field-error yalnız ölçüm içindir: BookingFunnelTracker bu iki
            attribute'u görünce field_error olayı yazar (arama kutusunda takılıp vazgeçen
            müşteriler ölçülebilsin). Hata mantığı değişmez. */
@@ -932,23 +965,37 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
           data-field-error={formError}
           className="flex items-center gap-2 mt-3 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-xl"
         >
-          <AlertCircle size={14} /> {formError}
+          <AlertCircle size={14} className="shrink-0" /> {formError}
         </div>
       )}
 
-      {/* Advance booking warning */}
-      {advanceWarning && !formError && (
-        <div className="flex items-start gap-3 mt-3 px-4 py-3 bg-amber-50 text-amber-800 border border-amber-200 text-sm rounded-xl">
-          <AlertCircle size={16} className="shrink-0 mt-0.5" />
-          <span>
-            {advanceWarning}{' '}
-            {locale === 'tr'
-              ? <>Acil rezervasyonlar için lütfen bizi arayın: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
-              : locale === 'en'
-                ? <>For urgent bookings please call us: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
-                : <>Für kurzfristige Buchungen rufen Sie uns bitte an: <a href="tel:+4915141620000" className="font-bold underline">+49 151 41620000</a></>
-            }
-          </span>
+      {/* Advance booking warning — kurzfristige Kunden wollen JETZT ein Taxi: Anruf/WhatsApp
+          prominent anbieten. Früher ersetzte die rote Fehlermeldung nach "Suchen" diesen Hinweis
+          samt Telefonnummer (Replay-Analyse Okt. 2026: 25 von 35 solcher Sitzungen gingen verloren). */}
+      {advanceWarning && (!formError || formError === advanceWarning) && (
+        <div
+          {...(formError === advanceWarning ? { 'data-field': 'Suche', 'data-field-error': formError } : {})}
+          className={`mt-3 px-4 py-3 text-sm rounded-xl border ${formError ? 'bg-red-50 text-red-800 border-red-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span>
+              {advanceWarning}{' '}
+              {locale === 'tr'
+                ? 'Acil yolculuklar için bizi hemen arayın veya WhatsApp yazın:'
+                : locale === 'en'
+                  ? 'For short-notice rides, call us or send a WhatsApp right now:'
+                  : 'Für kurzfristige Fahrten rufen Sie uns jetzt an oder schreiben Sie per WhatsApp:'}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2.5 sm:pl-7">
+            <a href="tel:+4915141620000" className="inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold px-4 py-2 rounded-lg">
+              <Phone size={15} /> {l.call}<span className="hidden sm:inline"> · +49 151 41620000</span>
+            </a>
+            <a href="https://wa.me/4915141620000" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-[#25D366] hover:brightness-95 text-white font-semibold px-4 py-2 rounded-lg">
+              <MessageCircle size={15} /> WhatsApp
+            </a>
+          </div>
         </div>
       )}
     </div>
