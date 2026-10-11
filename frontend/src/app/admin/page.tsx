@@ -115,6 +115,10 @@ export default function AdminPage() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  // Replay derin bağlantısı (?tab=replay&replay=<session>&t=<sn>) doğrudan o sekmeyi açar
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'replay') setActiveTab('replay');
+  }, []);
   const [kalenderOpenCount, setKalenderOpenCount] = useState<number | null>(null);
   const [seoDueCount, setSeoDueCount] = useState<number | null>(null);
   const [adsDueCount, setAdsDueCount] = useState<number | null>(null);

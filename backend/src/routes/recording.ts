@@ -10,10 +10,17 @@
  *   DELETE /api/admin/recordings/:id          — delete one recording
  *   DELETE /api/admin/recordings/bulk         — delete by criteria (older than X days etc.)
  *   GET    /api/admin/recordings/stats        — total count + disk usage
+ *   GET    /api/admin/recordings/settings     — kayıt aç/kapa, örnekleme, saklama süresi
+ *   PUT    /api/admin/recordings/settings
+ *   PUT    /api/admin/recordings/:id/mark     — ⭐ / izlendi / not
  */
 import { Router, Request, Response } from 'express';
+import { promisify } from 'util';
+import zlib from 'zlib';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+
+const gzipAsync = promisify(zlib.gzip);
 
 const router = Router();
 
@@ -39,7 +46,60 @@ async function ensureTable(): Promise<void> {
       INDEX idx_created_at (created_at)
     )
   `);
+  // Admin'in oturum başına işaretleri: ⭐ (otomatik silmeden korunur), izlendi, not.
+  // Kolasyon açıkça verilir: session_recordings ile JOIN'de "Illegal mix of collations" olmasın.
+  await run(`
+    CREATE TABLE IF NOT EXISTS session_recording_marks (
+      session_id VARCHAR(64) NOT NULL,
+      starred TINYINT(1) NOT NULL DEFAULT 0,
+      watched_at DATETIME DEFAULT NULL,
+      note VARCHAR(500) DEFAULT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (session_id)
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  await run(`
+    CREATE TABLE IF NOT EXISTS recording_settings (
+      k VARCHAR(40) NOT NULL,
+      v VARCHAR(255) NOT NULL,
+      PRIMARY KEY (k)
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
   tableReady = true;
+}
+
+// ---------- Ayarlar (admin'den aç/kapa) ----------
+// enabled=0 → yeni kayıt saklanmaz; sample_pct → oturumların yüzde kaçı saklanır;
+// retention_days>0 → bu günden eski kayıtlar otomatik silinir (⭐ ve rezervasyonlu
+// oturumlar keep_* açıkken korunur). Varsayılanlar bugünkü davranışla aynıdır.
+const SETTING_DEFAULTS = { enabled: 1, sample_pct: 100, retention_days: 0, keep_starred: 1, keep_booked: 1 };
+type RecSettings = typeof SETTING_DEFAULTS;
+let settingsCache: { at: number; v: RecSettings } | null = null;
+
+async function getSettings(force = false): Promise<RecSettings> {
+  if (!force && settingsCache && Date.now() - settingsCache.at < 60_000) return settingsCache.v;
+  const v: RecSettings = { ...SETTING_DEFAULTS };
+  try {
+    const rows = await query<{ k: string; v: string }>(`SELECT k, v FROM recording_settings`);
+    for (const r of rows) {
+      if (r.k in v) (v as any)[r.k] = Number(r.v) || 0;
+    }
+  } catch {}
+  settingsCache = { at: Date.now(), v };
+  return v;
+}
+
+// Örnekleme oturum başına sabit olmalı (aynı oturumun bir kısmı kaydedilip bir kısmı
+// atlanmasın) — session_id'nin hash'i kullanılır.
+function inSample(sessionId: string, pct: number): boolean {
+  if (pct >= 100) return true;
+  if (pct <= 0) return false;
+  let h = 2166136261;
+  for (let i = 0; i < sessionId.length; i++) {
+    h ^= sessionId.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100) < pct;
 }
 
 const MAX_EVENTS_PER_CHUNK = 500;
@@ -52,6 +112,12 @@ router.post('/track/recording', async (req: Request, res: Response) => {
     const { session_id, visitor_id, events } = req.body || {};
     if (!session_id || !Array.isArray(events) || events.length === 0) {
       res.status(400).json({ error: 'missing fields' });
+      return;
+    }
+
+    const settings = await getSettings();
+    if (!settings.enabled || !inSample(String(session_id), settings.sample_pct)) {
+      res.json({ ok: true, skipped: true });
       return;
     }
 
@@ -98,22 +164,27 @@ router.post('/track/recording', async (req: Request, res: Response) => {
 });
 
 // ---------- GET /api/admin/recordings ----------
-// Query params: limit, offset, only_booked, min_duration_sec, since (ISO date)
+// Query params: limit, offset, only_booked, min_duration_sec, since (ISO date), sort,
+//   q (adres / şehir / kampanya / rezervasyon no), device, source (ads|organic),
+//   stage (booked|called|form|prices|landing), issues=1, starred=1, unwatched=1,
+//   error_target (İçgörüler'deki hata satırı), last_field (terk edilen alan)
 router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureTable();
-    const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 200);
-    const offset = parseInt((req.query.offset as string) || '0', 10);
-    const minDuration = parseInt((req.query.min_duration_sec as string) || '0', 10);
+    const limit = Math.min(Math.max(parseInt((req.query.limit as string) || '50', 10) || 50, 1), 200);
+    const offset = Math.max(parseInt((req.query.offset as string) || '0', 10) || 0, 0);
+    const minDuration = Math.max(parseInt((req.query.min_duration_sec as string) || '0', 10) || 0, 0);
     const onlyBooked = req.query.only_booked === '1';
-    // Sıralama: izlemeye değer oturumları öne almak için. Alias'lar MySQL'de ORDER BY
-    // içinde kullanılabildiği için skorlar tekrar hesaplanmaz.
+    // Sıralama: izlemeye değer oturumları öne almak için. Dış sorgu türetilmiş tablonun
+    // alias'larını kullandığı için skorlar tekrar hesaplanmaz.
     const sortParam = String(req.query.sort || 'recent');
     const ORDER_BY: Record<string, string> = {
-      recent: 'MIN(r.created_at) DESC',
+      recent: 't.recorded_from DESC',
       // yüksek niyetli ama rezervasyon yapmamış oturumlar
-      intent: '(booked_id IS NULL) DESC, opened_form DESC, fields_touched DESC, saw_prices DESC, MIN(r.created_at) DESC',
-      frustration: '(field_errors + 3 * tech_errors) DESC, field_errors DESC, MIN(r.created_at) DESC',
+      intent: '(t.booked_id IS NULL) DESC, t.opened_form DESC, t.fields_touched DESC, t.saw_prices DESC, t.recorded_from DESC',
+      frustration: '(t.field_errors + 3 * t.tech_errors) DESC, t.field_errors DESC, t.recorded_from DESC',
+      // visitor_sessions süresi geri dönen ziyaretçide günlerce olabiliyor; kaydın kendi uzunluğu esas
+      longest: '(t.last_ts - t.first_ts) DESC, t.recorded_from DESC',
     };
     const orderBy = ORDER_BY[sortParam] || ORDER_BY.recent;
 
@@ -129,8 +200,9 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
       }
     }
 
-    // Build WHERE — interpolate numbers (validated) to avoid LIMIT/OFFSET bind issues
+    // --- İç sorgu filtreleri (gruplamadan önce, ucuz olanlar) ---
     const where: string[] = ['1=1'];
+    const params: any[] = [];
     if (sinceClause) {
       where.push(`r.created_at >= ${sinceClause}`);
     }
@@ -139,6 +211,37 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
     }
     // Filter out bot sessions
     where.push('(vs.is_bot = 0 OR vs.is_bot IS NULL)');
+
+    const device = String(req.query.device || '');
+    if (['mobile', 'tablet', 'desktop'].includes(device)) {
+      where.push('vs.ua_device = ?');
+      params.push(device);
+    }
+    // Kaynak tanımı İçgörüler'deki kırılımla aynı (dropoff → breakdown)
+    const ADS_SQL = `(COALESCE(vs.gclid, '') <> '' OR vs.utm_medium IN ('cpc','ppc','paid'))`;
+    const source = String(req.query.source || '');
+    if (source === 'ads') where.push(ADS_SQL);
+    else if (source === 'organic') where.push(`NOT ${ADS_SQL}`);
+
+    // Serbest arama: adresler pageview yollarında URL-kodlu durur (K%C3%B6nigs…, boşluk '+'),
+    // bu yüzden hem ham hem kodlu hali aranır.
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    if (q) {
+      const enc = encodeURIComponent(q);
+      where.push(`(
+        vs.city LIKE ? OR vs.utm_campaign LIKE ? OR r.session_id = ?
+        OR EXISTS (SELECT 1 FROM visitor_pageviews pv WHERE pv.session_id = r.session_id
+                     AND (pv.path LIKE ? OR pv.path LIKE ? OR pv.path LIKE ?))
+        OR EXISTS (SELECT 1 FROM bookings b WHERE b.session_id = r.session_id AND b.booking_number LIKE ?)
+      )`);
+      params.push(`%${q}%`, `%${q}%`, q, `%${q}%`, `%${enc}%`, `%${enc.replace(/%20/g, '+')}%`, `%${q}%`);
+    }
+    const errorTarget = String(req.query.error_target || '').slice(0, 255);
+    if (errorTarget) {
+      where.push(`EXISTS (SELECT 1 FROM visitor_events ve WHERE ve.session_id = r.session_id
+                    AND ve.type IN ('field_error','js_error','api_error') AND ve.target = ?)`);
+      params.push(errorTarget);
+    }
 
     // --- Rezervasyon eşleştirmesi ---
     // ÖNEMLİ: burada bir zaman-penceresi COUNT(*) kullanılamaz — oturumla korele olmayan
@@ -185,11 +288,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         (SELECT MAX(pv.load_time_ms) FROM visitor_pageviews pv
            WHERE pv.session_id = r.session_id) AS max_load_time_ms`;
 
-    const havingClause = onlyBooked
-      ? 'HAVING (booked_id IS NOT NULL OR visitor_booking_count > 0)'
-      : '';
-
-    const sql = `
+    const inner = `
       SELECT
         r.session_id,
         -- MIN() yerine ANY_VALUE() da olurdu ama bazı MariaDB sürümlerinde ANY_VALUE yok;
@@ -207,6 +306,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         vs.country, vs.city,
         vs.landing_page, vs.first_seen, vs.last_seen, vs.pageview_count,
         TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) AS session_seconds,
+        m.starred, m.watched_at, m.note,
         (SELECT GROUP_CONCAT(DISTINCT path SEPARATOR ' → ')
           FROM visitor_pageviews pv WHERE pv.session_id = r.session_id) AS pages,
         -- Huni aşaması: fiyat sayfası / rezervasyon formu görüldü mü
@@ -218,27 +318,56 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         ${bookingExprs}
       FROM session_recordings r
       LEFT JOIN visitor_sessions vs ON vs.session_id = r.session_id
+      LEFT JOIN session_recording_marks m ON m.session_id = r.session_id
       WHERE ${where.join(' AND ')}
-      GROUP BY r.session_id
-      ${havingClause}
-      ORDER BY ${orderBy}
-      LIMIT ${limit} OFFSET ${offset}
-    `;
+      GROUP BY r.session_id`;
 
-    const rows = await query<any>(sql);
+    // --- Dış filtreler (türetilmiş alias'lar üzerinde) ---
+    // Aşama tanımı aşağıdaki exit_stage türetmesiyle birebir aynı sırayı izler.
+    const BOOKED = '(t.booked_id IS NOT NULL OR t.visitor_booking_count > 0)';
+    const CALLED = '(t.call_clicks + t.callback_requests) > 0';
+    const FORM = 'COALESCE(t.opened_form, 0) > 0';
+    const PRICES = 'COALESCE(t.saw_prices, 0) > 0';
+    const STAGE_SQL: Record<string, string> = {
+      booked: BOOKED,
+      called: `NOT ${BOOKED} AND ${CALLED}`,
+      form: `NOT ${BOOKED} AND NOT (${CALLED}) AND ${FORM}`,
+      prices: `NOT ${BOOKED} AND NOT (${CALLED}) AND NOT ${FORM} AND ${PRICES}`,
+      landing: `NOT ${BOOKED} AND NOT (${CALLED}) AND NOT ${FORM} AND NOT ${PRICES}`,
+    };
+    const outer: string[] = [];
+    const outerParams: any[] = [];
+    if (onlyBooked) outer.push(BOOKED);
+    const stage = String(req.query.stage || '');
+    if (STAGE_SQL[stage]) outer.push(STAGE_SQL[stage]);
+    if (req.query.issues === '1') outer.push('(t.field_errors + t.tech_errors) > 0');
+    if (req.query.starred === '1') outer.push('t.starred = 1');
+    if (req.query.unwatched === '1') outer.push('t.watched_at IS NULL');
+    const lastField = String(req.query.last_field || '').slice(0, 255);
+    if (lastField) {
+      outer.push('t.last_field = ?');
+      outerParams.push(lastField);
+    }
+    const outerWhere = outer.length ? `WHERE ${outer.join(' AND ')}` : '';
+
+    const rows = await query<any>(
+      `SELECT t.* FROM (${inner}) t ${outerWhere} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
+      [...params, ...outerParams]
+    );
 
     // Toplam sayaç, listeyle AYNI filtreleri uygulamalı — aksi halde "Toplam" ve sayfalama
-    // filtreden bağımsız kalır (eski davranış: filtresiz COUNT(DISTINCT session_id)).
-    const [total] = await query<{ n: number }>(`
-      SELECT COUNT(*) AS n FROM (
-        SELECT r.session_id, ${bookingExprs}
-        FROM session_recordings r
-        LEFT JOIN visitor_sessions vs ON vs.session_id = r.session_id
-        WHERE ${where.join(' AND ')}
-        GROUP BY r.session_id
-        ${havingClause}
-      ) t
-    `);
+    // filtreden bağımsız kalır. Dış filtre yoksa ağır sinyal alt sorguları atlanır.
+    const [total] = outer.length
+      ? await query<{ n: number }>(`SELECT COUNT(*) AS n FROM (${inner}) t ${outerWhere}`, [...params, ...outerParams])
+      : await query<{ n: number }>(
+          `SELECT COUNT(*) AS n FROM (
+             SELECT r.session_id FROM session_recordings r
+             LEFT JOIN visitor_sessions vs ON vs.session_id = r.session_id
+             WHERE ${where.join(' AND ')}
+             GROUP BY r.session_id
+           ) t`,
+          params
+        );
 
     // booking_match / exit_stage türetmesi tek yerde yapılır ki frontend aynı mantığı
     // tekrar etmesin: 'session' = bu oturumdan yaratılmış rezervasyon (kesin),
@@ -300,6 +429,8 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         drop_reason: dropReason,
         frustration,
         intent,
+        starred: Number(row.starred || 0) === 1,
+        watched: !!row.watched_at,
       };
     });
 
@@ -449,9 +580,11 @@ router.get('/admin/recordings/dropoff', authenticateAdmin, async (req: AuthReque
 });
 
 // ---------- GET /api/admin/recordings/stats ----------
+// ?days=N → seçili dönem için ayrıca oturum/bayt toplamı (KPI şeridi)
 router.get('/admin/recordings/stats', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureTable();
+    const days = Math.min(Math.max(parseInt((req.query.days as string) || '30', 10) || 30, 1), 3650);
     const [s] = await query<any>(
       `SELECT
         COUNT(DISTINCT session_id) AS sessions,
@@ -461,6 +594,17 @@ router.get('/admin/recordings/stats', authenticateAdmin, async (req: AuthRequest
         MIN(created_at) AS oldest,
         MAX(created_at) AS newest
        FROM session_recordings`
+    );
+
+    const [range] = await query<any>(
+      `SELECT COUNT(DISTINCT session_id) AS sessions, SUM(bytes) AS bytes
+       FROM session_recordings
+       WHERE created_at >= NOW() - INTERVAL ${days} DAY`
+    );
+
+    const [marks] = await query<any>(
+      `SELECT SUM(starred = 1) AS starred, SUM(watched_at IS NOT NULL) AS watched
+       FROM session_recording_marks`
     );
 
     const buckets = await query<any>(
@@ -474,14 +618,89 @@ router.get('/admin/recordings/stats', authenticateAdmin, async (req: AuthRequest
        ORDER BY day DESC`
     );
 
-    res.json({ ...s, daily: buckets });
+    res.json({
+      ...s,
+      range_days: days,
+      range_sessions: Number(range?.sessions || 0),
+      range_bytes: Number(range?.bytes || 0),
+      starred: Number(marks?.starred || 0),
+      watched: Number(marks?.watched || 0),
+      daily: buckets,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// ---------- GET/PUT /api/admin/recordings/settings ----------
+// /:id rotasından ÖNCE tanımlı olmalı, yoksa "settings" bir session_id sanılır.
+router.get('/admin/recordings/settings', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    await ensureTable();
+    res.json(await getSettings(true));
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+router.put('/admin/recordings/settings', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTable();
+    const body = req.body || {};
+    const clamp = (v: any, lo: number, hi: number) => Math.min(Math.max(Math.round(Number(v) || 0), lo), hi);
+    const next: Partial<RecSettings> = {};
+    if ('enabled' in body) next.enabled = body.enabled ? 1 : 0;
+    if ('sample_pct' in body) next.sample_pct = clamp(body.sample_pct, 0, 100);
+    if ('retention_days' in body) next.retention_days = clamp(body.retention_days, 0, 3650);
+    if ('keep_starred' in body) next.keep_starred = body.keep_starred ? 1 : 0;
+    if ('keep_booked' in body) next.keep_booked = body.keep_booked ? 1 : 0;
+    for (const [k, v] of Object.entries(next)) {
+      await run(
+        `INSERT INTO recording_settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)`,
+        [k, String(v)]
+      );
+    }
+    res.json(await getSettings(true));
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// ---------- PUT /api/admin/recordings/:id/mark ----------
+// Body: { starred?: boolean, watched?: boolean, note?: string | null }
+router.put('/admin/recordings/:id/mark', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTable();
+    const sessionId = String(req.params.id).slice(0, 64);
+    const { starred, watched, note } = req.body || {};
+    await run(`INSERT IGNORE INTO session_recording_marks (session_id) VALUES (?)`, [sessionId]);
+    const sets: string[] = [];
+    const params: any[] = [];
+    if (typeof starred === 'boolean') { sets.push('starred = ?'); params.push(starred ? 1 : 0); }
+    if (watched === true) sets.push('watched_at = COALESCE(watched_at, NOW())');
+    if (watched === false) sets.push('watched_at = NULL');
+    if (note !== undefined) {
+      const n = typeof note === 'string' ? note.trim().slice(0, 500) : '';
+      sets.push('note = ?');
+      params.push(n || null);
+    }
+    if (sets.length) {
+      await run(`UPDATE session_recording_marks SET ${sets.join(', ')} WHERE session_id = ?`, [...params, sessionId]);
+    }
+    const [m] = await query<any>(
+      `SELECT starred, watched_at, note FROM session_recording_marks WHERE session_id = ?`,
+      [sessionId]
+    );
+    res.json({ ok: true, starred: Number(m?.starred || 0) === 1, watched: !!m?.watched_at, note: m?.note || null });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }
 });
 
 // ---------- GET /api/admin/recordings/:id ----------
-// :id is session_id. Returns all chunks merged.
+// :id is session_id. Returns all chunks merged + oynatıcı zaman çizelgesi için
+// zaman damgalı sinyaller (visitor_events). Yanıt 1–5 MB JSON olabildiği için gzip'lenir
+// (nginx API yanıtlarını sıkıştırmıyor; rrweb JSON'u ~10× küçülür).
 router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureTable();
@@ -510,6 +729,9 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
         if (Array.isArray(events)) allEvents.push(...events);
       } catch {}
     }
+    // Sekme kapanırken beacon ile gelen parçalar sırasız kaydedilebiliyor; rrweb
+    // zaman sırası bekler (sort kararlıdır, aynı ms'deki olayların sırası korunur).
+    allEvents.sort((a, b) => (a?.timestamp || 0) - (b?.timestamp || 0));
 
     // Also fetch session metadata
     const [meta] = await query<any>(
@@ -519,19 +741,60 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
     );
 
     const pageviews = await query<any>(
-      `SELECT path, title, viewed_at FROM visitor_pageviews
+      `SELECT path, title, viewed_at, UNIX_TIMESTAMP(viewed_at) * 1000 AS ts, load_time_ms
+       FROM visitor_pageviews
        WHERE session_id = ? ORDER BY id ASC`,
       [sessionId]
     );
 
-    res.json({
+    const signals = await query<any>(
+      `SELECT type, target, path, UNIX_TIMESTAMP(occurred_at) * 1000 AS ts
+       FROM visitor_events
+       WHERE session_id = ?
+         AND type IN ('click','field_focus','field_error','js_error','api_error',
+                      'call_click','price_shown','tab_away','price_copy')
+       ORDER BY id ASC LIMIT 3000`,
+      [sessionId]
+    );
+
+    // DATETIME kolonları saat dilimi bilgisi taşımaz; DB/Node saat dilimi farklıysa
+    // sinyaller rrweb zamanından tam saat kayık gelir. İlk pageview ile ilk rrweb olayı
+    // aynı anda olduğundan farkı en yakın saate yuvarlayıp düzeltiyoruz.
+    let shift = 0;
+    const firstEv = allEvents[0]?.timestamp;
+    const firstPv = pageviews[0] ? Number(pageviews[0].ts) : 0;
+    if (firstEv && firstPv) {
+      const diff = firstEv - firstPv;
+      if (Math.abs(diff) > 30 * 60_000) shift = Math.round(diff / 3_600_000) * 3_600_000;
+    }
+    for (const p of pageviews) p.ts = Number(p.ts) + shift;
+    for (const s of signals) s.ts = Number(s.ts) + shift;
+
+    const [mark] = await query<any>(
+      `SELECT starred, watched_at, note FROM session_recording_marks WHERE session_id = ?`,
+      [sessionId]
+    );
+
+    const payload = JSON.stringify({
       session_id: sessionId,
       meta: meta || null,
       pageviews,
+      signals,
+      mark: { starred: Number(mark?.starred || 0) === 1, watched: !!mark?.watched_at, note: mark?.note || null },
       events: allEvents,
       event_count: allEvents.length,
       chunk_count: chunks.length,
     });
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Vary', 'Accept-Encoding');
+    if (/\bgzip\b/.test(String(req.headers['accept-encoding'] || '')) && payload.length > 32_000) {
+      const gz = await gzipAsync(payload, { level: 6 });
+      res.setHeader('Content-Encoding', 'gzip');
+      res.end(gz);
+    } else {
+      res.end(payload);
+    }
   } catch (err: any) {
     console.error('recording get error:', err.message);
     res.status(500).json({ error: 'failed' });
@@ -540,6 +803,7 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
 
 // ---------- DELETE /api/admin/recordings/bulk ----------
 // Body: { older_than_days?: number, session_ids?: string[], all?: true }
+// older_than_days ⭐'lı kayıtları korur; all=true gerçekten her şeyi siler.
 router.delete('/admin/recordings/bulk', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureTable();
@@ -547,6 +811,7 @@ router.delete('/admin/recordings/bulk', authenticateAdmin, async (req: AuthReque
 
     if (all === true) {
       const r = await run(`DELETE FROM session_recordings`);
+      await run(`DELETE FROM session_recording_marks`);
       res.json({ ok: true, deleted: r.affectedRows });
       return;
     }
@@ -563,7 +828,8 @@ router.delete('/admin/recordings/bulk', authenticateAdmin, async (req: AuthReque
 
     if (typeof older_than_days === 'number' && older_than_days > 0) {
       const r = await run(
-        `DELETE FROM session_recordings WHERE created_at < NOW() - INTERVAL ? DAY`,
+        `DELETE FROM session_recordings WHERE created_at < NOW() - INTERVAL ? DAY
+           AND session_id NOT IN (SELECT session_id FROM session_recording_marks WHERE starred = 1)`,
         [older_than_days]
       );
       res.json({ ok: true, deleted: r.affectedRows });
@@ -582,10 +848,41 @@ router.delete('/admin/recordings/:id', authenticateAdmin, async (req: AuthReques
     await ensureTable();
     const sessionId = req.params.id;
     const r = await run(`DELETE FROM session_recordings WHERE session_id = ?`, [sessionId]);
+    await run(`DELETE FROM session_recording_marks WHERE session_id = ?`, [sessionId]);
     res.json({ ok: true, deleted: r.affectedRows });
   } catch (err: any) {
     res.status(500).json({ error: 'failed' });
   }
 });
+
+// ---------- Otomatik saklama süresi ----------
+// retention_days = 0 iken hiçbir şey yapmaz (varsayılan). Büyük tabloda uzun kilit
+// olmasın diye 2000'lik partilerle siler.
+async function runRetention(): Promise<void> {
+  await ensureTable();
+  const s = await getSettings(true);
+  if (!s.retention_days || s.retention_days < 1) return;
+  const conds = [`created_at < NOW() - INTERVAL ${Math.round(s.retention_days)} DAY`];
+  if (s.keep_starred) {
+    conds.push(`session_id NOT IN (SELECT session_id FROM session_recording_marks WHERE starred = 1)`);
+  }
+  if (s.keep_booked) {
+    conds.push(`NOT EXISTS (SELECT 1 FROM bookings b
+                  WHERE b.session_id = session_recordings.session_id AND b.status <> 'cancelled')`);
+  }
+  let deleted = 0;
+  for (let i = 0; i < 100; i++) {
+    const r = await run(`DELETE FROM session_recordings WHERE ${conds.join(' AND ')} LIMIT 2000`);
+    deleted += r.affectedRows;
+    if (r.affectedRows < 2000) break;
+  }
+  if (deleted > 0) console.log(`[recording-retention] ${deleted} eski parça silindi (> ${s.retention_days} gün)`);
+}
+
+export function startRecordingRetentionJob(): void {
+  const tick = () => { runRetention().catch((e) => console.error('[recording-retention]', e.message)); };
+  setTimeout(tick, 2 * 60_000);
+  setInterval(tick, 6 * 60 * 60_000);
+}
 
 export default router;

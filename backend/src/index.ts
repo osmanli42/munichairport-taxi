@@ -19,7 +19,7 @@ import adminDashboardRouter from './routes/admin-dashboard';
 import adminSeoRouter from './routes/admin-seo';
 import { startSeoJobs } from './services/seo/jobs';
 import adminDashboardWidgetsRouter from './routes/admin-dashboard-widgets';
-import recordingRouter from './routes/recording';
+import recordingRouter, { startRecordingRetentionJob } from './routes/recording';
 import systemRouter, { startSystemAlertJob } from './routes/system';
 import securityRouter from './routes/security';
 import adsRouter from './routes/ads';
@@ -151,6 +151,7 @@ app.listen(PORT, () => {
       startCalendarRideAlertJob();
       startLiveAssistAlertJob();
       startDriverTrackingJobs();
+      startRecordingRetentionJob();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });
