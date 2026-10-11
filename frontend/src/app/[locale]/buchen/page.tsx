@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { Caveat } from 'next/font/google';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck, PawPrint } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck, PawPrint, Landmark } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
@@ -228,7 +228,7 @@ function BuchenContent() {
   const [luggageCount, setLuggageCount] = useState(1);
   const [notes, setNotes] = useState('');
   const [showNotes, setShowNotes] = useState(false);
-  const [payment, setPayment] = useState<'cash' | 'card'>('cash');
+  const [payment, setPayment] = useState<'cash' | 'card' | 'ueberweisung'>('cash');
   const paramTripType = params.get('trip_type') || 'oneway';
   const paramReturnDate = params.get('return_date') || '';
   const paramReturnTime = params.get('return_time') || '10:00';
@@ -386,6 +386,35 @@ function BuchenContent() {
   }, [formDraftReady, formRestoreEnabled, submitState, firstName, lastName, phone, phoneCountry, email, flightNumber,
       pickupSign, notes, luggageCount, payment, childSeat, childSeatDetails, childSeatBabyschale, childSeatKindersitz,
       childSeatSitzerhoehung, petEnabled, petCageConfirmed, fahrradCount, rechnungRequired, rechnungAdresse]);
+
+  // --- Rechnungskunde: Überweisung nur für vom Büro freigeschaltete Kunden ---------------
+  // Der Server prüft E-Mail + Telefon gegen invoice_customers (routes/invoiceCustomers.ts)
+  // und prüft beim Buchen erneut — diese Abfrage steuert nur, ob die Option sichtbar ist.
+  const [transferEligible, setTransferEligible] = useState(false);
+  useEffect(() => {
+    const mail = email.trim();
+    const tel = toSubmitValue(phone, phoneCountry);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || !tel || String(tel).replace(/\D/g, '').length < 8) {
+      setTransferEligible(false);
+      return;
+    }
+    let cancelled = false;
+    const id = setTimeout(() => {
+      fetch(`${API_URL}/invoice-customers/eligibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: mail, phone: tel }),
+      })
+        .then(r => (r.ok ? r.json() : { eligible: false }))
+        .then(d => { if (!cancelled) setTransferEligible(!!d.eligible); })
+        .catch(() => { if (!cancelled) setTransferEligible(false); });
+    }, 600);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [email, phone, phoneCountry]);
+  // Freischaltung passt nicht (mehr) → zurück auf Barzahlung
+  useEffect(() => {
+    if (!transferEligible && payment === 'ueberweisung') setPayment('cash');
+  }, [transferEligible, payment]);
 
   useEffect(() => {
     fetch(`${API_URL}/promotions/active`)
@@ -1042,7 +1071,10 @@ function BuchenContent() {
               {flightNumber
                 ? infoTile(Plane, flightNumber, pickupSign ? `${L('Schild', 'Sign', 'Tabela')}: ${pickupSign}` : undefined)
                 : infoTile(Clock, `ca. ${effectiveDuration} Min.`, L('Fahrtzeit', 'Journey time', 'Süre'))}
-              {infoTile(payment === 'cash' ? Banknote : CreditCard, payment === 'cash' ? tx.cash : tx.card)}
+              {infoTile(
+                payment === 'cash' ? Banknote : payment === 'ueberweisung' ? Landmark : CreditCard,
+                payment === 'cash' ? tx.cash : payment === 'ueberweisung' ? L('Überweisung', 'Bank transfer', 'Havale') : tx.card
+              )}
             </div>
 
             {/* Strecke + Termine/Kontakt */}
@@ -1513,11 +1545,11 @@ function BuchenContent() {
                   {cardHead(CreditCard, L('Zahlungsart', 'Payment method', 'Ödeme yöntemi'), backToForm)}
                   <div className="flex items-center gap-3 sm:pl-1">
                     <span className="flex items-center justify-center w-11 h-11 rounded-lg bg-gray-50 border border-gray-200 shrink-0">
-                      {payment === 'cash' ? <Banknote size={22} className="text-gray-900" /> : <CreditCard size={22} className="text-gray-900" />}
+                      {payment === 'cash' ? <Banknote size={22} className="text-gray-900" /> : payment === 'ueberweisung' ? <Landmark size={22} className="text-gray-900" /> : <CreditCard size={22} className="text-gray-900" />}
                     </span>
                     <div className="text-sm">
-                      <p className="font-bold text-gray-900">{payment === 'cash' ? tx.cash : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
-                      <p className="text-gray-600">{payment === 'cash' ? L('Zahlung direkt beim Fahrer', 'Pay the driver directly', 'Doğrudan şoföre ödeme') : L('Sicher über Stripe hinterlegt', 'Securely stored via Stripe', 'Stripe ile güvenle kaydedildi')}</p>
+                      <p className="font-bold text-gray-900">{payment === 'cash' ? tx.cash : payment === 'ueberweisung' ? L('Überweisung', 'Bank transfer', 'Havale') : tx.card}{payment === 'card' && cardResult?.last4 ? ` ···· ${cardResult.last4}` : ''}</p>
+                      <p className="text-gray-600">{payment === 'cash' ? L('Zahlung direkt beim Fahrer', 'Pay the driver directly', 'Doğrudan şoföre ödeme') : payment === 'ueberweisung' ? L('Rechnung nach der Fahrt · 7 Tage Zahlungsziel', 'Invoice after the ride · payable within 7 days', 'Yolculuktan sonra fatura · 7 gün vade') : L('Sicher über Stripe hinterlegt', 'Securely stored via Stripe', 'Stripe ile güvenle kaydedildi')}</p>
                     </div>
                   </div>
                 </div>
@@ -1950,6 +1982,11 @@ function BuchenContent() {
                 {([
                   { key: 'cash' as const, Icon: Banknote, title: tx.cash, sub: L('Zahlung direkt beim Fahrer', 'Pay the driver directly', 'Doğrudan şoföre ödeme') },
                   { key: 'card' as const, Icon: CreditCard, title: tx.card, sub: 'Visa, Mastercard, Amex' },
+                  ...(transferEligible ? [{
+                    key: 'ueberweisung' as const, Icon: Landmark,
+                    title: L('Überweisung', 'Bank transfer', 'Havale'),
+                    sub: L('Für Sie freigeschaltet · auf Rechnung', 'Enabled for you · on invoice', 'Size özel · fatura ile'),
+                  }] : []),
                 ]).map(({ key, Icon, title, sub }) => {
                   const selected = payment === key;
                   return (
@@ -1979,6 +2016,18 @@ function BuchenContent() {
                   );
                 })}
               </div>
+              {payment === 'ueberweisung' && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                  <Landmark size={18} className="shrink-0 mt-0.5" />
+                  <span>
+                    {L(
+                      'Sie zahlen bequem per Überweisung: Die Rechnung kommt nach der Fahrt per E-Mail an Ihre hinterlegte Rechnungsadresse, Zahlungsziel 7 Tage. Beim Fahrer ist nichts zu bezahlen.',
+                      'Pay conveniently by bank transfer: the invoice is e-mailed after the ride to your stored billing address, payable within 7 days. Nothing to pay to the driver.',
+                      'Havale ile ödersiniz: fatura yolculuktan sonra kayıtlı fatura adresinize e-postayla gelir, ödeme süresi 7 gün. Şoföre ödeme yapılmaz.'
+                    )}
+                  </span>
+                </div>
+              )}
               {payment === 'card' && (
                 <div className="mt-4 space-y-3">
                   <CardPaymentField

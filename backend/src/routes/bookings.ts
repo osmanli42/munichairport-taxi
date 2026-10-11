@@ -8,6 +8,7 @@ import { geocodeAddress } from './maps';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords, getClientIp } from '../utils/ipGeo';
 import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLimit';
+import { assertTransferAllowed, InvoiceCustomer } from './invoiceCustomers';
 import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
@@ -183,6 +184,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const companyAuth = getCompanyAuth(req);
     let companyData: any = null;
+    let transferCustomer: InvoiceCustomer | null = null;
     if (companyAuth) {
       const [company] = await query('SELECT * FROM companies WHERE id = ? AND status = ?', [companyAuth.companyId, 'active']);
       if (!company) { res.status(403).json({ error: 'Company account is not active' }); return; }
@@ -197,6 +199,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         res.status(403).json({ error: 'Bitte zuerst eine Kreditkarte in den Einstellungen hinterlegen' });
         return;
       }
+    } else if (payment_method === 'ueberweisung') {
+      // Öffentlich nur für vom Admin freigeschaltete Rechnungskunden (E-Mail + Telefon),
+      // mit Limit offener Überweisungen — siehe routes/invoiceCustomers.ts.
+      const check = await assertTransferAllowed(email, phone);
+      if (!check.ok) {
+        res.status(400).json({ error: check.error });
+        return;
+      }
+      transferCustomer = check.customer;
     } else {
       if (!['cash', 'card'].includes(payment_method || 'cash')) {
         res.status(400).json({ error: 'Invalid payment method' });
@@ -513,10 +524,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // Billing address is free-form multi-line text typed by the customer. Normalise
     // here too (not just client-side): drop blank lines and stray indentation so the
     // RECHNUNGSEMPFÄNGER block on the PDF stays tight. /api/bookings is public.
-    const rechnungAdresseClean = typeof rechnung_adresse === 'string' && rechnung_adresse.trim()
+    const rechnungAdresseInput = typeof rechnung_adresse === 'string' && rechnung_adresse.trim()
       ? rechnung_adresse.replace(/\r/g, '').split('\n').map((l: string) => l.trim()).filter(Boolean).join('\n').slice(0, 500)
       : null;
-    const rechnungRequired = rechnung_required && rechnungAdresseClean ? 1 : 0;
+    // Rechnungskunde mit Überweisung: ohne eigene Eingabe gilt die hinterlegte Firmenadresse,
+    // und die Rechnung geht nach der Fahrt immer automatisch raus (autoRechnungJob).
+    const rechnungAdresseClean = rechnungAdresseInput || (transferCustomer?.rechnung_adresse || null);
+    const rechnungRequired = (rechnung_required && rechnungAdresseClean) || transferCustomer ? 1 : 0;
 
     // Derive the canonical form of the phone number. Advisory only: an unparseable
     // number leaves phone_e164 NULL and the booking is still accepted, because losing
