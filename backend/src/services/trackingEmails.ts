@@ -3,6 +3,7 @@
 // or gets the tracking link on demand; the office gets the alerts it opted into.
 
 import { Resend } from 'resend';
+import { customerRecipient } from '../utils/recipient';
 import type { AlertKind, L3, MeetingPointKey } from './driverTracking';
 
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
@@ -86,7 +87,7 @@ export async function sendTrackingCustomerEmail(kind: 'link' | 'enroute' | 'arri
   const resend = new Resend(RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: `Flughafen München Taxi <${FROM_EMAIL}>`,
-    to: b.email,
+    to: customerRecipient(b.email),
     subject,
     html,
   });

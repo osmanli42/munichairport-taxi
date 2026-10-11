@@ -8,6 +8,7 @@
 // Both persist the render parameters alongside the invoice number, so the exact
 // same PDF can be reproduced later via GET /api/admin/bookings/:id/rechnung.pdf.
 
+import { customerRecipient } from '../utils/recipient';
 import { query, run } from '../db';
 import { fetchBankSettings, generateRechnungPdf, buildRechnungEmail } from './rechnung';
 
@@ -169,7 +170,7 @@ async function doSendRechnung(
 
   const { error: sendError } = await resend.emails.send({
     from: `Flughafen München Taxi <${FROM_EMAIL}>`,
-    to: booking.email,
+    to: customerRecipient(booking.email),
     subject,
     html: htmlBody,
     attachments: [{
@@ -280,7 +281,7 @@ async function doSendProforma(
 
   const { error: sendError } = await resend.emails.send({
     from: `Flughafen München Taxi <${FROM_EMAIL}>`,
-    to: booking.email,
+    to: customerRecipient(booking.email),
     subject,
     html: htmlBody,
     attachments: [{
