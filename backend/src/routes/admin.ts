@@ -11,6 +11,7 @@ import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextP
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
 import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql, berlinDateSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
+import { ensureInvoiceCustomersTable } from './invoiceCustomers';
 
 
 
@@ -94,6 +95,13 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       date_from,
       date_to,
       search,
+      payment,
+      customer,
+      rechnung,
+      paid,
+      source,
+      trip,
+      sort,
       page = '1',
       limit = '20',
     } = req.query as Record<string, string>;
@@ -125,14 +133,78 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
     }
 
+    // --- Erweiterte Filter (nur feste SQL-Bausteine, keine Benutzereingabe im SQL) ---
+    // Alte Kalender-Importe schreiben 'transfer'/'invoice' statt 'ueberweisung'/'rechnung'.
+    const PAYMENT_SQL: Record<string, string> = {
+      cash: "bookings.payment_method = 'cash'",
+      card: "bookings.payment_method = 'card'",
+      ueberweisung: "bookings.payment_method IN ('ueberweisung','transfer')",
+      rechnung: "bookings.payment_method IN ('rechnung','invoice')",
+    };
+    if (PAYMENT_SQL[payment]) sql += ` AND ${PAYMENT_SQL[payment]}`;
+
+    const CUSTOMER_SQL: Record<string, string> = {
+      private: 'bookings.company_id IS NULL',
+      company: 'bookings.company_id IS NOT NULL',
+      // freigeschaltete Rechnungskunden (routes/invoiceCustomers.ts)
+      invoice: `EXISTS (SELECT 1 FROM invoice_customers ic WHERE ic.active = 1
+                  AND ic.email = LOWER(bookings.email) AND ic.phone_e164 = bookings.phone_e164)`,
+    };
+    // Tabelle wird sonst erst beim ersten Rechnungskunden-Aufruf angelegt
+    if (customer === 'invoice') await ensureInvoiceCustomersTable();
+    if (CUSTOMER_SQL[customer]) sql += ` AND ${CUSTOMER_SQL[customer]}`;
+
+    const HAS_RECHNUNG = "(bookings.rechnung_number IS NOT NULL AND bookings.rechnung_number <> '')";
+    const RECHNUNG_SQL: Record<string, string> = {
+      requested: 'bookings.rechnung_required = 1',
+      sent: HAS_RECHNUNG,
+      pending: `bookings.rechnung_required = 1 AND NOT ${HAS_RECHNUNG} AND bookings.status <> 'cancelled'`,
+      failed: `COALESCE(bookings.rechnung_attempts, 0) > 0 AND NOT ${HAS_RECHNUNG}`,
+      none: `COALESCE(bookings.rechnung_required, 0) = 0 AND NOT ${HAS_RECHNUNG}`,
+    };
+    if (RECHNUNG_SQL[rechnung]) sql += ` AND ${RECHNUNG_SQL[rechnung]}`;
+
+    const PAID_SQL: Record<string, string> = {
+      transfer_open: "bookings.payment_method IN ('ueberweisung','transfer') AND bookings.ueberweisung_paid_at IS NULL AND bookings.status <> 'cancelled'",
+      transfer_paid: "bookings.payment_method IN ('ueberweisung','transfer') AND bookings.ueberweisung_paid_at IS NOT NULL",
+      card_paid: "bookings.payment_method = 'card' AND bookings.charge_status = 'succeeded'",
+      card_failed: "bookings.payment_method = 'card' AND bookings.charge_status = 'failed'",
+    };
+    if (PAID_SQL[paid]) sql += ` AND ${PAID_SQL[paid]}`;
+
+    const SOURCE_SQL: Record<string, string> = {
+      web: "bookings.source = 'web'",
+      portal: "bookings.source = 'portal'",
+      calendar: "bookings.source = 'calendar'",
+      admin: "(bookings.source IS NULL OR bookings.source = '' OR bookings.source = 'admin')",
+    };
+    if (SOURCE_SQL[source]) sql += ` AND ${SOURCE_SQL[source]}`;
+
+    const TRIP_SQL: Record<string, string> = {
+      roundtrip: "bookings.trip_type = 'roundtrip'",
+      oneway: "(bookings.trip_type IS NULL OR bookings.trip_type <> 'roundtrip')",
+      flight: "bookings.flight_number IS NOT NULL AND bookings.flight_number <> ''",
+    };
+    if (TRIP_SQL[trip]) sql += ` AND ${TRIP_SQL[trip]}`;
+
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    const countSql = sql.replace('SELECT bookings.*, companies.company_name AS company_name', 'SELECT COUNT(*) as count');
-    const [countResult] = await query<{ count: number }>(countSql, params);
+    // Summe der gefilterten (nicht stornierten) Buchungen — z. B. Monatsabrechnung prüfen
+    const countSql = sql.replace(
+      'SELECT bookings.*, companies.company_name AS company_name',
+      "SELECT COUNT(*) as count, COALESCE(SUM(CASE WHEN bookings.status <> 'cancelled' THEN bookings.price ELSE 0 END), 0) as total_price"
+    );
+    const [countResult] = await query<{ count: number; total_price: number }>(countSql, params);
 
-    sql += ` ORDER BY bookings.created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
+    const ORDER_SQL: Record<string, string> = {
+      created_desc: 'bookings.created_at DESC',
+      pickup_asc: 'bookings.pickup_datetime ASC',
+      pickup_desc: 'bookings.pickup_datetime DESC',
+      price_desc: 'bookings.price DESC',
+    };
+    sql += ` ORDER BY ${ORDER_SQL[sort] || ORDER_SQL.created_desc} LIMIT ${limitNum} OFFSET ${offset}`;
 
     const rawBookings = await query(sql, params);
     const bookings = rawBookings.map(decryptBooking);
@@ -141,6 +213,7 @@ router.get('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respons
       bookings,
       pagination: {
         total: countResult.count,
+        total_price: Number(countResult.total_price || 0),
         page: pageNum,
         limit: limitNum,
         pages: Math.ceil(countResult.count / limitNum),

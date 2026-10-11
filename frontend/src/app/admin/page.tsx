@@ -124,9 +124,9 @@ export default function AdminPage() {
   const [seoDueCount, setSeoDueCount] = useState<number | null>(null);
   const [adsDueCount, setAdsDueCount] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
+  const [pagination, setPagination] = useState<{ total: number; page: number; pages: number; total_price?: number }>({ total: 0, page: 1, pages: 1 });
   const [prices, setPrices] = useState<Price[]>([]);
-  const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '' });
+  const [filters, setFilters] = useState({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', sort: '' });
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
@@ -1080,13 +1080,67 @@ export default function AdminPage() {
                     Suchen
                   </button>
                   <button
-                    onClick={() => { setFilters({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '' }); }}
+                    onClick={() => { setFilters({ status: '', vehicle_type: '', search: '', date_from: '', date_to: '', payment: '', customer: '', rechnung: '', paid: '', source: '', trip: '', sort: '' }); }}
                     className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm transition-colors"
                     title="Filter zurücksetzen"
                   >
                     <X size={16} />
                   </button>
                 </div>
+              </div>
+              {/* Erweiterte Filter: Zahlung, Kunde, Rechnung, Quelle … */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-3">
+                {([
+                  ['payment', 'Zahlungsart: alle', [['cash', 'Bar'], ['card', 'Kreditkarte'], ['ueberweisung', 'Überweisung'], ['rechnung', 'Auf Rechnung (B2B)']]],
+                  ['customer', 'Kunde: alle', [['private', 'Privatkunde'], ['company', 'Firmenkunde (B2B)'], ['invoice', 'Rechnungskunde']]],
+                  ['rechnung', 'Rechnung: alle', [['requested', 'Rechnung gewünscht'], ['pending', 'Rechnung ausstehend'], ['sent', 'Rechnung gesendet'], ['failed', 'Rechnung fehlgeschlagen'], ['none', 'Keine Rechnung']]],
+                  ['paid', 'Bezahlung: alle', [['transfer_open', 'Überweisung offen'], ['transfer_paid', 'Überweisung bezahlt'], ['card_paid', 'Karte belastet'], ['card_failed', 'Karte fehlgeschlagen']]],
+                  ['source', 'Quelle: alle', [['web', 'Website'], ['portal', 'Firmenportal'], ['calendar', 'Kalender'], ['admin', 'Admin / manuell']]],
+                  ['trip', 'Fahrt: alle', [['oneway', 'Einfache Fahrt'], ['roundtrip', 'Hin & Rück'], ['flight', 'Mit Flugnummer']]],
+                  ['sort', 'Neueste Buchung zuerst', [['pickup_asc', 'Abholzeit aufsteigend'], ['pickup_desc', 'Abholzeit absteigend'], ['price_desc', 'Höchster Preis zuerst']]],
+                ] as [keyof typeof filters, string, [string, string][]][]).map(([key, placeholder, opts]) => (
+                  <select
+                    key={key}
+                    value={filters[key]}
+                    onChange={(e) => setFilters(p => ({ ...p, [key]: e.target.value }))}
+                    className={cn(
+                      'border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
+                      filters[key] ? 'border-primary-400 bg-primary-50 text-primary-800 font-medium' : 'border-gray-300'
+                    )}
+                  >
+                    <option value="">{placeholder}</option>
+                    {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                ))}
+                <label className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs text-gray-500 shrink-0">bis</span>
+                  <input
+                    type="date"
+                    value={filters.date_to}
+                    title="Abholtag bis (zusammen mit dem Datum oben: Zeitraum)"
+                    onChange={(e) => setFilters(p => ({ ...p, date_to: e.target.value }))}
+                    className={cn(
+                      'w-full min-w-0 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
+                      filters.date_to && filters.date_to !== filters.date_from ? 'border-primary-400 bg-primary-50' : 'border-gray-300'
+                    )}
+                  />
+                </label>
+              </div>
+              {/* Ergebnis: Anzahl + Summe der gefilterten Buchungen */}
+              <div className="flex items-center gap-3 mt-3 text-sm text-gray-600 flex-wrap">
+                <span><b className="text-gray-900">{pagination.total.toLocaleString('de-DE')}</b> Buchungen</span>
+                {pagination.total_price != null && (
+                  <span>· Summe <b className="text-gray-900">{Number(pagination.total_price).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</b> <span className="text-xs text-gray-400">(ohne stornierte)</span></span>
+                )}
+                {(() => {
+                  const n = (['status', 'vehicle_type', 'search', 'date_from', 'payment', 'customer', 'rechnung', 'paid', 'source', 'trip'] as const).filter(k => filters[k]).length;
+                  return n > 0 ? <span className="text-primary-700 font-medium">· {n} Filter aktiv</span> : null;
+                })()}
+                {filters.date_from && (
+                  <span className="text-xs text-gray-400">
+                    · Abholtag {filters.date_from}{filters.date_to && filters.date_to !== filters.date_from ? ` bis ${filters.date_to}` : ''}
+                  </span>
+                )}
               </div>
             </div>
 

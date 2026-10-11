@@ -32,6 +32,9 @@ import { promises as dns } from 'dns';
 const router = Router();
 
 let tableReady = false;
+export async function ensureInvoiceCustomersTable(): Promise<void> {
+  return ensureTable();
+}
 async function ensureTable(): Promise<void> {
   if (tableReady) return;
   // Kolasyon explizit: JOINs/Vergleiche mit bookings (utf8mb4_unicode_ci) sollen nicht an

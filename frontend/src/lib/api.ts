@@ -371,10 +371,20 @@ export const adminApi = {
     date_from?: string;
     date_to?: string;
     search?: string;
+    // Erweiterte Filter (backend/src/routes/admin.ts GET /bookings)
+    payment?: string;
+    customer?: string;
+    rechnung?: string;
+    paid?: string;
+    source?: string;
+    trip?: string;
+    sort?: string;
     page?: number;
     limit?: number;
   }) => {
-    const response = await api.get('/admin/bookings', { params });
+    // Leere Filter nicht mitschicken
+    const clean = Object.fromEntries(Object.entries(params || {}).filter(([, v]) => v !== '' && v != null));
+    const response = await api.get('/admin/bookings', { params: clean });
     return response.data;
   },
 
