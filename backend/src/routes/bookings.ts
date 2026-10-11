@@ -18,6 +18,7 @@ import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
+import { socialProofPlace } from '../utils/socialProofPlace';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -993,6 +994,14 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
 // GET /api/bookings/recent-social — anonymised recent bookings for social proof
 router.get('/recent-social', async (req: Request, res: Response): Promise<void> => {
   try {
+    // Im Admin ausgeschaltet → gar keine Daten herausgeben (nicht nur den Toast verstecken)
+    const [flag] = await query<{ setting_value: string }>(
+      "SELECT setting_value FROM settings WHERE setting_key = 'social_proof_enabled'"
+    );
+    if (flag?.setting_value === '0') {
+      res.json([]);
+      return;
+    }
     const rows = await query<{ name: string; dropoff_address: string; created_at: string }>(
       `SELECT name, dropoff_address, created_at FROM bookings
        WHERE created_at >= NOW() - INTERVAL 48 HOUR AND status != 'cancelled'
@@ -1004,7 +1013,7 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
       const lastInit = parts.length > 1 ? parts[parts.length - 1][0] + '.' : '';
       return {
         name: `${first} ${lastInit}`.trim(),
-        dest: (r.dropoff_address || '').split(',')[0].trim().slice(0, 35),
+        dest: socialProofPlace(r.dropoff_address),
         minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
       };
     });

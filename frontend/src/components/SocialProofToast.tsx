@@ -7,6 +7,17 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
 
 type SocialItem = { name: string; dest: string; minsAgo: number };
 
+// Nur den Ort zeigen (wie backend/src/utils/socialProofPlace.ts) — nie Straße/Hausnummer
+function placeOnly(address: string): string {
+  if (/flughafen|airport|terminal/i.test(address) && /85356|flughafen m(ü|ue)nchen|munich airport/i.test(address)) return 'Flughafen München';
+  const m = String(address || '').match(/\b\d{5}\s+([^,]+)/);
+  if (!m) return '';
+  let city = m[1].trim();
+  if (/^M(ü|ue)nchen\b/i.test(city)) return 'München';
+  if (city.length > 24 && city.includes('-')) city = city.split('-')[0].trim();
+  return city.slice(0, 30);
+}
+
 // Only real, anonymised bookings from /bookings/recent-social are shown.
 // If there are none (and no own recent booking), the toast never appears.
 export default function SocialProofToast({ locale }: { locale: string }) {
@@ -22,7 +33,7 @@ export default function SocialProofToast({ locale }: { locale: string }) {
       if (raw) {
         const lb = JSON.parse(raw);
         if (Date.now() - lb.ts < 48 * 60 * 60 * 1000) {
-          own = { name: lb.name, dest: lb.dest, minsAgo: Math.max(1, Math.round((Date.now() - lb.ts) / 60000)) };
+          own = { name: lb.name, dest: placeOnly(lb.dest), minsAgo: Math.max(1, Math.round((Date.now() - lb.ts) / 60000)) };
           setHasOwn(true);
         }
       }
@@ -83,7 +94,9 @@ export default function SocialProofToast({ locale }: { locale: string }) {
     ? `${ago}: ${b.name} rezervasyon yaptı ✓`
     : locale === 'en'
     ? `${ago}: ${b.name} booked a ride ✓`
-    : `${ago}: ${b.name} hat Fahrt ${b.dest} gebucht ✓`;
+    : b.dest
+    ? `${ago}: ${b.name} hat eine Fahrt nach ${b.dest} gebucht ✓`
+    : `${ago}: ${b.name} hat eine Fahrt gebucht ✓`;
 
   return (
     <div
