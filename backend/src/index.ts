@@ -46,6 +46,7 @@ import { startCalendarRideAlertJob } from './services/calendarRideAlert';
 import { startCalendarRidesJob } from './services/calendarRides';
 import { startLiveAssistAlertJob } from './services/liveAssistAlertJob';
 import { startDriverTrackingJobs } from './services/driverTracking';
+import { startConversionModelJob } from './services/conversionModel';
 
 dotenv.config();
 
@@ -154,6 +155,7 @@ app.listen(PORT, () => {
       startLiveAssistAlertJob();
       startDriverTrackingJobs();
       startRecordingRetentionJob();
+      startConversionModelJob();
     })
     .catch((err) => console.error('Database init warning:', err.message));
 });

@@ -7,11 +7,12 @@ import {
   Users, Eye, Smartphone, Monitor, Tablet, RefreshCw,
   TrendingUp, MousePointerClick, ArrowRight, Globe, Clock,
   Bell, BellOff, Activity, Zap, ShoppingCart, Euro,
-  BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall,
+  BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall, Flame, Target, Sparkles, ArrowDownWideNarrow,
 } from 'lucide-react';
 
 import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakTr } from './LiveAssistAdmin';
 import CustomerHistory, { CustomerHistoryData } from '@/components/live/CustomerHistory';
+import { LivePrediction, ProbabilityRing, FactorChips, ModelInfoCard, fmtPct } from '@/components/live/Prediction';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
@@ -74,6 +75,8 @@ interface LiveSession {
   avg_load_ms: number | null;
   lat: number | null;
   lng: number | null;
+  /** Kaufwahrscheinlichkeit (backend/src/services/conversionModel.ts); null ohne Modell */
+  prediction?: LivePrediction | null;
 }
 
 interface Stats {
@@ -322,6 +325,15 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
   const [milestone, setMilestone] = useState<string | null>(null);
   const prevSessionsRef = useRef<Map<string, LiveSession>>(new Map());
+  // Prognose: Sortierung, Filter, Trend gegenüber der letzten Aktualisierung, „heiß“-Hinweis
+  const [sortMode, setSortMode] = useState<'prob' | 'recent'>(() => {
+    try { return (localStorage.getItem('live.sort') as 'prob' | 'recent') || 'prob'; } catch { return 'prob'; }
+  });
+  const [segment, setSegment] = useState<'all' | 'hot' | 'warm' | 'buchen'>('all');
+  const [deltas, setDeltas] = useState<Map<string, number>>(new Map());
+  const prevProbRef = useRef<Map<string, number>>(new Map());
+  const hotNotifiedRef = useRef<Set<string>>(new Set());
+  useEffect(() => { try { localStorage.setItem('live.sort', sortMode); } catch { /* ignore */ } }, [sortMode]);
   const prevBookingCountRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const MILESTONES = useRef([1, 2, 5, 10, 15, 20, 25, 30, 50]);
@@ -385,6 +397,21 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           sendNotification('🎉 Yeni Rezervasyon!', `${s.city || 'Müşteri'} bir rezervasyon yaptı.`);
         }
       });
+
+      // Trend der Kaufwahrscheinlichkeit + einmaliger Hinweis, wenn jemand „heiß“ wird (≥ 50 %)
+      const nextDeltas = new Map<string, number>();
+      sessions.forEach(s => {
+        const p = s.prediction?.p;
+        if (p == null) return;
+        const before = prevProbRef.current.get(s.session_id);
+        if (before != null) nextDeltas.set(s.session_id, p - before);
+        prevProbRef.current.set(s.session_id, p);
+        if (p >= 0.5 && !(s.session_bookings_count ?? 0) && !hotNotifiedRef.current.has(s.session_id)) {
+          hotNotifiedRef.current.add(s.session_id);
+          sendNotification('🔥 Sıcak müşteri', `${s.city || 'Ziyaretçi'} · %${fmtPct(p)} ihtimalle sipariş verecek`);
+        }
+      });
+      setDeltas(nextDeltas);
 
       prevSessionsRef.current = currMap;
     } catch {
@@ -532,6 +559,30 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const conv = funnel.visited > 0 ? ((funnel.bookings / funnel.visited) * 100).toFixed(2) : '0.00';
   const hourlyValues = (stats?.hourly || []).map(h => Number(h.sessions));
 
+  // Prognose-Kennzahlen über alle aktiven, noch nicht gebuchten Besucher
+  const humans = live.filter(s => s.is_bot === 0);
+  const openVisitors = humans.filter(s => !(s.session_bookings_count ?? 0));
+  const hasModel = humans.some(s => s.prediction);
+  const hotCount = openVisitors.filter(s => (s.prediction?.p ?? 0) >= 0.4).length;
+  const expectedOrders = openVisitors.reduce((a, s) => a + (s.prediction?.p ?? 0), 0);
+  const expectedRevenue = openVisitors.reduce((a, s) => a + (s.prediction?.p ?? 0) * (s.prediction?.price ?? 0), 0);
+
+  const visibleLive = live
+    .filter(s => {
+      const p = s.prediction?.p ?? 0;
+      const booked = (s.session_bookings_count ?? 0) > 0;
+      if (segment === 'hot') return booked || p >= 0.4;
+      if (segment === 'warm') return !booked && p >= 0.12 && p < 0.4;
+      if (segment === 'buchen') return getFunnelStage(s).step >= 3;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortMode === 'recent') return 0;
+      const pa = (a.session_bookings_count ?? 0) > 0 ? 2 : (a.prediction?.p ?? -1);
+      const pb = (b.session_bookings_count ?? 0) > 0 ? 2 : (b.prediction?.p ?? -1);
+      return pb - pa;
+    });
+
   return (
     <div className="space-y-4">
 
@@ -577,71 +628,80 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       )}
 
       {/* ─── KPI Strip ─── */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-5 shadow-lg">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          {/* Live count */}
-          <div className="flex items-center gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="relative">
-                  <div className="w-3 h-3 bg-white rounded-full animate-ping absolute opacity-75"></div>
-                  <div className="w-3 h-3 bg-white rounded-full relative"></div>
-                </div>
-                <span className="text-xs font-semibold tracking-widest opacity-90">CANLI</span>
-              </div>
-              <div className="text-5xl font-black leading-none">{live.filter(s => s.is_bot === 0).length}</div>
-              <div className="text-xs opacity-75 mt-1">aktif ziyaretçi (60sn)</div>
-            </div>
-            {/* Divider */}
-            <div className="w-px h-16 bg-white/30" />
-            {/* Today's bookings */}
-            <div>
-              <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><ShoppingCart size={11} /> Bugün Rezervasyon</div>
-              <div className="text-3xl font-bold">{todayKpi?.count ?? '—'}</div>
-              <div className="text-xs opacity-60">adet</div>
-            </div>
-            <div>
-              <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><Euro size={11} /> Bugün Gelir</div>
-              <div className="text-3xl font-bold">{todayKpi ? `${Number(todayKpi.revenue).toFixed(0)}€` : '—'}</div>
-              <div className="text-xs opacity-60">toplam</div>
-            </div>
-            {todayKpi && todayKpi.count > 0 && (
-              <div>
-                <div className="text-xs opacity-75 font-medium mb-1 flex items-center gap-1"><TrendingUp size={11} /> Ort. Sipariş</div>
-                <div className="text-3xl font-bold">{(Number(todayKpi.revenue) / todayKpi.count).toFixed(0)}€</div>
-                <div className="text-xs opacity-60">sipariş başı</div>
-              </div>
-            )}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 text-white p-5 shadow-lg">
+        <div className="absolute -right-20 -top-24 w-80 h-80 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="relative flex w-2.5 h-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-emerald-400" />
+            </span>
+            <span className="text-xs font-semibold tracking-widest text-emerald-300">CANLI</span>
+            {lastUpdated && <span className="text-[11px] text-slate-400">· {lastUpdated.toLocaleTimeString('de-DE')}</span>}
           </div>
-
           {/* Controls */}
-          <div className="flex flex-col gap-2 items-end text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="rounded" />
-              Otomatik yenile (5sn)
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <label className="flex items-center gap-1.5 cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg">
+              <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="rounded accent-emerald-500" />
+              Otomatik (5sn)
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={showBots} onChange={e => setShowBots(e.target.checked)} className="rounded" />
-              Botları göster
+            <label className="flex items-center gap-1.5 cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg">
+              <input type="checkbox" checked={showBots} onChange={e => setShowBots(e.target.checked)} className="rounded accent-emerald-500" />
+              Botlar
             </label>
-            <div className="flex gap-2">
-              <button onClick={loadLive} className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition text-xs">
-                <RefreshCw size={12} /> Yenile
-              </button>
-              <button onClick={notifEnabled ? undefined : enableNotifications}
-                className={`flex items-center gap-1 px-3 py-1 rounded-lg transition text-xs ${notifEnabled ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}>
-                {notifEnabled ? <Bell size={12} /> : <BellOff size={12} />}
-                {notifEnabled ? 'Bildirim Açık' : 'Bildirimleri Aç'}
-              </button>
-            </div>
-            {lastUpdated && <span className="text-xs opacity-60">Son güncelleme: {lastUpdated.toLocaleTimeString('de-DE')}</span>}
+            <button onClick={loadLive} className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-lg transition">
+              <RefreshCw size={12} /> Yenile
+            </button>
+            <button onClick={notifEnabled ? undefined : enableNotifications}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition ${notifEnabled ? 'bg-emerald-500/30 text-emerald-100' : 'bg-white/10 hover:bg-white/20'}`}>
+              {notifEnabled ? <Bell size={12} /> : <BellOff size={12} />}
+              {notifEnabled ? 'Bildirim açık' : 'Bildirimleri aç'}
+            </button>
           </div>
         </div>
-        {error && <div className="mt-2 text-yellow-100 text-sm">{error}</div>}
+
+        <div className="relative grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
+          <div className="col-span-2 sm:col-span-1 rounded-xl bg-white/10 ring-1 ring-white/10 px-4 py-3">
+            <div className="text-[11px] text-slate-300 flex items-center gap-1"><Users size={11} /> Şu an sitede</div>
+            <div className="text-4xl font-black leading-none mt-1 tabular-nums">{humans.length}</div>
+            <div className="text-[10px] text-slate-400 mt-1">son 60 sn</div>
+          </div>
+          <div className="rounded-xl bg-orange-500/15 ring-1 ring-orange-400/30 px-4 py-3" title="Sipariş ihtimali %40 ve üzeri olan ziyaretçiler">
+            <div className="text-[11px] text-orange-200 flex items-center gap-1"><Flame size={11} /> Sıcak</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{hasModel ? hotCount : '—'}</div>
+            <div className="text-[10px] text-orange-200/70 mt-1">%40+ ihtimal</div>
+          </div>
+          <div className="rounded-xl bg-white/10 ring-1 ring-white/10 px-4 py-3" title="Şu an sitedeki ziyaretçilerin tahmini sipariş sayısı (ihtimallerin toplamı)">
+            <div className="text-[11px] text-slate-300 flex items-center gap-1"><Target size={11} /> Beklenen sipariş</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{hasModel ? expectedOrders.toFixed(1).replace('.', ',') : '—'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">şu anki ziyaretçilerden</div>
+          </div>
+          <div className="rounded-xl bg-white/10 ring-1 ring-white/10 px-4 py-3" title="İhtimal × gördüğü fiyat, şu anki ziyaretçiler">
+            <div className="text-[11px] text-slate-300 flex items-center gap-1"><Sparkles size={11} /> Beklenen ciro</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{hasModel ? `${Math.round(expectedRevenue)}€` : '—'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">ihtimal × fiyat</div>
+          </div>
+          <div className="rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/25 px-4 py-3">
+            <div className="text-[11px] text-emerald-200 flex items-center gap-1"><ShoppingCart size={11} /> Bugün rezervasyon</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{todayKpi?.count ?? '—'}</div>
+            <div className="text-[10px] text-emerald-200/70 mt-1">adet</div>
+          </div>
+          <div className="rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/25 px-4 py-3">
+            <div className="text-[11px] text-emerald-200 flex items-center gap-1"><Euro size={11} /> Bugün gelir</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{todayKpi ? `${Number(todayKpi.revenue).toFixed(0)}€` : '—'}</div>
+            <div className="text-[10px] text-emerald-200/70 mt-1">toplam</div>
+          </div>
+          <div className="rounded-xl bg-white/10 ring-1 ring-white/10 px-4 py-3">
+            <div className="text-[11px] text-slate-300 flex items-center gap-1"><TrendingUp size={11} /> Ort. sipariş</div>
+            <div className="text-3xl font-black leading-none mt-1 tabular-nums">{todayKpi && todayKpi.count > 0 ? `${(Number(todayKpi.revenue) / todayKpi.count).toFixed(0)}€` : '—'}</div>
+            <div className="text-[10px] text-slate-400 mt-1">sipariş başı</div>
+          </div>
+        </div>
+        {error && <div className="relative mt-2 text-amber-200 text-sm">{error}</div>}
 
         {/* Milestone banner */}
         {milestone && (
-          <div className="mt-3 flex items-center gap-3 bg-yellow-400 text-yellow-900 rounded-xl px-4 py-3 font-semibold text-sm animate-bounce">
+          <div className="relative mt-3 flex items-center gap-3 bg-yellow-400 text-yellow-900 rounded-xl px-4 py-3 font-semibold text-sm animate-bounce">
             <span className="text-xl">🏆</span>
             {milestone}
             <button onClick={() => setMilestone(null)} className="ml-auto text-yellow-700 hover:text-yellow-900 text-xs font-normal">✕</button>
@@ -656,29 +716,52 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Visitor cards (3/5) */}
-        <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-gray-500" />
+        <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/60 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 space-y-2.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Users size={16} className="text-slate-500" />
               <h3 className="font-semibold text-sm">Şu an sitede ne yapıyorlar?</h3>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full tabular-nums">{humans.length}</span>
+              <div className="ml-auto flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
+                <button onClick={() => setSortMode('prob')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium ${sortMode === 'prob' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                  title="Sipariş ihtimali en yüksek ziyaretçiler üstte">
+                  <ArrowDownWideNarrow size={12} /> İhtimal
+                </button>
+                <button onClick={() => setSortMode('recent')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium ${sortMode === 'recent' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                  <Clock size={12} /> Son hareket
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Aktif</span>
-              <span className="mx-1">·</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> Boşta</span>
-              <span className="mx-1">·</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Pasif</span>
+            <div className="flex items-center gap-1.5 flex-wrap text-xs">
+              {([
+                ['all', 'Tümü'],
+                ['hot', '🔥 Sıcak (%40+)'],
+                ['warm', 'Ilık (%12–40)'],
+                ['buchen', '🛒 Form / Buchen'],
+              ] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setSegment(id)}
+                  className={`px-2.5 py-1 rounded-full font-medium transition-colors ${segment === id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  {label}
+                </button>
+              ))}
+              <span className="ml-auto flex items-center gap-2 text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Aktif</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" /> Boşta</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /> Pasif</span>
+              </span>
             </div>
           </div>
 
-          {live.length === 0 ? (
+          {visibleLive.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-400">
               <Eye size={32} className="mx-auto mb-2 opacity-30" />
-              <div className="text-sm">Şu an aktif ziyaretçi yok</div>
+              <div className="text-sm">{live.length === 0 ? 'Şu an aktif ziyaretçi yok' : 'Bu filtreye uyan ziyaretçi yok'}</div>
             </div>
           ) : (
-            <div className="divide-y max-h-[680px] overflow-y-auto">
-              {live.map(s => {
+            <div className="divide-y divide-slate-100 max-h-[760px] overflow-y-auto">
+              {visibleLive.map(s => {
                 const src = sourceLabel(s);
                 const pages = s.page_history ? s.page_history.split('|||') : [];
                 const isReturning = (s.prev_visits || 0) > 0;
@@ -702,9 +785,18 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                 const prospectiveReturnWhen = prospective?.tripType === 'roundtrip' && prospective.returnDate
                   ? fmtPickupDateTime(`${prospective.returnDate}T${prospective.returnTime || '00:00'}:00`)
                   : null;
+                const pred = s.prediction;
+                const p = pred?.p ?? null;
+                const isHot = !bookedNow && p != null && p >= 0.4;
+                // Unentschlossen: realistische Chance, aber gerade inaktiv auf Preis-/Buchungsseite
+                const hesitating = !bookedNow && p != null && p >= 0.12 && p < 0.75 && s.idle_seconds >= 20
+                  && /\/(ergebnisse|buchen)/.test(s.current_path || '');
 
                 return (
-                  <div key={s.session_id} className="px-5 py-4 hover:bg-gray-50 transition-colors">
+                  <div key={s.session_id} className={`px-5 py-4 transition-colors ${isHot ? 'bg-gradient-to-r from-orange-50/70 via-white to-white' : 'hover:bg-slate-50/70'}`}>
+                    <div className="flex gap-4">
+                    <ProbabilityRing p={p} delta={deltas.get(s.session_id)} booked={bookedNow} />
+                    <div className="flex-1 min-w-0">
                     {/* Row 1: Status light + Source + Device + Geo + badges */}
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       {/* Traffic light */}
@@ -745,9 +837,22 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     <div className="mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${funnel.color}`}>{funnel.label}</span>
+                        {pred?.price != null && !bookedNow && (
+                          <span className="text-xs text-slate-500">gördüğü fiyat <b className="text-slate-800">{Math.round(pred.price)} €</b></span>
+                        )}
                       </div>
                       <FunnelProgress step={funnel.step} />
                     </div>
+
+                    {/* Prognose: die stärksten Gründe */}
+                    {!bookedNow && pred && pred.factors.length > 0 && (
+                      <div className="mb-2"><FactorChips factors={pred.factors} /></div>
+                    )}
+                    {hesitating && (
+                      <div className="mb-2 flex items-center gap-2 text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-lg px-3 py-1.5">
+                        💡 <span><b>Kararsız görünüyor</b> — {s.idle_seconds} sn&apos;dir hareketsiz. Aşağıdan Canlı Asistan ile yardım teklif edebilirsin.</span>
+                      </div>
+                    )}
 
                     {/* Row 2b: Route detail — confirmed booking (emerald) or prospective (blue) */}
                     {confirmedBooking && bookedNow && (
@@ -852,6 +957,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     </div>
 
                     <LiveAssistRow la={liveAssist} s={s} />
+                    </div>
+                    </div>
                   </div>
                 );
               })}
@@ -896,6 +1003,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
           </div>
         </div>
       </div>
+
+      <ModelInfoCard token={token} apiBase={API_BASE} />
 
       {/* ─── Live Map ─── */}
       {(() => {

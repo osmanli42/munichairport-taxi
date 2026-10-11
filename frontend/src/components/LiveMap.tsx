@@ -38,6 +38,8 @@ export default function LiveMap({ visitors }: LiveMapProps) {
 
     let L: any;
     import('leaflet').then((mod) => {
+      // Effekt läuft im Dev-Modus doppelt; der zweite Import darf den Container nicht erneut belegen
+      if (mapRef.current || !containerRef.current || (containerRef.current as any)._leaflet_id) return;
       L = mod.default ?? mod;
 
       // Fix default icon path for Next.js

@@ -5,6 +5,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
 import { berlinMidnightUtcSql } from '../utils/berlinTime';
 import { variantString } from '../utils/experiments';
+import { scoreLiveSessions, getConversionModel, trainConversionModel, modelSummary } from '../services/conversionModel';
 
 const router = Router();
 
@@ -634,10 +635,44 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
       sessions.filter((x: any) => Number(x.past_bookings_count) > 0).map((x: any) => x.visitor_id));
     for (const x of sessions as any[]) x.customer = histories.get(x.visitor_id) || null;
 
+    // Kaufwahrscheinlichkeit je Besucher (services/conversionModel.ts). Fehler hier dürfen die
+    // Live-Liste nie blockieren — dann eben ohne Prognose.
+    try {
+      const preds = await scoreLiveSessions(sessions.filter((x: any) => !x.is_bot).map((x: any) => x.session_id));
+      for (const x of sessions as any[]) x.prediction = preds.get(x.session_id) || null;
+    } catch (e: any) {
+      console.error('live prediction error:', e.message);
+    }
+
     res.json({ count: sessions.length, sessions });
   } catch (err: any) {
     console.error('live-visitors error:', err.message);
     res.status(500).json({ error: 'failed' });
+  }
+});
+
+// GET /api/admin/conversion-model — Modell-Info für die Live-Ansicht (Güte, Gewichte)
+router.get('/admin/conversion-model', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const m = await getConversionModel();
+    res.json({ model: m ? modelSummary(m) : null });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// POST /api/admin/conversion-model/train — sofort neu trainieren (sonst nächtlich)
+let training = false;
+router.post('/admin/conversion-model/train', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  if (training) { res.status(409).json({ error: 'Training läuft bereits' }); return; }
+  training = true;
+  try {
+    const m = await trainConversionModel();
+    res.json({ model: modelSummary(m) });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  } finally {
+    training = false;
   }
 });
 
