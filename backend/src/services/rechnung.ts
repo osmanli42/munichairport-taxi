@@ -268,8 +268,9 @@ export function generateRechnungPdf(opts: {
     const descLine1 = isRoundtrip
       ? (isEn ? 'Airport Transfer Munich – Return Trip' : 'Flughafentransfer München – Hin- und Rückfahrt')
       : (isEn ? 'Airport Transfer Munich' : 'Flughafentransfer München');
-    const fromAddr = (booking.pickup_address || '').substring(0, 60);
-    const toAddr = (booking.dropoff_address || '').substring(0, 60);
+    // Volle Adresse (inkl. Hotelname aus der Vorschlagsliste) — lange Adressen brechen um.
+    const fromAddr = booking.pickup_address || '';
+    const toAddr = booking.dropoff_address || '';
     const subLines: { text: string; bold?: boolean; gap?: number }[] = isRoundtrip
       ? [
           { text: `${isEn ? 'Outbound' : 'Hinfahrt'}: ${pickupDate}`, bold: true },
@@ -285,8 +286,14 @@ export function generateRechnungPdf(opts: {
           ...(pickupDate ? [{ text: isEn ? `Date: ${pickupDate}` : `Datum: ${pickupDate}` }] : []),
         ];
 
-    // One-way keeps its previous geometry exactly (54 / 65 pt rows, lines at +20/+31/+42).
-    const ROW_H_SERVICE = 20 + subLines.reduce((h, l) => h + 11 + (l.gap || 0), 0) + 12;
+    // One-way keeps its previous geometry exactly (54 / 65 pt rows, lines at +20/+31/+42);
+    // jede zusätzliche umgebrochene Zeile macht die Position 10 pt höher.
+    const subLineH = (l: { text: string; bold?: boolean }) => {
+      doc.font(l.bold ? 'WorkSans-Bold' : 'WorkSans').fontSize(8);
+      const lines = Math.max(1, Math.round(doc.heightOfString(l.text, { width: wDesc }) / doc.currentLineHeight(true)));
+      return 11 + (lines - 1) * 10;
+    };
+    const ROW_H_SERVICE = 20 + subLines.reduce((h, l) => h + subLineH(l) + (l.gap || 0), 0) + 12;
     const rowTop = tableTop + 20;
     doc.rect(marginL, rowTop, pageW, ROW_H_SERVICE).fill(LIGHTGRAY);
     doc.fillColor('#111827').fontSize(8.5).font('WorkSans-Bold');
@@ -295,9 +302,10 @@ export function generateRechnungPdf(opts: {
     let lineY = rowTop + 20;
     for (const l of subLines) {
       lineY += l.gap || 0;
+      const h = subLineH(l);
       doc.font(l.bold ? 'WorkSans-Bold' : 'WorkSans').fontSize(8).fillColor(l.bold ? '#374151' : GRAY)
-        .text(l.text, colDesc, lineY, { width: wDesc, height: 9, ellipsis: true });
-      lineY += 11;
+        .text(l.text, colDesc, lineY, { width: wDesc, lineGap: 10 - doc.currentLineHeight() });
+      lineY += h;
     }
     doc.fontSize(8.5).fillColor('#111827').font('WorkSans');
     doc.text('1×', colMenge, rowTop + 8, { width: wMenge, align: 'center', lineBreak: false });
