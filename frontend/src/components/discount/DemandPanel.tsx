@@ -25,7 +25,7 @@ function paceColor(pace: number | null): string {
 export default function DemandPanel({
   onTemplate, refreshKey, disabled,
 }: {
-  onTemplate: () => void;
+  onTemplate: (tier: 7 | 4) => void;
   refreshKey: number;
   disabled?: boolean;
 }) {
@@ -170,10 +170,16 @@ export default function DemandPanel({
                 onBlur={e => e.target.value !== String(data.settings.minExpected) && saveSetting('demand_min_expected', e.target.value)}
                 className="mt-1 block w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
             </label>
-            <button onClick={onTemplate}
-              className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-primary-700 border border-primary-200 hover:bg-primary-50 px-3 py-1.5 rounded-lg">
-              <Plus size={15} /> Sakin gün kuralı (şablon)
-            </button>
+            <div className="ml-auto flex items-center gap-2 flex-wrap">
+              <button onClick={() => onTemplate(7)} title="Doluluk %50 altı · öncelik 20"
+                className="flex items-center gap-1.5 text-sm font-semibold text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg">
+                <Plus size={15} /> %7 şablon (çok sakin)
+              </button>
+              <button onClick={() => onTemplate(4)} title="Doluluk %75 altı · öncelik 10"
+                className="flex items-center gap-1.5 text-sm font-semibold text-amber-800 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg">
+                <Plus size={15} /> %4 şablon (sakin)
+              </button>
+            </div>
           </div>
         </div>
       )}

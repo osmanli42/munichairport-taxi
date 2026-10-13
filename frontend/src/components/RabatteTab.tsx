@@ -44,13 +44,16 @@ const emptyForm = (): FormState => ({
   exclude_business: 0,
 });
 
-// Hazır şablon: sakin gün kuralı (kullanıcı kararları 13 Eki 2026 — %7, en fazla 10 €,
-// gidiş-dönüşte +%2, fahrt günü başına 4 indirimli rezervasyon, sadece uzak ziyaretçi,
-// 2+ siparişli Stammkunde ve firma/Rechnung müşterileri hariç).
-const demandTemplate = (): FormState => ({
+// Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
+// %4 doluluk < %75; en fazla 10 €, gidiş-dönüşte +%2, fahrt günü başına 4 indirimli
+// rezervasyon, sadece uzak ziyaretçi, 2+ siparişli Stammkunde ve firma/Rechnung hariç).
+// %7 daha yüksek öncelikte: ikisi birden uyarsa (çok sakin gün) büyük olan uygulanır.
+export type DemandTier = 7 | 4;
+const demandTemplate = (tier: DemandTier): FormState => ({
   ...emptyForm(),
-  name: 'Ruhiger Tag 7 %', discount_value: 7, zone_scope: 'any', max_discount_amount: 10,
-  demand_pace_max: 0.5, trip_date_max_uses: 4, ip_bypass_mode: 'fern', roundtrip_value: 2, priority: 20,
+  name: `Ruhiger Tag ${tier} %`, discount_value: tier, zone_scope: 'any', max_discount_amount: 10,
+  demand_pace_max: tier === 7 ? 0.5 : 0.75, trip_date_max_uses: 4, ip_bypass_mode: 'fern', roundtrip_value: 2,
+  priority: tier === 7 ? 20 : 10,
   booking_index_max: 2, exclude_business: 1,
   show_countdown: 0, show_remaining: 0,
   // Müşteri metni bilinçli olarak „sakin gün“ demiyor — kazanç gibi okunmalı, boşluk gibi değil.
@@ -255,7 +258,7 @@ export default function RabatteTab({ token }: { token: string }) {
   };
 
   const startCreate = () => { setEditing(emptyForm()); setEditingId(null); setCopying(false); };
-  const startDemandTemplate = () => { setEditing(demandTemplate()); setEditingId(null); setCopying(false); };
+  const startDemandTemplate = (tier: DemandTier) => { setEditing(demandTemplate(tier)); setEditingId(null); setCopying(false); };
 
   // Kopieren: alle Einstellungen übernehmen, aber als neue Regel speichern — praktisch für
   // Aktionen, die sich nur in der Uhrzeit unterscheiden (z.B. 18:30–00:00 und 00:00–07:00).
