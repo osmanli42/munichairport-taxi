@@ -1299,6 +1299,9 @@ export async function initializeDatabase(): Promise<void> {
       // 1 = Firmen-/Rechnungskunden ausgeschlossen (B2B-Login, freigeschaltete Rechnungskunden,
       // früher mit Firmenrechnung gebucht) — die Firma zahlt, ein Rabatt bringt dort nichts.
       ['exclude_business', 'TINYINT(1) NOT NULL DEFAULT 0'],
+      // Fahrt höchstens so viele Tage nach heute (NULL = egal). Für Ruhiger-Tag-Regeln: weit
+      // entfernte Tage haben nur ein schwaches Auslastungssignal — dort nur der kleine Rabatt.
+      ['max_days_ahead', 'INT DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);

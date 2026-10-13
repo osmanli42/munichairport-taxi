@@ -73,6 +73,14 @@ export interface AutoDiscountRule {
   roundtrip_value: number | null;
   /** 1 = Firmen-/Rechnungskunden ausgeschlossen. */
   exclude_business: number;
+  /** Fahrt höchstens so viele Tage nach heute (Berlin), null = egal. */
+  max_days_ahead: number | null;
+}
+
+/** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
+export function daysAheadOf(dateStr: string, now: Date = new Date()): number {
+  const today = berlinParts(now).dateStr;
+  return Math.round((Date.parse(`${dateStr}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
 }
 
 /** Tatsächlich angewendeter Regelwert (% bzw. €) — bei Hin & Rück ggf. roundtrip_value. */
@@ -331,6 +339,9 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
+    if (r.max_days_ahead != null) {
+      if (!tripDateStr || daysAheadOf(tripDateStr, now) > Number(r.max_days_ahead)) return false;
+    }
     if (r.start_date || r.end_date) {
       if (!tripDateStr) return false;
       const s = toDateOnlyStr(r.start_date);

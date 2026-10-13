@@ -41,7 +41,7 @@ const emptyForm = (): FormState => ({
   price_basis: 'any', visitor_min_km: null, visitor_max_km: null, visitor_unknown_ok: 1,
   visit_min: null, allow_fixed_routes: 0,
   demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
-  exclude_business: 0,
+  exclude_business: 0, max_days_ahead: null,
 });
 
 // Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
@@ -54,6 +54,8 @@ const demandTemplate = (tier: DemandTier): FormState => ({
   name: `Ruhiger Tag ${tier} %`, discount_value: tier, zone_scope: 'any', max_discount_amount: 10,
   demand_pace_max: tier === 7 ? 0.5 : 0.75, trip_date_max_uses: 4, ip_bypass_mode: 'fern', roundtrip_value: 2,
   priority: tier === 7 ? 20 : 10,
+  // Büyük indirim sadece yakın günlerde: uzak günde sinyal zayıf (kullanıcı kararı 13 Eki 2026)
+  max_days_ahead: tier === 7 ? 3 : null,
   booking_index_max: 2, exclude_business: 1,
   show_countdown: 0, show_remaining: 0,
   // Müşteri metni bilinçli olarak „sakin gün“ demiyor — kazanç gibi okunmalı, boşluk gibi değil.
@@ -451,6 +453,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     {r.trip_date_max_uses != null ? ` · fahrt günü başına maks. ${r.trip_date_max_uses}` : ''}
                     {r.roundtrip_value != null ? ` · gidiş-dönüş ${formatDiscountValue(r.discount_type, Number(r.roundtrip_value), 'de')}` : ''}
                     {r.exclude_business ? ' · firma/Rechnung müşterisi hariç' : ''}
+                    {r.max_days_ahead != null ? ` · en fazla ${r.max_days_ahead} gün sonrası` : ''}
                   </p>
                   {(r.demand_pace_max != null || r.ip_bypass_mode) && (
                     <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
@@ -575,6 +578,14 @@ export default function RabatteTab({ token }: { token: string }) {
                     </div>
                   </div>
                 )}
+                <div>
+                  <label className="text-xs text-gray-500">En fazla kaç gün sonrasındaki fahrt'lar (boş = hepsi)</label>
+                  <input type="number" min={0} max={365} value={editing.max_days_ahead ?? ''}
+                    onChange={e => patch({ max_days_ahead: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                    placeholder="hepsi"
+                    className="mt-1 w-full max-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                  <p className="text-xs text-gray-400 mt-1">Örn. 3 = sadece bugün ve sonraki 3 gün. Uzak günlerde doluluk sinyali zayıf, büyük indirimi yakın günlerle sınırla.</p>
+                </div>
                 <div>
                   <label className="text-xs text-gray-500">
                     Gidiş-dönüşte bunun yerine ({editing.discount_type === 'fixed' ? '€' : '%'}) — gidiş-dönüş zaten ayrıca indirimli

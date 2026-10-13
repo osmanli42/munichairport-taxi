@@ -16,7 +16,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
     price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
-    demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business,
+    demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -46,6 +46,9 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   if (!isEmpty(demand_pace_max)) {
     const p = Number(demand_pace_max);
     if (!Number.isFinite(p) || p <= 0 || p > 1.5) return { error: 'Ruhiger Tag: Schwelle muss zwischen 1 und 150 % liegen' };
+  }
+  if (!isEmpty(max_days_ahead) && (!Number.isInteger(Number(max_days_ahead)) || Number(max_days_ahead) < 0 || Number(max_days_ahead) > 365)) {
+    return { error: 'En fazla kaç gün sonrası: 0–365 arası tam sayı olmalı' };
   }
   if (!isEmpty(ip_bypass_mode) && !['fern', 'nah', 'alle'].includes(String(ip_bypass_mode))) {
     return { error: 'Besucherkreis ungültig' };
@@ -104,6 +107,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       isEmpty(ip_bypass_mode) ? null : String(ip_bypass_mode),
       numOrNull(roundtrip_value),
       exclude_business ? 1 : 0,
+      intOrNull(max_days_ahead),
     ],
   };
 }
@@ -114,7 +118,7 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
   price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
-  demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business`;
+  demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -158,8 +162,8 @@ router.get('/admin/demand', authenticateAdmin, async (_req: Request, res: Respon
   try {
     const settings = await demandSettings();
     const rules = await query<{ id: number; name: string; demand_pace_max: number; discount_type: string;
-      discount_value: number; active: number; priority: number }>(
-      `SELECT id, name, demand_pace_max, discount_type, discount_value, active, priority
+      discount_value: number; active: number; priority: number; max_days_ahead: number | null }>(
+      `SELECT id, name, demand_pace_max, discount_type, discount_value, active, priority, max_days_ahead
          FROM auto_discounts WHERE demand_pace_max IS NOT NULL ORDER BY priority DESC`
     );
     const days = [];
@@ -167,7 +171,8 @@ router.get('/admin/demand', authenticateAdmin, async (_req: Request, res: Respon
       const p = await getDayPace(berlinDateSql(i));
       // Welche aktive Regel würde (nur nach Auslastung) greifen — höchste Priorität zuerst
       const tier = settings.enabled && p.pace != null
-        ? rules.find(r => Number(r.active) === 1 && p.pace! < Number(r.demand_pace_max)) ?? null
+        ? rules.find(r => Number(r.active) === 1 && p.pace! < Number(r.demand_pace_max)
+            && (r.max_days_ahead == null || i <= Number(r.max_days_ahead))) ?? null
         : null;
       days.push({ ...p, rule: tier ? { id: tier.id, name: tier.name, type: tier.discount_type, value: Number(tier.discount_value) } : null });
     }

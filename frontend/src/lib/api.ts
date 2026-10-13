@@ -323,6 +323,8 @@ export interface AutoDiscount {
   roundtrip_value: number | null;
   /** 1 = Firmen-/Rechnungskunden ausgeschlossen */
   exclude_business: number;
+  /** Fahrt höchstens so viele Tage nach heute (null = egal) */
+  max_days_ahead: number | null;
 }
 
 export interface DemandDay {
