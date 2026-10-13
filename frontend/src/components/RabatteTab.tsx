@@ -54,7 +54,9 @@ const demandTemplate = (): FormState => ({
   booking_index_max: 2, exclude_business: 1,
   show_countdown: 0, show_remaining: 0,
   // Müşteri metni bilinçli olarak „sakin gün“ demiyor — kazanç gibi okunmalı, boşluk gibi değil.
-  label_de: 'Sonderpreis für Ihr Datum', label_en: 'Special price for your date', label_tr: 'Tarihinize özel fiyat',
+  // „Nur für heute“ değil: indirim yarın da sürebilir, o zaman yanıltıcı aciliyet olur (UWG §5).
+  // „Solange verfügbar“ doğru: gün dolunca ya da fahrt günü kontenjanı bitince kalkıyor.
+  label_de: 'Sonderangebot · solange verfügbar', label_en: 'Special offer · while available', label_tr: 'Özel teklif · sınırlı sayıda',
 });
 
 const BYPASS_MODES = [
