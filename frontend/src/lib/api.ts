@@ -392,6 +392,25 @@ export const fixedRoutesApi = {
   },
 };
 
+export interface StornoInfo {
+  id: number;
+  storno_number: string;
+  kind?: 'single' | 'sammel';
+  original_number: string;
+  original_date?: string | null;
+  amount: number | string;
+  reason: string | null;
+  sent_to: string | null;
+  sent_at: string | null;
+  send_error: string | null;
+  created_at: string;
+  created_by?: string | null;
+  booking_id?: number | null;
+  booking_number?: string | null;
+  booking_name?: string | null;
+  company_name?: string | null;
+}
+
 // Admin API
 export const adminApi = {
   /** Returns { token } or, when 2FA is on, { mfa_required, mfa_token }. */
@@ -462,8 +481,28 @@ export const adminApi = {
     return response.data;
   },
 
-  updateStatus: async (id: number, status: string) => {
-    const response = await api.patch(`/admin/bookings/${id}/status`, { status });
+  updateStatus: async (id: number, status: string, cancel?: { cancel_reason: string; cancel_note: string; notify: boolean }) => {
+    const response = await api.patch(`/admin/bookings/${id}/status`, { status, ...(cancel || {}) });
+    return response.data;
+  },
+
+  stornoBookingInvoice: async (id: number, body: { reason_key: string; reason: string; send: boolean }) => {
+    const response = await api.post(`/admin/bookings/${id}/storno`, body);
+    return response.data as { success: boolean; storno: StornoInfo; email_error: string | null };
+  },
+
+  getBookingStornos: async (id: number) => {
+    const response = await api.get(`/admin/bookings/${id}/stornos`);
+    return response.data as StornoInfo[];
+  },
+
+  getStornos: async () => {
+    const response = await api.get('/admin/stornos');
+    return response.data as StornoInfo[];
+  },
+
+  resendStorno: async (id: number, email?: string) => {
+    const response = await api.post(`/admin/stornos/${id}/send`, email ? { email } : {});
     return response.data;
   },
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, FileText, Settings, Check, X, Send, Download, ChevronDown, ChevronUp, Users, RefreshCw, AlertTriangle, Clock, CreditCard, Banknote, Receipt, Mail, Pencil, Trash2, Undo2 } from 'lucide-react';
+import { Building2, FileText, Settings, Check, X, Send, Download, ChevronDown, ChevronUp, Users, RefreshCw, AlertTriangle, Clock, CreditCard, Banknote, Receipt, Mail, Pencil, Trash2, Undo2, FileX } from 'lucide-react';
+import StornoDialog from './booking/StornoDialog';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -20,6 +21,7 @@ interface Invoice {
   mwst_satz: number; total: number; due_date: string; status: string;
   reminder_level: number; reminder_sent_at: string; mahngebuehr: number;
   company_name?: string; created_at: string; manual_sent_at?: string | null;
+  company_invoice_email?: string | null; storno_id?: number | null; storno_number?: string | null;
 }
 
 interface InvoiceBookingRow {
@@ -53,7 +55,7 @@ export default function B2BTab({ token }: { token: string }) {
   const [approveModal, setApproveModal] = useState<Company | null>(null);
   const [editModal, setEditModal] = useState<Company | null>(null);
   const [srModal, setSrModal] = useState<{ companyId: number; companyName: string } | null>(null);
-  const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid'>('all');
+  const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid' | 'storniert'>('all');
   const [mahnModal, setMahnModal] = useState<{ invoice: Invoice; mahngebuehr: string } | null>(null);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const [monthEndReminder, setMonthEndReminder] = useState(true);
@@ -242,11 +244,8 @@ export default function B2BTab({ token }: { token: string }) {
     flash('Als bezahlt markiert'); loadInvoices();
   };
 
-  const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!confirm('Rechnung wirklich löschen?')) return;
-    await api(`/invoices/${invoiceId}`, token, { method: 'DELETE' });
-    flash('Rechnung gelöscht'); loadInvoices();
-  };
+  // Issued invoices are never deleted (GoBD) — they are cancelled with a Stornorechnung.
+  const [stornoInvoice, setStornoInvoice] = useState<Invoice | null>(null);
 
   const toggleTracking = async () => {
     const newVal = trackingEnabled ? '0' : '1';
@@ -434,10 +433,10 @@ export default function B2BTab({ token }: { token: string }) {
       {section === 'rechnungen' && (
         <div className="space-y-4">
           <div className="flex gap-2">
-            {(['all', 'open', 'overdue', 'paid'] as const).map(f => (
+            {(['all', 'open', 'overdue', 'paid', 'storniert'] as const).map(f => (
               <button key={f} onClick={() => setInvoiceFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${invoiceFilter === f ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50 shadow-sm'}`}>
-                {f === 'all' ? 'Alle' : f === 'open' ? 'Offen' : f === 'overdue' ? 'Überfällig' : 'Bezahlt'}
+                {f === 'all' ? 'Alle' : f === 'open' ? 'Offen' : f === 'overdue' ? 'Überfällig' : f === 'paid' ? 'Bezahlt' : 'Storniert'}
               </button>
             ))}
           </div>
@@ -458,9 +457,10 @@ export default function B2BTab({ token }: { token: string }) {
               <tbody className="divide-y divide-gray-50">
                 {invoices.map(inv => {
                   const overdue = inv.status === 'sent' && isOverdue(inv.due_date);
+                  const storniert = inv.status === 'storniert';
                   const levelLabels = ['—', '1. Erinnerung', '2. Erinnerung', 'Mahnung'];
                   return (
-                    <tr key={inv.id} className="hover:bg-gray-50">
+                    <tr key={inv.id} className={storniert ? 'bg-red-50/40 text-gray-400' : 'hover:bg-gray-50'}>
                       <td className="px-4 py-3 font-medium">{inv.company_name}</td>
                       <td className="px-4 py-3 text-gray-600">{inv.invoice_number}</td>
                       <td className="px-4 py-3 text-gray-600">{inv.period_month}</td>
@@ -475,7 +475,9 @@ export default function B2BTab({ token }: { token: string }) {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {inv.status === 'paid' ? (
+                        {storniert ? (
+                          <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-1 rounded">Storniert{inv.storno_number ? ` · ${inv.storno_number}` : ''}</span>
+                        ) : inv.status === 'paid' ? (
                           <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">Bezahlt</span>
                         ) : (
                           <span className="text-xs text-gray-500">
@@ -485,6 +487,20 @@ export default function B2BTab({ token }: { token: string }) {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
+                        {storniert ? (
+                        <div className="flex items-center gap-1 justify-end">
+                          <a href={`${API}/admin/companies/invoices/${inv.id}/pdf?token=${token}`} target="_blank" rel="noreferrer"
+                            className="p-1.5 hover:bg-gray-100 rounded-lg" title="Ursprüngliche Rechnung (PDF)">
+                            <Download size={14} />
+                          </a>
+                          {inv.storno_id && (
+                            <a href={`${API}/admin/stornos/${inv.storno_id}/pdf?token=${token}`} target="_blank" rel="noreferrer"
+                              className="px-2 py-1 hover:bg-red-50 rounded-lg text-xs font-semibold text-red-700" title="Stornorechnung (PDF)">
+                              Storno-PDF
+                            </a>
+                          )}
+                        </div>
+                        ) : (
                         <div className="flex items-center gap-1 justify-end">
                           <button onClick={() => openInvoiceEdit(inv)}
                             className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500" title="Bearbeiten">
@@ -522,10 +538,11 @@ export default function B2BTab({ token }: { token: string }) {
                             title={inv.status === 'paid' ? 'Bezahlt' : 'Noch nicht bezahlt — als bezahlt markieren'}>
                             <Check size={14} />
                           </button>
-                          <button onClick={() => handleDeleteInvoice(inv.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400" title="Löschen">
-                            <X size={14} />
+                          <button onClick={() => setStornoInvoice(inv)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400" title="Stornieren (Stornorechnung erstellen)">
+                            <FileX size={14} />
                           </button>
                         </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -537,6 +554,31 @@ export default function B2BTab({ token }: { token: string }) {
             </table>
           </div>
         </div>
+      )}
+
+      {stornoInvoice && (
+        <StornoDialog
+          invoiceNumber={stornoInvoice.invoice_number}
+          amountLabel={`${stornoInvoice.company_name} · ${Number(stornoInvoice.total).toFixed(2).replace('.', ',')} €`}
+          defaultEmail={stornoInvoice.company_invoice_email || ''}
+          askEmail
+          onClose={() => setStornoInvoice(null)}
+          onConfirm={async (p) => {
+            try {
+              const res = await api(`/invoices/${stornoInvoice.id}/storno`, token, { method: 'POST', body: JSON.stringify(p) });
+              const r = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(r?.error || 'Storno fehlgeschlagen');
+              setStornoInvoice(null);
+              flash(r?.email_error
+                ? `Stornorechnung ${r?.storno?.storno_number} erstellt – E-Mail fehlgeschlagen: ${r.email_error}`
+                : `Stornorechnung ${r?.storno?.storno_number} erstellt${p.send ? ' und gesendet' : ''}`);
+              loadInvoices();
+            } catch (e: any) {
+              flash(e?.message || 'Storno fehlgeschlagen');
+              setStornoInvoice(null);
+            }
+          }}
+        />
       )}
 
       {/* ═══ EINSTELLUNGEN ═══ */}

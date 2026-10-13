@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { stornoCompanyInvoice } from '../services/storno';
+import { stornoReasonText } from '../services/cancelReasons';
 import { generateSammelrechnungPdf, buildReminderEmail, fetchBankSettings, roundGrossPrice, wrapBrandedEmail } from '../services/rechnung';
 
 const router = Router();
@@ -227,8 +229,9 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
     if (!month) { res.status(400).json({ error: 'month required (YYYY-MM)' }); return; }
     const mwst = [0, 7, 19].includes(Number(mwst_satz)) ? Number(mwst_satz) : 19;
 
+    // A cancelled (storniert) invoice no longer counts — its rides may be billed again.
     const [existing] = await query(
-      'SELECT id FROM company_invoices WHERE company_id = ? AND period_month = ?',
+      `SELECT id FROM company_invoices WHERE company_id = ? AND period_month = ? AND status <> 'storniert'`,
       [companyId, month]
     );
     if (existing) { res.status(409).json({ error: 'Sammelrechnung for this month already exists' }); return; }
@@ -246,7 +249,12 @@ router.post('/:id/sammelrechnung', authenticateAdmin, async (req: AuthRequest, r
     const [company] = await query('SELECT * FROM companies WHERE id = ?', [companyId]);
     if (!company) { res.status(404).json({ error: 'Company not found' }); return; }
 
-    const invoiceNumber = `SR-${month.replace('-', '')}-${companyId}`;
+    // The number of a cancelled invoice stays taken (GoBD) — a re-issue gets the next suffix.
+    const baseNumber = `SR-${month.replace('-', '')}-${companyId}`;
+    const takenRows = await query('SELECT invoice_number FROM company_invoices WHERE invoice_number = ? OR invoice_number LIKE ?', [baseNumber, `${baseNumber}-%`]);
+    const taken = new Set(takenRows.map((r: any) => r.invoice_number));
+    let invoiceNumber = baseNumber;
+    for (let i = 2; taken.has(invoiceNumber); i++) invoiceNumber = `${baseNumber}-${i}`;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + (Number(company.payment_term_days) || 7));
     const dueDateStr = dueDate.toISOString().slice(0, 10);
@@ -309,9 +317,13 @@ router.get('/invoices/all', authenticateAdmin, async (req: AuthRequest, res: Res
     if (status === 'open') { where = " WHERE ci.status = 'sent'"; }
     else if (status === 'overdue') { where = " WHERE ci.status = 'sent' AND ci.due_date < CURDATE()"; }
     else if (status === 'paid') { where = " WHERE ci.status = 'paid'"; }
+    else if (status === 'storniert') { where = " WHERE ci.status = 'storniert'"; }
 
     const invoices = await query(
-      `SELECT ci.*, c.company_name FROM company_invoices ci
+      `SELECT ci.*, c.company_name, COALESCE(NULLIF(c.invoice_email, ''), c.email) AS company_invoice_email,
+              (SELECT ic.id FROM invoice_cancellations ic WHERE ic.company_invoice_id = ci.id ORDER BY ic.id DESC LIMIT 1) AS storno_id,
+              (SELECT ic.storno_number FROM invoice_cancellations ic WHERE ic.company_invoice_id = ci.id ORDER BY ic.id DESC LIMIT 1) AS storno_number
+         FROM company_invoices ci
        JOIN companies c ON ci.company_id = c.id${where}
        ORDER BY ci.due_date ASC`,
       params
@@ -357,10 +369,21 @@ router.get('/invoices/:invoiceId/pdf', authenticateAdmin, async (req: AuthReques
 
 // ─── MARK PAID / DELETE ─────────────────────────────────────────────────────
 
+// A storniert invoice is closed for good: no status change, edit, reminder or re-send.
+async function refuseIfStorniert(invoiceId: string, res: Response): Promise<boolean> {
+  const [inv] = await query<{ status: string }>('SELECT status FROM company_invoices WHERE id = ?', [invoiceId]);
+  if (inv?.status === 'storniert') {
+    res.status(409).json({ error: 'Diese Rechnung ist storniert und kann nicht mehr geändert werden.' });
+    return true;
+  }
+  return false;
+}
+
 router.put('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
     if (!['paid', 'sent'].includes(status)) { res.status(400).json({ error: 'Invalid status' }); return; }
+    if (await refuseIfStorniert(req.params.invoiceId, res)) return;
     await run('UPDATE company_invoices SET status = ? WHERE id = ?', [status, req.params.invoiceId]);
     res.json({ success: true });
   } catch (error: any) {
@@ -386,6 +409,7 @@ router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthR
 
 router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (await refuseIfStorniert(req.params.invoiceId, res)) return;
     const { due_date, project_name, bookings } = req.body as {
       due_date?: string;
       project_name?: string;
@@ -430,12 +454,25 @@ router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRe
   }
 });
 
-router.delete('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+// Issued invoices are never deleted (GoBD): the number would be handed out again.
+router.delete('/invoices/:invoiceId', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.status(409).json({ error: 'Gesendete Rechnungen können nicht gelöscht werden. Bitte „Stornieren“ verwenden – das erzeugt eine Stornorechnung.' });
+});
+
+// POST /invoices/:invoiceId/storno — { reason_key?, reason?, send?, email? }
+router.post('/invoices/:invoiceId/storno', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    await run('DELETE FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
-    res.json({ success: true });
+    const [inv] = await query<{ lang: string | null }>('SELECT lang FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
+    if (!inv) { res.status(404).json({ error: 'Invoice not found' }); return; }
+    const r = await stornoCompanyInvoice(Number(req.params.invoiceId), {
+      reason: stornoReasonText(req.body?.reason_key, req.body?.reason, inv.lang === 'en' ? 'en' : 'de'),
+      send: req.body?.send === true,
+      email: typeof req.body?.email === 'string' ? req.body.email : null,
+      createdBy: req.adminUsername,
+    });
+    res.json({ success: true, storno: r.storno, email_error: r.emailError });
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to delete invoice' });
+    res.status(400).json({ error: error.message || 'Storno fehlgeschlagen' });
   }
 });
 
@@ -447,6 +484,7 @@ router.delete('/invoices/:invoiceId', authenticateAdmin, async (req: AuthRequest
 // die beim Erreichen von Level 3 addiert wird (siehe /remind unten).
 router.post('/invoices/:invoiceId/reset-reminder', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (await refuseIfStorniert(req.params.invoiceId, res)) return;
     const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
     if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
     if (!invoice.reminder_level) { res.status(400).json({ error: 'Keine Erinnerung/Mahnung vorhanden' }); return; }
@@ -466,6 +504,7 @@ router.post('/invoices/:invoiceId/reset-reminder', authenticateAdmin, async (req
 
 router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (await refuseIfStorniert(req.params.invoiceId, res)) return;
     const [invoice] = await query('SELECT * FROM company_invoices WHERE id = ?', [req.params.invoiceId]);
     if (!invoice) { res.status(404).json({ error: 'Invoice not found' }); return; }
     if (invoice.status === 'paid') { res.status(400).json({ error: 'Invoice already paid' }); return; }
@@ -546,6 +585,7 @@ router.post('/invoices/:invoiceId/remind', authenticateAdmin, async (req: AuthRe
 
 router.post('/invoices/:invoiceId/send', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (await refuseIfStorniert(req.params.invoiceId, res)) return;
     const { email } = req.body as { email?: string };
     if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       res.status(400).json({ error: 'Gültige E-Mail-Adresse erforderlich' });

@@ -48,6 +48,9 @@ export interface BookingNotificationData {
   night_confirm?: boolean;
   company_name?: string;
   company_discount?: number;
+  /** Admin cancellation: preset key (services/cancelReasons.ts) and an optional note for the customer. */
+  cancel_reason?: string;
+  cancel_note?: string;
   auto_discount_name?: string;
   auto_discount_amount?: number;
   auto_discount_show_in_email?: boolean;

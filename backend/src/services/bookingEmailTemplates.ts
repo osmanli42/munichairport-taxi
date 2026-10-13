@@ -5,6 +5,7 @@
 // Same data and the same price rounding as notifications.ts; only the presentation changes.
 
 import type { BookingNotificationData } from './notifications';
+import { BOOKING_CANCEL_REASONS, isBookingCancelReason } from './cancelReasons';
 import { formatPhoneDisplay } from '../utils/phone';
 
 const SITE = 'https://flughafen-muenchen.taxi';
@@ -476,9 +477,16 @@ function cancelledTrip(b: BookingNotificationData, lang: Lang, c: Record<string,
     <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label[lang]}</div>`;
 }
 
+// Header for the admin's note in the cancellation mail.
+const CANCEL_NOTE_LABEL: Record<Lang, string> = { de: 'Hinweis', en: 'Note', tr: 'Not' };
+
 export function customerCancellationEmail(b: BookingNotificationData): { subject: string; html: string } {
   const lang: Lang = (['de', 'en', 'tr'].includes(b.language) ? b.language : 'de') as Lang;
-  const c = CANCEL[lang];
+  // Cancelled by us with a reason: the reason text replaces the generic "successfully
+  // cancelled" intro, which only fits when the customer cancelled themselves.
+  const reasonIntro = isBookingCancelReason(b.cancel_reason) ? BOOKING_CANCEL_REASONS[b.cancel_reason][lang] : null;
+  const c = reasonIntro ? { ...CANCEL[lang], intro: esc(reasonIntro) } : CANCEL[lang];
+  const note = String(b.cancel_note || '').trim();
   const html = `
 <div style="background:#eef1f5;padding:20px 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid ${C.line}">
@@ -493,6 +501,11 @@ export function customerCancellationEmail(b: BookingNotificationData): { subject
   </td></tr>
 
   <tr><td style="height:16px"></td></tr>
+
+  ${note ? card(`
+    <div style="font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:.05em">${CANCEL_NOTE_LABEL[lang]}</div>
+    <div style="font-size:14px;color:${C.text};line-height:1.55;margin-top:4px;white-space:pre-line">${esc(note)}</div>
+  `) : ''}
 
   ${card(cancelledTrip(b, lang, c))}
 

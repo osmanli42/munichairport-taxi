@@ -298,7 +298,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const isEmail = (s: unknown): s is string => typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
 async function invoicedBookingMap(): Promise<Map<number, { invoice_id: number; invoice_number: string }>> {
-  const rows = await query('SELECT id, invoice_number, booking_ids FROM company_invoices');
+  // Cancelled (storniert) invoices don't count: their rides can be invoiced again.
+  const rows = await query(`SELECT id, invoice_number, booking_ids FROM company_invoices WHERE status <> 'storniert'`);
   const map = new Map<number, { invoice_id: number; invoice_number: string }>();
   for (const r of rows) {
     let ids: unknown = [];

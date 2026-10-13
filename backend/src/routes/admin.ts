@@ -6,6 +6,8 @@ import Stripe from 'stripe';
 import { query, run } from '../db';
 import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest , checkPasswordChangeRateLimit, resetPasswordChangeAttempts, bustTokenVersionCache, generateMfaPendingToken, generateTrustedDeviceToken, verifyAdminHelperToken, checkTotpRateLimit, resetTotpAttempts } from '../middleware/auth';
 import { decryptSecret, verifyCode, consumeRecoveryCode } from '../services/adminTotp';
+import { stornoSingleInvoice, getStorno, renderStornoPdf, sendStornoEmail, listStornos } from '../services/storno';
+import { isBookingCancelReason, stornoReasonText } from '../services/cancelReasons';
 import { decrypt } from './bookings';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
 import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
@@ -438,7 +440,17 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
     return;
   }
 
-  const result = await run('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
+  // Cancellation by the admin may carry a preset reason and a note for the customer;
+  // notify=false cancels silently. Without these fields it behaves exactly as before.
+  const cancelReason = status === 'cancelled' && isBookingCancelReason(req.body.cancel_reason) ? req.body.cancel_reason : null;
+  const cancelNote = status === 'cancelled' && typeof req.body.cancel_note === 'string' ? req.body.cancel_note.trim().slice(0, 1000) : '';
+  const notifyCustomer = req.body.notify !== false;
+
+  const [before] = await query<{ status: string }>('SELECT status FROM bookings WHERE id = ?', [req.params.id]);
+  const result = status === 'cancelled'
+    ? await run('UPDATE bookings SET status = ?, cancel_reason = ?, cancel_note = ?, cancelled_at = NOW() WHERE id = ?',
+        [status, cancelReason, cancelNote || null, req.params.id])
+    : await run('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
   if (result.affectedRows === 0) {
     res.status(404).json({ error: 'Booking not found' });
     return;
@@ -476,7 +488,7 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
   }
 
   // Send cancellation email when booking is cancelled
-  if (status === 'cancelled' && booking?.email) {
+  if (status === 'cancelled' && booking?.email && notifyCustomer && before?.status !== 'cancelled') {
     const { sendCancellationEmail } = await import('../services/notifications');
     sendCancellationEmail({
       booking_number: booking.booking_number,
@@ -495,6 +507,8 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
       luggage_count: booking.luggage_count || 0,
       trip_type: booking.trip_type || undefined,
       return_datetime: booking.return_datetime || undefined,
+      cancel_reason: cancelReason || undefined,
+      cancel_note: cancelNote || undefined,
     }).catch(err => console.error('Cancellation email error:', err));
   }
 
@@ -522,6 +536,13 @@ router.patch('/bookings/:id/steuersatz', authenticateAdmin, async (req: AuthRequ
 
 // DELETE /api/admin/bookings/:id
 router.delete('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  // An invoiced booking can't disappear (GoBD): the invoice number would vanish and the
+  // daily WEB-… sequence could hand it out again. Cancel it with a Stornorechnung instead.
+  const [inv] = await query<{ rechnung_number: string | null }>('SELECT rechnung_number FROM bookings WHERE id = ?', [req.params.id]);
+  if (inv?.rechnung_number) {
+    res.status(409).json({ error: `Für diese Buchung wurde die Rechnung ${inv.rechnung_number} gesendet – sie kann nicht gelöscht werden. Bitte die Buchung stornieren (Status) und die Rechnung per Stornorechnung aufheben.` });
+    return;
+  }
   const result = await run('DELETE FROM bookings WHERE id = ?', [req.params.id]);
   if (result.affectedRows === 0) {
     res.status(404).json({ error: 'Booking not found' });
@@ -1942,11 +1963,30 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
       return;
     }
 
+    // A number that was already used and cancelled may never be issued again.
+    const [reused] = await query<{ storno_number: string }>(
+      'SELECT storno_number FROM invoice_cancellations WHERE original_number = ? LIMIT 1', [String(rechnungsnummer).trim()]);
+    if (reused || (force && booking.rechnung_number && String(rechnungsnummer).trim() === booking.rechnung_number)) {
+      res.status(400).json({ error: `Die Rechnungsnummer ${String(rechnungsnummer).trim()} ist bereits vergeben bzw. storniert – bitte eine neue Nummer verwenden.` });
+      return;
+    }
+
+    // Re-issuing an already sent invoice (GoBD): first cancel the old one with a
+    // Stornorechnung (mailed to the customer), then send the new invoice. Both stay on record.
+    let storno: { number: string; emailError: string | null } | null = null;
+    if (force && booking.rechnung_number) {
+      const r = await stornoSingleInvoice(booking.id, {
+        reason: stornoReasonText('reissue', null, booking.rechnung_sprache === 'en' ? 'en' : 'de'),
+        send: true, createdBy: req.adminUsername,
+      });
+      storno = { number: r.storno.storno_number, emailError: r.existed ? null : r.emailError };
+    }
+
     // Shared with autoRechnungJob: builds + mails the PDF and persists the render
     // params, so this invoice can be reproduced later via .../rechnung.pdf.
     await sendRechnungForBooking(booking, { rechnungsnummer, mwst, lang, empfaenger_adresse, zahlungsart, force });
 
-    res.json({ success: true });
+    res.json({ success: true, storno });
   } catch (error: any) {
     console.error('Rechnung error:', error);
     // "already sent" is a distinct, expected conflict (not a server error) — the
@@ -1957,6 +1997,69 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
     }
     res.status(500).json({ error: error.message || 'Failed to generate invoice' });
   }
+});
+
+// ─── STORNORECHNUNG ─────────────────────────────────────────────────────────
+
+// POST /api/admin/bookings/:id/storno — { reason?, send? } cancel the booking's sent invoice
+router.post('/bookings/:id/storno', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [lb] = await query<{ rechnung_sprache: string | null }>('SELECT rechnung_sprache FROM bookings WHERE id = ?', [req.params.id]);
+    const r = await stornoSingleInvoice(Number(req.params.id), {
+      reason: stornoReasonText(req.body?.reason_key, req.body?.reason, lb?.rechnung_sprache === 'en' ? 'en' : 'de'),
+      send: req.body?.send === true,
+      createdBy: req.adminUsername,
+    });
+    if (r.existed) {
+      res.status(409).json({ error: `Diese Rechnung ist bereits storniert (${r.storno.storno_number}).`, storno: r.storno });
+      return;
+    }
+    res.json({ success: true, storno: r.storno, email_error: r.emailError });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || 'Storno fehlgeschlagen' });
+  }
+});
+
+// GET /api/admin/bookings/:id/stornos — cancellations issued for this booking's invoices
+router.get('/bookings/:id/stornos', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const rows = await query(
+    `SELECT id, storno_number, original_number, amount, reason, sent_to, sent_at, send_error, created_at
+       FROM invoice_cancellations WHERE kind = 'single' AND booking_id = ? ORDER BY id DESC`, [req.params.id]);
+  res.json(rows);
+});
+
+// GET /api/admin/stornos — register of all Stornorechnungen
+router.get('/stornos', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await listStornos());
+});
+
+// GET /api/admin/stornos/:id/pdf
+router.get('/stornos/:id/pdf', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const st = await getStorno(Number(req.params.id));
+    if (!st) { res.status(404).json({ error: 'not_found' }); return; }
+    const pdf = await renderStornoPdf(st);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=Stornorechnung_${st.storno_number}.pdf`);
+    res.send(pdf);
+  } catch (error: any) {
+    res.status(500).json({ error: 'PDF konnte nicht erstellt werden' });
+  }
+});
+
+// POST /api/admin/stornos/:id/send — { email? } (re)send the Stornorechnung
+router.post('/stornos/:id/send', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const st = await getStorno(Number(req.params.id));
+  if (!st) { res.status(404).json({ error: 'not_found' }); return; }
+  let to = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+  if (!to && st.booking_id) {
+    const [b] = await query<{ email: string }>('SELECT email FROM bookings WHERE id = ?', [st.booking_id]);
+    to = b?.email || '';
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.status(400).json({ error: 'Gültige E-Mail-Adresse erforderlich' }); return; }
+  const err = await sendStornoEmail(st, to);
+  if (err) { res.status(502).json({ error: err }); return; }
+  res.json({ success: true });
 });
 
 // POST /api/admin/bookings/:id/rechnung-vormerken — arm the automatic invoice for a

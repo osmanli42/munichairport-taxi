@@ -954,3 +954,202 @@ export function buildReminderEmail(opts: {
 </table>
 </body></html>`;
 }
+
+// ─── STORNORECHNUNG PDF ──────────────────────────────────────────────────────
+// Cancels an issued invoice (single ride or Sammelrechnung) with its own number. Everything
+// printed comes from the snapshot stored in invoice_cancellations, so the document stays the
+// same even if the booking or invoice is edited later.
+
+export interface StornoLine {
+  desc: string;
+  sub: string[];
+  gross: number;       // positive gross amount of the original position
+  rate: 0 | 7 | 19;
+}
+
+export function generateStornoPdf(opts: {
+  storno_number: string;
+  storno_date: string | Date;
+  original_number: string;
+  original_date: string | Date | null;
+  booking_number?: string | null;
+  lang: 'de' | 'en';
+  recipient: string[];
+  lines: StornoLine[];
+  reason?: string | null;
+  s: Record<string, string>;
+}): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const { storno_number, original_number, booking_number, recipient, lines, reason, s } = opts;
+    const lang = opts.lang === 'en' ? 'en' : 'de';
+    const isEn = lang === 'en';
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+    registerUnicodeFonts(doc);
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const BRAND = '#0c2d48';
+    const RED = '#b91c1c';
+    const GRAY = '#6b7280';
+    const LIGHTGRAY = '#f3f4f6';
+    const pageW = doc.page.width - 100;
+    const marginL = 50;
+    const companyName = s.company_name || 'Taxi N&N GbR';
+    const dateStr = (d: string | Date | null) => (d ? fmtDate(new Date(d).toISOString(), lang) : '—');
+
+    // ── LOGO
+    const logoY = 50;
+    doc.fontSize(13).font('WorkSans-Bold');
+    const logoPart1 = 'Flughafen-muenchen.';
+    const logoPart2 = 'TAXI';
+    const logoW = doc.widthOfString(logoPart1) + doc.widthOfString(logoPart2);
+    doc.fillColor(BRAND).text(logoPart1, marginL, logoY, { continued: true, lineBreak: false });
+    doc.fillColor('#fbbf24').text(logoPart2, { lineBreak: false });
+    const logoAddress = s.company_address || 'Eisvogelweg 2, 85356 Freising';
+    doc.fontSize(8).font('WorkSans');
+    const logoAddressW = doc.widthOfString(logoAddress);
+    doc.fillColor(GRAY).text(logoAddress, marginL + (logoW - logoAddressW) / 2, logoY + 18, { lineBreak: false });
+
+    // ── TITLE + META
+    const titleX = marginL + pageW - 250;
+    doc.fontSize(17).font('WorkSans-Bold').fillColor(RED)
+      .text(isEn ? 'CANCELLATION INVOICE' : 'STORNORECHNUNG', titleX, 50, { width: 250, align: 'right' });
+    const metaX = titleX + 40;
+    const metaLabelW = 110;
+    const metaValW = 250 - 40 - metaLabelW;
+    const meta: [string, string][] = [
+      [isEn ? 'Cancellation No.:' : 'Storno-Nr.:', storno_number],
+      [isEn ? 'Date:' : 'Datum:', dateStr(opts.storno_date)],
+      [isEn ? 'Cancels invoice:' : 'Zur Rechnung Nr.:', original_number],
+      [isEn ? 'Invoice date:' : 'Rechnungsdatum:', dateStr(opts.original_date)],
+    ];
+    if (booking_number) meta.push([isEn ? 'Booking No.:' : 'Buchungsnr.:', booking_number]);
+    let ry = 74;
+    doc.fontSize(8);
+    for (const [label, val] of meta) {
+      doc.font('WorkSans').fillColor(GRAY).text(label, metaX, ry, { width: metaLabelW, lineBreak: false });
+      doc.font('WorkSans-Bold').fillColor('#111827').text(val, metaX + metaLabelW, ry, { width: metaValW, align: 'right', lineBreak: false });
+      ry += 11;
+    }
+
+    // ── RECIPIENT
+    const custY = logoY + 60;
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY).text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
+    let addrY = custY + 12;
+    doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
+      .text(recipient[0] || '—', marginL, addrY, { width: pageW - 260, lineBreak: false });
+    addrY += 16;
+    doc.fontSize(9).font('WorkSans').fillColor('#374151');
+    for (const l of recipient.slice(1)) {
+      doc.text(l, marginL, addrY, { width: pageW - 260, lineBreak: false });
+      addrY += 13;
+    }
+
+    // ── INTRO
+    let y = Math.max(addrY, ry) + 18;
+    doc.moveTo(marginL, y).lineTo(marginL + pageW, y).lineWidth(1).strokeColor(BRAND).stroke();
+    y += 14;
+    doc.fontSize(9.5).font('WorkSans').fillColor('#111827').text(isEn
+      ? `We hereby cancel invoice no. ${original_number} dated ${dateStr(opts.original_date)} in full. The amounts below are credited.`
+      : `Hiermit stornieren wir die Rechnung Nr. ${original_number} vom ${dateStr(opts.original_date)} vollständig. Die folgenden Beträge werden gutgeschrieben.`,
+      marginL, y, { width: pageW });
+    y = doc.y + 12;
+
+    // ── TABLE
+    const colPos = marginL;
+    const colDesc = marginL + 30;
+    const colRate = marginL + pageW - 150;
+    const colAmt = marginL + pageW - 80;
+    const wDesc = colRate - colDesc - 8;
+    doc.rect(marginL, y, pageW, 20).fill(BRAND);
+    doc.fontSize(8.5).font('WorkSans-Bold').fillColor('#ffffff');
+    doc.text('Pos.', colPos, y + 6, { width: 25, lineBreak: false });
+    doc.text(isEn ? 'Description' : 'Beschreibung', colDesc, y + 6, { width: wDesc, lineBreak: false });
+    doc.text(isEn ? 'VAT' : 'MwSt.', colRate, y + 6, { width: 60, align: 'center', lineBreak: false });
+    doc.text(isEn ? 'Amount (gross)' : 'Betrag (brutto)', colAmt, y + 6, { width: 80, align: 'right', lineBreak: false });
+    y += 20;
+
+    const pageBottom = doc.page.height - 120;
+    lines.forEach((l, i) => {
+      doc.fontSize(8).font('WorkSans');
+      const subH = l.sub.reduce((h, t) => h + Math.max(10, doc.heightOfString(t, { width: wDesc })), 0);
+      const rowH = 20 + subH + 8;
+      if (y + rowH > pageBottom) { doc.addPage(); y = 50; }
+      doc.rect(marginL, y, pageW, rowH).fill(i % 2 === 0 ? LIGHTGRAY : '#ffffff');
+      doc.fillColor('#111827').fontSize(8.5).font('WorkSans-Bold');
+      doc.text(String(i + 1), colPos, y + 7, { width: 25, lineBreak: false });
+      doc.text(l.desc, colDesc, y + 7, { width: wDesc, height: 11, ellipsis: true });
+      let sy = y + 20;
+      doc.fontSize(8).font('WorkSans').fillColor(GRAY);
+      for (const t of l.sub) {
+        doc.text(t, colDesc, sy, { width: wDesc });
+        sy = doc.y;
+      }
+      doc.fontSize(8.5).font('WorkSans').fillColor('#111827')
+        .text(`${l.rate} %`, colRate, y + 7, { width: 60, align: 'center', lineBreak: false });
+      doc.font('WorkSans-Bold').fillColor(RED)
+        .text(fmtPrice(-l.gross), colAmt, y + 7, { width: 80, align: 'right', lineBreak: false });
+      y += rowH;
+    });
+    doc.moveTo(marginL, y).lineTo(marginL + pageW, y).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
+
+    // ── TOTALS (grouped by VAT rate, all negative)
+    if (y + 110 > pageBottom) { doc.addPage(); y = 50; }
+    const groups = new Map<number, number>();
+    for (const l of lines) groups.set(l.rate, (groups.get(l.rate) || 0) + l.gross);
+    const totX = marginL + pageW - 250;
+    const totValX = marginL + pageW - 80;
+    let ty = y + 16;
+    let grand = 0;
+    for (const rate of Array.from(groups.keys()).sort((a, b) => b - a)) {
+      const gross = groups.get(rate)!;
+      const net = rate > 0 ? gross / (1 + rate / 100) : gross;
+      grand += gross;
+      doc.fontSize(9).font('WorkSans').fillColor('#374151');
+      doc.text(`${isEn ? 'Net amount' : 'Nettobetrag'} (${rate} %):`, totX, ty, { width: 160, lineBreak: false });
+      doc.text(fmtPrice(-net), totValX, ty, { width: 80, align: 'right', lineBreak: false });
+      ty += 14;
+      if (rate > 0) {
+        doc.text(`${isEn ? 'VAT' : 'MwSt.'} (${rate} %):`, totX, ty, { width: 160, lineBreak: false });
+        doc.text(fmtPrice(-(gross - net)), totValX, ty, { width: 80, align: 'right', lineBreak: false });
+        ty += 14;
+      }
+    }
+    doc.moveTo(totX, ty).lineTo(marginL + pageW, ty).lineWidth(0.5).strokeColor(BRAND).stroke();
+    ty += 5;
+    doc.fontSize(11).font('WorkSans-Bold').fillColor(RED);
+    doc.text(isEn ? 'TOTAL CREDIT:' : 'GUTSCHRIFT GESAMT:', totX, ty, { width: 160, lineBreak: false });
+    doc.text(fmtPrice(-grand), totValX, ty, { width: 80, align: 'right', lineBreak: false });
+    ty += 26;
+
+    // ── REASON + NOTE
+    if (reason && reason.trim()) {
+      doc.fontSize(8.5).font('WorkSans-Bold').fillColor('#111827').text(isEn ? 'Reason:' : 'Grund:', marginL, ty);
+      doc.font('WorkSans').fillColor('#374151').text(reason.trim(), marginL, doc.y + 2, { width: pageW });
+      ty = doc.y + 10;
+    }
+    doc.fontSize(8).font('WorkSans').fillColor(GRAY).text(isEn
+      ? 'This cancellation invoice corrects the invoice named above (§14 UStG); its VAT is reduced accordingly. Any amount already paid will be refunded or offset.'
+      : 'Diese Stornorechnung berichtigt die oben genannte Rechnung (§14 UStG); die darin ausgewiesene Umsatzsteuer wird entsprechend gemindert. Ein bereits gezahlter Betrag wird erstattet bzw. verrechnet.',
+      marginL, ty, { width: pageW });
+
+    // ── FOOTER on every page
+    const range = doc.bufferedPageRange();
+    for (let p = range.start; p < range.start + range.count; p++) {
+      doc.switchToPage(p);
+      const footerY = doc.page.height - 80;
+      doc.moveTo(marginL, footerY).lineTo(marginL + pageW, footerY).lineWidth(0.5).strokeColor('#e5e7eb').stroke();
+      doc.fontSize(7.5).font('WorkSans').fillColor(GRAY);
+      const footerParts: string[] = [companyName, s.company_address || ''].filter(Boolean);
+      if (s.company_steuernr) footerParts.push((isEn ? 'Tax No.: ' : 'Steuer-Nr.: ') + s.company_steuernr);
+      if (s.company_ustidnr) footerParts.push((isEn ? 'VAT ID: ' : 'USt-IdNr.: ') + s.company_ustidnr);
+      doc.text(footerParts.join('  ·  '), marginL, footerY + 8, { width: pageW, align: 'center', lineBreak: false });
+      doc.text('flughafen-muenchen.taxi', marginL, footerY + 20, { width: pageW, align: 'center', lineBreak: false });
+    }
+
+    doc.end();
+  });
+}

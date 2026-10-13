@@ -20,6 +20,9 @@ import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
 import B2BTab from '@/components/B2BTab';
 import KalenderTab from '@/components/KalenderTab';
+import CancelBookingDialog, { CancelPayload } from '@/components/booking/CancelBookingDialog';
+import InvoiceStornoCard from '@/components/booking/InvoiceStornoCard';
+import StornoRegister from '@/components/booking/StornoRegister';
 import AdminAddressField from '@/components/AdminAddressField';
 import RabatteTab from '@/components/RabatteTab';
 import DriversTab from '@/components/DriversTab';
@@ -725,9 +728,16 @@ export default function AdminPage() {
     }
   }, [isLoggedIn, activeTab, token, loadBookings, loadPrices, loadDetailedStats, loadGeoStats, loadMarketingCustomers, marketingCustomers.length]);
 
-  async function updateStatus(id: number, status: string) {
+  // Cancelling always goes through the reason dialog (the reason shapes the customer mail).
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+
+  async function updateStatus(id: number, status: string, cancel?: CancelPayload) {
+    if (status === 'cancelled' && !cancel) {
+      const b = bookings.find((x) => x.id === id) || (selectedBooking?.id === id ? selectedBooking : null);
+      if (b) { setCancelTarget(b); return; }
+    }
     try {
-      await adminApi.updateStatus(id, status);
+      await adminApi.updateStatus(id, status, cancel);
       setBookings(prev => prev.map(b => b.id === id ? { ...b, status: status as Booking['status'] } : b));
       if (selectedBooking?.id === id) {
         setSelectedBooking(prev => prev ? { ...prev, status: status as Booking['status'] } : null);
@@ -1440,7 +1450,7 @@ export default function AdminPage() {
                                 )}
                                 {booking.status !== 'cancelled' && (
                                   <button
-                                    onClick={() => { if (confirm(`Buchung ${booking.booking_number} wirklich stornieren?`)) updateStatus(booking.id, 'cancelled'); }}
+                                    onClick={() => setCancelTarget(booking)}
                                     className="p-1 text-gray-500 hover:text-red-600 transition-colors"
                                     title="Stornieren"
                                   >
@@ -3710,6 +3720,8 @@ export default function AdminPage() {
                   Gesendete Rechnung ansehen ({selectedBooking.rechnung_number})
                 </a>
               )}
+              {/* Stornorechnung (GoBD): cancel the sent invoice instead of deleting it */}
+              <InvoiceStornoCard key={`storno-${selectedBooking.id}`} booking={selectedBooking} onChanged={loadBookings} />
               {selectedBooking.proforma_number && (
                 <a
                   href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/proforma.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}`}
@@ -3758,6 +3770,7 @@ export default function AdminPage() {
       {/* Rechnung Tab */}
       {activeTab === 'rechnung' && (
         <div className="space-y-6">
+          <StornoRegister />
           {bankSuccess && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
               <Check size={16} />{bankSuccess}
@@ -4877,6 +4890,16 @@ export default function AdminPage() {
       )}
 
       {/* Rechnung / Proforma Modal — one dialog, two documents (see rechnungMode) */}
+      {cancelTarget && (
+        <CancelBookingDialog
+          booking={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={async (p) => {
+            await updateStatus(cancelTarget.id, 'cancelled', p);
+            setCancelTarget(null);
+          }}
+        />
+      )}
       {showRechnungModal && selectedBooking && (
         <div
           className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
@@ -5068,7 +5091,9 @@ export default function AdminPage() {
                       if (err.response?.status === 409 && err.response?.data?.already_sent) {
                         // Bereits gesendet — nur nach ausdrücklicher Bestätigung erneut verschicken,
                         // sonst bekommt der Kunde zwei Rechnungsmails für dieselbe Fahrt.
-                        const confirmed = window.confirm(`${err.response.data.error}\n\nTrotzdem erneut per E-Mail senden?`);
+                        const confirmed = window.confirm(isProforma
+                          ? `${err.response.data.error}\n\nTrotzdem erneut per E-Mail senden?`
+                          : `${err.response.data.error}\n\nDie bisherige Rechnung wird dabei per Stornorechnung (ST-…) aufgehoben – der Kunde erhält die Stornorechnung und danach die neue Rechnung ${rechnungsnummer.trim()}. Fortfahren?`);
                         if (confirmed) {
                           try {
                             await send(true);

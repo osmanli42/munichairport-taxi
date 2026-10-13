@@ -42,6 +42,34 @@ export async function run(sql: string, params: any[] = []): Promise<mysql.Result
   return result as mysql.ResultSetHeader;
 }
 
+/** Runs fn on one connection inside a transaction; rolls back if it throws. */
+export async function withTransaction<T>(fn: (conn: mysql.PoolConnection) => Promise<T>): Promise<T> {
+  const conn = await getPool().getConnection();
+  try {
+    await conn.beginTransaction();
+    const out = await fn(conn);
+    await conn.commit();
+    return out;
+  } catch (e) {
+    try { await conn.rollback(); } catch { /* connection already broken */ }
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Next value of a gapless counter (number_sequences). Must run inside withTransaction
+ * together with the insert that uses the number, so a failed insert rolls the counter back.
+ */
+export async function nextSequenceValue(conn: mysql.PoolConnection, name: string): Promise<number> {
+  await conn.execute('INSERT IGNORE INTO number_sequences (name, value) VALUES (?, 0)', [name]);
+  const [rows] = await conn.execute('SELECT value FROM number_sequences WHERE name = ? FOR UPDATE', [name]);
+  const next = Number((rows as any[])[0]?.value || 0) + 1;
+  await conn.execute('UPDATE number_sequences SET value = ? WHERE name = ?', [next, name]);
+  return next;
+}
+
 export async function initializeDatabase(): Promise<void> {
   const conn = await mysql.createConnection(getDbConfig());
   try {
@@ -1008,11 +1036,54 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN rechnung_zahlungsart VARCHAR(20) DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN rechnung_attempts INT NOT NULL DEFAULT 0`,
       `ALTER TABLE bookings ADD COLUMN rechnung_error TEXT DEFAULT NULL`,
+      // Gross amount printed on the sent invoice — the Stornorechnung reverses exactly
+      // this, even if bookings.price is edited later.
+      `ALTER TABLE bookings ADD COLUMN rechnung_amount DECIMAL(10,2) DEFAULT NULL`,
+      // Admin cancellation: preset reason (services/cancelReasons.ts) + note shown to the customer
+      `ALTER TABLE bookings ADD COLUMN cancel_reason VARCHAR(30) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN cancel_note TEXT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN cancelled_at DATETIME DEFAULT NULL`,
     ];
     for (const stmt of bookingRechnungCols) {
       try { await conn.execute(stmt); }
       catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
+    // ── Stornorechnungen (GoBD): an issued invoice is never deleted or renumbered; it is
+    // cancelled by a separate document with its own gapless number (ST-YYYY-NNNN) that
+    // carries a snapshot of the original. number_sequences holds the counters.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS number_sequences (
+        name VARCHAR(50) NOT NULL,
+        value INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (name)
+      )
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS invoice_cancellations (
+        id INT NOT NULL AUTO_INCREMENT,
+        storno_number VARCHAR(30) NOT NULL,
+        kind VARCHAR(10) NOT NULL,
+        booking_id INT DEFAULT NULL,
+        company_invoice_id INT DEFAULT NULL,
+        original_number VARCHAR(50) NOT NULL,
+        original_date DATETIME DEFAULT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        lang VARCHAR(5) NOT NULL DEFAULT 'de',
+        lines_json TEXT NOT NULL,
+        recipient_json TEXT NOT NULL,
+        reason TEXT DEFAULT NULL,
+        sent_to VARCHAR(200) DEFAULT NULL,
+        sent_at DATETIME DEFAULT NULL,
+        send_error TEXT DEFAULT NULL,
+        created_by VARCHAR(100) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_storno_number (storno_number),
+        KEY idx_storno_booking (booking_id),
+        KEY idx_storno_company_invoice (company_invoice_id)
+      )
+    `);
+
     // Index for the auto-invoice cron's candidate scan (runs every minute).
     try {
       await conn.execute(`ALTER TABLE bookings ADD INDEX idx_rechnung_pending (rechnung_required, rechnung_number)`);

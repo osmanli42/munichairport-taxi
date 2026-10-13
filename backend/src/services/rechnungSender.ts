@@ -10,7 +10,7 @@
 
 import { customerRecipient } from '../utils/recipient';
 import { query, run } from '../db';
-import { fetchBankSettings, generateRechnungPdf, buildRechnungEmail } from './rechnung';
+import { fetchBankSettings, generateRechnungPdf, buildRechnungEmail, roundGrossPrice } from './rechnung';
 
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 
@@ -191,12 +191,16 @@ async function doSendRechnung(
   await run(
     `UPDATE bookings
        SET rechnung_number = ?, rechnung_sent_at = ?, rechnung_mwst = ?,
-           rechnung_sprache = ?, rechnung_zahlungsart = ?, rechnung_adresse = ?, rechnung_error = NULL
+           rechnung_sprache = ?, rechnung_zahlungsart = ?, rechnung_adresse = ?, rechnung_error = NULL,
+           rechnung_amount = ?
      WHERE id = ?`,
     [
       rechnungsnummer,
       sentAt.toISOString().slice(0, 19).replace('T', ' '),
-      mwst, lang, zahlungsart, empfaenger_adresse || null, booking.id,
+      mwst, lang, zahlungsart, empfaenger_adresse || null,
+      // What the PDF printed — a later Stornorechnung reverses exactly this amount.
+      roundGrossPrice(Number(booking.price) || 0, booking.source === 'calendar'),
+      booking.id,
     ]
   );
 

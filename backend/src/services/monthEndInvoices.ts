@@ -49,7 +49,8 @@ export async function monthEndInvoices(): Promise<MonthEndInvoices | null> {
         AND b.payment_method IN ('invoice', 'rechnung')
         AND LEFT(b.pickup_datetime, 7) BETWEEN ? AND ?
         AND NOT EXISTS (SELECT 1 FROM company_invoices ci
-                         WHERE ci.company_id = b.company_id AND ci.period_month = LEFT(b.pickup_datetime, 7))
+                         WHERE ci.company_id = b.company_id AND ci.period_month = LEFT(b.pickup_datetime, 7)
+                           AND ci.status <> 'storniert')
       GROUP BY b.company_id, c.company_name, LEFT(b.pickup_datetime, 7)
       ORDER BY month, c.company_name`,
     [from, to]);
