@@ -15,7 +15,9 @@ import { berlinDateSql } from '../utils/berlinTime';
 import { fetchEventsRange, parseInvoiceRide, parseAmount, CalEvent } from './calendarInvoice';
 import { hasServiceAccount } from './calendarImport';
 
-export type CalendarKind = 'ride' | 'booking' | 'imported' | 'duplicate' | 'cancelled';
+// 'other' = a calendar entry that is no ride at all (workshop / barber appointment, a note, a
+// settlement reminder …): counted nowhere, no mail, not on the dashboard.
+export type CalendarKind = 'ride' | 'booking' | 'imported' | 'duplicate' | 'cancelled' | 'other';
 
 export interface ClassifiedEvent {
   event: CalEvent;
@@ -49,6 +51,9 @@ const RECENT_BACK_DAYS = 40;
 const AHEAD_DAYS = 60;
 // A hand-copied web booking sits at the same time (± a little) with the same address.
 const DUPLICATE_WINDOW_MIN = 30;
+
+// Titles of appointments that are no ride (checked only when the entry has no price and no destination).
+const RE_NOT_A_RIDE = /werkstatt|kfz|garage|gargae|tüv|reifen|autohaus|meisterbetrieb|berber|friseur|barber/i;
 
 export const RE_CAL_CANCELLED = /❌|ipta+l+|an+ul+iert|storn|cancel|abgesagt/iu;
 const RE_BOOKING_NO = /\b[A-Z]{3}\d{6}-\d{4}\b/g;
@@ -142,6 +147,11 @@ export function classifyEvents(events: CalEvent[], bookings: BookingRef[]): Clas
           Math.abs(l.min - start) <= DUPLICATE_WINDOW_MIN && l.keys.some((k) => keys.some((e) => e === k || e.startsWith(k) || k.startsWith(e))))
       : undefined;
     if (twin) return { ...base, kind: 'duplicate' as const, booking: twin.b };
+    // No price and no route at all — or a workshop-style title without a destination — is an
+    // appointment or a note, not a ride. A priced entry always stays a ride.
+    if (base.price == null && ((!base.from && !base.to) || (!base.to && RE_NOT_A_RIDE.test(event.summary)))) {
+      return { ...base, kind: 'other' as const, booking: null };
+    }
     return { ...base, kind: 'ride' as const, booking: null };
   });
 }

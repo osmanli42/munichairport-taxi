@@ -136,11 +136,15 @@ async function check(): Promise<void> {
     const events = await calendarEventsCached(berlinDateSql(0), berlinDateSql(AHEAD_DAYS));
     if (events) {
       const classified = classifyEvents(events, await loadBookingRefs());
-      const known = new Set((await query<{ uid: string }>('SELECT uid FROM calendar_ride_alerts')).map((r) => r.uid));
+      const knownRows = await query<{ uid: string; kind_seen: string | null }>('SELECT uid, kind_seen FROM calendar_ride_alerts');
+      const known = new Map(knownRows.map((r) => [r.uid, r.kind_seen]));
+      const uidOf = (c: ClassifiedEvent) => c.event.uid.slice(0, 255);
       // Every event is recorded, not only rides: a hand-copied web booking that later loses
       // its match (booking cancelled) must not turn up as a "new" ride.
-      const fresh = classified.filter((c) => c.event.start && !known.has(c.event.uid.slice(0, 255)));
-      if (fresh.length) {
+      const fresh = classified.filter((c) => c.event.start && !known.has(uidOf(c)));
+      // An entry first seen as a non-ride (bare title) that has since turned into a ride.
+      const flipped = classified.filter((c) => c.event.start && c.kind === 'ride' && known.get(uidOf(c)) === 'other');
+      if (fresh.length || flipped.length) {
         const baseline = await getStateValue('calendar_new:baseline');
         const now = berlinNowSql().replace(' ', 'T').slice(0, 16);
         const seenAt = `${now.slice(8, 10)}.${now.slice(5, 7)}. ${now.slice(11, 16)}`;   // shown in the daily mail
@@ -148,12 +152,19 @@ async function check(): Promise<void> {
         for (let i = 0; i < fresh.length; i += 200) {
           const chunk = fresh.slice(i, i + 200);
           await run(
-            `INSERT IGNORE INTO calendar_ride_alerts (uid, ride_time, pending, snapshot) VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(', ')}`,
+            `INSERT IGNORE INTO calendar_ride_alerts (uid, ride_time, pending, snapshot, kind_seen) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
             chunk.flatMap((c) => {
               const yes = announce(c);
-              return [c.event.uid.slice(0, 255), c.event.start!, yes ? 1 : 0, yes ? JSON.stringify({ ...snap(c), seen: seenAt }) : null];
+              return [uidOf(c), c.event.start!, yes ? 1 : 0, yes ? JSON.stringify({ ...snap(c), seen: seenAt }) : null, c.kind];
             }),
           );
+        }
+        for (const c of flipped) {
+          const yes = announce(c);
+          await run(
+            `UPDATE calendar_ride_alerts SET kind_seen = 'ride', ride_time = ?, pending = ?, snapshot = ?, seen_at = NOW()
+              WHERE uid = ? AND kind_seen = 'other'`,
+            [c.event.start!, yes ? 1 : 0, yes ? JSON.stringify({ ...snap(c), seen: seenAt }) : null, uidOf(c)]);
         }
         if (!baseline) await setStateValue('calendar_new:baseline', new Date().toISOString());
       }

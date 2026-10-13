@@ -124,7 +124,7 @@ async function driverPlan(now: string) {
     // Cancelled in the calendar (❌/iptal) or as a booking — not a ride to plan. The booking
     // still counts as covered so it is not listed again as "nicht im Kalender".
     if (c.booking) covered.add(`${c.booking.id}|${ev.start!.slice(0, 10)}`);
-    if (c.kind === 'cancelled' || c.booking?.status === 'cancelled' || RE_CAL_CANCELLED.test(`${ev.summary}\n${ev.location}`)) continue;
+    if (c.kind === 'cancelled' || c.kind === 'other' || c.booking?.status === 'cancelled' || RE_CAL_CANCELLED.test(`${ev.summary}\n${ev.location}`)) continue;
     const drivers = driverTokens(ev.location).map((t) => names.get(t.toLowerCase())).filter((n): n is string => !!n);
     const flight = ev.summary.trim().match(RE_FLIGHT)?.[1];
     entries.push({

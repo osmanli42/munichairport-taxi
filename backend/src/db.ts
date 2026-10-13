@@ -524,6 +524,9 @@ export async function initializeDatabase(): Promise<void> {
         PRIMARY KEY (uid)
       )
     `);
+    // What the entry was when first seen: an entry that starts as a bare title ('other') and later
+    // gets a route / price becomes a ride and is announced then.
+    try { await conn.execute(`ALTER TABLE calendar_ride_alerts ADD COLUMN kind_seen VARCHAR(16) DEFAULT NULL`); } catch { /* exists */ }
 
     // SEO (services/seo/*): Search Console data, site audit, page speed, task states.
     await conn.execute(`
