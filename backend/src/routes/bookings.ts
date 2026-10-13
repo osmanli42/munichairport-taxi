@@ -13,7 +13,7 @@ import { parsePhone } from '../utils/phone';
 import { enrichBookingLineType } from '../services/phoneLookup';
 import { getCompanyAuth } from '../middleware/companyAuth';
 import { variantString } from '../utils/experiments';
-import { resolveAutoDiscount, countCustomerBookings, countVisitorSessions, ruleLabels } from '../services/autoDiscount';
+import { resolveAutoDiscount, countCustomerBookings, countVisitorSessions, ruleLabels, ruleIgnoresPgFloor, appliedValue, isBusinessCustomer, visitorIsFarAway } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
@@ -401,6 +401,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     let autoDiscountId: number | null = null;
     let autoDiscountName: string | null = null;
     let ignorePgFloor = false;
+    let autoRuleFloorOff = false; // angewendete Regel hält den §51-Boden bewusst nicht ein
     try {
       // Bölge tespiti: PG bloğundan bağımsız (enabled=0 olsa da) geometri hesaplanır.
       let adZone: 'inside' | 'outside' = 'outside';
@@ -417,10 +418,24 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         }
       }
 
+      // Telefon zählt mit: Stammkunden buchen oft von einem anderen Gerät/einer anderen
+      // E-Mail, die Nummer bleibt meist dieselbe.
+      const adPhone = parsePhone(phone);
+      const adPhoneE164 = adPhone.ok ? adPhone.e164 : null;
       const customerBookingCount = await countCustomerBookings({
         visitorId: visitor_id || null,
         email: email || null,
+        phoneE164: adPhoneE164,
       });
+      const businessCustomer = await isBusinessCustomer({
+        companyLoggedIn: !!companyData,
+        rechnungRequested: !!(rechnung_required && typeof rechnung_adresse === 'string' && rechnung_adresse.trim())
+          || payment_method === 'ueberweisung',
+        visitorId: visitor_id || null,
+        email: email || null,
+        phoneE164: adPhoneE164,
+      });
+      const adVisitor = await visitorDistanceToBase(req);
 
       const [ignoreFloorSetting] = await query<{ setting_value: string }>(
         "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_ignore_pg_floor'"
@@ -438,7 +453,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         // pgFareFloor > 0 ⇒ der amtliche Tarif wurde angewendet; sonst sieht der Kunde den
         // Normalpreis (auch wenn er wegen IP-Bypass nur für ihn normal ist).
         priceBasis: pgFareFloor > 0 ? 'pflichttarif' : 'normal',
-        visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
+        visitorDistanceKm: adVisitor.distanceKm,
+        visitorIsFar: visitorIsFarAway(adVisitor),
+        isBusinessCustomer: businessCustomer,
         // Besuchszahl serverseitig zählen — der Client könnte sie sonst hochsetzen und
         // sich so einen Wiederkehrer-Rabatt selbst freischalten.
         visitCount: await countVisitorSessions(visitor_id || null),
@@ -450,7 +467,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif (pgFareFloor) nicht unterschreiten.
         // Wird hier gekappt statt erst am Ende über den Gesamtpreis-Floor — sonst würde
         // die Buchungsbestätigung einen Rabatt zeigen, der den Preis gar nicht verändert hat.
-        const cappedAmount = (pgFareFloor > 0 && !ignorePgFloor)
+        // Besucherkreis 'nah'/'alle' hält den Boden bewusst nicht ein (Admin-Entscheidung).
+        const ruleFloorOff = ruleIgnoresPgFloor(adResult.rule);
+        const cappedAmount = (pgFareFloor > 0 && !ignorePgFloor && !ruleFloorOff)
           ? Math.min(adResult.amount, Math.max(0, baseTotal - pgFareFloor))
           : adResult.amount;
         if (cappedAmount > 0) {
@@ -462,12 +481,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
               autoDiscountAmount = cappedAmount;
               autoDiscountId = adResult.rule.id;
               autoDiscountName = adResult.rule.name;
+              autoRuleFloorOff = ruleFloorOff;
             }
             // aksi halde promo kalır, otomatik indirim uygulanmaz
           } else {
             autoDiscountAmount = cappedAmount;
             autoDiscountId = adResult.rule.id;
             autoDiscountName = adResult.rule.name;
+            autoRuleFloorOff = ruleFloorOff;
           }
         }
       }
@@ -480,9 +501,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // ignorePgFloor (Rabatte-Tab, bewusst aktiviert) schaltet den §51-Tarifboden für
     // diese Buchung komplett ab — sonst würde dieser generische Sicherheitsnetz-Clamp
     // den oben bereits erlaubten Rabatt gleich wieder rückgängig machen.
-    if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override && !ignorePgFloor) {
+    // Ebenso eine angewendete Ruhiger-Tag-Regel mit Besucherkreis 'nah'/'alle'.
+    if (companyData && pgFareFloor > 0 && !companyData.pg_discount_override && !ignorePgFloor && !autoRuleFloorOff) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
-    } else if (pgFareFloor > 0 && !companyData && !ignorePgFloor) {
+    } else if (pgFareFloor > 0 && !companyData && !ignorePgFloor && !autoRuleFloorOff) {
       price = Math.max(price, Math.round(pgFareFloor * 100) / 100);
     }
 
@@ -780,6 +802,7 @@ export interface PublicAutoDiscount {
   ends_at: string | null; // nur wenn Countdown global + für die Regel aktiv
   remaining: number | null; // freie Rabattplätze, nur wenn global + für die Regel aktiv
   badge: 'red' | 'classic';
+  max_amount: number | null; // Höchstbetrag der Regel — die Fahrzeugkarten rechnen selbst und kappen damit
 }
 
 export interface RoutePriceOptions {
@@ -897,6 +920,13 @@ export async function computeRoutePrice(
     const customerCount = (options?.visitorId || options?.email)
       ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
       : null;
+    const previewVisitor = await visitorDistanceToBase(req);
+    // B2B-Login zählt schon in der Vorschau; sonst über Gerät/E-Mail (null = unbekannt)
+    const previewBusiness = await isBusinessCustomer({
+      companyLoggedIn: !!getCompanyAuth(req),
+      visitorId: options?.visitorId || null,
+      email: options?.email || null,
+    });
     const settingRows = await query<{ setting_key: string; setting_value: string }>(
       `SELECT setting_key, setting_value FROM settings WHERE setting_key IN
         ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_remaining_enabled')`
@@ -912,7 +942,9 @@ export async function computeRoutePrice(
       customerBookingCount: customerCount,
       baseTotal: price,
       priceBasis: pgFloorValue != null ? 'pflichttarif' : 'normal',
-      visitorDistanceKm: (await visitorDistanceToBase(req)).distanceKm,
+      visitorDistanceKm: previewVisitor.distanceKm,
+      visitorIsFar: visitorIsFarAway(previewVisitor),
+      isBusinessCustomer: previewBusiness,
       // Besuchszahl serverseitig — siehe POST /api/bookings
       visitCount: await countVisitorSessions(options?.visitorId || null),
       visitorPriceByBypass,
@@ -922,18 +954,20 @@ export async function computeRoutePrice(
       // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst
       // zeigt die Vorschau einen Rabatt, den POST /api/bookings hinterher wieder kippt.
       // ignorePgFloor (Rabatte-Tab) schaltet diesen Schutz bewusst ab.
-      const cappedAmount = (pgFloorValue != null && !ignorePgFloor) ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
+      const cappedAmount = (pgFloorValue != null && !ignorePgFloor && !ruleIgnoresPgFloor(result.rule))
+        ? Math.min(result.amount, Math.max(0, price - pgFloorValue)) : result.amount;
       if (cappedAmount > 0) {
         const countdownOn = (adSettings.auto_discount_countdown_enabled ?? '1') === '1' && Number(result.rule.show_countdown) === 1;
         autoDiscount = {
           name: result.rule.name,
           type: result.rule.discount_type,
-          value: Number(result.rule.discount_value),
+          value: appliedValue(result.rule, options?.tripType === 'roundtrip'),
           amount: cappedAmount,
           labels: ruleLabels(result.rule),
           ends_at: countdownOn ? result.endsAt : null,
           remaining: (adSettings.auto_discount_remaining_enabled ?? '1') === '1' && Number(result.rule.show_remaining) === 1 ? result.remaining : null,
           badge: (adSettings.auto_discount_red_badge_enabled ?? '1') === '1' ? 'red' : 'classic',
+          max_amount: result.rule.max_discount_amount != null ? Number(result.rule.max_discount_amount) : null,
         };
       }
     }

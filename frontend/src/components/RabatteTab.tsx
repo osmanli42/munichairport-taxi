@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Percent, Trash2, Plus, Pencil, Copy, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert } from 'lucide-react';
-import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi } from '@/lib/api';
+import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi, pflichtgebietApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
+import DemandPanel from '@/components/discount/DemandPanel';
 
 const WEEKDAYS = [
   { v: 1, label: 'Mo' }, { v: 2, label: 'Di' }, { v: 3, label: 'Mi' }, { v: 4, label: 'Do' },
@@ -39,7 +40,34 @@ const emptyForm = (): FormState => ({
   label_de: null, label_en: null, label_tr: null, show_in_banner: 0, show_countdown: 1, show_remaining: 1,
   price_basis: 'any', visitor_min_km: null, visitor_max_km: null, visitor_unknown_ok: 1,
   visit_min: null, allow_fixed_routes: 0,
+  demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
+  exclude_business: 0,
 });
+
+// Hazır şablon: sakin gün kuralı (kullanıcı kararları 13 Eki 2026 — %7, en fazla 10 €,
+// gidiş-dönüşte +%2, fahrt günü başına 4 indirimli rezervasyon, sadece uzak ziyaretçi,
+// 2+ siparişli Stammkunde ve firma/Rechnung müşterileri hariç).
+const demandTemplate = (): FormState => ({
+  ...emptyForm(),
+  name: 'Ruhiger Tag 7 %', discount_value: 7, zone_scope: 'any', max_discount_amount: 10,
+  demand_pace_max: 0.5, trip_date_max_uses: 4, ip_bypass_mode: 'fern', roundtrip_value: 2, priority: 20,
+  booking_index_max: 2, exclude_business: 1,
+  show_countdown: 0, show_remaining: 0,
+  // Müşteri metni bilinçli olarak „sakin gün“ demiyor — kazanç gibi okunmalı, boşluk gibi değil.
+  label_de: 'Sonderpreis für Ihr Datum', label_en: 'Special price for your date', label_tr: 'Tarihinize özel fiyat',
+});
+
+const BYPASS_MODES = [
+  { v: null, label: 'Standart (eski davranış)', desc: 'Uzak ziyaretçi hariç, Pflichttarif tabanı geçerli.' },
+  { v: 'fern', label: 'Sadece uzak ziyaretçi', desc: 'Yalnız IP-Bypass mesafesinden uzaktaki ziyaretçiler indirimi görür.' },
+  { v: 'nah', label: 'Sadece yakın ziyaretçi', desc: 'Yalnız IP-Bypass mesafesi içindeki ziyaretçiler görür — Pflichttarif altına da iner.' },
+  { v: 'alle', label: 'Herkes', desc: 'Uzak ve yakın herkes görür — Pflichttarif altına da iner.' },
+] as const;
+
+const bypassShort = (m: AutoDiscount['ip_bypass_mode'], kmLimit: number | null) => {
+  const k = kmLimit != null ? `${kmLimit} km` : 'IP-Bypass';
+  return m === 'fern' ? `yalnız > ${k} ziyaretçi` : m === 'nah' ? `yalnız ≤ ${k} ziyaretçi` : m === 'alle' ? 'herkes (tarife altı)' : null;
+};
 
 const PRICE_BASIS_OPTIONS = [
   { v: 'any', label: 'Tüm ziyaretçiler' },
@@ -104,6 +132,8 @@ export default function RabatteTab({ token }: { token: string }) {
   const [ignorePgFloor, setIgnorePgFloor] = useState(false);
   const [showInEmail, setShowInEmail] = useState(false);
   const [displaySettings, setDisplaySettings] = useState<Record<string, boolean>>({});
+  const [bypassKm, setBypassKm] = useState<number | null>(null);
+  const [demandRefresh, setDemandRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -125,6 +155,7 @@ export default function RabatteTab({ token }: { token: string }) {
       setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
       setShowInEmail((settings.auto_discount_show_in_email ?? '0') === '1');
       setDisplaySettings(Object.fromEntries(DISPLAY_SETTINGS.map(d => [d.key, (settings[d.key] ?? d.def) === '1'])));
+      setDemandRefresh(n => n + 1);
       setErr('');
     } catch {
       setErr('Kurallar yüklenemedi');
@@ -134,6 +165,13 @@ export default function RabatteTab({ token }: { token: string }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // IP-Bypass-Mesafesi (Pflichtgebiet sekmesi) — sadece metinlerde gösterim için
+  useEffect(() => {
+    pflichtgebietApi.get()
+      .then(r => setBypassKm(r.config?.ip_bypass_enabled ? Number(r.config.ip_bypass_distance_km) : null))
+      .catch(() => {});
+  }, []);
 
   const toggleMaster = async () => {
     const next = !masterEnabled;
@@ -196,6 +234,7 @@ export default function RabatteTab({ token }: { token: string }) {
     setRules(arr => arr.map(x => x.id === r.id ? { ...x, active: r.active ? 0 : 1 } : x));
     try {
       await autoDiscountsApi.toggle(r.id, !r.active);
+      setDemandRefresh(n => n + 1);
     } catch {
       setRules(arr => arr.map(x => x.id === r.id ? { ...x, active: r.active } : x));
       setErr('Değiştirme başarısız');
@@ -214,6 +253,7 @@ export default function RabatteTab({ token }: { token: string }) {
   };
 
   const startCreate = () => { setEditing(emptyForm()); setEditingId(null); setCopying(false); };
+  const startDemandTemplate = () => { setEditing(demandTemplate()); setEditingId(null); setCopying(false); };
 
   // Kopieren: alle Einstellungen übernehmen, aber als neue Regel speichern — praktisch für
   // Aktionen, die sich nur in der Uhrzeit unterscheiden (z.B. 18:30–00:00 und 00:00–07:00).
@@ -305,6 +345,9 @@ export default function RabatteTab({ token }: { token: string }) {
         </div>
         <Toggle on={masterEnabled} onClick={toggleMaster} disabled={saving} />
       </div>
+
+      {/* Sakin gün indirimi — ana şalter + doluluk */}
+      <DemandPanel onTemplate={startDemandTemplate} refreshKey={demandRefresh} disabled={saving} />
 
       {/* Tarif-Untergrenze — §51 PBefG */}
       <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>
@@ -400,7 +443,25 @@ export default function RabatteTab({ token }: { token: string }) {
                     {visitorRange(r.visitor_min_km, r.visitor_max_km) ? ` · ${visitorRange(r.visitor_min_km, r.visitor_max_km)}` : ''}
                     {r.visit_min != null ? ` · ${r.visit_min}. ziyaretten itibaren` : ''}
                     {r.allow_fixed_routes ? ' · sabit fiyatlara da' : ''}
+                    {r.trip_date_max_uses != null ? ` · fahrt günü başına maks. ${r.trip_date_max_uses}` : ''}
+                    {r.roundtrip_value != null ? ` · gidiş-dönüş ${formatDiscountValue(r.discount_type, Number(r.roundtrip_value), 'de')}` : ''}
+                    {r.exclude_business ? ' · firma/Rechnung müşterisi hariç' : ''}
                   </p>
+                  {(r.demand_pace_max != null || r.ip_bypass_mode) && (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                      {r.demand_pace_max != null && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200">
+                          Sakin gün · doluluk &lt; %{Math.round(Number(r.demand_pace_max) * 100)}
+                        </span>
+                      )}
+                      {r.ip_bypass_mode && (
+                        <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full border',
+                          r.ip_bypass_mode === 'fern' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-800 border-amber-300')}>
+                          IP-Bypass: {bypassShort(r.ip_bypass_mode, bypassKm)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => startEdit(r)} title="Düzenle" className="p-2 text-gray-400 hover:text-primary-600"><Pencil size={16} /></button>
                 <button onClick={() => startCopy(r)} title="Kopyala — aynı ayarlarla yeni kural" className="p-2 text-gray-400 hover:text-primary-600"><Copy size={16} /></button>
@@ -476,6 +537,79 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
+              {/* Sakin gün */}
+              <div className="rounded-xl border border-red-100 bg-red-50/40 p-3 space-y-3">
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={editing.demand_pace_max != null}
+                    onChange={e => patch(e.target.checked
+                      ? { demand_pace_max: 0.5 }
+                      : { demand_pace_max: null, trip_date_max_uses: null })} />
+                  <span>
+                    <strong>Sadece sakin günlerde</strong>
+                    <span className="block text-xs text-gray-500">
+                      Fahrt günü, son haftalarda aynı ön sürede olana göre az doluysa geçerli. Üstteki
+                      „Sakin gün indirimi“ ana şalteri kapalıysa bu kural hiç çalışmaz.
+                    </span>
+                  </span>
+                </label>
+                {editing.demand_pace_max != null && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500">Doluluk şunun altındaysa (%)</label>
+                      <input type="number" min={5} max={150} step={5}
+                        value={Math.round(Number(editing.demand_pace_max) * 100)}
+                        onChange={e => patch({ demand_pace_max: e.target.value === '' ? 0.5 : Number(e.target.value) / 100 })}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Fahrt günü başına maks. indirimli</label>
+                      <input type="number" min={1} value={editing.trip_date_max_uses ?? ''}
+                        onChange={e => patch({ trip_date_max_uses: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                        placeholder="unbegrenzt"
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-500">
+                    Gidiş-dönüşte bunun yerine ({editing.discount_type === 'fixed' ? '€' : '%'}) — gidiş-dönüş zaten ayrıca indirimli
+                  </label>
+                  <input type="number" min={0} step={0.5} value={editing.roundtrip_value ?? ''}
+                    onChange={e => patch({ roundtrip_value: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                    placeholder="aynı değer"
+                    className="mt-1 w-full max-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                </div>
+              </div>
+
+              {/* IP-Bypass — ziyaretçi kapsamı */}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  IP-Bypass: kim görsün {bypassKm != null && <span className="normal-case font-normal text-gray-400">(sınır {bypassKm} km, Pflichtgebiet sekmesi)</span>}
+                </label>
+                <div className="mt-1 grid grid-cols-1 gap-2">
+                  {BYPASS_MODES.map(o => (
+                    <label key={String(o.v)} className={cn('flex items-start gap-2 border rounded-lg px-3 py-2 text-sm cursor-pointer',
+                      (editing.ip_bypass_mode ?? null) === o.v ? 'border-primary-300 bg-primary-50/50' : 'border-gray-200')}>
+                      <input type="radio" className="mt-0.5" checked={(editing.ip_bypass_mode ?? null) === o.v}
+                        onChange={() => patch({ ip_bypass_mode: o.v })} />
+                      <span>
+                        {o.label}
+                        <span className="block text-xs text-gray-400">{o.desc}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {(editing.ip_bypass_mode === 'nah' || editing.ip_bypass_mode === 'alle') && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
+                    <span>
+                      Bu seçenekte yakın ziyaretçi Pflichtfahrgebiet içinde de indirim alır — fiyat
+                      Pflichttarif altına iner (§ 51 Abs. 5 PBefG). Tarife tabanı bu kural için devre dışı.
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Geçerlilik alanı</label>
                 <div className="mt-1 grid grid-cols-1 gap-2">
@@ -542,6 +676,23 @@ export default function RabatteTab({ token }: { token: string }) {
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
               </div>
+
+              <p className="text-xs text-gray-400 -mt-2">
+                Stammkunde hariç tutmak için: „ilk [N] rezervasyon“ = 2 → daha önce 2 veya daha fazla
+                siparişi olan müşteri (cihaz, e-posta veya telefonla tanınır) indirimi almaz.
+              </p>
+
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input type="checkbox" className="mt-0.5" checked={!!editing.exclude_business}
+                  onChange={e => patch({ exclude_business: e.target.checked ? 1 : 0 })} />
+                <span>
+                  <strong>Firma / Rechnung müşterileri hariç</strong>
+                  <span className="block text-xs text-gray-400">
+                    B2B girişi, onaylı Rechnungskunde, firma faturası isteyen ya da daha önce firma/Rechnung
+                    ile rezervasyon yapmış müşteri indirimi almaz — ücreti zaten firma ödüyor.
+                  </span>
+                </span>
+              </label>
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Günlük maks. rezervasyon</label>

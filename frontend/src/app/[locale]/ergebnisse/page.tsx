@@ -795,9 +795,19 @@ function ResultsContent() {
             const redBadge = !!autoDiscount && autoDiscount.badge !== 'classic';
             const discountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
             const remainingText = autoDiscount ? formatRemainingSpots(autoDiscount.remaining, locale) : null;
-            const autoDiscountAmount = autoDiscount
+            const autoDiscountRaw = autoDiscount
               ? (autoDiscount.type === 'fixed' ? Math.min(autoDiscount.value, preAutoDiscountPrice) : preAutoDiscountPrice * (autoDiscount.value / 100))
               : 0;
+            // Höchstbetrag der Regel — dieselbe Kappung wie beim Buchen (POST /api/bookings)
+            const autoDiscountAmount = autoDiscount?.max_amount != null
+              ? Math.min(autoDiscountRaw, autoDiscount.max_amount)
+              : autoDiscountRaw;
+            // Greift der Höchstbetrag, zeigt das Abzeichen den echten Betrag statt des Prozentwerts
+            const discountBadgeText = autoDiscount
+              ? (autoDiscountAmount < autoDiscountRaw
+                ? formatDiscountValue('fixed', Math.round(autoDiscountAmount * 100) / 100, locale)
+                : formatDiscountValue(autoDiscount.type, autoDiscount.value, locale))
+              : '';
             const finalPrice = Math.max(0, preAutoDiscountPrice - autoDiscountAmount);
             // formatPrice rundet auf 0,50 € auf — Ersparnis aus den angezeigten Preisen ableiten,
             // damit "alter Preis − Badge = neuer Preis" für den Kunden exakt aufgeht.
@@ -820,7 +830,7 @@ function ResultsContent() {
               >
                 {redBadge && autoDiscount && (
                   <div className="absolute top-[20px] -left-[38px] z-10 w-[140px] -rotate-45 bg-red-600 text-white text-xs font-extrabold text-center py-1.5 shadow-md">
-                    {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)}
+                    {discountBadgeText}
                   </div>
                 )}
 
@@ -915,7 +925,7 @@ function ResultsContent() {
                       <div className="flex items-center gap-1 md:justify-end mt-0.5">
                         <Tag size={11} className="text-green-600" />
                         <span className="text-xs text-green-600 font-bold">
-                          {formatDiscountValue(autoDiscount.type, autoDiscount.value, locale)} {discountLabel}
+                          {discountBadgeText} {discountLabel}
                         </span>
                       </div>
                     )}

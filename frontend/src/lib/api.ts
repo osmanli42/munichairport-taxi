@@ -313,8 +313,38 @@ export interface AutoDiscount {
   active: number;
   priority: number;
   stackable_with_promo: number;
+  /** "Ruhiger Tag": nur wenn pace (gebucht/erwartet) des Fahrtdatums darunter liegt (0.5 = 50 %) */
+  demand_pace_max: number | null;
+  /** Höchstzahl rabattierter Buchungen je Fahrtdatum */
+  trip_date_max_uses: number | null;
+  /** Besucherkreis: null = Standard, 'fern' = nur > IP-Bypass-km, 'nah' = nur darunter, 'alle' */
+  ip_bypass_mode: 'fern' | 'nah' | 'alle' | null;
+  /** Wert bei Hin & Rück statt discount_value */
+  roundtrip_value: number | null;
+  /** 1 = Firmen-/Rechnungskunden ausgeschlossen */
+  exclude_business: number;
 }
+
+export interface DemandDay {
+  date: string;
+  booked: number;
+  expected: number;
+  pace: number | null;
+  leadHours: number;
+  samples: number[];
+  rule: { id: number; name: string; type: 'percent' | 'fixed'; value: number } | null;
+}
+export interface DemandOverview {
+  settings: { enabled: boolean; minExpected: number; horizonDays: number };
+  days: DemandDay[];
+  stats: { bookings: number; discount: number; revenue: number };
+}
+
 export const autoDiscountsApi = {
+  demand: async (): Promise<DemandOverview> => {
+    const response = await api.get('/auto-discounts/admin/demand');
+    return response.data;
+  },
   getAll: async (): Promise<AutoDiscount[]> => {
     const response = await api.get('/auto-discounts/admin/list');
     return response.data;

@@ -11,6 +11,8 @@ export interface PublicAutoDiscount {
   ends_at?: string | null;
   remaining?: number | null;
   badge?: 'red' | 'classic';
+  /** Höchstbetrag der Regel (€) — ohne Kappung zeigt die Karte mehr Rabatt als gebucht wird */
+  max_amount?: number | null;
 }
 
 // "Nur noch 2 Rabattplätze" — nur wenn ein Kontingent existiert und noch Plätze frei sind.

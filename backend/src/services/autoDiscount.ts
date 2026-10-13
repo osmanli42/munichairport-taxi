@@ -1,6 +1,7 @@
 // Automatische Rabatte (Rabatte-Tab): kural bazlı, kod gerektirmeyen indirim motoru.
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
 import { query } from '../db';
+import { paceForTrip, ruleUsesOnTripDate } from './demandPace';
 
 export interface AutoDiscountRule {
   id: number;
@@ -57,6 +58,31 @@ export interface AutoDiscountRule {
    * eigenständig kalkuliert, ein Rabatt darauf wäre ein zweiter Rabatt auf dieselbe Fahrt.
    */
   allow_fixed_routes: number;
+  /** "Ruhiger Tag": nur wenn pace (gebucht/erwartet) des Fahrtdatums darunter liegt. */
+  demand_pace_max: number | null;
+  /** Höchstzahl rabattierter Buchungen je Fahrtdatum. */
+  trip_date_max_uses: number | null;
+  /**
+   * Besucherkreis nach IP-Bypass-Entfernung. null = bisheriges Verhalten (Fernbesucher
+   * ausgeschlossen, Pflichttarif-Boden gilt), 'fern' = nur Fernbesucher, 'nah' = nur
+   * Einheimische, 'alle' = alle. 'nah'/'alle' rabattieren auch unter dem Pflichttarif
+   * (§51-Boden für diese Regel aus — bewusste Entscheidung im Admin).
+   */
+  ip_bypass_mode: 'fern' | 'nah' | 'alle' | null;
+  /** Wert für Hin & Rück statt discount_value (dort gibt es schon roundtrip_discount). */
+  roundtrip_value: number | null;
+  /** 1 = Firmen-/Rechnungskunden ausgeschlossen. */
+  exclude_business: number;
+}
+
+/** Tatsächlich angewendeter Regelwert (% bzw. €) — bei Hin & Rück ggf. roundtrip_value. */
+export function appliedValue(rule: AutoDiscountRule, isRoundtrip: boolean): number {
+  return isRoundtrip && rule.roundtrip_value != null ? Number(rule.roundtrip_value) : Number(rule.discount_value);
+}
+
+/** true, wenn diese Regel den Pflichttarif-Boden (§51 PBefG) bewusst nicht einhält. */
+export function ruleIgnoresPgFloor(rule: AutoDiscountRule): boolean {
+  return rule.ip_bypass_mode === 'nah' || rule.ip_bypass_mode === 'alle';
 }
 
 export interface AutoDiscountInput {
@@ -83,6 +109,13 @@ export interface AutoDiscountInput {
   visitorPriceByBypass: boolean;
   /** true, wenn der Preis aus einer Festpreisroute stammt (nicht aus der km-Rechnung). */
   fixedRouteApplied: boolean;
+  /**
+   * Besucher sitzt weiter als die IP-Bypass-Entfernung (Pflichtgebiet-Tab) vom Betriebssitz —
+   * unabhängig davon, ob die Fahrt im Pflichtgebiet liegt. Grundlage für ip_bypass_mode.
+   */
+  visitorIsFar: boolean;
+  /** Firmen-/Rechnungskunde? null = unbekannt (Vorschau ohne Kundendaten) → Regel greift. */
+  isBusinessCustomer: boolean | null;
 }
 
 export interface AutoDiscountResult {
@@ -255,12 +288,10 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   const { rules, enabled } = await loadRules();
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
 
-  // Kein Rabatt auf den IP-Besucherpreis: dort wurde der Pflichttarif schon durch den
-  // günstigeren Besucherpreis ersetzt, ein Rabatt obendrauf ist ein zweiter Rabatt auf
-  // dieselbe Fahrt. Bewusst als harte Regel und nicht als Regel-Option — die Kombination
-  // entsteht sonst versehentlich (z. B. Zielgruppe "Besucher-Entfernung" plus Rabatt) und
-  // kostet bei jeder Fahrt Geld. Wer sie doch will, muss es hier bewusst ändern.
-  if (input.visitorPriceByBypass) return null;
+  // Standard: kein Rabatt auf den IP-Besucherpreis — dort wurde der Pflichttarif schon
+  // durch den günstigeren Besucherpreis ersetzt, ein Rabatt obendrauf wäre ein zweiter
+  // Rabatt auf dieselbe Fahrt. Nur Regeln mit Besucherkreis 'fern' oder 'alle' dürfen
+  // Fernbesucher erreichen, siehe bypassMatches.
 
   const dailyCapRuleIds = rules.filter(r => r.daily_max_uses != null).map(r => r.id);
   const dailyUsage = await getDailyUsageCounts(dailyCapRuleIds);
@@ -279,7 +310,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   const now = new Date();
   const booking = berlinParts(now);
 
-  const matching = rules.filter(r => {
+  const candidates = rules.filter(r => {
     if (r.zone_scope !== 'any' && r.zone_scope !== input.zone) return false;
     if (r.min_km != null && input.km < Number(r.min_km)) return false;
     if (r.max_km != null && input.km > Number(r.max_km)) return false;
@@ -295,6 +326,8 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
     if (!priceBasisMatches(r, input.priceBasis)) return false;
     if (!visitorMatches(r, input.visitorDistanceKm)) return false;
+    if (!bypassMatches(r, input.visitorPriceByBypass, input.visitorIsFar)) return false;
+    if (Number(r.exclude_business) === 1 && input.isBusinessCustomer === true) return false;
     if (!listMatches(r.vehicle_types, input.vehicleType)) return false;
     if (r.trip_types && !r.trip_types.split(',').map(s => s.trim())
         .includes(input.isRoundtrip ? 'roundtrip' : 'oneway')) return false;
@@ -308,11 +341,29 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     return true;
   });
 
+  // Ruhiger Tag / Kontingent je Fahrtdatum: brauchen DB-Abfragen, daher erst nach den
+  // billigen Bedingungen und nur für Regeln, die bis hierher passen.
+  const matching: AutoDiscountRule[] = [];
+  for (const r of candidates) {
+    if (r.demand_pace_max != null) {
+      const pace = await paceForTrip(tripDateStr);
+      if (pace == null || pace >= Number(r.demand_pace_max)) continue;
+    }
+    if (r.trip_date_max_uses != null) {
+      if (!tripDateStr) continue;
+      if (await ruleUsesOnTripDate(r.id, tripDateStr) >= Number(r.trip_date_max_uses)) continue;
+    }
+    matching.push(r);
+  }
+
   if (matching.length === 0) return null;
 
   // Tek kural uygulanır: en yüksek priority, eşitse en yüksek indirim tutarı (€ karşılığı).
+  // Hin & Rück: dort steckt schon roundtrip_discount im Preis — roundtrip_value ersetzt
+  // dann den Regelwert, damit nicht zwei volle Rabatte übereinander liegen.
+  const valueFor = (r: AutoDiscountRule) => appliedValue(r, input.isRoundtrip);
   const amountFor = (r: AutoDiscountRule) =>
-    r.discount_type === 'fixed' ? Number(r.discount_value) : input.baseTotal * (Number(r.discount_value) / 100);
+    r.discount_type === 'fixed' ? valueFor(r) : input.baseTotal * (valueFor(r) / 100);
   matching.sort((a, b) =>
     (Number(b.priority) - Number(a.priority)) || (amountFor(b) - amountFor(a))
   );
@@ -344,6 +395,66 @@ export function visitorMatches(r: AutoDiscountRule, distanceKm: number | null): 
   if (r.visitor_min_km != null && distanceKm < Number(r.visitor_min_km)) return false;
   if (r.visitor_max_km != null && distanceKm > Number(r.visitor_max_km)) return false;
   return true;
+}
+
+// Besucherkreis (siehe AutoDiscountRule.ip_bypass_mode). 'fern'/'nah' richten sich nach
+// der Entfernung des Besuchers, nicht danach, ob die Fahrt im Pflichtgebiet liegt — ein
+// Fernbesucher, der nach Ingolstadt fährt, ist genauso Fernbesucher.
+function bypassMatches(r: AutoDiscountRule, bypassPriced: boolean, visitorIsFar: boolean): boolean {
+  switch (r.ip_bypass_mode) {
+    case 'fern': return visitorIsFar;
+    case 'nah': return !visitorIsFar;
+    case 'alle': return true;
+    default: return !bypassPriced; // bisheriges Verhalten: kein Rabatt auf den Besucherpreis
+  }
+}
+
+/**
+ * Firmen-/Rechnungskunde: B2B-Login, angefragte Firmenrechnung, freigeschalteter
+ * Rechnungskunde (invoice_customers) oder frühere Buchung mit Firma bzw. Rechnung — über
+ * Gerät, E-Mail oder Telefon. Ohne jede Kennung null (unbekannt).
+ */
+export async function isBusinessCustomer(params: {
+  companyLoggedIn?: boolean;
+  rechnungRequested?: boolean;
+  visitorId?: string | null;
+  email?: string | null;
+  phoneE164?: string | null;
+}): Promise<boolean | null> {
+  if (params.companyLoggedIn || params.rechnungRequested) return true;
+  const conds: string[] = [];
+  const args: any[] = [];
+  if (params.visitorId) { conds.push('visitor_id = ?'); args.push(params.visitorId); }
+  if (params.email) { conds.push('email = ?'); args.push(params.email); }
+  if (params.phoneE164) { conds.push('phone_e164 = ?'); args.push(params.phoneE164); }
+  if (conds.length === 0) return null;
+  try {
+    const [b] = await query<{ cnt: number }>(
+      `SELECT COUNT(*) AS cnt FROM bookings
+        WHERE (${conds.join(' OR ')}) AND status != 'cancelled'
+          AND (company_id IS NOT NULL OR rechnung_required = 1)`,
+      args
+    );
+    if (Number(b?.cnt) > 0) return true;
+    if (params.email || params.phoneE164) {
+      const ic: string[] = [];
+      const icArgs: any[] = [];
+      if (params.email) { ic.push('email = ?'); icArgs.push(params.email); }
+      if (params.phoneE164) { ic.push('phone_e164 = ?'); icArgs.push(params.phoneE164); }
+      const [c] = await query<{ cnt: number }>(
+        `SELECT COUNT(*) AS cnt FROM invoice_customers WHERE active = 1 AND (${ic.join(' OR ')})`, icArgs
+      );
+      if (Number(c?.cnt) > 0) return true;
+    }
+  } catch {
+    return null; // Tabelle fehlt o.ä. — lieber unbekannt als falsch
+  }
+  return false;
+}
+
+/** Fernbesucher nach IP-Bypass-Entfernung (ohne aktivierten IP-Bypass: nie). */
+export function visitorIsFarAway(v: { rawDistanceKm: number | null; bypassDistanceKm: number | null }): boolean {
+  return v.bypassDistanceKm != null && v.rawDistanceKm != null && v.rawDistanceKm > v.bypassDistanceKm;
 }
 
 // Zielgruppe: Preisbasis. Fernbesucher sehen im Pflichtfahrgebiet dank IP-Bypass schon den
@@ -380,7 +491,8 @@ export async function resolveBannerDiscount(
 ): Promise<AutoDiscountResult | null> {
   const { rules, enabled } = await loadRules();
   if (!enabled) return null;
-  const candidates = rules.filter(r => Number(r.show_in_banner) === 1);
+  // Ruhiger-Tag-Regeln hängen vom Fahrtdatum ab, das beim Banner noch unbekannt ist.
+  const candidates = rules.filter(r => Number(r.show_in_banner) === 1 && r.demand_pace_max == null);
   if (candidates.length === 0) return null;
   const now = new Date();
   const booking = berlinParts(now);
@@ -395,6 +507,8 @@ export async function resolveBannerDiscount(
     if (!vehicleIndependentMatches(r, booking, dailyUsage)) return false;
     if (!visitorMatches(r, visitorDistanceKm)) return false;
     if (r.price_basis === 'pflichttarif' && bypassed) return false;
+    if (r.ip_bypass_mode === 'fern' && !bypassed) return false;
+    if (r.ip_bypass_mode === 'nah' && bypassed) return false;
     // Fahrtdatum komplett in der Vergangenheit → Aktion ist vorbei.
     const e = toDateOnlyStr(r.end_date);
     if (e && e < booking.dateStr) return false;

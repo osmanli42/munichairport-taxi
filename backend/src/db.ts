@@ -1284,6 +1284,21 @@ export async function initializeDatabase(): Promise<void> {
       // Festpreisrouten sind oft schon bewusst günstig kalkuliert. Standard 0: ein
       // automatischer Rabatt kommt dort NICHT obendrauf; pro Regel bewusst freischaltbar.
       ['allow_fixed_routes', 'TINYINT(1) NOT NULL DEFAULT 0'],
+      // "Ruhiger Tag": Regel greift nur, wenn das Fahrtdatum schwächer gebucht ist als
+      // üblich (pace = gebucht / erwartet < Wert, siehe services/demandPace.ts). NULL = aus.
+      ['demand_pace_max', 'DECIMAL(4,2) DEFAULT NULL'],
+      // Höchstzahl rabattierter Buchungen je FAHRTdatum (daily_max_uses zählt den Buchungstag).
+      ['trip_date_max_uses', 'INT DEFAULT NULL'],
+      // Besucherkreis nach IP-Bypass-Entfernung (Pflichtgebiet-Tab, z. B. 70 km):
+      // NULL = bisheriges Verhalten (Fernbesucher ausgeschlossen, Pflichttarif-Boden gilt),
+      // 'fern' = nur Fernbesucher, 'nah' = nur Einheimische, 'alle' = alle Besucher.
+      // 'nah'/'alle' rabattieren auch unter dem Pflichttarif (§51-Boden für diese Regel aus).
+      ['ip_bypass_mode', "VARCHAR(10) DEFAULT NULL"],
+      // Hin & Rück hat schon prices.roundtrip_discount — dort gilt stattdessen dieser Wert.
+      ['roundtrip_value', 'DECIMAL(10,2) DEFAULT NULL'],
+      // 1 = Firmen-/Rechnungskunden ausgeschlossen (B2B-Login, freigeschaltete Rechnungskunden,
+      // früher mit Firmenrechnung gebucht) — die Firma zahlt, ein Rabatt bringt dort nichts.
+      ['exclude_business', 'TINYINT(1) NOT NULL DEFAULT 0'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
@@ -1301,6 +1316,10 @@ export async function initializeDatabase(): Promise<void> {
       ['auto_discount_banner_enabled', '0'],
       ['auto_discount_remaining_enabled', '1'],
       ['auto_discount_vpn_as_unknown', '1'],
+      // Hauptschalter für alle Ruhiger-Tag-Regeln (andere Rabatte unberührt). Start: aus.
+      ['demand_discount_enabled', '0'],
+      ['demand_min_expected', '2'],
+      ['demand_horizon_days', '14'],
     ]) {
       try {
         await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);

@@ -3,6 +3,8 @@ import { query, run } from '../db';
 import { authenticateAdmin } from '../middleware/auth';
 import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
+import { demandSettings, getDayPace } from '../services/demandPace';
+import { berlinDateSql } from '../utils/berlinTime';
 
 const router = Router();
 
@@ -14,6 +16,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
     price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
+    demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -40,6 +43,17 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   }
   const kmOk = (v: any) => isEmpty(v) || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0);
   if (!kmOk(visitor_min_km) || !kmOk(visitor_max_km)) return { error: 'Besucher-Entfernung muss eine positive Zahl sein' };
+  if (!isEmpty(demand_pace_max)) {
+    const p = Number(demand_pace_max);
+    if (!Number.isFinite(p) || p <= 0 || p > 1.5) return { error: 'Ruhiger Tag: Schwelle muss zwischen 1 und 150 % liegen' };
+  }
+  if (!isEmpty(ip_bypass_mode) && !['fern', 'nah', 'alle'].includes(String(ip_bypass_mode))) {
+    return { error: 'Besucherkreis ungültig' };
+  }
+  if (!isEmpty(roundtrip_value)) {
+    const r = Number(roundtrip_value);
+    if (!Number.isFinite(r) || r < 0 || (discount_type === 'percent' && r > 100)) return { error: 'Hin & Rück-Wert ungültig' };
+  }
   const labelOk = (l: any) => isEmpty(l) || String(l).trim().length <= 80;
   if (![label_de, label_en, label_tr].every(labelOk)) return { error: 'Kundentext darf maximal 80 Zeichen lang sein' };
 
@@ -85,6 +99,11 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       visitor_unknown_ok === undefined ? 1 : (visitor_unknown_ok ? 1 : 0),
       intOrNull(visit_min),
       allow_fixed_routes ? 1 : 0,
+      numOrNull(demand_pace_max),
+      intOrNull(trip_date_max_uses),
+      isEmpty(ip_bypass_mode) ? null : String(ip_bypass_mode),
+      numOrNull(roundtrip_value),
+      exclude_business ? 1 : 0,
     ],
   };
 }
@@ -94,7 +113,8 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   weekday_mask, booking_index_max, daily_max_uses, max_uses, max_discount_amount,
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
-  price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes`;
+  price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
+  demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -129,6 +149,43 @@ router.get('/admin/list', authenticateAdmin, async (_req: Request, res: Response
     res.json(rules);
   } catch {
     res.status(500).json({ error: 'Failed to fetch auto discounts' });
+  }
+});
+
+// GET /api/auto-discounts/admin/demand — Auslastung der nächsten Tage (Ruhiger-Tag-Rabatte)
+// plus Bilanz der letzten 30 Tage für die Ruhiger-Tag-Regeln.
+router.get('/admin/demand', authenticateAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await demandSettings();
+    const rules = await query<{ id: number; name: string; demand_pace_max: number; discount_type: string;
+      discount_value: number; active: number; priority: number }>(
+      `SELECT id, name, demand_pace_max, discount_type, discount_value, active, priority
+         FROM auto_discounts WHERE demand_pace_max IS NOT NULL ORDER BY priority DESC`
+    );
+    const days = [];
+    for (let i = 0; i <= settings.horizonDays; i++) {
+      const p = await getDayPace(berlinDateSql(i));
+      // Welche aktive Regel würde (nur nach Auslastung) greifen — höchste Priorität zuerst
+      const tier = settings.enabled && p.pace != null
+        ? rules.find(r => Number(r.active) === 1 && p.pace! < Number(r.demand_pace_max)) ?? null
+        : null;
+      days.push({ ...p, rule: tier ? { id: tier.id, name: tier.name, type: tier.discount_type, value: Number(tier.discount_value) } : null });
+    }
+    let stats = { bookings: 0, discount: 0, revenue: 0 };
+    if (rules.length) {
+      const [row] = await query<{ n: number; disc: number; rev: number }>(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(auto_discount_amount), 0) AS disc, COALESCE(SUM(price), 0) AS rev
+           FROM bookings
+          WHERE auto_discount_id IN (${rules.map(() => '?').join(',')})
+            AND status != 'cancelled' AND created_at >= NOW() - INTERVAL 30 DAY`,
+        rules.map(r => r.id)
+      );
+      stats = { bookings: Number(row?.n) || 0, discount: Number(row?.disc) || 0, revenue: Number(row?.rev) || 0 };
+    }
+    res.json({ settings, days, stats });
+  } catch (e: any) {
+    console.error('demand overview failed:', e?.message);
+    res.status(500).json({ error: 'Failed to load demand overview' });
   }
 });
 
