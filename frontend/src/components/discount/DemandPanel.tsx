@@ -101,8 +101,8 @@ export default function DemandPanel({
               <thead>
                 <tr className="text-xs text-gray-400 text-left">
                   <th className="px-1 py-1 font-semibold">Gün</th>
-                  <th className="px-1 py-1 font-semibold text-right">Kayıtlı</th>
-                  <th className="px-1 py-1 font-semibold text-right">Beklenen</th>
+                  <th className="px-1 py-1 font-semibold text-right" title="Bu güne şu an sistemde ve takvimde kayıtlı fahrt sayısı">Şu an kayıtlı</th>
+                  <th className="px-1 py-1 font-semibold text-right" title="Son 8 aynı haftagününde, bu kadar gün önceden kaç fahrt kayıtlıydı (ortanca)">Normalde bu zamana kadar</th>
                   <th className="px-1 py-1 font-semibold text-right">Doluluk</th>
                   <th className="px-1 py-1 font-semibold">Uygulanan</th>
                 </tr>
@@ -134,8 +134,10 @@ export default function DemandPanel({
             </table>
           </div>
           <p className="text-xs text-gray-400">
-            „Beklenen“ = son 8 aynı haftagününde, şu anki ön süre kadar önceden kayıtlı fahrt sayısının
-            medyanı (web + takvim, gidiş ve dönüş ayrı sayılır). Beklenen {data.settings.minExpected}'den
+            <strong className="text-gray-500">Şu an kayıtlı</strong> = o güne bugün itibarıyla kaç fahrt var (web + takvim,
+            gidiş ve dönüş ayrı sayılır). <strong className="text-gray-500">Normalde bu zamana kadar</strong> = son 8 aynı
+            haftagününe, bugünkü kadar gün önceden kaç fahrt kayıtlıydı (ortanca). Örnek: 4 gün sonraki Perşembe için,
+            geçmiş Perşembelere 4 gün kala kaç fahrt vardı. Doluluk = ikisinin oranı. Normal değer {data.settings.minExpected}'den
             azsa sinyal yok sayılır ve indirim verilmez — uzak tarihler bu yüzden gri.
             {!enabled && <strong className="text-gray-500"> Ana şalter kapalı: tablo bilgi amaçlı, indirim uygulanmıyor.</strong>}
           </p>
