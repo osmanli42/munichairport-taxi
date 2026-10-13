@@ -896,6 +896,14 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE admin_users ADD COLUMN password_changed_at DATETIME DEFAULT NULL`,
       `ALTER TABLE admin_users ADD COLUMN last_login_at DATETIME DEFAULT NULL`,
       `ALTER TABLE admin_users ADD COLUMN last_login_ip VARCHAR(64) DEFAULT NULL`,
+      // Admin 2FA (TOTP). Secrets are AES-GCM encrypted (services/adminTotp.ts);
+      // totp_last_step blocks replaying a code, recovery hashes are bcrypt (JSON array).
+      `ALTER TABLE admin_users ADD COLUMN totp_enabled TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE admin_users ADD COLUMN totp_secret_enc TEXT DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN totp_pending_enc TEXT DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN totp_last_step BIGINT DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN totp_recovery_hashes TEXT DEFAULT NULL`,
+      `ALTER TABLE admin_users ADD COLUMN totp_enabled_at DATETIME DEFAULT NULL`,
     ]) {
       try { await conn.execute(ddl); }
       catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }

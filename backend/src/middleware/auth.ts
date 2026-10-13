@@ -104,7 +104,9 @@ export async function authenticateAdmin(req: AuthRequest, res: Response, next: N
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (decoded.type === 'company' || !decoded.id || !decoded.username) {
+    // Only plain session tokens: company tokens and the 2FA helper tokens (mfa_pending,
+    // trusted_device) all carry a `type` and must never open the admin API.
+    if (decoded.type || !decoded.id || !decoded.username) {
       res.status(401).json({ error: 'Invalid token type' });
       return;
     }
@@ -128,4 +130,47 @@ export async function authenticateAdmin(req: AuthRequest, res: Response, next: N
 
 export function generateToken(id: number, username: string, tokenVersion = 0): string {
   return jwt.sign({ id, username, tv: tokenVersion }, JWT_SECRET, { expiresIn: '24h' });
+}
+
+// ── Admin 2FA helper tokens ────────────────────────────────────────────────
+// mfa_pending: password was right, the TOTP step is still open (5 min).
+// trusted_device: "remember this device for 30 days" — skips the TOTP step on this
+// browser. Both carry tv, so a password change or 2FA reset revokes them.
+
+export function generateMfaPendingToken(id: number, tokenVersion = 0): string {
+  return jwt.sign({ type: 'mfa_pending', id, tv: tokenVersion }, JWT_SECRET, { expiresIn: '5m' });
+}
+
+export function generateTrustedDeviceToken(id: number, tokenVersion = 0): string {
+  return jwt.sign({ type: 'trusted_device', id, tv: tokenVersion }, JWT_SECRET, { expiresIn: '30d' });
+}
+
+/** Returns { id, tv } when the token is valid and of the expected type, otherwise null. */
+export function verifyAdminHelperToken(token: unknown, type: 'mfa_pending' | 'trusted_device'): { id: number; tv: number } | null {
+  if (typeof token !== 'string' || !token) return null;
+  try {
+    const d = jwt.verify(token, JWT_SECRET) as any;
+    if (d.type !== type || !d.id) return null;
+    return { id: Number(d.id), tv: Number(d.tv) || 0 };
+  } catch {
+    return null;
+  }
+}
+
+// TOTP attempts per admin account: 5 per 15 minutes, independent of the IP limit above.
+const totpAttempts = new Map<string, { count: number; resetAt: number }>();
+
+export function checkTotpRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = totpAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    totpAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= MAX_LOGIN_ATTEMPTS;
+}
+
+export function resetTotpAttempts(key: string): void {
+  totpAttempts.delete(key);
 }

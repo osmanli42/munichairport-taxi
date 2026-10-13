@@ -4,7 +4,8 @@ import { validatePassword, MIN_LENGTH, MAX_LENGTH } from '../utils/passwordPolic
 import PDFDocument from 'pdfkit';
 import Stripe from 'stripe';
 import { query, run } from '../db';
-import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest , checkPasswordChangeRateLimit, resetPasswordChangeAttempts, bustTokenVersionCache } from '../middleware/auth';
+import { authenticateAdmin, generateToken, checkAdminLoginRateLimit, resetAdminLoginAttempts, AuthRequest , checkPasswordChangeRateLimit, resetPasswordChangeAttempts, bustTokenVersionCache, generateMfaPendingToken, generateTrustedDeviceToken, verifyAdminHelperToken, checkTotpRateLimit, resetTotpAttempts } from '../middleware/auth';
+import { decryptSecret, verifyCode, consumeRecoveryCode } from '../services/adminTotp';
 import { decrypt } from './bookings';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
 import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
@@ -40,6 +41,22 @@ interface AdminUser {
   token_version?: number;
   password_changed_at?: string | null;
   last_login_at?: string | null;
+  totp_enabled?: number;
+  totp_secret_enc?: string | null;
+  totp_last_step?: number | null;
+  totp_recovery_hashes?: string | null;
+}
+
+async function finishAdminLogin(req: Request, res: Response, admin: AdminUser, ip: string, remember = false): Promise<void> {
+  resetAdminLoginAttempts(ip);
+  await run('UPDATE admin_users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?', [ip.slice(0, 64), admin.id]);
+  const tv = Number(admin.token_version) || 0;
+  const token = generateToken(admin.id, admin.username, tv);
+  res.json({
+    token,
+    username: admin.username,
+    ...(remember ? { device_token: generateTrustedDeviceToken(admin.id, tv) } : {}),
+  });
 }
 
 interface BookingRow {
@@ -81,10 +98,61 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  resetAdminLoginAttempts(ip);
-  await run('UPDATE admin_users SET last_login_at = NOW(), last_login_ip = ? WHERE id = ?', [ip.slice(0, 64), admin.id]);
-  const token = generateToken(admin.id, admin.username, Number(admin.token_version) || 0);
-  res.json({ token, username: admin.username });
+  // 2FA: the password alone is not enough. A browser that passed the TOTP step with
+  // "remember this device" sends its device_token and skips it for 30 days.
+  if (Number(admin.totp_enabled) === 1) {
+    const tv = Number(admin.token_version) || 0;
+    const trusted = verifyAdminHelperToken(req.body.device_token, 'trusted_device');
+    if (!trusted || trusted.id !== admin.id || trusted.tv !== tv) {
+      resetAdminLoginAttempts(ip);
+      res.json({ mfa_required: true, mfa_token: generateMfaPendingToken(admin.id, tv) });
+      return;
+    }
+  }
+
+  await finishAdminLogin(req, res, admin, ip);
+});
+
+// POST /api/admin/login/2fa — second step: { mfa_token, code | recovery_code, remember }
+router.post('/login/2fa', async (req: Request, res: Response): Promise<void> => {
+  const pending = verifyAdminHelperToken(req.body.mfa_token, 'mfa_pending');
+  if (!pending) {
+    res.status(401).json({ error: 'Anmeldung abgelaufen – bitte erneut mit Passwort anmelden.', code: 'MFA_EXPIRED' });
+    return;
+  }
+  const rlKey = `totp:${pending.id}`;
+  if (!checkTotpRateLimit(rlKey)) {
+    res.status(429).json({ error: 'Zu viele falsche Codes. Bitte in 15 Minuten erneut versuchen.' });
+    return;
+  }
+
+  const [admin] = await query<AdminUser>('SELECT * FROM admin_users WHERE id = ?', [pending.id]);
+  if (!admin || Number(admin.totp_enabled) !== 1 || !admin.totp_secret_enc || (Number(admin.token_version) || 0) !== pending.tv) {
+    res.status(401).json({ error: 'Anmeldung abgelaufen – bitte erneut mit Passwort anmelden.', code: 'MFA_EXPIRED' });
+    return;
+  }
+
+  const ip = getClientIp(req);
+  const { code, recovery_code } = req.body;
+  if (recovery_code) {
+    const left = await consumeRecoveryCode(admin.totp_recovery_hashes ?? null, String(recovery_code));
+    if (left === null) {
+      res.status(401).json({ error: 'Wiederherstellungscode ungültig oder bereits benutzt.' });
+      return;
+    }
+    await run('UPDATE admin_users SET totp_recovery_hashes = ? WHERE id = ?', [left, admin.id]);
+    console.log(`[security] admin 2FA recovery code used: user=${admin.username} ip=${ip} left=${JSON.parse(left).length}`);
+  } else {
+    const step = verifyCode(decryptSecret(admin.totp_secret_enc), String(code || ''), admin.totp_last_step == null ? null : Number(admin.totp_last_step));
+    if (step === null) {
+      res.status(401).json({ error: 'Code ungültig. Bitte den aktuellen Code aus der App eingeben.' });
+      return;
+    }
+    await run('UPDATE admin_users SET totp_last_step = ? WHERE id = ?', [step, admin.id]);
+  }
+
+  resetTotpAttempts(rlKey);
+  await finishAdminLogin(req, res, admin, ip, req.body.remember === true);
 });
 
 // GET /api/admin/bookings - List all bookings with filters

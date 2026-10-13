@@ -394,9 +394,42 @@ export const fixedRoutesApi = {
 
 // Admin API
 export const adminApi = {
+  /** Returns { token } or, when 2FA is on, { mfa_required, mfa_token }. */
   login: async (username: string, password: string) => {
-    const response = await api.post('/admin/login', { username, password });
-    return response.data;
+    let device_token: string | undefined;
+    try { device_token = localStorage.getItem('admin_trusted_device') || undefined; } catch { /* private mode */ }
+    const response = await api.post('/admin/login', { username, password, device_token });
+    return response.data as { token?: string; username?: string; mfa_required?: boolean; mfa_token?: string };
+  },
+
+  login2fa: async (body: { mfa_token: string; code?: string; recovery_code?: string; remember: boolean }) => {
+    const response = await api.post('/admin/login/2fa', body);
+    return response.data as { token: string; username: string; device_token?: string };
+  },
+
+  twoFactorStatus: async () => {
+    const response = await api.get('/admin/2fa/status');
+    return response.data as { enabled: boolean; enabled_at: string | null; recovery_codes_left: number; username: string };
+  },
+
+  twoFactorSetup: async () => {
+    const response = await api.post('/admin/2fa/setup');
+    return response.data as { secret: string; otpauth_url: string; qr: string };
+  },
+
+  twoFactorEnable: async (code: string) => {
+    const response = await api.post('/admin/2fa/enable', { code });
+    return response.data as { success: boolean; recovery_codes: string[] };
+  },
+
+  twoFactorDisable: async (password: string, code: string) => {
+    const response = await api.post('/admin/2fa/disable', { password, code });
+    return response.data as { success: boolean; token: string };
+  },
+
+  twoFactorNewRecoveryCodes: async (code: string) => {
+    const response = await api.post('/admin/2fa/recovery-codes', { code });
+    return response.data as { success: boolean; recovery_codes: string[] };
   },
 
   getBookings: async (params?: {

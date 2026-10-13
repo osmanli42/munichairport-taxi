@@ -8,7 +8,7 @@ import {
   LogIn, LogOut, BarChart3, List, Tag, RefreshCw, ChevronLeft, ChevronRight,
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
-  Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car,
+  Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -123,6 +123,8 @@ export default function AdminPage() {
   const [token, setToken] = useState('');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
+  // 2FA second step: set when the password was right and a TOTP code is still needed
+  const [mfa, setMfa] = useState<{ token: string; code: string; recovery: boolean; remember: boolean } | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   // Replay derin bağlantısı (?tab=replay&replay=<session>&t=<sn>) doğrudan o sekmeyi açar
   useEffect(() => {
@@ -331,11 +333,44 @@ export default function AdminPage() {
     setLoginError('');
     try {
       const data = await adminApi.login(loginForm.username, loginForm.password);
+      if (data.mfa_required && data.mfa_token) {
+        setMfa({ token: data.mfa_token, code: '', recovery: false, remember: true });
+        return;
+      }
+      if (!data.token) throw new Error('no token');
       localStorage.setItem('admin_token', data.token);
       setToken(data.token);
       setIsLoggedIn(true);
-    } catch {
-      setLoginError('Ungültige Anmeldedaten');
+    } catch (err: any) {
+      setLoginError(err?.response?.status === 429 ? (err.response.data?.error || 'Zu viele Versuche') : 'Ungültige Anmeldedaten');
+    }
+  }
+
+  async function handleMfa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mfa) return;
+    setLoginError('');
+    try {
+      const data = await adminApi.login2fa({
+        mfa_token: mfa.token,
+        ...(mfa.recovery ? { recovery_code: mfa.code } : { code: mfa.code }),
+        remember: mfa.remember,
+      });
+      try {
+        if (data.device_token) localStorage.setItem('admin_trusted_device', data.device_token);
+      } catch { /* private mode: just ask again next time */ }
+      localStorage.setItem('admin_token', data.token);
+      setMfa(null);
+      setToken(data.token);
+      setIsLoggedIn(true);
+    } catch (err: any) {
+      if (err?.response?.data?.code === 'MFA_EXPIRED') {
+        setMfa(null);
+        setLoginError('Die Anmeldung ist abgelaufen. Bitte erneut mit Passwort anmelden.');
+        return;
+      }
+      setLoginError(err?.response?.data?.error || 'Code ungültig');
+      setMfa((m) => (m ? { ...m, code: '' } : m));
     }
   }
 
@@ -870,6 +905,69 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold">Admin Panel</h1>
             <p className="text-primary-200 text-sm mt-1">Munich Airport Taxi</p>
           </div>
+          {mfa ? (
+            <form onSubmit={handleMfa} className="p-6 space-y-4">
+              <div className="flex items-start gap-3 bg-primary-50 text-primary-800 rounded-xl p-3 text-sm">
+                <ShieldCheck size={20} className="shrink-0 mt-0.5" />
+                <span>
+                  {mfa.recovery
+                    ? 'Geben Sie einen Ihrer Wiederherstellungscodes ein (z. B. 7KQ4-M2XP). Jeder Code gilt nur einmal.'
+                    : 'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.'}
+                </span>
+              </div>
+              <input
+                key={mfa.recovery ? 'rc' : 'otp'}
+                type="text"
+                inputMode={mfa.recovery ? 'text' : 'numeric'}
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={mfa.recovery ? 9 : 6}
+                value={mfa.code}
+                onChange={(e) => {
+                  const v = mfa.recovery ? e.target.value.toUpperCase() : e.target.value.replace(/\D/g, '');
+                  setMfa((m) => (m ? { ...m, code: v } : m));
+                }}
+                placeholder={mfa.recovery ? 'XXXX-XXXX' : '123456'}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.4em] font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={mfa.remember}
+                  onChange={(e) => setMfa((m) => (m ? { ...m, remember: e.target.checked } : m))}
+                  className="rounded"
+                />
+                Diesem Gerät 30 Tage vertrauen
+              </label>
+              {loginError && (
+                <div className="bg-red-50 text-red-700 text-sm p-3 rounded-lg">{loginError}</div>
+              )}
+              <button
+                type="submit"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                <ShieldCheck size={18} />
+                Bestätigen
+              </button>
+              <div className="flex justify-between text-sm">
+                <button
+                  type="button"
+                  onClick={() => { setLoginError(''); setMfa((m) => (m ? { ...m, code: '', recovery: !m.recovery } : m)); }}
+                  className="text-primary-600 hover:underline"
+                >
+                  {mfa.recovery ? 'Code aus der App verwenden' : 'Wiederherstellungscode verwenden'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMfa(null); setLoginError(''); }}
+                  className="text-gray-500 hover:underline"
+                >
+                  Zurück
+                </button>
+              </div>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
@@ -902,6 +1000,7 @@ export default function AdminPage() {
               Anmelden
             </button>
           </form>
+          )}
         </div>
       </div>
     );

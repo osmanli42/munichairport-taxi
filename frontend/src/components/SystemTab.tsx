@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import PasswordChangeCard from './PasswordChangeCard';
+import TwoFactorCard from './TwoFactorCard';
 import SecurityCard from './SecurityCard';
 
 // What each PM2 process is, in plain words (checked against the VPS: pm2 cwd/script and
@@ -791,6 +792,7 @@ export default function SystemTab({ token }: { token: string }) {
       </div>
 
       <PasswordChangeCard />
+      <TwoFactorCard />
     </div>
   );
 }
