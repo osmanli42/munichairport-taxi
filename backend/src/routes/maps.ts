@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { query } from '../db';
 
 const router = Router();
 
@@ -78,6 +79,120 @@ router.get('/autocomplete', async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     console.error('Autocomplete error:', error);
     res.status(500).json({ error: 'Autocomplete failed' });
+  }
+});
+
+// ─── Betriebe an einer Hausadresse (Hotel, Gasthaus, Restaurant …) ───
+// Der Kunde tippt "Sonnenstr. 25" und kennt den Hotelnamen nicht: Wir zeigen in der Vorschlagsliste,
+// was genau an dieser Hausnummer liegt. Geocoding (place_id → Koordinate + Straße/Nr.) und
+// Nearby Search (New) im 50-m-Kreis; nur Treffer mit identischer Straße und Hausnummer.
+// Admin → Einstellungen "Hotels & Lokale an der Adresse" (address_poi_enabled).
+interface AddressPlace { place_id: string; name: string; address: string; types: string[] }
+const ADDRESS_PLACES_TTL_MS = 24 * 60 * 60 * 1000;
+const addressPlacesCache = new Map<string, { at: number; places: AddressPlace[] }>();
+
+const LODGING_TYPES = ['lodging', 'hotel', 'motel', 'hostel', 'guest_house', 'bed_and_breakfast', 'inn', 'resort_hotel', 'extended_stay_hotel', 'budget_japanese_inn', 'private_guest_room', 'farmstay', 'cottage'];
+const FOOD_TYPES = ['restaurant', 'cafe', 'bar', 'pub', 'bakery', 'meal_takeaway', 'food', 'beer_garden', 'brewery', 'wine_bar', 'coffee_shop', 'night_club', 'event_venue', 'banquet_hall', 'wedding_venue'];
+// Reine Adress-/Gebietsobjekte sind keine Betriebe.
+const NON_BUSINESS_TYPES = ['premise', 'subpremise', 'street_address', 'route', 'locality', 'political', 'postal_code', 'neighborhood', 'sublocality'];
+
+function normStreet(s: string): string {
+  return s.toLowerCase().replace(/str\.?(?=\s|$)/g, 'straße').replace(/strasse/g, 'straße').replace(/[\s.-]+/g, '');
+}
+function normNumber(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, '');
+}
+function placeRank(types: string[]): number {
+  if (types.some(t => LODGING_TYPES.includes(t))) return 0;
+  if (types.some(t => FOOD_TYPES.includes(t))) return 1;
+  return 2;
+}
+
+// GET /api/maps/address-places?place_id=...&language=de
+router.get('/address-places', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const placeId = req.query.place_id;
+    if (typeof placeId !== 'string' || !/^[A-Za-z0-9_-]{10,600}$/.test(placeId)) {
+      res.status(400).json({ error: 'place_id required' });
+      return;
+    }
+    const [setting] = await query<{ setting_value: string }>(`SELECT setting_value FROM settings WHERE setting_key = 'address_poi_enabled'`);
+    if (setting?.setting_value === '0') { res.json({ places: [] }); return; }
+
+    const language = (req.query.language as string) === 'en' ? 'en' : 'de';
+    const cacheKey = `${language}:${placeId}`;
+    const cached = addressPlacesCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < ADDRESS_PLACES_TTL_MS) { res.json({ places: cached.places }); return; }
+
+    const geoUrl = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    geoUrl.searchParams.set('place_id', placeId);
+    geoUrl.searchParams.set('key', GOOGLE_API_KEY);
+    const geo = await fetch(geoUrl.toString()).then(r => r.json()) as {
+      status: string;
+      results?: { geometry?: { location?: { lat: number; lng: number } }; address_components?: { long_name: string; types: string[] }[] }[];
+    };
+    const g = geo.results?.[0];
+    const loc = g?.geometry?.location;
+    const route = g?.address_components?.find(c => c.types.includes('route'))?.long_name;
+    const number = g?.address_components?.find(c => c.types.includes('street_number'))?.long_name;
+    // Ohne Straße + Hausnummer lässt sich nichts eindeutig zuordnen.
+    if (geo.status !== 'OK' || !loc || !route || !number) {
+      addressPlacesCache.set(cacheKey, { at: Date.now(), places: [] });
+      res.json({ places: [] });
+      return;
+    }
+
+    const nearby = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.shortFormattedAddress,places.types,places.addressComponents',
+      },
+      body: JSON.stringify({
+        locationRestriction: { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 50 } },
+        rankPreference: 'DISTANCE',
+        maxResultCount: 20,
+        languageCode: language,
+      }),
+    }).then(r => r.json()) as {
+      places?: {
+        id: string;
+        displayName?: { text: string };
+        shortFormattedAddress?: string;
+        types?: string[];
+        addressComponents?: { longText: string; types: string[] }[];
+      }[];
+    };
+
+    const wantStreet = normStreet(route);
+    const wantNumber = normNumber(number);
+    const places: AddressPlace[] = (nearby.places || [])
+      .filter(p => {
+        const types = p.types || [];
+        if (!p.displayName?.text || types.some(t => NON_BUSINESS_TYPES.includes(t))) return false;
+        const pRoute = p.addressComponents?.find(c => c.types.includes('route'))?.longText;
+        const pNumber = p.addressComponents?.find(c => c.types.includes('street_number'))?.longText;
+        return !!pRoute && !!pNumber && normStreet(pRoute) === wantStreet && normNumber(pNumber) === wantNumber;
+      })
+      .map(p => ({
+        place_id: p.id,
+        name: p.displayName!.text,
+        address: p.shortFormattedAddress || `${route} ${number}`,
+        types: p.types || [],
+      }))
+      .sort((a, b) => placeRank(a.types) - placeRank(b.types))
+      .slice(0, 3);
+
+    if (addressPlacesCache.size >= 2000) {
+      const oldest = addressPlacesCache.keys().next().value;
+      if (oldest) addressPlacesCache.delete(oldest);
+    }
+    addressPlacesCache.set(cacheKey, { at: Date.now(), places });
+    res.json({ places });
+  } catch (error) {
+    console.error('Address places error:', error);
+    res.json({ places: [] });
   }
 });
 

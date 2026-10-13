@@ -1730,6 +1730,38 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
+                {/* Address POI toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="font-semibold text-gray-700">🏨 Hotels & Lokale an der Adresse</label>
+                      <p className="text-xs text-gray-500 mt-0.5">Tippt der Kunde eine Hausadresse (z. B. „Sonnenstraße 25“), erscheint in der Vorschlagsliste darüber, was genau dort ist — Hotel, Gasthaus, Restaurant usw. (max. 3 pro Adresse). Kostet pro Adresse eine Google-Umkreissuche; Ergebnisse werden 24 h zwischengespeichert.</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const newVal = settings.address_poi_enabled === '0' ? '1' : '0';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ address_poi_enabled: newVal });
+                          setSettings(updated);
+                          setPriceSuccess(newVal === '1' ? 'Hotels & Lokale an der Adresse aktiviert' : 'Hotels & Lokale an der Adresse deaktiviert');
+                          setTimeout(() => setPriceSuccess(''), 3000);
+                        } catch { }
+                        setSettingsSaving(false);
+                      }}
+                      className={cn(
+                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
+                        settings.address_poi_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
+                      )}
+                      disabled={settingsSaving}
+                    >
+                      <div className={cn(
+                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
+                        settings.address_poi_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
+                      )} />
+                    </button>
+                  </div>
+                </div>
                 {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
                 <div>
                   <label className="font-semibold text-gray-700">🏦 Rechnungskunden (Überweisung)</label>

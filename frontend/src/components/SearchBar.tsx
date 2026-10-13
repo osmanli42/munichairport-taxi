@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle } from 'lucide-react';
+import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle, UtensilsCrossed, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -49,6 +49,17 @@ function isAirportResult(description: string, types?: string[]): boolean {
 }
 
 interface Prediction { place_id: string; description: string; types?: string[]; }
+/** Betrieb an einer Hausadresse (Hotel, Gasthaus …) — vom Backend /maps/address-places */
+interface AddressPlace { place_id: string; name: string; address: string; types: string[]; }
+/** Zeile der Vorschlagsliste: Google-Vorschlag oder Betrieb an einer der vorgeschlagenen Adressen. */
+interface SuggestionRow extends Prediction { name?: string; address?: string; }
+
+// Nur für konkrete Hausadressen (mit Nummer) nach Betrieben suchen, und nur für die ersten zwei —
+// jede Abfrage kostet zwei Google-Aufrufe.
+const ADDRESS_TYPES = ['premise', 'subpremise', 'street_address'];
+const MAX_ADDRESS_LOOKUPS = 2;
+const LODGING_TYPES = ['lodging', 'hotel', 'motel', 'hostel', 'guest_house', 'bed_and_breakfast', 'inn', 'resort_hotel', 'extended_stay_hotel'];
+const FOOD_TYPES = ['restaurant', 'cafe', 'bar', 'pub', 'bakery', 'meal_takeaway', 'food', 'beer_garden', 'brewery', 'wine_bar', 'coffee_shop'];
 
 const MONTHS_SHORT_DE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 const MONTHS_SHORT_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -77,6 +88,8 @@ function AddressField({
   openSignal?: number;
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [addressPlaces, setAddressPlaces] = useState<Record<string, AddressPlace[]>>({});
+  const addressPlacesCache = useRef<Record<string, AddressPlace[]>>({});
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -114,10 +127,47 @@ function AddressField({
       const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=${locale}`);
       const data = await res.json();
       if (airportRef.current) return;
-      setPredictions((data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description, p.types)));
+      const preds: Prediction[] = (data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description, p.types));
+      setPredictions(preds);
       setOpen(true);
+      lookupAddressPlaces(preds);
     } catch { setPredictions([]); } finally { setLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
+
+  // Was liegt an der Hausadresse? Ergebnisse kommen nach den Vorschlägen und werden darüber eingeblendet.
+  const lookupAddressPlaces = (preds: Prediction[]) => {
+    const targets = preds
+      .filter(p => p.types?.some(t => ADDRESS_TYPES.includes(t)) && /\d/.test(p.description))
+      .slice(0, MAX_ADDRESS_LOOKUPS);
+    for (const p of targets) {
+      if (addressPlacesCache.current[p.place_id]) continue;
+      addressPlacesCache.current[p.place_id] = [];
+      fetch(`${API_URL}/maps/address-places?place_id=${encodeURIComponent(p.place_id)}&language=${locale}`)
+        .then(r => r.json())
+        .then(d => {
+          const places: AddressPlace[] = (d.places || []).filter((x: AddressPlace) => !isAirportResult(`${x.name}, ${x.address}`, x.types));
+          addressPlacesCache.current[p.place_id] = places;
+          if (places.length) setAddressPlaces(prev => ({ ...prev, [p.place_id]: places }));
+        })
+        .catch(() => { delete addressPlacesCache.current[p.place_id]; });
+    }
+  };
+
+  // Betriebe direkt über ihrer Adresse; doppelte (Google schlägt das Hotel schon selbst vor) entfallen.
+  const rows = useMemo<SuggestionRow[]>(() => {
+    const seen = new Set(predictions.map(p => p.place_id));
+    const out: SuggestionRow[] = [];
+    for (const p of predictions) {
+      for (const pl of addressPlaces[p.place_id] || []) {
+        if (seen.has(pl.place_id)) continue;
+        seen.add(pl.place_id);
+        out.push({ place_id: pl.place_id, description: `${pl.name}, ${pl.address}`, types: pl.types, name: pl.name, address: pl.address });
+      }
+      out.push(p);
+    }
+    return out;
+  }, [predictions, addressPlaces]);
 
   // "Suchen" ohne Auswahl: Statt nur einer Fehlermeldung die Vorschläge direkt wieder zeigen.
   // Replay-Analyse (Okt. 2026): ~260 Sitzungen/Monat tippten eine Adresse, wählten keinen
@@ -158,7 +208,7 @@ function AddressField({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
-    const count = showAirport ? AIRPORT_TERMINALS.length : predictions.length;
+    const count = showAirport ? AIRPORT_TERMINALS.length : rows.length;
     if (count === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -172,7 +222,7 @@ function AddressField({
       if (showAirport) {
         handleSelectTerminal(AIRPORT_TERMINALS[idx]);
       } else {
-        const p = predictions[idx];
+        const p = rows[idx];
         if (p) handleSelect(p.place_id, p.description);
       }
       setHighlightIdx(-1);
@@ -244,9 +294,23 @@ function AddressField({
           ))}
         </ul>
       )}
-      {open && !showAirport && predictions.length > 0 && (
-        <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-52 overflow-y-auto">
-          {predictions.map((p, pi) => (
+      {open && !showAirport && rows.length > 0 && (
+        <ul className="absolute z-[9999] left-0 min-w-[280px] w-max max-w-xs bg-white border border-gray-200 rounded-xl shadow-2xl mt-1 max-h-64 overflow-y-auto">
+          {rows.map((p, pi) => p.name ? (
+            <li key={p.place_id} {...pickHandlers(() => handleSelect(p.place_id, p.description))} className={`px-4 py-2 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
+              {p.types?.some(t => LODGING_TYPES.includes(t)) ? (
+                <Hotel size={12} className="text-primary-500 shrink-0" />
+              ) : p.types?.some(t => FOOD_TYPES.includes(t)) ? (
+                <UtensilsCrossed size={12} className="text-primary-500 shrink-0" />
+              ) : (
+                <Store size={12} className="text-primary-500 shrink-0" />
+              )}
+              <span className="min-w-0 flex flex-col leading-tight">
+                <span className="truncate font-semibold">{p.name}</span>
+                <span className="truncate text-xs text-gray-500">{p.address}</span>
+              </span>
+            </li>
+          ) : (
             <li key={p.place_id} {...pickHandlers(() => handleSelect(p.place_id, p.description))} className={`px-4 py-2.5 text-sm text-gray-800 cursor-pointer hover:bg-primary-50 flex items-center gap-2 transition-colors ${pi === highlightIdx ? 'bg-primary-50' : ''}`}>
               {p.types?.includes('lodging') ? (
                 <Hotel size={12} className="text-gray-400 shrink-0" />
