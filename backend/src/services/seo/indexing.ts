@@ -77,11 +77,21 @@ export async function inspectAndStore(url: string, site: string, client?: Awaite
   const sc = client || (await api());
   let r: any = null;
   let error: string | null = null;
-  try {
-    const res = await sc.urlInspection.index.inspect({ requestBody: { inspectionUrl: url, siteUrl: site, languageCode: 'de' } });
-    r = res.data.inspectionResult?.indexStatusResult || null;
-  } catch (e: any) {
-    error = String(e?.errors?.[0]?.message || e?.message || e).slice(0, 250);
+  // Google antwortet gelegentlich mit "Internal error encountered." (500/503) — vorübergehend,
+  // beim nächsten Versuch klappt es. Deshalb bis zu zwei Wiederholungen, bevor es als Fehler gilt.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await sc.urlInspection.index.inspect({ requestBody: { inspectionUrl: url, siteUrl: site, languageCode: 'de' } });
+      r = res.data.inspectionResult?.indexStatusResult || null;
+      error = null;
+      break;
+    } catch (e: any) {
+      error = String(e?.errors?.[0]?.message || e?.message || e).slice(0, 250);
+      const status = Number(e?.code || e?.response?.status) || 0;
+      const transient = status >= 500 || /internal error|backend error|unavailable|ECONNRESET|ETIMEDOUT|socket hang up/i.test(error);
+      if (!transient || attempt >= 2) break;
+      await new Promise((ok) => setTimeout(ok, (attempt + 1) * 5000));
+    }
   }
   const [prev] = await query<any>(`SELECT verdict, indexed_since, dropped_at FROM seo_index_pages WHERE url_hash = ?`, [sha(url)]);
   if (error) {
