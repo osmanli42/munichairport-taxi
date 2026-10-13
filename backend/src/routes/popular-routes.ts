@@ -104,7 +104,7 @@ router.post('/city-quote', async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ error: 'lat, lng, km, address required' });
       return;
     }
-    const localReq = { headers: {}, socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+    const localReq = { headers: {}, query: {}, body: {}, socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
     const detail = await buildRouteDetail(localReq, { slug: '', city: address, distance_km: km, duration_min: 0, pickup_address: address, pickup_lat: lat, pickup_lng: lng });
     res.set('Cache-Control', 'public, max-age=1800');
     res.json({ prices: detail.prices, pflichtgebiet: detail.pflichtgebiet });

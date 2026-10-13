@@ -84,8 +84,10 @@ export async function authenticateCompany(req: CompanyAuthRequest, res: Response
 }
 
 export function getCompanyAuth(req: Request): { companyUserId: number; companyId: number } | null {
-  const authHeader = req.headers.authorization;
-  const queryToken = req.query.token as string | undefined;
+  // Optional chaining: server-side callers (e.g. /popular-routes/city-quote) price with a
+  // synthetic request that has no query object.
+  const authHeader = req.headers?.authorization;
+  const queryToken = req.query?.token as string | undefined;
 
   let token: string | undefined;
   if (authHeader && authHeader.startsWith('Bearer ')) {
