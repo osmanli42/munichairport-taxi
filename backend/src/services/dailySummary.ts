@@ -9,27 +9,27 @@
 import { query } from '../db';
 import { berlinDateSql, berlinMidnightUtcSql } from '../utils/berlinTime';
 
-type Sum = { n: number; eur: number; noPrice: number };
+export type Sum = { n: number; eur: number; noPrice: number };
 
 // Day a calendar ride was taken; older mirror rows without Google's "created" fall back to the ride time.
-const ENTERED = `COALESCE(NULLIF(entered_at, ''), ride_time)`;
+export const ENTERED = `COALESCE(NULLIF(entered_at, ''), ride_time)`;
 
-const num = (v: unknown) => Number(v) || 0;
-const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-const eur = (v: number, digits = 2) =>
+export const num = (v: unknown) => Number(v) || 0;
+export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+export const eur = (v: number, digits = 2) =>
   `${v.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits })} €`;
-const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
-const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+export const dmy = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+export const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 
 /** Days from Berlin today to `date` ('YYYY-MM-DD'), for berlinMidnightUtcSql. */
-function offsetOf(date: string): number {
+export function offsetOf(date: string): number {
   return Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${berlinDateSql(0)}T00:00:00Z`)) / 86_400_000);
 }
-const addDays = (date: string, days: number) =>
+export const addDays = (date: string, days: number) =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 /** Bookings created in [from, to] (Berlin dates, inclusive). */
-async function bookingSum(from: string, to: string): Promise<Sum> {
+export async function bookingSum(from: string, to: string): Promise<Sum> {
   const [r] = await query<any>(
     `SELECT COUNT(*) AS n, COALESCE(SUM(price), 0) AS eur FROM bookings
       WHERE status <> 'cancelled' AND created_at >= ? AND created_at < ?`,
@@ -41,7 +41,7 @@ async function bookingSum(from: string, to: string): Promise<Sum> {
  * Calendar-only rides ENTERED in the calendar on [from, to] (Berlin dates, inclusive) — counted
  * on the day they were taken (Google's "created"), whatever date the ride itself has.
  */
-async function calendarSum(from: string, to: string): Promise<Sum> {
+export async function calendarSum(from: string, to: string): Promise<Sum> {
   const [r] = await query<any>(
     `SELECT COUNT(*) AS n, COALESCE(SUM(price), 0) AS eur, SUM(price IS NULL) AS no_price
        FROM calendar_rides WHERE kind = 'ride' AND ${ENTERED} BETWEEN ? AND ?`,
@@ -49,7 +49,7 @@ async function calendarSum(from: string, to: string): Promise<Sum> {
   return { n: num(r?.n), eur: num(r?.eur), noPrice: num(r?.no_price) };
 }
 
-function delta(cur: number, prev: number): string {
+export function delta(cur: number, prev: number): string {
   if (!prev) return cur ? '<span style="color:#059669">neu</span>' : '';
   const p = Math.round(((cur - prev) / prev) * 100);
   const color = p > 0 ? '#059669' : p < 0 ? '#dc2626' : '#6b7280';
@@ -61,9 +61,9 @@ const TR_WEEKDAY = (d: string) =>
 
 // ---- HTML pieces (tables + inline styles: what mail clients render reliably) -----------
 
-const C = { navy: '#0f2747', gold: '#c99a2e', text: '#111827', muted: '#6b7280', line: '#e5e7eb', soft: '#f6f7f9' };
+export const C = { navy: '#0f2747', gold: '#c99a2e', text: '#111827', muted: '#6b7280', line: '#e5e7eb', soft: '#f6f7f9' };
 
-function tile(label: string, value: string, sub: string, accent = C.navy): string {
+export function tile(label: string, value: string, sub: string, accent = C.navy): string {
   return `
     <td width="50%" style="padding:6px">
       <div style="background:#fff;border:1px solid ${C.line};border-radius:12px;padding:14px 16px">
@@ -74,7 +74,7 @@ function tile(label: string, value: string, sub: string, accent = C.navy): strin
     </td>`;
 }
 
-function section(title: string, body: string, right = ''): string {
+export function section(title: string, body: string, right = ''): string {
   return `
     <tr><td style="padding:22px 24px 0">
       <table width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -85,7 +85,7 @@ function section(title: string, body: string, right = ''): string {
     </td></tr>`;
 }
 
-function statRow(cells: Array<[string, string]>): string {
+export function statRow(cells: Array<[string, string]>): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${C.soft};border-radius:10px"><tr>${
     cells.map(([k, v]) => `
       <td style="padding:12px 8px;text-align:center">
@@ -95,12 +95,12 @@ function statRow(cells: Array<[string, string]>): string {
   }</tr></table>`;
 }
 
-function listTable(rows: string[], empty: string): string {
+export function listTable(rows: string[], empty: string): string {
   if (!rows.length) return `<div style="font-size:13px;color:${C.muted};padding:10px 0">${empty}</div>`;
   return `<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;border-collapse:collapse">${rows.join('')}</table>`;
 }
 
-const badge = (text: string, bg: string, fg: string) =>
+export const badge = (text: string, bg: string, fg: string) =>
   `<span style="display:inline-block;background:${bg};color:${fg};font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;white-space:nowrap">${text}</span>`;
 
 const PAY: Record<string, [string, string, string]> = {
@@ -110,7 +110,7 @@ const PAY: Record<string, [string, string, string]> = {
 
 // Some addresses were stored URL-encoded ("Center%2C Terminalstraße").
 const decode = (a: unknown) => { const s = String(a || ''); try { return decodeURIComponent(s); } catch { return s; } };
-const short = (a: unknown) => {
+export const short = (a: unknown) => {
   const s = decode(a).split(',')[0].trim();
   return s.length > 38 ? `${s.slice(0, 37)}…` : s;
 };

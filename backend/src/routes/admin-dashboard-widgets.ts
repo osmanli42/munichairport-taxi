@@ -269,7 +269,7 @@ async function missedCustomers() {
 
 // ---- Receivables ------------------------------------------------------------------------
 
-async function receivables(now: string) {
+export async function receivables(now: string) {
   const today = now.slice(0, 10);
   const invoices = await query<any>(`
     SELECT ci.id, ci.invoice_number, ci.total, DATE_FORMAT(ci.due_date, '%Y-%m-%d') AS due_date,

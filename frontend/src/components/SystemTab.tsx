@@ -70,7 +70,7 @@ const PM2_INFO: Record<string, { label: string; what: string; ifStopped: string;
 };
 
 // Mirrors backend services/alertCenter.ts
-type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
+type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'weekly_summary' | 'card_charge' | 'seo'
   | 'calendar_new' | 'security';
 interface AlertCfg {
   enabled: boolean;
@@ -232,7 +232,7 @@ export default function SystemTab({ token }: { token: string }) {
     setAlertSaving(false);
   };
 
-  const previewMail = async (path: 'calendar-alert-preview' | 'daily-summary-preview') => {
+  const previewMail = async (path: 'calendar-alert-preview' | 'daily-summary-preview' | 'weekly-summary-preview') => {
     setCalPreview({ subject: '…', html: '', empty: false });
     try {
       const r = await fetch(`${API_BASE}/admin/system-stats/${path}`, {
@@ -665,6 +665,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['business', '📉 Satış / hata uyarıları', `Trafik var ama rezervasyon yok, hata patlaması, yavaş rezervasyon sayfası — en fazla ${alertSettings.business_cooldown_hours} saatte bir.`],
                 ['ads', '📊 Google Ads kritik uyarı', 'Aynı sorun için günde en fazla bir e-posta.'],
                 ['daily_summary', '📅 Günlük özet', 'Her sabah 08:00’den sonra dünün özeti: toplam fahrt ve ciro (web/sistem + Kalender), önceki güne ve geçen aya göre değişim, web sitesi rakamları, dün gelen rezervasyonlar ve Kalender fahrt’ları listesi.'],
+                ['weekly_summary', '📈 Haftalık rapor', 'Her pazartesi 08:00’den sonra geçen haftanın özeti: alınan fahrt ve ciro (önceki hafta ve geçen yılın aynı haftasıyla), günlere ve kaynağa göre dağılım, yapılan fahrt sayısı, bekleyen para (açık faturalar, Überweisung, başarısız kart), bu haftanın planı ve web sitesi rakamları.'],
                 ['seo', '🔎 SEO', 'Takip edilen kelime 5+ sıra düşerse veya organik tıklama haftalık %30+ düşerse; site taramasında yeni kritik hata (sayfa hatası, noindex, kırık link) çıkarsa. Günde en fazla bir e-posta.'],
                 ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
                   ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
@@ -678,6 +679,11 @@ export default function SystemTab({ token }: { token: string }) {
                     <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
                     {key === 'daily_summary' && (
                       <button onClick={() => previewMail('daily-summary-preview')} className="mt-1.5 text-xs font-semibold text-blue-600 hover:underline">
+                        E-postayı önizle
+                      </button>
+                    )}
+                    {key === 'weekly_summary' && (
+                      <button onClick={() => previewMail('weekly-summary-preview')} className="mt-1.5 text-xs font-semibold text-blue-600 hover:underline">
                         E-postayı önizle
                       </button>
                     )}

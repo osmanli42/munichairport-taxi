@@ -8,6 +8,8 @@ import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 import { query } from '../db';
 import { calendarAlertPreview } from '../services/calendarRideAlert';
 import { buildDailySummary } from '../services/dailySummary';
+import { buildWeeklySummary } from '../services/weeklySummary';
+import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 import {
   getAlertConfig, saveAlertConfig, shouldSendAlert, resetCooldown, listCooldowns, getStateValue, setStateValue,
 } from '../services/alertCenter';
@@ -220,6 +222,16 @@ router.post('/admin/system-stats/alert-settings', authenticateAdmin, async (req:
 router.get('/admin/system-stats/daily-summary-preview', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const { subject, html } = await buildDailySummary();
+    res.json({ subject, html, empty: false });
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// The Monday report with live data (?week=YYYY-MM-DD shows an older week). Nothing is sent.
+router.get('/admin/system-stats/weekly-summary-preview', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { subject, html } = await buildWeeklySummary(typeof req.query.week === 'string' ? req.query.week : undefined);
     res.json({ subject, html, empty: false });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
@@ -457,6 +469,32 @@ async function sendDailySummary(): Promise<void> {
   }
 }
 
+// Haftalık rapor — pazartesi, Berlin saatiyle sabah (günlük özetle aynı saat)
+const WEEKLY_KEY = 'weekly_summary:last_week';
+
+async function sendWeeklySummary(): Promise<void> {
+  const today = berlinDateSql(0);
+  if (new Date(`${today}T12:00:00Z`).getUTCDay() !== 1) return;          // Monday only
+  if (Number(berlinNowSql().slice(11, 13)) < SUMMARY_HOUR) return;
+  // Persisted per week (Monday's date), so a deploy/restart never sends it twice.
+  if ((await getStateValue(WEEKLY_KEY)) === today) return;
+  const cfg = await getAlertConfig();
+  if (!cfg.enabled || !cfg.categories.weekly_summary) return;
+  if (!RESEND_API_KEY) return;
+  await setStateValue(WEEKLY_KEY, today);
+
+  const { subject, html } = await buildWeeklySummary();
+  try {
+    const { error } = await new Resend(RESEND_API_KEY).emails.send({
+      from: `Munich Airport Taxi <${FROM_EMAIL}>`, to: ADMIN_EMAIL, subject, html,
+    });
+    if (error) throw new Error(error.message);
+    console.log(`[ALERT] Email sent: ${subject}`);
+  } catch (err: any) {
+    console.error('[weekly-summary] mail failed:', err?.message || err);
+  }
+}
+
 // Run check every 5 minutes
 let alertJobStarted = false;
 export function startSystemAlertJob(): void {
@@ -477,6 +515,7 @@ export function startSystemAlertJob(): void {
     if (tick % 6 === 0) {
       checkConversionAlerts().catch((e) => console.error('[conversion-alerts] failed:', e.message));
       sendDailySummary().catch((e) => console.error('[daily-summary] failed:', e.message));
+      sendWeeklySummary().catch((e) => console.error('[weekly-summary] failed:', e.message));
     }
   }, intervalMs);
   console.log('[system-alerts] Job started — checks every 5 minutes (settings: System tab)');

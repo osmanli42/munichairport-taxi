@@ -9,9 +9,9 @@
 
 import { query, run } from '../db';
 
-export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'card_charge' | 'seo'
+export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'weekly_summary' | 'card_charge' | 'seo'
   | 'calendar_new' | 'security';
-export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'card_charge', 'seo', 'calendar_new', 'security'];
+export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'weekly_summary', 'card_charge', 'seo', 'calendar_new', 'security'];
 
 export interface AlertConfig {
   enabled: boolean;
@@ -42,6 +42,7 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
     business: true,
     ads: true,
     daily_summary: true,
+    weekly_summary: true,
     card_charge: true,
     seo: true,
     calendar_new: true,
