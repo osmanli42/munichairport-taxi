@@ -959,13 +959,13 @@ export function LiveAssistArchive({ la }: { la: LiveAssistState }) {
   );
 }
 
-/** Sesli anons (Türkçe, tarayıcının konuşma sentezi). Stille, wenn der Browser keine Stimme hat. */
-export function speakTr(text: string): void {
+/** Sesli anons (Almanca — şehir adları Türkçe seste bozuk okunuyordu). Stille, wenn der Browser keine Stimme hat. */
+export function speakDe(text: string): void {
   try {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'tr-TR';
-    const voice = window.speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('tr'));
+    u.lang = 'de-DE';
+    const voice = window.speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('de'));
     if (voice) u.voice = voice;
     u.rate = 1.05;
     window.speechSynthesis.speak(u);

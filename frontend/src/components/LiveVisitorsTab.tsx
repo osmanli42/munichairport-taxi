@@ -10,7 +10,7 @@ import {
   BarChart3, CheckCircle2, XCircle, AlertCircle, PhoneCall, Flame, Target, Sparkles, ArrowDownWideNarrow,
 } from 'lucide-react';
 
-import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakTr } from './LiveAssistAdmin';
+import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakDe } from './LiveAssistAdmin';
 import CustomerHistory, { CustomerHistoryData } from '@/components/live/CustomerHistory';
 import { LivePrediction, ProbabilityRing, FactorChips, ModelInfoCard, fmtPct } from '@/components/live/Prediction';
 
@@ -349,10 +349,10 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
     const fresh = humans.filter(s => !announcedRef.current!.has(s.session_id));
     fresh.forEach(s => announcedRef.current!.add(s.session_id));
     if (!voiceRef.current || !fresh.length) return;
-    if (fresh.length > 1) { speakTr(`${fresh.length} yeni ziyaretçi`); return; }
+    if (fresh.length > 1) { speakDe(`${fresh.length} neue Besucher`); return; }
     const s = fresh[0];
-    const src = sourceLabel(s).label.replace(/[^A-Za-z0-9À-ɏğüşöçıİĞÜŞÖÇ ]/g, '').trim();
-    speakTr(['Yeni ziyaretçi', s.city ? `${s.city}'den` : '', src].filter(Boolean).join(', '));
+    const src = sourceLabel(s).label.replace(/[^A-Za-z0-9À-ɏğüşöçıİĞÜŞÖÇ ]/g, '').trim().replace(/^Direct$/, 'Direkt');
+    speakDe([s.city ? `Neuer Besucher aus ${s.city}` : 'Neuer Besucher', src].filter(Boolean).join(', '));
   }, [live]);
 
   const sendNotification = useCallback((title: string, body: string) => {
