@@ -129,6 +129,10 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
         // to the screen during normal playback — never in live mode. Without this the
         // view froze on the page's first snapshot (only page changes showed up).
         useVirtualDom: false,
+        // rrweb pauses CSS animations unless it is in its "playing" state, and live mode
+        // isn't — the home hero (headline + address search) fades in from opacity 0 and
+        // stayed invisible.
+        pauseAnimation: false,
         showWarning: false,
         triggerFocus: true,
         mouseTail: { duration: 700, lineCap: 'round', lineWidth: 3, strokeStyle: 'rgba(168,85,247,0.55)' },
