@@ -302,6 +302,8 @@ function BuchenContent() {
   const [cardSubmitting, setCardSubmitting] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
+  // Server's night-confirm decision for the booking just made (null = older API → client rule)
+  const [serverNightConfirm, setServerNightConfirm] = useState<boolean | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmedPrice, setConfirmedPrice] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -814,6 +816,7 @@ function BuchenContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
+      setServerNightConfirm(typeof data.night_confirm === 'boolean' ? data.night_confirm : null);
       const serverPrice = data.booking?.price;
       setConfirmedPrice(serverPrice != null ? Number(serverPrice) : null);
       setSubmitState('success');
@@ -997,6 +1000,25 @@ function BuchenContent() {
         </div>
 
         <div className="relative max-w-3xl mx-auto px-4 pt-20 pb-12">
+          {/* Nachtbuchung — bitte zusätzlich anrufen (ganz oben, damit der Kunde es sofort sieht) */}
+          {(serverNightConfirm ?? isNightBooking) && (
+            <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-sm">
+              <p className="font-bold text-amber-800 mb-1">
+                <Moon size={13} className="inline mr-1" /> {L('Sicherheitshalber bitte zusätzlich anrufen', 'Please also call us, just to be safe', 'Garanti olması için lütfen telefonla da arayın')}
+              </p>
+              <p className="text-sm text-amber-700 mb-3">
+                {L(
+                  'Wir sind rund um die Uhr für Sie da. Damit Ihre zu dieser späten Uhrzeit eingegangene Buchung ganz sicher eingeplant ist und ein Fahrer rechtzeitig bereitsteht, rufen Sie uns bitte sicherheitshalber zusätzlich kurz an:',
+                  'We are available around the clock. To make absolutely sure your trip booked at this late hour is scheduled and a driver is ready in time, please also give us a quick call to be safe:',
+                  '7/24 hizmetinizdeyiz. Bu geç saatte verdiğiniz rezervasyonun kesinlikle planlandığından ve bir şoförün zamanında hazır olduğundan emin olmak için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:'
+                )}
+              </p>
+              <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold px-5 py-2.5 rounded-lg transition-colors">
+                <Phone size={16} /> {CONTACT_INFO.phone}
+              </a>
+            </div>
+          )}
+
           {/* Erfolgs-Haken */}
           <div className="flex justify-center">
             <span className="flex items-center justify-center w-[86px] h-[86px] rounded-full bg-green-500 border-[6px] border-white shadow-[0_8px_24px_rgba(15,27,45,.18)]">
@@ -1045,25 +1067,6 @@ function BuchenContent() {
                 <span className="text-[11px] font-medium">{copied ? L('Kopiert', 'Copied', 'Kopyalandı') : L('Kopieren', 'Copy', 'Kopyala')}</span>
               </button>
             </div>
-
-            {/* Nachtbuchung — bitte zusätzlich anrufen */}
-            {isNightBooking && (
-              <div className="mt-4 bg-amber-50 border-2 border-amber-300 rounded-2xl p-5">
-                <p className="font-bold text-amber-800 mb-1">
-                  <Moon size={13} className="inline mr-1" /> {L('Sicherheitshalber bitte zusätzlich anrufen', 'Please also call us, just to be safe', 'Garanti olması için lütfen telefonla da arayın')}
-                </p>
-                <p className="text-sm text-amber-700 mb-3">
-                  {L(
-                    'Wir sind rund um die Uhr für Sie da. Damit Ihre zu dieser späten Uhrzeit eingegangene Buchung ganz sicher eingeplant ist und ein Fahrer rechtzeitig bereitsteht, rufen Sie uns bitte sicherheitshalber zusätzlich kurz an:',
-                    'We are available around the clock. To make absolutely sure your trip booked at this late hour is scheduled and a driver is ready in time, please also give us a quick call to be safe:',
-                    '7/24 hizmetinizdeyiz. Bu geç saatte verdiğiniz rezervasyonun kesinlikle planlandığından ve bir şoförün zamanında hazır olduğundan emin olmak için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:'
-                  )}
-                </p>
-                <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold px-5 py-2.5 rounded-lg transition-colors">
-                  <Phone size={16} /> {CONTACT_INFO.phone}
-                </a>
-              </div>
-            )}
 
             {/* Fahrzeug + Preis */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-4">

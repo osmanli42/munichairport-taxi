@@ -780,6 +780,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       booking_number,
       booking: newBooking,
       charge: chargeResult,
+      // Same decision as the confirmation mail, so the success page shows the
+      // "please also call" notice exactly when the mail does.
+      night_confirm: nightConfirm,
     });
   } catch (error) {
     console.error('Error creating booking:', error);
