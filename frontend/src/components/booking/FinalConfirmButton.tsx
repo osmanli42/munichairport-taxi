@@ -7,14 +7,25 @@ import { CheckCircle2, Send } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 export default function FinalConfirmButton({ booking, onSent }: {
-  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null; mail_opened_at?: string | null; mail_open_client?: string | null; mail_open_count?: number | null };
+  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null; mail_opened_at?: string | null; mail_open_client?: string | null; mail_open_count?: number | null; cancel_mail_opened_at?: string | null; cancel_mail_open_client?: string | null };
   onSent?: (sentAt: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [sentAt, setSentAt] = useState<string | null>(booking.confirmed_email_sent_at || null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  if (booking.status === 'cancelled' || !booking.email) return null;
+  const fmt = (d: string) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  // Cancelled: only show whether the customer opened our Stornierung mail (open pixel)
+  if (booking.status === 'cancelled') {
+    return booking.cancel_mail_opened_at ? (
+      <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        📭 Stornierungsmail geöffnet · {fmt(booking.cancel_mail_opened_at)}
+        {booking.cancel_mail_open_client ? ` · ${booking.cancel_mail_open_client}` : ''}
+      </div>
+    ) : null;
+  }
+  if (!booking.email) return null;
 
   async function send(force: boolean) {
     if (force && !confirm('Die Bestätigung wurde schon gesendet. Wirklich noch einmal an den Kunden schicken?')) return;
@@ -30,7 +41,6 @@ export default function FinalConfirmButton({ booking, onSent }: {
     } finally { setBusy(false); }
   }
 
-  const fmt = (d: string) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const when = sentAt ? fmt(sentAt) : '';
 
   return (

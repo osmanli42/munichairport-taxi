@@ -1049,6 +1049,8 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN mail_opened_at DATETIME DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN mail_open_count INT NOT NULL DEFAULT 0`,
       `ALTER TABLE bookings ADD COLUMN mail_open_client VARCHAR(40) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN cancel_mail_opened_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN cancel_mail_open_client VARCHAR(40) DEFAULT NULL`,
     ];
     for (const stmt of bookingRechnungCols) {
       try { await conn.execute(stmt); }

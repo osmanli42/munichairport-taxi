@@ -25,16 +25,20 @@ export function verifyBookingConfirmToken(token: string): string | null {
   }
 }
 
-// 1×1 open pixel in the customer's "Buchung eingegangen" mail (routes/mail-open.ts)
-export function mailOpenPixelUrl(bookingNumber: string): string {
-  const token = jwt.sign({ type: 'mail_open', bn: bookingNumber }, secret(), { expiresIn: '180d' });
+// 1×1 open pixel in a customer mail (routes/mail-open.ts): "received" = Buchung eingegangen,
+// "cancel" = Stornierung by the admin
+export type MailOpenKind = 'received' | 'cancel';
+
+export function mailOpenPixelUrl(bookingNumber: string, kind: MailOpenKind = 'received'): string {
+  const token = jwt.sign({ type: 'mail_open', bn: bookingNumber, k: kind }, secret(), { expiresIn: '180d' });
   return `${API_PUBLIC_URL}/mail-open/${token}.gif`;
 }
 
-export function verifyMailOpenToken(token: string): string | null {
+export function verifyMailOpenToken(token: string): { bn: string; kind: MailOpenKind } | null {
   try {
     const d = jwt.verify(token, secret()) as any;
-    return d?.type === 'mail_open' && typeof d.bn === 'string' ? d.bn : null;
+    if (d?.type !== 'mail_open' || typeof d.bn !== 'string') return null;
+    return { bn: d.bn, kind: d.k === 'cancel' ? 'cancel' : 'received' };
   } catch {
     return null;
   }

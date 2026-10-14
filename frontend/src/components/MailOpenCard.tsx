@@ -1,6 +1,6 @@
 'use client';
 
-// System tab: report when a customer opens the "Buchung eingegangen" mail (1×1 open pixel,
+// System tab: report when a customer opens the "Buchung eingegangen" or Stornierung mail (1×1 open pixel,
 // backend/src/routes/mail-open.ts). Notification goes out as a free WhatsApp (CallMeBot),
 // not by e-mail — no Resend quota. Off by default (legal: open tracking needs consent).
 import { useEffect, useState } from 'react';
@@ -34,9 +34,9 @@ export default function MailOpenCard() {
             <h3 className="font-bold text-gray-900 text-lg">Buchungsmail geöffnet → WhatsApp</h3>
           </div>
           <p className="text-sm text-gray-600 max-w-2xl">
-            Öffnet ein Kunde die Mail „Buchung eingegangen“, kommt einmalig eine WhatsApp an Sie
+            Öffnet ein Kunde die Mail „Buchung eingegangen“ oder Ihre Stornierungsmail, kommt je Mail einmalig eine WhatsApp an Sie
             (gleicher Kanal wie „Neue Buchung“, <b>kein Resend-Kontingent</b>). Im Buchungsdetail steht
-            „E-Mail geöffnet · Uhrzeit“. Gilt für Buchungen, die nach dem Einschalten eingehen.
+            „E-Mail geöffnet · Uhrzeit“. Gilt für Mails, die nach dem Einschalten gesendet werden. Für den Kunden unsichtbar (1×1-Bild ohne Text).
           </p>
         </div>
         <button

@@ -16,6 +16,7 @@ import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql, berlinDateSql } f
 import { getClientIp } from '../utils/ipGeo';
 import { ensureInvoiceCustomersTable } from './invoiceCustomers';
 import { isOwnEmail, ownEmailSql, OWN_PHONE_E164 } from '../utils/recipient';
+import { mailOpenPixelUrl } from '../utils/bookingConfirmToken';
 
 
 
@@ -490,6 +491,12 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
   // Send cancellation email when booking is cancelled
   if (status === 'cancelled' && booking?.email && notifyCustomer && before?.status !== 'cancelled') {
     const { sendCancellationEmail } = await import('../services/notifications');
+    // Open pixel (System → "E-Mail geöffnet melden") — only on our cancellation, not self-service
+    let openPixelUrl: string | undefined;
+    try {
+      const [mo] = await query<{ setting_value: string }>("SELECT setting_value FROM settings WHERE setting_key = 'mail_open_tracking_enabled'");
+      if (mo?.setting_value === '1') openPixelUrl = mailOpenPixelUrl(booking.booking_number, 'cancel');
+    } catch { /* no pixel */ }
     sendCancellationEmail({
       booking_number: booking.booking_number,
       name: booking.name,
@@ -509,6 +516,7 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
       return_datetime: booking.return_datetime || undefined,
       cancel_reason: cancelReason || undefined,
       cancel_note: cancelNote || undefined,
+      open_pixel_url: openPixelUrl,
     }).catch(err => console.error('Cancellation email error:', err));
   }
 
