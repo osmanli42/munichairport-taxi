@@ -18,6 +18,26 @@ const POLL_MS = 1_500;
 const LIVE_LAG_MS = 3_000;
 const ENDED_AFTER_SEC = 60;
 
+// What the visitor actually did: page load (Meta/FullSnapshot) or an interaction
+// (mouse move/click, scroll, input, touch). DOM mutations are left out — the page
+// changes by itself (sliders, timers) while nobody is there.
+const USER_SOURCES = new Set([1, 2, 3, 5, 6]);
+function lastUserActivityTs(evs: any[]): number {
+  let t = 0;
+  for (const e of evs) {
+    if (e?.type === 2 || e?.type === 4 || (e?.type === 3 && USER_SOURCES.has(e?.data?.source))) {
+      if (e.timestamp > t) t = e.timestamp;
+    }
+  }
+  return t;
+}
+
+function fmtIdle(sec: number): string {
+  if (sec < 60) return `${sec} sn`;
+  const m = Math.floor(sec / 60);
+  return sec < 3600 ? `${m} dk${sec % 60 >= 30 ? ' ' + (sec % 60) + ' sn' : ''}` : `${Math.floor(m / 60)} sa ${m % 60} dk`;
+}
+
 export interface LiveWatchTarget {
   session_id: string;
   city?: string | null;
@@ -70,6 +90,16 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
 
     const byTime = (x: any, y: any) => (x?.timestamp || 0) - (y?.timestamp || 0);
 
+    // Visitor's last real activity, converted to this browser's clock
+    let lastActivity = 0;
+    const noteActivity = (evs: any[]) => {
+      const t = lastUserActivityTs(evs);
+      if (t > lastActivity && clockOffset != null) {
+        lastActivity = t;
+        setLastEventAt(t - clockOffset);
+      }
+    };
+
     /** Keep only the newest Meta+FullSnapshot onwards (one page is all the player needs). */
     const trimToLastPage = (evs: any[]): any[] => {
       let full = -1;
@@ -110,6 +140,7 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
       rep.startLive(Date.now() + clockOffset - LIVE_LAG_MS);
       for (const e of buffer) rep.addEvent(e);
       maxApplied = buffer.length ? buffer[buffer.length - 1].timestamp || 0 : 0;
+      noteActivity(buffer);
     };
 
     const tick = async () => {
@@ -145,8 +176,8 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
             for (const e of batch) replayerRef.current.addEvent(e);
             maxApplied = batch[batch.length - 1].timestamp || maxApplied;
           }
+          noteActivity(batch);
         }
-        if (d.events.length) setLastEventAt(Date.now());
         after = d.last_id || after;
       } catch {
         if (!cancelled && !replayerRef.current) setStatus('error');
@@ -193,7 +224,9 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
   const pad = isPhone ? 20 : 2;
   const scale = Math.max(0.1, Math.min((avail.w - pad - 16) / vp.width, (avail.h - pad - 16) / vp.height, 1));
   const ended = !stillLive && (chunkAge == null || chunkAge > ENDED_AFTER_SEC);
-  const sinceLast = lastEventAt ? Math.round((now - lastEventAt) / 1000) : null;
+  // Visitor idle time (their last interaction, shown ~3 s behind like the picture)
+  const sinceLast = lastEventAt ? Math.max(0, Math.round((now - lastEventAt) / 1000)) : null;
+  const idle = sinceLast != null && sinceLast >= 15;
   const ref = target.session_id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
 
   return (
@@ -209,7 +242,12 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
           </span>
           <span className="font-mono text-[11px] bg-white/10 px-1.5 py-0.5 rounded">Ref {ref}</span>
           {status === 'live' && sinceLast != null && !ended && (
-            <span className="text-xs text-slate-400 whitespace-nowrap">son hareket {sinceLast} sn önce</span>
+            idle
+              ? <span className="text-xs font-semibold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded whitespace-nowrap"
+                  title="Sayfa açık ama ziyaretçi kaydırmıyor, tıklamıyor, fareyi oynatmıyor (başka sekmede/pencerede ya da okuyor olabilir)">
+                  ⏸ {fmtIdle(sinceLast)}&apos;dır hareketsiz
+                </span>
+              : <span className="text-xs font-semibold text-emerald-300 whitespace-nowrap">● aktif · son hareket {sinceLast} sn önce</span>
           )}
           <span className="flex-1" />
           <button onClick={onPrev} disabled={!onPrev} className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30" title="Önceki ziyaretçi (←)"><ChevronLeft size={18} /></button>
@@ -246,6 +284,11 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
               {status === 'waiting' && <><Loader2 className="animate-spin" size={22} /> Ziyaretçinin ekranı bekleniyor… <span className="text-xs text-slate-500">(ilk görüntü en geç ~10 sn içinde gelir)</span></>}
               {status === 'not_recorded' && <>Bu oturum kaydedilmiyor (kayıt kapalı veya örnekleme dışında). <span className="text-xs text-slate-500">Replay → Ayarlar'dan kayıt oranını kontrol edin.</span></>}
               {status === 'error' && <>Bağlantı hatası — tekrar deneniyor…</>}
+            </div>
+          )}
+          {!ended && status === 'live' && sinceLast != null && sinceLast >= 60 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 text-amber-200 text-sm px-4 py-2 rounded-xl ring-1 ring-amber-300/20 text-center">
+              Ziyaretçi {fmtIdle(sinceLast)}&apos;dır bir şey yapmıyor — sayfa açık, ama kaydırma/tıklama yok.
             </div>
           )}
           {ended && status === 'live' && (
