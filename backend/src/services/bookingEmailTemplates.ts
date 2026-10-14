@@ -346,6 +346,7 @@ export function customerConfirmationEmail(
   <tr><td style="padding:0 20px 22px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6">
     Flughafen-München.TAXI · Eisvogelweg 2 · 85356 Freising<br>
     <a href="${SITE}${lang === 'de' ? '' : `/${lang}`}" style="color:#9ca3af">flughafen-muenchen.taxi</a>
+    ${b.open_pixel_url && variant === 'received' ? `<img src="${esc(b.open_pixel_url)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0">` : ''}
   </td></tr>
 </table>
 </div>`;

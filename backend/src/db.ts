@@ -1045,6 +1045,10 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN cancelled_at DATETIME DEFAULT NULL`,
       // When the binding "Buchung bestätigt" mail went out (services/bookingConfirmed.ts)
       `ALTER TABLE bookings ADD COLUMN confirmed_email_sent_at DATETIME DEFAULT NULL`,
+      // "Buchung eingegangen" mail opened (open pixel, routes/mail-open.ts — System toggle)
+      `ALTER TABLE bookings ADD COLUMN mail_opened_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN mail_open_count INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE bookings ADD COLUMN mail_open_client VARCHAR(40) DEFAULT NULL`,
     ];
     for (const stmt of bookingRechnungCols) {
       try { await conn.execute(stmt); }

@@ -19,7 +19,7 @@ import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
 import { socialProofPlace } from '../utils/socialProofPlace';
-import { bookingConfirmUrl } from '../utils/bookingConfirmToken';
+import { bookingConfirmUrl, mailOpenPixelUrl } from '../utils/bookingConfirmToken';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -768,6 +768,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Admin mail gets the "endgültig bestätigen" button (signed link, routes/booking-confirm.ts)
     try { notificationData.confirm_url = bookingConfirmUrl(booking_number); } catch { /* no JWT secret: no button */ }
+    // Open pixel in the customer mail — only when switched on in System (mail-open.ts)
+    try {
+      const [mo] = await query<{ setting_value: string }>("SELECT setting_value FROM settings WHERE setting_key = 'mail_open_tracking_enabled'");
+      if (mo?.setting_value === '1') notificationData.open_pixel_url = mailOpenPixelUrl(booking_number);
+    } catch { /* no pixel */ }
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
 
     // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not

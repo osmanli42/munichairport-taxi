@@ -53,6 +53,8 @@ export interface BookingNotificationData {
   cancel_note?: string;
   /** Admin mail: signed link to the "endgültig bestätigen" page (routes/booking-confirm.ts) */
   confirm_url?: string;
+  /** Customer "received" mail: 1×1 open pixel (routes/mail-open.ts), only when enabled in System */
+  open_pixel_url?: string;
   auto_discount_name?: string;
   auto_discount_amount?: number;
   auto_discount_show_in_email?: boolean;
@@ -120,8 +122,13 @@ async function sendWhatsAppNotification(booking: BookingNotificationData): Promi
     `Tel: ${formatPhoneDisplay(booking.phone)}`,
   ].filter(Boolean).join('%0A');
 
+  await sendAdminWhatsApp(lines);
+}
+
+/** WhatsApp to the owner via CallMeBot (free, no Resend quota). `text`: lines joined with %0A. */
+export async function sendAdminWhatsApp(text: string): Promise<void> {
   await fetch(
-    `https://api.callmebot.com/whatsapp.php?phone=491774447619&text=${lines}&apikey=4111858`,
+    `https://api.callmebot.com/whatsapp.php?phone=491774447619&text=${text}&apikey=4111858`,
     { method: 'GET' }
   );
 }

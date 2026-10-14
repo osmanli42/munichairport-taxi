@@ -7,7 +7,7 @@ import { CheckCircle2, Send } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 export default function FinalConfirmButton({ booking, onSent }: {
-  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null };
+  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null; mail_opened_at?: string | null; mail_open_client?: string | null; mail_open_count?: number | null };
   onSent?: (sentAt: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -30,10 +30,18 @@ export default function FinalConfirmButton({ booking, onSent }: {
     } finally { setBusy(false); }
   }
 
-  const when = sentAt ? new Date(sentAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const fmt = (d: string) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const when = sentAt ? fmt(sentAt) : '';
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+      {booking.mail_opened_at && (
+        <div className="text-xs text-gray-600 mb-1.5">
+          📬 Buchungsmail geöffnet · {fmt(booking.mail_opened_at)}
+          {booking.mail_open_client ? ` · ${booking.mail_open_client}` : ''}
+          {booking.mail_open_count && booking.mail_open_count > 1 ? ` · ${booking.mail_open_count}×` : ''}
+        </div>
+      )}
       {sentAt ? (
         <div className="flex items-center justify-between gap-2 text-sm">
           <span className="flex items-center gap-1.5 text-emerald-800 font-medium">
