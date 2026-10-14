@@ -12,6 +12,7 @@ import {
 
 import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, speakDe } from './LiveAssistAdmin';
 import CustomerHistory, { CustomerHistoryData } from '@/components/live/CustomerHistory';
+import LivePlayer from '@/components/replay/LivePlayer';
 import { LivePrediction, ProbabilityRing, FactorChips, ModelInfoCard, fmtPct } from '@/components/live/Prediction';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
@@ -567,6 +568,10 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
   const expectedOrders = openVisitors.reduce((a, s) => a + (s.prediction?.p ?? 0), 0);
   const expectedRevenue = openVisitors.reduce((a, s) => a + (s.prediction?.p ?? 0) * (s.prediction?.price ?? 0), 0);
 
+  // Live tab → "Canlı izle" (replay/LivePlayer.tsx)
+  const [watchSid, setWatchSid] = useState<string | null>(null);
+  const lastWatchRef = useRef<LiveSession | null>(null);
+
   const visibleLive = live
     .filter(s => {
       const p = s.prediction?.p ?? 0;
@@ -583,8 +588,30 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       return pb - pa;
     });
 
+  // Watched visitor: keep showing them after they drop out of the Live list ("ayrıldı")
+  const watched = watchSid ? (live.find(x => x.session_id === watchSid) || (lastWatchRef.current?.session_id === watchSid ? lastWatchRef.current : null)) : null;
+  if (watched) lastWatchRef.current = watched;
+  const watchList = visibleLive.filter(x => x.is_bot === 0);
+  const watchIdx = watchSid ? watchList.findIndex(x => x.session_id === watchSid) : -1;
+
   return (
     <div className="space-y-4">
+      {watched && (
+        <LivePlayer
+          token={token}
+          target={{
+            session_id: watched.session_id,
+            city: watched.city,
+            ua_device: watched.ua_device,
+            current_path: watched.current_path,
+            sourceLabel: sourceLabel(watched).label.replace(/^[^A-Za-z]+/, ''),
+          }}
+          stillLive={live.some(x => x.session_id === watched.session_id)}
+          onClose={() => setWatchSid(null)}
+          onPrev={watchIdx > 0 ? () => setWatchSid(watchList[watchIdx - 1].session_id) : undefined}
+          onNext={watchIdx >= 0 && watchIdx < watchList.length - 1 ? () => setWatchSid(watchList[watchIdx + 1].session_id) : undefined}
+        />
+      )}
 
       {/* ─── Offene Rückruf-Anfragen ─── */}
       {callbacks.length > 0 && (
@@ -956,7 +983,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                       )}
                     </div>
 
-                    <LiveAssistRow la={liveAssist} s={s} />
+                    <LiveAssistRow la={liveAssist} s={s} onWatch={() => setWatchSid(s.session_id)} />
                     </div>
                     </div>
                   </div>

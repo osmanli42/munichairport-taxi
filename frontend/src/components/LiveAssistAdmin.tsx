@@ -839,7 +839,7 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
   );
 }
 
-export function LiveAssistRow({ la, s }: { la: LiveAssistState; s: RowSession }) {
+export function LiveAssistRow({ la, s, onWatch }: { la: LiveAssistState; s: RowSession; onWatch?: () => void }) {
   const [open, setOpen] = useState(false);
   const enabled = la.settings?.enabled === '1';
   const info = la.overview?.sessions?.[s.session_id];
@@ -858,6 +858,13 @@ export function LiveAssistRow({ la, s }: { la: LiveAssistState; s: RowSession })
           <button type="button" onClick={() => setOpen((o) => !o)}
             className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-white ${unread > 0 ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
             <MessageCircle size={12} /> {unread > 0 ? `${unread} yeni mesaj` : open ? 'Chat\'i kapat' : 'Chat'}
+          </button>
+        )}
+        {onWatch && s.is_bot === 0 && (
+          <button type="button" onClick={onWatch}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-white bg-violet-600 hover:bg-violet-700"
+            title="Ziyaretçinin ekranını canlı izle (~2–4 sn gecikme)">
+            👁 Canlı izle
           </button>
         )}
         <span className="text-[11px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded" title="Chat arşivinde bu kodla aranabilir">

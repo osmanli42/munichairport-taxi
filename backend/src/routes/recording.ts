@@ -105,6 +105,19 @@ function inSample(sessionId: string, pct: number): boolean {
 const MAX_EVENTS_PER_CHUNK = 500;
 const MAX_BYTES_PER_REQUEST = 4 * 1024 * 1024; // 4 MB per upload
 
+// ---------- Live watching ----------
+// Sessions an admin is watching right now (Live tab → "Canlı izle"). Refreshed by every
+// poll of /admin/recordings/:id/live; the upload response then says `watched: true` and
+// the visitor's recorder switches from 10 s to 1.5 s uploads (SessionRecorder.tsx).
+const WATCH_TTL_MS = 30_000;
+const watchedSessions = new Map<string, number>();
+function isWatched(sid: string): boolean {
+  const until = watchedSessions.get(sid);
+  if (!until) return false;
+  if (until < Date.now()) { watchedSessions.delete(sid); return false; }
+  return true;
+}
+
 // ---------- POST /api/track/recording ----------
 router.post('/track/recording', async (req: Request, res: Response) => {
   try {
@@ -156,7 +169,7 @@ router.post('/track/recording', async (req: Request, res: Response) => {
       ]
     );
 
-    res.json({ ok: true, chunk_index: chunkIndex, events: batch.length });
+    res.json({ ok: true, chunk_index: chunkIndex, events: batch.length, ...(isWatched(String(session_id)) ? { watched: true } : {}) });
   } catch (err: any) {
     console.error('recording error:', err.message);
     res.status(500).json({ error: 'failed' });
@@ -797,6 +810,94 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
     }
   } catch (err: any) {
     console.error('recording get error:', err.message);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// ---------- GET /api/admin/recordings/:id/live?after=<chunk id> ----------
+// Incremental feed for the live viewer. Cursor is the auto-increment id (chunk_index can
+// repeat). Without `after` it starts at the newest Meta+FullSnapshot, so watching begins
+// "now" instead of downloading the whole session. Does not mark the session as watched.
+router.get('/admin/recordings/:id/live', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTable();
+    const sessionId = String(req.params.id).slice(0, 64);
+    watchedSessions.set(sessionId, Date.now() + WATCH_TTL_MS);
+    const after = Math.max(0, Number(req.query.after) || 0);
+
+    const settings = await getSettings();
+    const recorded = settings.enabled && inSample(sessionId, settings.sample_pct);
+
+    let fromId = after + 1;
+    if (!after) {
+      // rrweb serialises a FullSnapshot as {"type":2,"data":{"node":…}; start one chunk
+      // earlier so the Meta event (viewport size) emitted just before it is included.
+      const [snap] = await query<{ id: number }>(
+        `SELECT id FROM session_recordings
+          WHERE session_id = ? AND LOCATE('{"type":2,"data":{"node"', events_json) > 0
+          ORDER BY id DESC LIMIT 1`,
+        [sessionId]
+      );
+      if (!snap) {
+        res.json({ events: [], last_id: 0, recorded, waiting: true });
+        return;
+      }
+      const [prev] = await query<{ id: number }>(
+        `SELECT id FROM session_recordings WHERE session_id = ? AND id < ? ORDER BY id DESC LIMIT 1`,
+        [sessionId, snap.id]
+      );
+      fromId = prev ? prev.id : snap.id;
+    }
+
+    const chunks = await query<{ id: number; events_json: string }>(
+      `SELECT id, events_json FROM session_recordings WHERE session_id = ? AND id >= ? ORDER BY id ASC LIMIT 200`,
+      [sessionId, fromId]
+    );
+    let events: any[] = [];
+    for (const c of chunks) {
+      try {
+        const ev = JSON.parse(c.events_json);
+        if (Array.isArray(ev)) events.push(...ev);
+      } catch { /* skip broken chunk */ }
+    }
+    events.sort((a, b) => (a?.timestamp || 0) - (b?.timestamp || 0));
+    if (!after) {
+      // Begin exactly at the newest Meta (4) before the newest FullSnapshot (2).
+      let full = -1;
+      for (let i = events.length - 1; i >= 0; i--) if (events[i]?.type === 2) { full = i; break; }
+      let meta = full;
+      for (let i = full; i >= 0; i--) if (events[i]?.type === 4) { meta = i; break; }
+      if (meta > 0) events = events.slice(meta);
+    }
+    const lastId = chunks.length ? chunks[chunks.length - 1].id : after;
+
+    // Seconds since the newest chunk (DB clock), and how far the visitor's device clock is
+    // ahead of the server (newest chunk: its last event time vs. when it was stored). The
+    // live player needs "now" in the visitor's clock to replay with a constant small delay.
+    const [age] = await query<{ sec: number | null; skew_ms: number | null }>(
+      `SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) AS sec,
+              last_event_ts - UNIX_TIMESTAMP(created_at) * 1000 AS skew_ms
+         FROM session_recordings WHERE session_id = ? ORDER BY id DESC LIMIT 1`,
+      [sessionId]
+    );
+
+    const payload = JSON.stringify({
+      events, last_id: lastId, recorded,
+      last_chunk_age_sec: age?.sec ?? null,
+      visitor_skew_ms: age?.skew_ms != null ? Number(age.skew_ms) : 0,
+      server_now: Date.now(),
+    });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Vary', 'Accept-Encoding');
+    if (/\bgzip\b/.test(String(req.headers['accept-encoding'] || '')) && payload.length > 32_000) {
+      res.setHeader('Content-Encoding', 'gzip');
+      res.end(await gzipAsync(payload, { level: 6 }));
+    } else {
+      res.end(payload);
+    }
+  } catch (err: any) {
+    console.error('recording live error:', err.message);
     res.status(500).json({ error: 'failed' });
   }
 });

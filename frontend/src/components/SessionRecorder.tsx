@@ -5,6 +5,10 @@ import { usePathname } from 'next/navigation';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const FLUSH_INTERVAL_MS = 10_000;
+// While an admin watches this session live (server answers `watched: true`), upload every
+// 1.5 s instead of every 10 s. Only the watched visitor pays the extra requests.
+const WATCHED_FLUSH_MS = 1_500;
+const WATCHED_HOLD_MS = 60_000;
 const MAX_BUFFER = 500;
 // Chrome's sendBeacon silently drops payloads larger than ~64KB.
 // We use a conservative limit and fall back to fetch for large payloads.
@@ -42,6 +46,8 @@ export default function SessionRecorder() {
   const bufferRef = useRef<any[]>([]);
   const sessionIdRef = useRef<string>('');
   const visitorIdRef = useRef<string>('');
+  // Survives SPA navigations (the effect below restarts per pathname, the component doesn't)
+  const watchedUntilRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !pathname) return;
@@ -81,11 +87,16 @@ export default function SessionRecorder() {
           headers: { 'Content-Type': 'application/json' },
           body,
           keepalive: body.length < BEACON_SIZE_LIMIT,
-        }).catch(() => {});
+        })
+          .then((r) => r.json())
+          .then((j) => { if (j?.watched) watchedUntilRef.current = Date.now() + WATCHED_HOLD_MS; })
+          .catch(() => {});
       } catch {}
     };
 
+    let lastFlush = Date.now();
     const flush = (fromUnload = false) => {
+      lastFlush = Date.now();
       if (bufferRef.current.length === 0) return;
       const events = bufferRef.current.splice(0, bufferRef.current.length);
       const body = JSON.stringify({
@@ -144,7 +155,11 @@ export default function SessionRecorder() {
       stopFnRef.current = stopFn;
     }).catch(() => {});
 
-    const flushInterval = setInterval(() => flush(false), FLUSH_INTERVAL_MS);
+    // Tick fast, but only upload every 10 s — or every 1.5 s while being watched live.
+    const flushInterval = setInterval(() => {
+      const every = Date.now() < watchedUntilRef.current ? WATCHED_FLUSH_MS : FLUSH_INTERVAL_MS;
+      if (Date.now() - lastFlush >= every - 50) flush(false);
+    }, WATCHED_FLUSH_MS);
 
     const onUnload = () => flush(true); // use sendBeacon for small unload payloads
     window.addEventListener('pagehide', onUnload);
