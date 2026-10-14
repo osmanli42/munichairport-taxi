@@ -678,31 +678,33 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     // Determine whether this booking warrants an extra phone confirmation as a
-    // safety measure (we are open 24/7, but want late-hour trips guaranteed). The
-    // notice appears only when BOTH the booking arrives during the night window
-    // (owner likely asleep) AND the trip departs during the night window (owner
-    // can't dispatch in time after waking). Booking time uses the CURRENT Munich
-    // time; pickup time is read from pickup_datetime — both in Europe/Berlin.
+    // safety measure (we are open 24/7, but want night bookings guaranteed). The
+    // notice appears when the booking arrives during the night window (owner likely
+    // asleep) and the ride starts within night_confirm_max_hours (default 12).
     let nightConfirm = false;
     try {
       const nightRows = await query<{ setting_key: string; setting_value: string }>(
-        "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('night_confirm_enabled', 'night_confirm_start', 'night_confirm_end')"
+        "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_max_hours')"
       );
       const nightCfg: Record<string, string> = {};
       for (const r of nightRows) nightCfg[r.setting_key] = r.setting_value;
       const nightEnabled = (nightCfg['night_confirm_enabled'] ?? '1') === '1';
       const nightStart = parseInt(nightCfg['night_confirm_start'] ?? '22', 10);
       const nightEnd = parseInt(nightCfg['night_confirm_end'] ?? '7', 10);
+      const maxHours = Number(nightCfg['night_confirm_max_hours'] ?? '12');
       const inWindow = (h: number): boolean => {
         if (isNaN(h) || nightStart === nightEnd) return false;
         return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
       };
-      const now = new Date();
-      const bookingHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(now), 10);
-      const pickupHour = parseInt(String(pickup_datetime).split('T')[1] ?? '', 10);
-      const pickupDate = new Date(pickup_datetime);
-      const hoursUntilPickup = (pickupDate.getTime() - now.getTime()) / 3600000;
-      nightConfirm = nightEnabled && inWindow(bookingHour) && inWindow(pickupHour) && hoursUntilPickup <= 24;
+      // What counts is WHEN the booking arrives: at night nobody may see it before the
+      // ride starts. The ride's own hour no longer matters (a 06:04 booking for 08:00
+      // used to get no hint) — only that it starts within maxHours. Both as Munich wall time.
+      const nowBerlin = berlinWallNow();
+      const bookingHour = Math.floor(nowBerlin.minuteOfDay / 60);
+      const pickupWall = Date.parse(`${String(pickup_datetime).slice(0, 16)}:00Z`);
+      const hoursUntilPickup = (pickupWall - nowBerlin.wall) / 3600000;
+      nightConfirm = nightEnabled && inWindow(bookingHour)
+        && isFinite(hoursUntilPickup) && hoursUntilPickup <= (isFinite(maxHours) && maxHours > 0 ? maxHours : 12);
     } catch (e) {
       console.error('Night-confirm check failed:', e);
     }

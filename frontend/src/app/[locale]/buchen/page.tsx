@@ -141,6 +141,7 @@ function BuchenContent() {
   const [nightConfirmEnabled, setNightConfirmEnabled] = useState(true);
   const [nightStart, setNightStart] = useState(22);
   const [nightEnd, setNightEnd] = useState(7);
+  const [nightMaxHours, setNightMaxHours] = useState(12);
   const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
   const [phoneValidationEnabled, setPhoneValidationEnabled] = useState(true);
   // Admin → Einstellungen "Formular merken" (booking_form_restore_enabled)
@@ -157,6 +158,7 @@ function BuchenContent() {
       if (s.night_confirm_enabled === '0') setNightConfirmEnabled(false);
       if (s.night_confirm_start) setNightStart(parseInt(s.night_confirm_start, 10));
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
+      if (s.night_confirm_max_hours) setNightMaxHours(parseInt(s.night_confirm_max_hours, 10) || 12);
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
       if (s.booking_form_restore_enabled === '0') setFormRestoreEnabled(false);
@@ -165,17 +167,21 @@ function BuchenContent() {
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
   }, []);
 
-  // Show the safety notice only when BOTH the booking arrives during the night
-  // window (current Munich time, owner likely asleep) AND the trip departs during
-  // the night window (owner can't dispatch in time). We are open 24/7, this is
-  // just a guarantee for genuinely late-hour trips.
+  // Show the safety notice when the booking arrives during the night window (current
+  // Munich time, owner likely asleep) and the ride starts within nightMaxHours — same
+  // rule as the server (routes/bookings.ts). The ride's own hour doesn't matter.
   const inNightWindow = (h: number): boolean => {
     if (isNaN(h) || nightStart === nightEnd) return false;
     return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
   };
-  const munichHourNow = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
-  const pickupHour = time ? parseInt(time.split(':')[0], 10) : NaN;
-  const isNightBooking = nightConfirmEnabled && inNightWindow(munichHourNow) && inNightWindow(pickupHour);
+  const munichNowParts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date()).map(p => [p.type, p.value]));
+  const munichHourNow = Number(munichNowParts.hour);
+  const munichNowWall = Date.UTC(+munichNowParts.year, +munichNowParts.month - 1, +munichNowParts.day, +munichNowParts.hour, +munichNowParts.minute);
+  const pickupWall = date && time ? Date.parse(`${date}T${time.slice(0, 5)}:00Z`) : NaN;
+  const hoursUntilPickup = (pickupWall - munichNowWall) / 3600000;
+  const isNightBooking = nightConfirmEnabled && inNightWindow(munichHourNow) && isFinite(hoursUntilPickup) && hoursUntilPickup <= nightMaxHours;
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Zwischenstopp state (only for buchen-page-added stops)
@@ -1047,7 +1053,7 @@ function BuchenContent() {
                 </p>
                 <p className="text-sm text-amber-700 mb-3">
                   {L(
-                    'Wir sind rund um die Uhr für Sie da. Damit Ihre Fahrt zu dieser späten Uhrzeit ganz sicher eingeplant ist und ein Fahrer rechtzeitig bereitsteht, rufen Sie uns bitte sicherheitshalber zusätzlich kurz an:',
+                    'Wir sind rund um die Uhr für Sie da. Damit Ihre zu dieser späten Uhrzeit eingegangene Buchung ganz sicher eingeplant ist und ein Fahrer rechtzeitig bereitsteht, rufen Sie uns bitte sicherheitshalber zusätzlich kurz an:',
                     'We are available around the clock. To make absolutely sure your trip booked at this late hour is scheduled and a driver is ready in time, please also give us a quick call to be safe:',
                     '7/24 hizmetinizdeyiz. Bu geç saatte verdiğiniz rezervasyonun kesinlikle planlandığından ve bir şoförün zamanında hazır olduğundan emin olmak için lütfen her ihtimale karşı bizi telefonla da kısaca arayın:'
                   )}

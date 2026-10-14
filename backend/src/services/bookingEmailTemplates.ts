@@ -81,7 +81,7 @@ const T: Record<Lang, Record<string, string>> = {
     stepAirport: 'Abholung am Flughafen: So finden Sie Ihren Fahrer',
     stepHome: 'Bitte seien Sie zur Abholzeit bereit und telefonisch erreichbar.',
     manage: 'Buchung ansehen / stornieren', call: 'Anrufen', write: 'WhatsApp',
-    night: 'Nachtfahrt: Bitte rufen Sie uns sicherheitshalber zusätzlich kurz an, damit Ihr Fahrer ganz sicher bereitsteht.',
+    night: 'Nachtbuchung: Bitte rufen Sie uns sicherheitshalber zusätzlich kurz an, damit Ihr Fahrer ganz sicher bereitsteht.',
     questions: 'Fragen? Wir sind rund um die Uhr erreichbar.',
   },
   en: {
@@ -101,7 +101,7 @@ const T: Record<Lang, Record<string, string>> = {
     stepAirport: 'Airport pickup: how to find your driver',
     stepHome: 'Please be ready at the pickup time and reachable by phone.',
     manage: 'View / cancel booking', call: 'Call', write: 'WhatsApp',
-    night: 'Night ride: please also give us a quick call, just to be sure your driver is ready.',
+    night: 'Night booking: please also give us a quick call, just to be sure your driver is ready.',
     questions: 'Questions? We are available around the clock.',
   },
   tr: {
@@ -121,7 +121,7 @@ const T: Record<Lang, Record<string, string>> = {
     stepAirport: 'Havalimanında alış: şoförünüzü nasıl bulursunuz',
     stepHome: 'Lütfen alış saatinde hazır ve telefonla ulaşılabilir olun.',
     manage: 'Rezervasyonu gör / iptal et', call: 'Ara', write: 'WhatsApp',
-    night: 'Gece yolculuğu: Şoförünüzün kesin hazır olması için lütfen bizi ayrıca kısaca arayın.',
+    night: 'Gece rezervasyonu: Şoförünüzün kesin hazır olması için lütfen bizi ayrıca kısaca arayın.',
     questions: 'Sorularınız mı var? 7/24 ulaşabilirsiniz.',
   },
 };
