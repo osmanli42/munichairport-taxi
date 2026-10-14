@@ -9,6 +9,8 @@ const FLUSH_INTERVAL_MS = 10_000;
 // 1.5 s instead of every 10 s. Only the watched visitor pays the extra requests.
 const WATCHED_FLUSH_MS = 1_500;
 const WATCHED_HOLD_MS = 60_000;
+// How often the recorder asks "is an admin watching me?" (in-memory on the server, no DB)
+const WATCH_CHECK_MS = 3_000;
 const MAX_BUFFER = 500;
 // Chrome's sendBeacon silently drops payloads larger than ~64KB.
 // We use a conservative limit and fall back to fetch for large payloads.
@@ -161,12 +163,28 @@ export default function SessionRecorder() {
       if (Date.now() - lastFlush >= every - 50) flush(false);
     }, WATCHED_FLUSH_MS);
 
+    // Ask every 3 s whether an admin opened "Canlı izle" for this session (only while the
+    // page is visible — a hidden tab has nothing to show).
+    const watchCheck = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetch(`${API_BASE}/track/recording/watched?sid=${encodeURIComponent(sessionIdRef.current)}`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((j) => {
+          if (!j?.watched) return;
+          const wasWatched = Date.now() < watchedUntilRef.current;
+          watchedUntilRef.current = Date.now() + WATCHED_HOLD_MS;
+          if (!wasWatched) flush(false); // send what we have right away
+        })
+        .catch(() => {});
+    }, WATCH_CHECK_MS);
+
     const onUnload = () => flush(true); // use sendBeacon for small unload payloads
     window.addEventListener('pagehide', onUnload);
 
     return () => {
       stopped = true;
       clearInterval(flushInterval);
+      clearInterval(watchCheck);
       window.removeEventListener('pagehide', onUnload);
       if (stopFnRef.current) {
         try { stopFnRef.current(); } catch {}

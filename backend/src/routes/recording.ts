@@ -118,6 +118,14 @@ function isWatched(sid: string): boolean {
   return true;
 }
 
+// ---------- GET /api/track/recording/watched?sid= ----------
+// Cheap in-memory check the visitor's recorder makes every few seconds, so live watching
+// switches to fast uploads within ~3 s instead of waiting for the next 10 s upload.
+router.get('/track/recording/watched', (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ watched: isWatched(String(req.query.sid || '').slice(0, 64)) });
+});
+
 // ---------- POST /api/track/recording ----------
 router.post('/track/recording', async (req: Request, res: Response) => {
   try {

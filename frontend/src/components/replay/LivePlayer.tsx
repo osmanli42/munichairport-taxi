@@ -86,6 +86,10 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
           const rep = new Replayer([], {
             root: mountRef.current,
             liveMode: true,
+            // rrweb applies "past" (sync) mutations to a virtual DOM that only gets flushed
+            // to the screen during normal playback — never in live mode. Without this the
+            // view froze on the page's first snapshot (only page changes showed up).
+            useVirtualDom: false,
             showWarning: false,
             triggerFocus: true,
             mouseTail: { duration: 700, lineCap: 'round', lineWidth: 3, strokeStyle: 'rgba(168,85,247,0.55)' },
