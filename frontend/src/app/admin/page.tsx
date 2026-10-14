@@ -174,7 +174,7 @@ export default function AdminPage() {
   // legacy card bookings have been manually processed.
   const [showCardPopup, setShowCardPopup] = useState(false);
   const [cardVisible, setCardVisible] = useState(false);
-  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', night_confirm_max_hours: '12', night_cancel_enabled: '1', night_cancel_start: '20:30', night_cancel_end: '08:30', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
+  const [settings, setSettings] = useState<Record<string, string>>({ stadtfahrt_enabled: '0', anfahrt_price_per_km: '1.70', zwischenstopp_enabled: '0', plz_surcharge_enabled: '0', min_advance_hours: '1.5', night_confirm_enabled: '1', night_confirm_start: '22', night_confirm_end: '7', night_confirm_ride_until: '9', night_cancel_enabled: '1', night_cancel_start: '20:30', night_cancel_end: '08:30', flight_validation_enabled: '1', phone_validation_enabled: '1', booking_form_restore_enabled: '1', auto_status_enabled: '0', auto_confirm_hours: '1', auto_complete_buffer_minutes: '0', auto_complete_include_company_charge: '0', experiment_checkout_v2: 'off', social_proof_enabled: '1' });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('18:00');
@@ -1610,7 +1610,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <label className="font-semibold text-gray-700">🌙 Nacht-Bestätigung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt innerhalb der angegebenen Stunden startet – die Uhrzeit der Fahrt selbst spielt keine Rolle (z. B. Buchung 06:04 für 08:00). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: 22–07 Uhr, Fahrt innerhalb von 12 Stunden.</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</p>
                     </div>
                     <button
                       onClick={async () => {
@@ -1656,21 +1656,21 @@ export default function AdminPage() {
                         onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_end: e.target.value }))}
                         className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
-                      <span className="text-sm text-gray-600">Uhr · Fahrt innerhalb von</span>
+                      <span className="text-sm text-gray-600">Uhr · Fahrt vor</span>
                       <input
                         type="number"
-                        min="1"
-                        max="48"
-                        value={settings.night_confirm_max_hours || '12'}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_max_hours: e.target.value }))}
+                        min="0"
+                        max="24"
+                        value={settings.night_confirm_ride_until || '9'}
+                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_ride_until: e.target.value }))}
                         className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                       />
-                      <span className="text-sm text-gray-600">Std.</span>
+                      <span className="text-sm text-gray-600">Uhr</span>
                       <button
                         onClick={async () => {
                           setSettingsSaving(true);
                           try {
-                            const updated = await adminApi.updateSettings({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end, night_confirm_max_hours: settings.night_confirm_max_hours || '12' });
+                            const updated = await adminApi.updateSettings({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end, night_confirm_ride_until: settings.night_confirm_ride_until || '9' });
                             setSettings(updated);
                             setPriceSuccess('Nachtzeitraum aktualisiert');
                             setTimeout(() => setPriceSuccess(''), 3000);

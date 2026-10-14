@@ -36,7 +36,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_max_hours', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -88,10 +88,10 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
-      if (key === 'night_confirm_max_hours') {
+      if (key === 'night_confirm_ride_until') {
         const num = parseInt(String(value), 10);
-        if (isNaN(num) || num < 1 || num > 48) {
-          res.status(400).json({ error: 'night_confirm_max_hours must be an integer between 1 and 48' });
+        if (isNaN(num) || num < 0 || num > 24) {
+          res.status(400).json({ error: 'night_confirm_ride_until must be an integer between 0 and 24' });
           return;
         }
       }

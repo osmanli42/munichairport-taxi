@@ -141,7 +141,7 @@ function BuchenContent() {
   const [nightConfirmEnabled, setNightConfirmEnabled] = useState(true);
   const [nightStart, setNightStart] = useState(22);
   const [nightEnd, setNightEnd] = useState(7);
-  const [nightMaxHours, setNightMaxHours] = useState(12);
+  const [nightRideUntil, setNightRideUntil] = useState(9);
   const [flightValidationEnabled, setFlightValidationEnabled] = useState(true);
   const [phoneValidationEnabled, setPhoneValidationEnabled] = useState(true);
   // Admin → Einstellungen "Formular merken" (booking_form_restore_enabled)
@@ -158,7 +158,7 @@ function BuchenContent() {
       if (s.night_confirm_enabled === '0') setNightConfirmEnabled(false);
       if (s.night_confirm_start) setNightStart(parseInt(s.night_confirm_start, 10));
       if (s.night_confirm_end) setNightEnd(parseInt(s.night_confirm_end, 10));
-      if (s.night_confirm_max_hours) setNightMaxHours(parseInt(s.night_confirm_max_hours, 10) || 12);
+      if (s.night_confirm_ride_until) { const v = parseInt(s.night_confirm_ride_until, 10); if (!isNaN(v)) setNightRideUntil(v); }
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
       if (s.booking_form_restore_enabled === '0') setFormRestoreEnabled(false);
@@ -168,8 +168,8 @@ function BuchenContent() {
   }, []);
 
   // Show the safety notice when the booking arrives during the night window (current
-  // Munich time, owner likely asleep) and the ride starts within nightMaxHours — same
-  // rule as the server (routes/bookings.ts). The ride's own hour doesn't matter.
+  // Munich time, owner likely asleep) and the ride starts before the next
+  // nightRideUntil o'clock — same rule as the server (routes/bookings.ts).
   const inNightWindow = (h: number): boolean => {
     if (isNaN(h) || nightStart === nightEnd) return false;
     return nightStart < nightEnd ? (h >= nightStart && h < nightEnd) : (h >= nightStart || h < nightEnd);
@@ -180,8 +180,9 @@ function BuchenContent() {
   const munichHourNow = Number(munichNowParts.hour);
   const munichNowWall = Date.UTC(+munichNowParts.year, +munichNowParts.month - 1, +munichNowParts.day, +munichNowParts.hour, +munichNowParts.minute);
   const pickupWall = date && time ? Date.parse(`${date}T${time.slice(0, 5)}:00Z`) : NaN;
-  const hoursUntilPickup = (pickupWall - munichNowWall) / 3600000;
-  const isNightBooking = nightConfirmEnabled && inNightWindow(munichHourNow) && isFinite(hoursUntilPickup) && hoursUntilPickup <= nightMaxHours;
+  const nightCutoffToday = Date.UTC(+munichNowParts.year, +munichNowParts.month - 1, +munichNowParts.day, nightRideUntil);
+  const nightCutoff = munichNowWall < nightCutoffToday ? nightCutoffToday : nightCutoffToday + 86400000;
+  const isNightBooking = nightConfirmEnabled && inNightWindow(munichHourNow) && isFinite(pickupWall) && pickupWall < nightCutoff;
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Zwischenstopp state (only for buchen-page-added stops)
