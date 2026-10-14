@@ -23,6 +23,7 @@ import KalenderTab from '@/components/KalenderTab';
 import CancelBookingDialog, { CancelPayload } from '@/components/booking/CancelBookingDialog';
 import InvoiceStornoCard from '@/components/booking/InvoiceStornoCard';
 import StornoRegister from '@/components/booking/StornoRegister';
+import FinalConfirmButton from '@/components/booking/FinalConfirmButton';
 import AdminAddressField from '@/components/AdminAddressField';
 import RabatteTab from '@/components/RabatteTab';
 import DriversTab from '@/components/DriversTab';
@@ -3373,6 +3374,9 @@ export default function AdminPage() {
                   ))}
                 </div>
               </div>
+              {/* Endgültige Bestätigung (Mail an den Kunden) */}
+              <FinalConfirmButton key={`fc-${selectedBooking.id}`} booking={selectedBooking as any}
+                onSent={(at) => setBookings(prev => prev.map(b => b.id === selectedBooking.id ? ({ ...b, confirmed_email_sent_at: at, status: b.status === 'new' ? 'confirmed' : b.status } as any) : b))} />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-3">

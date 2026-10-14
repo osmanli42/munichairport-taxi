@@ -16,6 +16,7 @@ import driverAppRouter from './routes/driver-app';
 import traccarRouter from './routes/traccar';
 import adminTrackingRouter from './routes/admin-tracking';
 import admin2faRouter from './routes/admin-2fa';
+import bookingConfirmRouter from './routes/booking-confirm';
 import adminDashboardRouter from './routes/admin-dashboard';
 import adminSeoRouter from './routes/admin-seo';
 import { startSeoJobs } from './services/seo/jobs';
@@ -100,6 +101,7 @@ app.get('/api/smtp-test', async (req, res) => {
 // Routes
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin/2fa', admin2faRouter);
+app.use('/api/booking-confirm', bookingConfirmRouter);
 app.use('/api/admin/dashboard-widgets', adminDashboardWidgetsRouter);
 app.use('/api/admin/dashboard', adminDashboardRouter);
 app.use('/api/admin/seo2', adminSeoRouter);

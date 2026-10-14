@@ -19,6 +19,7 @@ import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
 import { socialProofPlace } from '../utils/socialProofPlace';
+import { bookingConfirmUrl } from '../utils/bookingConfirmToken';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -765,6 +766,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       rechnung_adresse: rechnungRequired ? rechnungAdresseClean || undefined : undefined,
     };
 
+    // Admin mail gets the "endgültig bestätigen" button (signed link, routes/booking-confirm.ts)
+    try { notificationData.confirm_url = bookingConfirmUrl(booking_number); } catch { /* no JWT secret: no button */ }
     sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
 
     // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not

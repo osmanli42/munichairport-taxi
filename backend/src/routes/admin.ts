@@ -683,6 +683,28 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
   res.status(201).json(decryptBooking(newBooking));
 });
 
+// POST /api/admin/bookings/:id/final-confirmation — { force? } binding "Buchung bestätigt" mail
+router.post('/bookings/:id/final-confirmation', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { sendFinalConfirmation } = await import('../services/bookingConfirmed');
+  let r;
+  try {
+    r = await sendFinalConfirmation({ id: Number(req.params.id) }, { force: req.body?.force === true, by: req.adminUsername });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Fehler' });
+    return;
+  }
+  if (r.ok) { res.json({ success: true, sent_at: r.sent_at, to: r.to }); return; }
+  const status = r.reason === 'not_found' ? 404 : r.reason === 'send_failed' ? 502 : 409;
+  const msg = {
+    not_found: 'Buchung nicht gefunden',
+    cancelled: 'Stornierte Buchung — keine Bestätigung gesendet.',
+    no_email: 'Keine E-Mail-Adresse hinterlegt.',
+    already_sent: 'Bestätigung wurde bereits gesendet.',
+    send_failed: `Senden fehlgeschlagen${r.error ? `: ${r.error}` : ''}`,
+  }[r.reason];
+  res.status(status).json({ error: msg, reason: r.reason, sent_at: r.sent_at ?? null });
+});
+
 // POST /api/admin/bookings/:id/resend-confirmation — resend customer confirmation email
 router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
@@ -698,73 +720,8 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
   }
 
   const { sendCustomerConfirmation } = await import('../services/notifications');
-
-  // Discounts as booked, so the mail shows the same breakdown as the first confirmation:
-  // the stored price is after discount, base_total is the price before it.
-  const promoAmount = Number(booking.discount_amount) || 0;
-  const autoAmount = Number(booking.auto_discount_amount) || 0;
-  let autoName: string | undefined;
-  let autoShow = false;
-  if (autoAmount > 0) {
-    const [rule] = booking.auto_discount_id
-      ? await query<{ name: string }>('SELECT name FROM auto_discounts WHERE id = ?', [booking.auto_discount_id])
-      : [];
-    autoName = rule?.name;
-    const [showRow] = await query<{ setting_value: string }>(
-      "SELECT setting_value FROM settings WHERE setting_key = 'auto_discount_show_in_email'");
-    autoShow = showRow?.setting_value === '1';
-  }
-
-  const [company] = booking.company_id
-    ? await query<{ company_name: string }>('SELECT company_name FROM companies WHERE id = ?', [booking.company_id])
-    : [];
-  const companyName = company?.company_name || undefined;
-
-  const [priceRow] = await query<{ fahrrad_price: number; child_seat_price: number }>(
-    'SELECT fahrrad_price, child_seat_price FROM prices WHERE vehicle_type = ?',
-    [booking.vehicle_type]
-  );
-  const fahrradCount = booking.fahrrad_count || 0;
-  const fahrradUnitPrice = priceRow?.fahrrad_price ?? 0;
-
-  await sendCustomerConfirmation({
-    booking_number: booking.booking_number,
-    name: booking.name,
-    email: booking.email,
-    phone: booking.phone,
-    pickup_address: booking.pickup_address,
-    dropoff_address: booking.dropoff_address,
-    pickup_datetime: booking.pickup_datetime,
-    vehicle_type: booking.vehicle_type,
-    passengers: booking.passengers,
-    price: booking.price,
-    payment_method: booking.payment_method,
-    language: booking.language || 'de',
-    child_seat: !!booking.child_seat,
-    child_seat_details: booking.child_seat_details || undefined,
-    luggage_count: booking.luggage_count || 0,
-    flight_number: booking.flight_number || undefined,
-    pickup_sign: booking.pickup_sign || undefined,
-    notes: booking.notes || undefined,
-    distance_km: booking.distance_km || undefined,
-    duration_minutes: booking.duration_minutes || undefined,
-    trip_type: booking.trip_type || undefined,
-    return_datetime: booking.return_datetime || undefined,
-    fahrrad_count: fahrradCount,
-    fahrrad_price: fahrradCount > 0 ? fahrradUnitPrice : undefined,
-    fahrrad_total: fahrradCount > 0 ? fahrradCount * fahrradUnitPrice : undefined,
-    anfahrt_cost: booking.anfahrt_cost || undefined,
-    zwischenstopp_address: booking.zwischenstopp_address || undefined,
-    promo_code: booking.promo_code || undefined,
-    discount_amount: promoAmount > 0 ? promoAmount : undefined,
-    base_total: promoAmount > 0 || autoAmount > 0 ? Number(booking.price) + promoAmount + autoAmount : undefined,
-    auto_discount_name: autoName,
-    auto_discount_amount: autoAmount > 0 ? autoAmount : undefined,
-    auto_discount_show_in_email: autoShow,
-    company_name: companyName,
-    rechnung_adresse: booking.rechnung_required ? booking.rechnung_adresse || undefined : undefined,
-    night_confirm: false,
-  });
+  const { buildCustomerMailData } = await import('../services/bookingConfirmed');
+  await sendCustomerConfirmation(await buildCustomerMailData(booking));
 
   res.json({ success: true });
 });

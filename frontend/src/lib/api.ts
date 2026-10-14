@@ -521,6 +521,11 @@ export const adminApi = {
     return response.data;
   },
 
+  sendFinalConfirmation: async (id: number, force = false) => {
+    const response = await api.post(`/admin/bookings/${id}/final-confirmation`, { force });
+    return response.data as { success: boolean; sent_at: string; to: string };
+  },
+
   resendConfirmation: async (id: number): Promise<{ success: boolean }> => {
     const response = await api.post(`/admin/bookings/${id}/resend-confirmation`, {});
     return response.data;

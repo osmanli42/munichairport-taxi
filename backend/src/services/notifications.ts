@@ -51,6 +51,8 @@ export interface BookingNotificationData {
   /** Admin cancellation: preset key (services/cancelReasons.ts) and an optional note for the customer. */
   cancel_reason?: string;
   cancel_note?: string;
+  /** Admin mail: signed link to the "endgültig bestätigen" page (routes/booking-confirm.ts) */
+  confirm_url?: string;
   auto_discount_name?: string;
   auto_discount_amount?: number;
   auto_discount_show_in_email?: boolean;

@@ -126,6 +126,26 @@ const T: Record<Lang, Record<string, string>> = {
   },
 };
 
+// Second mail ("endgültige Bestätigung"), sent when the admin confirms the booking: same
+// layout as the "received" mail, only the header and first step change.
+const CONFIRMED: Record<Lang, Record<string, string>> = {
+  de: {
+    subject: 'Buchung bestätigt', status: 'Buchung verbindlich bestätigt',
+    intro: 'Ihre Fahrt ist verbindlich bestätigt — wir sind für Sie eingeplant. Wir freuen uns, Sie zu fahren!',
+    step1: 'Ihre Fahrt ist fest eingeplant — Sie müssen nichts weiter tun.',
+  },
+  en: {
+    subject: 'Booking confirmed', status: 'Booking confirmed',
+    intro: 'Your ride is confirmed — it is scheduled for you. We look forward to driving you!',
+    step1: 'Your ride is firmly scheduled — there is nothing else you need to do.',
+  },
+  tr: {
+    subject: 'Rezervasyon onaylandı', status: 'Rezervasyon kesin olarak onaylandı',
+    intro: 'Yolculuğunuz kesin olarak onaylandı — sizin için planlandı. Sizi taşımaktan memnuniyet duyarız!',
+    step1: 'Yolculuğunuz kesin olarak planlandı — başka bir şey yapmanıza gerek yok.',
+  },
+};
+
 const localePath = (lang: Lang, path: string) => `${SITE}${lang === 'de' ? '' : `/${lang}`}${path}`;
 
 // The booking form puts the pet confirmation in front of the customer's notes
@@ -203,9 +223,12 @@ function priceRows(b: BookingNotificationData, t: Record<string, string>, forAdm
 
 // ---- customer ---------------------------------------------------------------------------
 
-export function customerConfirmationEmail(b: BookingNotificationData): { subject: string; html: string } {
+export function customerConfirmationEmail(
+  b: BookingNotificationData,
+  variant: 'received' | 'confirmed' = 'received',
+): { subject: string; html: string } {
   const lang: Lang = (['de', 'en', 'tr'].includes(b.language) ? b.language : 'de') as Lang;
-  const t = T[lang];
+  const t = variant === 'confirmed' ? { ...T[lang], ...CONFIRMED[lang] } : T[lang];
   const out = when(b.pickup_datetime, lang);
   const back = b.return_datetime ? when(b.return_datetime, lang) : null;
   const vehicle = VEHICLE[b.vehicle_type] || VEHICLE.kombi;
@@ -236,7 +259,7 @@ export function customerConfirmationEmail(b: BookingNotificationData): { subject
 
   <tr><td style="height:16px"></td></tr>
 
-  ${b.night_confirm ? card(`<div style="font-size:14px;color:#92400e;line-height:1.5">🌙 ${t.night}</div>
+  ${b.night_confirm && variant === 'received' ? card(`<div style="font-size:14px;color:#92400e;line-height:1.5">🌙 ${t.night}</div>
     <div style="margin-top:10px">${button(PHONE_LINK, `📞 ${PHONE}`)}</div>`, `background:#fffbeb;border-color:#fcd34d`) : ''}
 
   ${card(`
@@ -377,6 +400,11 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
       </td>
     </tr></table>
   </td></tr>
+
+  ${b.confirm_url ? `<tr><td style="padding:14px 20px 0">
+    <a href="${esc(b.confirm_url)}" style="display:block;text-align:center;padding:13px 16px;border-radius:12px;background:#10b981;color:#fff;font-size:15px;font-weight:700;text-decoration:none">✓ Endgültig bestätigen &amp; Kunden informieren</a>
+    <div style="font-size:11px;color:${C.muted};text-align:center;margin-top:5px">Öffnet eine Seite mit Bestätigungsknopf — erst dort geht die Mail an den Kunden.</div>
+  </td></tr>` : ''}
 
   <tr><td style="padding:14px 20px 4px">
     ${button(`tel:${b.phone}`, '📞 Anrufen')}

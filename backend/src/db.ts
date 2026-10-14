@@ -1043,6 +1043,8 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN cancel_reason VARCHAR(30) DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN cancel_note TEXT DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN cancelled_at DATETIME DEFAULT NULL`,
+      // When the binding "Buchung bestätigt" mail went out (services/bookingConfirmed.ts)
+      `ALTER TABLE bookings ADD COLUMN confirmed_email_sent_at DATETIME DEFAULT NULL`,
     ];
     for (const stmt of bookingRechnungCols) {
       try { await conn.execute(stmt); }
