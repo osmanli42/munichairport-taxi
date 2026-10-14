@@ -349,7 +349,8 @@ export function LiveAssistPanel({ la }: { la: LiveAssistState }) {
             <Toggle checked={s.returning_greet_enabled === '1'} onChange={(v) => set('returning_greet_enabled', v ? '1' : '0')}
               label="Eski müşteriyi adıyla selamla" hint="Bu tarayıcıdan daha önce rezervasyon yapan ziyaretçiye: &quot;Willkommen zurück, Constanze! 👋 Wieder Flughafen München → Hauptbahnhof?&quot; (sadece ilk ad)" />
             <Toggle checked={s.voice_new_visitor === '1'} onChange={(v) => set('voice_new_visitor', v ? '1' : '0')}
-              label="Yeni ziyaretçide sesli anons" hint="Live sekmesi açıkken: &quot;Yeni ziyaretçi, München'den, Google Ads&quot; (botlar hariç)" />
+              label="Yeni ziyaretçide sesli anons" hint="Live sekmesi açıkken, Almanca: &quot;Neuer Besucher aus München, Google Ads&quot; (botlar hariç). Daha doğal ses için Mac: Sistem Ayarları → Erişilebilirlik → Sesli İçerik → Sistem Sesi → Almanca „Anna (Premium)“ indirilebilir." />
+            {s.voice_new_visitor === '1' && <VoicePicker />}
             <Toggle checked={s.ai_draft_enabled === '1'} onChange={(v) => set('ai_draft_enabled', v ? '1' : '0')}
               label="Yapay zekâ cevap taslağı" hint={la.aiConfigured
                 ? 'Müşteri yazınca cevap taslağı otomatik mesaj kutusuna yazılır — sen kontrol edip Gönder\'e basarsın'
@@ -959,15 +960,78 @@ export function LiveAssistArchive({ la }: { la: LiveAssistState }) {
   );
 }
 
+// macOS/iOS also ship "Eloquence" novelty voices (Eddy, Flo, Grandma, Rocko …) that sound
+// robotic; they must never be picked automatically.
+const ROBOTIC_VOICES = /\b(Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Albert|Fred|Junior|Ralph|Kathy)\b/i;
+const VOICE_KEY = 'live.voice';
+
+/** German voices on this device, natural ones first (Premium/Enhanced, then Anna/Helena/Markus …). */
+export function germanVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  const score = (v: SpeechSynthesisVoice) =>
+    (ROBOTIC_VOICES.test(v.name) ? -100 : 0)
+    + (/premium|enhanced|erweitert|neural|natural/i.test(v.name) ? 20 : 0)
+    + (/Anna|Helena|Markus|Petra|Yannick|Viktor|Katja|Conrad|Martin|Google Deutsch/i.test(v.name) ? 10 : 0)
+    + (v.localService ? 1 : 0);
+  return window.speechSynthesis.getVoices()
+    .filter((v) => v.lang?.toLowerCase().startsWith('de'))
+    .sort((a, b) => score(b) - score(a));
+}
+
+export function isRoboticVoice(v: SpeechSynthesisVoice): boolean {
+  return ROBOTIC_VOICES.test(v.name);
+}
+
 /** Sesli anons (Almanca — şehir adları Türkçe seste bozuk okunuyordu). Stille, wenn der Browser keine Stimme hat. */
 export function speakDe(text: string): void {
   try {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'de-DE';
-    const voice = window.speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('de'));
+    const voices = germanVoices();
+    let chosen: string | null = null;
+    try { chosen = localStorage.getItem(VOICE_KEY); } catch { /* private mode */ }
+    const voice = (chosen && voices.find((v) => v.name === chosen)) || voices[0];
     if (voice) u.voice = voice;
-    u.rate = 1.05;
+    u.rate = 1;
+    window.speechSynthesis.cancel(); // don't queue up behind an older announcement
     window.speechSynthesis.speak(u);
   } catch { /* ignore */ }
+}
+
+/** Voice picker for the Live announcements; the choice is kept per browser (voices differ per device). */
+export function VoicePicker() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [chosen, setChosen] = useState('');
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const load = () => setVoices(germanVoices());
+    load();
+    window.speechSynthesis.addEventListener('voiceschanged', load);
+    try { setChosen(localStorage.getItem(VOICE_KEY) || ''); } catch { /* ignore */ }
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', load);
+  }, []);
+  if (!voices.length) return <p className="text-xs text-gray-400 pl-12">Bu tarayıcıda Almanca ses bulunamadı.</p>;
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm text-gray-700 pl-12 py-1">
+      Ses
+      <select
+        value={chosen}
+        onChange={(e) => {
+          setChosen(e.target.value);
+          try { if (e.target.value) localStorage.setItem(VOICE_KEY, e.target.value); else localStorage.removeItem(VOICE_KEY); } catch { /* ignore */ }
+        }}
+        className="border rounded-lg px-2 py-1 text-sm"
+      >
+        <option value="">Otomatik ({voices[0].name})</option>
+        {voices.map((v) => (
+          <option key={v.name} value={v.name}>{v.name}{isRoboticVoice(v) ? ' — robotik' : ''}</option>
+        ))}
+      </select>
+      <button type="button" onClick={() => speakDe('Neuer Besucher aus Garmisch-Partenkirchen, Google Ads')}
+        className="px-2 py-1 rounded-lg border text-xs font-semibold text-blue-600 hover:bg-blue-50">
+        ▶ Dinle
+      </button>
+    </label>
+  );
 }
