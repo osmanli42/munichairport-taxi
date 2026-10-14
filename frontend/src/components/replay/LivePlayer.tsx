@@ -52,6 +52,12 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
     let cancelled = false;
     let after = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Everything received since the current page's Meta+FullSnapshot, in time order.
+    let buffer: any[] = [];
+    let maxApplied = 0;
+    // visitor clock − admin clock (ms), learned from the first answer
+    let clockOffset: number | null = null;
+    let Replayer: any = null;
     setStatus('loading');
     setLastEventAt(null);
 
@@ -60,6 +66,50 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
       replayerRef.current = null;
       if (rep) { try { rep.pause(); } catch {} try { rep.destroy?.(); } catch {} }
       if (mountRef.current) mountRef.current.innerHTML = '';
+    };
+
+    const byTime = (x: any, y: any) => (x?.timestamp || 0) - (y?.timestamp || 0);
+
+    /** Keep only the newest Meta+FullSnapshot onwards (one page is all the player needs). */
+    const trimToLastPage = (evs: any[]): any[] => {
+      let full = -1;
+      for (let i = evs.length - 1; i >= 0; i--) if (evs[i]?.type === 2) { full = i; break; }
+      if (full < 0) return evs;
+      let meta = full;
+      for (let i = full; i >= 0; i--) if (evs[i]?.type === 4) { meta = i; break; }
+      return evs.slice(meta);
+    };
+
+    /**
+     * (Re)build the replayer from the buffer in correct time order. Needed whenever events
+     * arrive out of order: on a page change the ~200 KB FullSnapshot upload often reaches
+     * the server AFTER the small mutation that follows it (e.g. prices replacing the
+     * spinner) — applied in arrival order that mutation was lost and the view froze.
+     */
+    const rebuild = () => {
+      if (!mountRef.current || !Replayer || clockOffset == null) return;
+      destroy();
+      mountRef.current.innerHTML = '';
+      const v = recordedViewport(buffer);
+      if (v) setVp(v);
+      const rep = new Replayer([], {
+        root: mountRef.current,
+        liveMode: true,
+        // rrweb applies "past" (sync) mutations to a virtual DOM that only gets flushed
+        // to the screen during normal playback — never in live mode. Without this the
+        // view froze on the page's first snapshot (only page changes showed up).
+        useVirtualDom: false,
+        showWarning: false,
+        triggerFocus: true,
+        mouseTail: { duration: 700, lineCap: 'round', lineWidth: 3, strokeStyle: 'rgba(168,85,247,0.55)' },
+      });
+      rep.on('resize', (dim: any) => { if (dim?.width && dim?.height) setVp({ width: dim.width, height: dim.height }); });
+      replayerRef.current = rep;
+      // Baseline = the visitor's "now" (their device clock) minus a small lag. Everything
+      // before it is applied at once; later events play at their own pace ~3 s behind.
+      rep.startLive(Date.now() + clockOffset - LIVE_LAG_MS);
+      for (const e of buffer) rep.addEvent(e);
+      maxApplied = buffer.length ? buffer[buffer.length - 1].timestamp || 0 : 0;
     };
 
     const tick = async () => {
@@ -73,39 +123,28 @@ export default function LivePlayer({ token, target, stillLive, onClose, onPrev, 
         const recvAt = Date.now();
         if (cancelled) return;
         setChunkAge(d.last_chunk_age_sec);
+        const batch = [...d.events].sort(byTime);
 
         if (!replayerRef.current) {
           if (!d.recorded) { setStatus('not_recorded'); return; }
-          if (d.waiting || !d.events.some((e) => e?.type === 2)) { setStatus('waiting'); return; }
+          if (d.waiting || !batch.some((e) => e?.type === 2)) { setStatus('waiting'); return; }
           const mod: any = await import('rrweb');
-          const Replayer = mod.Replayer || mod.default?.Replayer;
+          Replayer = mod.Replayer || mod.default?.Replayer;
           if (cancelled || !mountRef.current) return;
-          mountRef.current.innerHTML = '';
-          const v = recordedViewport(d.events);
-          if (v) setVp(v);
-          const rep = new Replayer([], {
-            root: mountRef.current,
-            liveMode: true,
-            // rrweb applies "past" (sync) mutations to a virtual DOM that only gets flushed
-            // to the screen during normal playback — never in live mode. Without this the
-            // view froze on the page's first snapshot (only page changes showed up).
-            useVirtualDom: false,
-            showWarning: false,
-            triggerFocus: true,
-            mouseTail: { duration: 700, lineCap: 'round', lineWidth: 3, strokeStyle: 'rgba(168,85,247,0.55)' },
-          });
-          rep.on('resize', (dim: any) => { if (dim?.width && dim?.height) setVp({ width: dim.width, height: dim.height }); });
-          replayerRef.current = rep;
-          // Baseline = the visitor's "now" (their device clock) minus a small lag. Everything
-          // before it is applied at once; later events play at their own pace ~3 s behind.
-          // Using the newest event instead would add the visitor's idle time as extra delay.
           const serverOffset = d.server_now ? d.server_now - recvAt : 0;
-          const visitorNow = recvAt + serverOffset + (d.visitor_skew_ms || 0);
-          rep.startLive(visitorNow - LIVE_LAG_MS);
-          for (const e of d.events) rep.addEvent(e);
+          clockOffset = serverOffset + (d.visitor_skew_ms || 0);
+          buffer = trimToLastPage(batch);
+          rebuild();
           setStatus('live');
-        } else {
-          for (const e of d.events) replayerRef.current.addEvent(e);
+        } else if (batch.length) {
+          const outOfOrder = batch[0].timestamp < maxApplied || batch.some((e) => e?.type === 2);
+          buffer = trimToLastPage([...buffer, ...batch].sort(byTime));
+          if (outOfOrder) {
+            rebuild();
+          } else {
+            for (const e of batch) replayerRef.current.addEvent(e);
+            maxApplied = batch[batch.length - 1].timestamp || maxApplied;
+          }
         }
         if (d.events.length) setLastEventAt(Date.now());
         after = d.last_id || after;
