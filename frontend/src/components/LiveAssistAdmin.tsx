@@ -565,6 +565,7 @@ function fillTemplate(t: Tpl, lang: 'de' | 'en' | 'tr', name: string, route: { p
 function statusBadge(info: SessionInfo | undefined): { text: string; cls: string } | null {
   const m = info?.last;
   if (!m) return null;
+  if (m.template === 'close') return { text: '✕ chat müşteride kapatıldı', cls: 'bg-gray-100 text-gray-600 border-gray-200' };
   const auto = m.source === 'auto';
   const prefix = auto ? '🤖 ' : '';
   if (m.action === 'chat') return { text: `${prefix}💬 chat'e yazdı`, cls: 'bg-green-100 text-green-800 border-green-300' };
@@ -735,6 +736,22 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
     load();
   };
 
+  // Chatfenster beim Kunden schließen (er kann es selbst wieder öffnen; neue Nachricht öffnet es)
+  const [closing, setClosing] = useState(false);
+  const closeAtVisitor = async () => {
+    setClosing(true);
+    try {
+      const r = await fetch(`${API_BASE}/admin/live-assist/close`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${la.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      if (!r.ok) { setErr('Müşteride kapatılamadı'); return; }
+      setErr('');
+      load();
+    } catch { setErr('Müşteride kapatılamadı'); } finally { setClosing(false); }
+  };
+
   const onFile = async (f?: File) => {
     if (!f) return;
     try { await submit(await imageToDataUrl(f)); } catch { setErr('Resim okunamadı'); }
@@ -751,6 +768,9 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
         {msgs.map((m) => {
           if (m.source === 'auto') {
             return <p key={m.id} className="text-[11px] text-center text-sky-600">🤖 otomatik yardım balonu gösterildi · {fmtTime(m.created_at)}</p>;
+          }
+          if (m.template === 'close') {
+            return <p key={m.id} className="text-[11px] text-center text-gray-500">✕ chat müşteride kapatıldı · {fmtTime(m.created_at)}{m.delivered_at ? ' · ✓ uygulandı' : ' · bekleniyor'}</p>;
           }
           const mine = m.source === 'admin';
           return (
@@ -829,6 +849,11 @@ export function ChatThread({ la, sessionId, live, lang, route, price }: {
             <span className="text-[11px] text-gray-400">
               {la.promos.length === 0 ? '(şu an geçerli promo kodu yok — Aktionen sekmesinden oluştur)' : 'Müşteri "İndirimi al & rezerve et"e basınca rezervasyona otomatik eklenir'}
             </span>
+            <button type="button" onClick={closeAtVisitor} disabled={closing}
+              title="Müşterinin ekranındaki chat penceresini kapatır (birkaç sn içinde). Müşteri isterse tekrar açabilir; yeni mesaj yazarsan yine açılır."
+              className="ml-auto shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50">
+              {closing ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />} Müşteride kapat
+            </button>
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
@@ -857,7 +882,7 @@ export function LiveAssistRow({ la, s, onWatch }: { la: LiveAssistState; s: RowS
         {enabled && s.is_bot === 0 && (
           <button type="button" onClick={() => setOpen((o) => !o)}
             className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-white ${unread > 0 ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
-            <MessageCircle size={12} /> {unread > 0 ? `${unread} yeni mesaj` : open ? 'Chat\'i kapat' : 'Chat'}
+            <MessageCircle size={12} /> {unread > 0 ? `${unread} yeni mesaj` : open ? 'Paneli gizle' : 'Chat'}
           </button>
         )}
         {onWatch && s.is_bot === 0 && (

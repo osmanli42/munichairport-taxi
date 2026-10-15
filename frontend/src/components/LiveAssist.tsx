@@ -31,7 +31,7 @@ const CONFIG_RECHECK_MS = 15_000;
 const AUTO_FLAG = 'mt_la_auto_shown';
 
 interface Promo { code: string; type: 'fixed' | 'percent'; value: number }
-interface Msg { id: number; from: 'agent' | 'visitor'; body: string; promo: Promo | null; attachment_id: number | null; created_at?: string; pending?: boolean; localImage?: string }
+interface Msg { id: number; from: 'agent' | 'visitor'; body: string; promo: Promo | null; attachment_id: number | null; created_at?: string; pending?: boolean; localImage?: string; control?: 'close' }
 
 const T = {
   de: {
@@ -121,9 +121,16 @@ export default function LiveAssist() {
       if (!r.ok) return;
       const j = await r.json();
       if (typeof j.agent_online === 'boolean') setOnline(j.agent_online);
-      const incoming: Msg[] = Array.isArray(j.messages) ? j.messages : [];
+      const all: Msg[] = Array.isArray(j.messages) ? j.messages : [];
+      if (!all.length) return;
+      lastIdRef.current = Math.max(lastIdRef.current, ...all.map((m) => m.id));
+      // Admin hat den Chat bei diesem Besucher geschlossen (Steuerbefehl, nicht anzeigen).
+      // Gilt nur, wenn danach keine neue Admin-Nachricht kam — die öffnet ihn wieder.
+      const lastClose = Math.max(0, ...all.filter((m) => m.control === 'close').map((m) => m.id));
+      const incoming = all.filter((m) => !m.control);
+      const lastAgent = Math.max(0, ...incoming.filter((m) => m.from === 'agent').map((m) => m.id));
+      if (lastClose > lastAgent) { setOpen(false); setAutoMode(false); setShowCallback(false); }
       if (!incoming.length) return;
-      lastIdRef.current = Math.max(lastIdRef.current, ...incoming.map((m) => m.id));
       setMessages((prev) => {
         const known = new Set(prev.filter((m) => !m.pending).map((m) => m.id));
         const withoutPending = prev.filter((m) => !(m.pending && incoming.some((n) => n.from === 'visitor')));
@@ -134,7 +141,7 @@ export default function LiveAssist() {
         for (const m of fromAgent) {
           if (m.promo) { try { sessionStorage.setItem(LIVE_PROMO_KEY, m.promo.code); } catch { /* ignore */ } }
         }
-        if (openRef.current) fromAgent.forEach((m) => ackLiveAssist('seen', m.id));
+        if (openRef.current || lastClose > lastAgent) fromAgent.forEach((m) => ackLiveAssist('seen', m.id));
         else {
           // Admin schreibt → Chat öffnet sich von selbst (proaktive Ansprache)
           setOpen(true);

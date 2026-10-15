@@ -182,6 +182,8 @@ router.get('/live-assist/inbox', async (req: Request, res: Response) => {
     }
     const messages = [];
     for (const r of rows) {
+      // Admin hat den Chat beim Kunden geschlossen — Steuerbefehl, keine Chatnachricht
+      if (r.source === 'admin' && r.template === 'close') { messages.push({ id: r.id, from: 'agent', control: 'close' }); continue; }
       // Code beim Zustellen erneut prüfen — er kann seit dem Senden abgelaufen sein.
       let promo = null;
       if (r.promo_code) {
@@ -222,7 +224,7 @@ router.post('/live-assist/reply', async (req: Request, res: Response) => {
     // Antwort auf Admin-Nachricht / Auto-Blase als Reaktion vermerken (Status im Live-Tab)
     await run(
       `UPDATE live_messages SET action = 'chat', action_at = NOW(), seen_at = COALESCE(seen_at, NOW())
-        WHERE session_id = ? AND source IN ('admin', 'auto') AND (action IS NULL OR action = 'dismiss')`,
+        WHERE session_id = ? AND source IN ('admin', 'auto') AND (action IS NULL OR action = 'dismiss') AND COALESCE(template, '') <> 'close'`,
       [sessionId]
     );
     const visit = await visitSummary(sessionId);
@@ -388,6 +390,25 @@ router.post('/admin/live-assist/messages', authenticateAdmin, async (req: AuthRe
 });
 
 // GET /api/admin/live-assist/thread?session_id= — ganzer Chat, markiert Besucher-Nachrichten als gelesen
+// POST /api/admin/live-assist/close — { session_id } — schließt das Chatfenster beim Besucher
+// (er holt den Befehl beim nächsten Abruf, ~3–8 s). Er kann es selbst wieder öffnen; eine neue
+// Admin-Nachricht öffnet es wie gewohnt.
+router.post('/admin/live-assist/close', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureLiveAssistTables();
+    const sessionId = validSession(req.body?.session_id);
+    if (!sessionId) { res.status(400).json({ error: 'session_id gerekli' }); return; }
+    const r = await run(
+      `INSERT INTO live_messages (session_id, source, template, body) VALUES (?, 'admin', 'close', NULL)`,
+      [sessionId]
+    );
+    res.json({ ok: true, id: r.insertId });
+  } catch (err: any) {
+    console.error('live-assist close error:', err.message);
+    res.status(500).json({ error: 'Kapatılamadı' });
+  }
+});
+
 router.get('/admin/live-assist/thread', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureLiveAssistTables();
@@ -439,7 +460,7 @@ router.get('/admin/live-assist/conversations', authenticateAdmin, async (req: Au
     const rows = await query<any>(
       `SELECT m.session_id,
               MIN(m.created_at) AS started_at, MAX(m.created_at) AS last_at,
-              SUM(m.source = 'admin') AS agent_msgs, SUM(m.source = 'visitor') AS visitor_msgs,
+              SUM(m.source = 'admin' AND COALESCE(m.template, '') <> 'close') AS agent_msgs, SUM(m.source = 'visitor') AS visitor_msgs,
               SUM(m.attachment_id IS NOT NULL) AS images,
               GROUP_CONCAT(DISTINCT m.promo_code) AS promos,
               (SELECT body FROM live_messages x WHERE x.session_id = m.session_id AND x.body IS NOT NULL AND x.body <> ''
@@ -509,6 +530,8 @@ router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthReq
           if (!m.seen_at) cur.unread = (cur.unread || 0) + 1;
           continue;
         }
+        // Chat beim Kunden geschlossen → nur Status, keine Nachricht
+        if (m.source === 'admin' && m.template === 'close') { cur.last = m; continue; }
         // Admin-Nachricht hat Vorrang vor der automatischen Blase — deren Status zählt.
         if (m.source === 'auto') {
           cur.auto_shown = true;
@@ -534,9 +557,9 @@ router.get('/admin/live-assist/overview', authenticateAdmin, async (req: AuthReq
     const since = berlinMidnightUtcSql(0);
     const [kpi] = await query<any>(
       `SELECT
-         SUM(source = 'admin') AS sent,
+         SUM(source = 'admin' AND COALESCE(template, '') <> 'close') AS sent,
          SUM(source = 'auto') AS auto_shown,
-         SUM(source = 'admin' AND seen_at IS NOT NULL) AS seen,
+         SUM(source = 'admin' AND COALESCE(template, '') <> 'close' AND seen_at IS NOT NULL) AS seen,
          SUM(action IN ('whatsapp', 'callback', 'book', 'chat')) AS clicks,
          COUNT(DISTINCT CASE WHEN source = 'visitor' THEN session_id END) AS chats
        FROM live_messages WHERE created_at >= ?`,

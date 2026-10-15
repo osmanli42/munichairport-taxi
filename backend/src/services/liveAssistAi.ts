@@ -39,7 +39,7 @@ Regeln:
 export async function draftReply(sessionId: string, agentName: string): Promise<string> {
   const msgs = await query<any>(
     `SELECT source, body, promo_code, attachment_id FROM live_messages
-      WHERE session_id = ? AND source IN ('admin', 'visitor') ORDER BY id DESC LIMIT 30`,
+      WHERE session_id = ? AND source IN ('admin', 'visitor') AND COALESCE(template, '') <> 'close' ORDER BY id DESC LIMIT 30`,
     [sessionId]
   );
   msgs.reverse();
