@@ -583,6 +583,25 @@ function extractBilling(desc: string): BillingInfo | null {
     const one = m ? splitInlineBilling(cleanValue(m[1])) : null;
     if (one) return { name: one.name, address: one.address, email: emails[0] || null, ust_idnr: ust || one.id, project: null };
   }
+
+  // 5) Nackter Adressblock direkt hinter "Zahlungsart: Rechnung" (ohne Überschrift):
+  //    Firma / Straße Nr. / PLZ Ort / (Land). Nur mit PLZ-Zeile, sonst keine Annahme.
+  for (let i = 0; i < ls.length; i++) {
+    if (!/^\s*zahlungsart\s*:\s*rechnung\b/i.test(ls[i])) continue;
+    const block: string[] = [];
+    for (let j = i + 1; j < ls.length && block.length < 6; j++) {
+      const l = cleanValue(ls[j]);
+      if (!l) { if (block.length) break; continue; }
+      if (/[:@]/.test(l) || RE_BILLING_END.test(l)) break;
+      block.push(l);
+    }
+    const country = /^(?:germany|deutschland|österreich|austria|schweiz|switzerland|italy|italien|italia)$/i;
+    const addr = block.filter((x) => !country.test(x));
+    if (addr.length >= 2 && addr.slice(1).some((x) => /\b\d{4,5}\b/.test(x))) {
+      return { name: addr[0], address: addr.slice(1).join(', '), email: emails[0] || null, ust_idnr: ust, project: null };
+    }
+    break;
+  }
   return null;
 }
 
