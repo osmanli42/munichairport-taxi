@@ -69,6 +69,7 @@ export default function B2BTab({ token }: { token: string }) {
   const [invoiceEditRows, setInvoiceEditRows] = useState<InvoiceBookingRow[]>([]);
   const [invoiceEditDueDate, setInvoiceEditDueDate] = useState('');
   const [invoiceEditProjectName, setInvoiceEditProjectName] = useState('');
+  const [invoiceEditLang, setInvoiceEditLang] = useState<'de' | 'en'>('de');
   const [invoiceEditLoading, setInvoiceEditLoading] = useState(false);
   const [invoiceEditSaving, setInvoiceEditSaving] = useState(false);
   const [sendEmailAddr, setSendEmailAddr] = useState('');
@@ -113,6 +114,7 @@ export default function B2BTab({ token }: { token: string }) {
         setInvoiceEditRows(d.bookings.map((b: InvoiceBookingRow) => ({ ...b, pickup_datetime: b.pickup_datetime?.slice(0, 16) || '' })));
         setInvoiceEditDueDate(d.due_date ? String(d.due_date).slice(0, 10) : '');
         setInvoiceEditProjectName(d.project_name || '');
+        setInvoiceEditLang(d.lang === 'en' ? 'en' : 'de');
       } else {
         alert('Positionen konnten nicht geladen werden');
         setInvoiceEditModal(null);
@@ -135,7 +137,7 @@ export default function B2BTab({ token }: { token: string }) {
     try {
       const res = await api(`/invoices/${invoiceEditModal.id}/details`, token, {
         method: 'PUT',
-        body: JSON.stringify({ due_date: invoiceEditDueDate, project_name: invoiceEditProjectName, bookings: invoiceEditRows }),
+        body: JSON.stringify({ due_date: invoiceEditDueDate, project_name: invoiceEditProjectName, lang: invoiceEditLang, bookings: invoiceEditRows }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -664,7 +666,7 @@ export default function B2BTab({ token }: { token: string }) {
               <div className="py-12 text-center text-gray-400 text-sm">Lädt…</div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500">Fällig bis</label>
                     <input type="date" value={invoiceEditDueDate} onChange={e => setInvoiceEditDueDate(e.target.value)}
@@ -675,6 +677,14 @@ export default function B2BTab({ token }: { token: string }) {
                     <input value={invoiceEditProjectName} onChange={e => setInvoiceEditProjectName(e.target.value)}
                       placeholder="z.B. Herzklang 2"
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">Sprache der Rechnung</label>
+                    <select value={invoiceEditLang} onChange={e => setInvoiceEditLang(e.target.value === 'en' ? 'en' : 'de')}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-1 bg-white">
+                      <option value="de">Deutsch</option>
+                      <option value="en">English</option>
+                    </select>
                   </div>
                 </div>
 

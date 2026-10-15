@@ -401,7 +401,7 @@ router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthR
     const bookings = bookingIds.length > 0
       ? await query(`SELECT id, pickup_datetime, pickup_address, dropoff_address, name, price, steuersatz, source FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')}) ORDER BY pickup_datetime`, bookingIds)
       : [];
-    res.json({ due_date: invoice.due_date, project_name: invoice.project_name, bookings });
+    res.json({ due_date: invoice.due_date, project_name: invoice.project_name, lang: invoice.lang === 'en' ? 'en' : 'de', bookings });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch invoice bookings' });
   }
@@ -410,9 +410,10 @@ router.get('/invoices/:invoiceId/bookings', authenticateAdmin, async (req: AuthR
 router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (await refuseIfStorniert(req.params.invoiceId, res)) return;
-    const { due_date, project_name, bookings } = req.body as {
+    const { due_date, project_name, lang, bookings } = req.body as {
       due_date?: string;
       project_name?: string;
+      lang?: string;
       bookings?: { id: number; pickup_datetime: string; pickup_address: string; dropoff_address: string; name: string; price: number; steuersatz: number }[];
     };
 
@@ -445,6 +446,7 @@ router.put('/invoices/:invoiceId/details', authenticateAdmin, async (req: AuthRe
     const params: any[] = [newTotal, JSON.stringify(bookingIds)];
     if (due_date) { updates.push('due_date = ?'); params.push(due_date); }
     if (project_name !== undefined) { updates.push('project_name = ?'); params.push(project_name?.trim() || null); }
+    if (lang === 'de' || lang === 'en') { updates.push('lang = ?'); params.push(lang); }
     params.push(req.params.invoiceId);
     await run(`UPDATE company_invoices SET ${updates.join(', ')} WHERE id = ?`, params);
 
