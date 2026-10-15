@@ -195,6 +195,23 @@ function currentMonth(): string {
 
 const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
+// Fahrten ohne eigenen Rechnungstext automatisch zum Kunden einer Schwester-Fahrt stellen: gleiche Straße+Nr. oder gleicher
+// Hotel-/Firmenname (erstes Wort) an Abhol- oder Zielort. Flughafen/Bahnhof/Messe zählen nie (gemeinsamer Treffpunkt vieler Kunden).
+const AUTO_SKIP_PLACE = /flughafen|airport|terminal|bahnhof|hbf|messe|ostbahnhof/i;
+const AUTO_GENERIC_WORD = new Set(['hotel', 'haus', 'zum', 'zur', 'the', 'apartment', 'villa', 'gasthof', 'restaurant', 'münchen', 'munich', 'taxi', 'bus']);
+const STREET_RE = /([a-zäöüß][a-zäöüß.\- ]*?(?:str\.|straße|strasse|weg|platz|allee|gasse|ring|damm|ufer))\s*(\d+\s?[a-z]?)\b/i;
+function placeKeys(addr: string | null | undefined): string[] {
+  const a = (addr || '').trim();
+  if (!a || AUTO_SKIP_PLACE.test(a)) return [];
+  const keys: string[] = [];
+  const st = a.match(STREET_RE);
+  if (st) keys.push(`s:${st[1].toLowerCase().replace(/\s+/g, ' ').trim()} ${st[2].toLowerCase().replace(/\s+/g, '')}`);
+  const first = a.split(',')[0].trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-zäöüß]/g, '') || '';
+  const streetLike = /(straße|strasse|str|weg|platz|allee|gasse|ring|damm|ufer)$/.test(first);
+  if (first.length >= 4 && !streetLike && !AUTO_GENERIC_WORD.has(first)) keys.push(`w:${first}`);
+  return keys;
+}
+
 // Datumsrechnung in Europe/Berlin, ohne Zeitzonen-Überraschungen: nur mit 'YYYY-MM-DD'-Strings
 function berlinToday(): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -365,6 +382,28 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     return merged;
   }), [inbox, edits]);
 
+  // Fahrten ohne Rechnungstext, die zu einer Schwester-Fahrt mit Rechnungsadresse passen → deren Kunde (Ayır = Müşteri „seçilmedi“)
+  const autoJoin = useMemo(() => {
+    const out = new Map<string, string>();
+    const anchors: { customerKey: string; month: string; keys: Set<string> }[] = [];
+    for (const r of rides) {
+      const e = edits[r.key];
+      if (r.company_id || !r.billing || !(e?.customer === undefined || (e.customer === 'new' && !e.newGroup))) continue;
+      const customerKey = `n:${normName(r.billing.name)}`;
+      let a = anchors.find((x) => x.customerKey === customerKey && x.month === r.month);
+      if (!a) { a = { customerKey, month: r.month, keys: new Set() }; anchors.push(a); }
+      [...placeKeys(r.pickup_address), ...placeKeys(r.dropoff_address)].forEach((k) => a!.keys.add(k));
+    }
+    if (!anchors.length) return out;
+    for (const r of rides) {
+      if (r.company_id || r.billing || edits[r.key]?.customer !== undefined || r.kind !== 'calendar') continue;
+      const mine = [...placeKeys(r.pickup_address), ...placeKeys(r.dropoff_address)];
+      const hits = anchors.filter((a) => a.month === r.month && mine.some((k) => a.keys.has(k)));
+      if (hits.length === 1) out.set(r.key, hits[0].customerKey);
+    }
+    return out;
+  }, [rides, edits]);
+
   // Gruppen: Kunde + Monat → je eine Rechnung
   const groups: Group[] = useMemo(() => {
     const map = new Map<string, Group>();
@@ -373,6 +412,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
       let customerKey: string;
       if (r.company_id) customerKey = `c:${r.company_id}`;
       else if (e?.customer === 'new' && e.newGroup) customerKey = e.newGroup;
+      else if (autoJoin.has(r.key)) customerKey = autoJoin.get(r.key)!;
       else if (e?.customer === 'new' || (e?.customer === undefined && r.billing)) customerKey = r.billing ? `n:${normName(r.billing.name)}` : `n:${r.key}`;
       else customerKey = 'u';
       const key = `${customerKey}|${r.month}`;
@@ -384,7 +424,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     }
     const name = (g: Group) => (g.companyId ? companiesById.get(g.companyId)?.company_name : g.billing?.name) || 'zzz';
     return Array.from(map.values()).sort((a, b) => (a.month === b.month ? name(a).localeCompare(name(b)) : a.month < b.month ? -1 : 1));
-  }, [rides, edits, companiesById]);
+  }, [rides, edits, companiesById, autoJoin]);
 
   // Formulare für neue Kunden aus der erkannten Rechnungsadresse vorbelegen
   useEffect(() => {
@@ -990,6 +1030,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                   key={r.key}
                   ride={r}
                   edit={edits[r.key]}
+                  autoJoined={autoJoin.has(r.key)}
                   included={!excluded.has(r.key)}
                   expanded={expanded.has(r.key) || (!excluded.has(r.key) && !rideValid(r))}
                   companies={inbox?.companies || []}
@@ -1300,10 +1341,11 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
 }
 
 function RideRow({
-  ride: r, edit, included, expanded, companies, onToggleInclude, onToggleExpand, onChange, onIgnore,
+  ride: r, edit, autoJoined, included, expanded, companies, onToggleInclude, onToggleExpand, onChange, onIgnore,
 }: {
   ride: Ride;
   edit: RideEdit | undefined;
+  autoJoined?: boolean;
   included: boolean;
   expanded: boolean;
   companies: Company[];
@@ -1317,7 +1359,7 @@ function RideRow({
   const readOnly = r.kind === 'booking';
   const customerValue = edit?.customer !== undefined
     ? String(edit.customer ?? '')
-    : r.company_id ? String(r.company_id) : r.billing ? 'new' : '';
+    : r.company_id ? String(r.company_id) : r.billing || autoJoined ? 'new' : '';
 
   return (
     <li className={`px-4 lg:px-6 py-3 ${included ? '' : 'opacity-50'}`}>
@@ -1328,6 +1370,12 @@ function RideRow({
             <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
               {fmtDateTime(r.pickup_datetime)}
               {r.future && <span className="ml-1.5 align-middle text-[11px] font-medium bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md">Yaklaşan</span>}
+              {autoJoined && (
+                <span className="ml-1.5 align-middle text-[11px] font-medium bg-violet-50 text-violet-700 px-1.5 py-0.5 rounded-md" title="Aynı adres/otel nedeniyle bu müşteriye otomatik eklendi">
+                  Otomatik eklendi
+                  <span role="button" onClick={(ev) => { ev.stopPropagation(); onChange({ customer: null }); }} className="ml-1 underline cursor-pointer">ayır</span>
+                </span>
+              )}
             </span>
             <span className="text-sm text-gray-700 min-w-0">
               {r.pickup_address || <span className="text-amber-700">Nereden?</span>}
@@ -1420,7 +1468,7 @@ function RideRow({
                     className={inputCls}
                   >
                     <option value="">— seçilmedi —</option>
-                    {r.billing && <option value="new">Yeni müşteri: {r.billing.name}</option>}
+                    {(r.billing || autoJoined) && <option value="new">Yeni müşteri{r.billing ? `: ${r.billing.name}` : ' (otomatik)'}</option>}
                     {companies.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                   </select>
                 </Field>
