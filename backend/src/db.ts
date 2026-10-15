@@ -1051,6 +1051,9 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN mail_open_client VARCHAR(40) DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN cancel_mail_opened_at DATETIME DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN cancel_mail_open_client VARCHAR(40) DEFAULT NULL`,
+      // Hits from mail security scanners (routes/mail-open.ts isScan) — counted, never reported
+      `ALTER TABLE bookings ADD COLUMN mail_scan_count INT NOT NULL DEFAULT 0`,
+      `ALTER TABLE bookings ADD COLUMN cancel_mail_scan_count INT NOT NULL DEFAULT 0`,
     ];
     for (const stmt of bookingRechnungCols) {
       try { await conn.execute(stmt); }

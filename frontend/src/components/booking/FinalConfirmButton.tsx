@@ -7,7 +7,7 @@ import { CheckCircle2, Send } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 export default function FinalConfirmButton({ booking, onSent }: {
-  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null; mail_opened_at?: string | null; mail_open_client?: string | null; mail_open_count?: number | null; cancel_mail_opened_at?: string | null; cancel_mail_open_client?: string | null };
+  booking: { id: number; status: string; email?: string | null; confirmed_email_sent_at?: string | null; mail_opened_at?: string | null; mail_open_client?: string | null; mail_open_count?: number | null; cancel_mail_opened_at?: string | null; cancel_mail_open_client?: string | null; mail_scan_count?: number | null; cancel_mail_scan_count?: number | null };
   onSent?: (sentAt: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -16,12 +16,17 @@ export default function FinalConfirmButton({ booking, onSent }: {
 
   const fmt = (d: string) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
+  // Hits from mail security scanners (Google/Microsoft) — shown, but not an open
+  const scans = (n?: number | null) => (n ? <span title="Automatische Sicherheitsprüfung des Mail-Anbieters (Google/Microsoft) – kein Öffnen durch den Kunden"> · 🛡 {n} Scan</span> : null);
+
   // Cancelled: only show whether the customer opened our Stornierung mail (open pixel)
   if (booking.status === 'cancelled') {
-    return booking.cancel_mail_opened_at ? (
+    return booking.cancel_mail_opened_at || booking.cancel_mail_scan_count ? (
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-        📭 Stornierungsmail geöffnet · {fmt(booking.cancel_mail_opened_at)}
-        {booking.cancel_mail_open_client ? ` · ${booking.cancel_mail_open_client}` : ''}
+        {booking.cancel_mail_opened_at
+          ? <>📭 Stornierungsmail geöffnet · {fmt(booking.cancel_mail_opened_at)}{booking.cancel_mail_open_client ? ` · ${booking.cancel_mail_open_client}` : ''}</>
+          : '📭 Stornierungsmail noch nicht geöffnet'}
+        {scans(booking.cancel_mail_scan_count)}
       </div>
     ) : null;
   }
@@ -45,13 +50,16 @@ export default function FinalConfirmButton({ booking, onSent }: {
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-      {booking.mail_opened_at && (
+      {(booking.mail_opened_at || booking.mail_scan_count) ? (
         <div className="text-xs text-gray-600 mb-1.5">
-          📬 Buchungsmail geöffnet · {fmt(booking.mail_opened_at)}
-          {booking.mail_open_client ? ` · ${booking.mail_open_client}` : ''}
-          {booking.mail_open_count && booking.mail_open_count > 1 ? ` · ${booking.mail_open_count}×` : ''}
+          {booking.mail_opened_at ? <>
+            📬 Buchungsmail geöffnet · {fmt(booking.mail_opened_at)}
+            {booking.mail_open_client ? ` · ${booking.mail_open_client}` : ''}
+            {booking.mail_open_count && booking.mail_open_count > 1 ? ` · ${booking.mail_open_count}×` : ''}
+          </> : '📬 Buchungsmail noch nicht geöffnet'}
+          {scans(booking.mail_scan_count)}
         </div>
-      )}
+      ) : null}
       {sentAt ? (
         <div className="flex items-center justify-between gap-2 text-sm">
           <span className="flex items-center gap-1.5 text-emerald-800 font-medium">
