@@ -843,6 +843,7 @@ export default function AdminPage() {
             distance_km: km,
             pickup_address: editPickupValid,
             dropoff_address: editDropoffValid,
+            trip_type: editForm.trip_type || 'oneway',
           };
           if (editPickupCoords) { body.pickup_lat = editPickupCoords.lat; body.pickup_lng = editPickupCoords.lng; }
           if (editDropoffCoords) { body.dropoff_lat = editDropoffCoords.lat; body.dropoff_lng = editDropoffCoords.lng; }
@@ -857,8 +858,13 @@ export default function AdminPage() {
             const fahrradAddon = (editForm.fahrrad_count ?? 0) * (priceRow?.fahrrad_price ?? 0);
             const totalChildSeats = editChildSeatBabyschale + editChildSeatKindersitz + editChildSeatSitzerhoehung;
             const childSeatAddon = totalChildSeats * (priceRow?.child_seat_price ?? 0);
-            const total = parseFloat((priceData.total_price + fahrradAddon + childSeatAddon).toFixed(2));
-            setEditBaseTripPrice(priceData.total_price);
+            // calculate-price liefert immer den Preis für die EINFACHE Fahrt. Bei Hin- & Rückfahrt
+            // wie auf der Kundenseite: 2 × einfache Fahrt abzüglich Rückfahrt-Rabatt.
+            const tripPrice: number = editForm.trip_type === 'roundtrip'
+              ? priceData.total_price * 2 * (1 - (priceRow?.roundtrip_discount ?? 0) / 100)
+              : priceData.total_price;
+            const total = parseFloat((tripPrice + fahrradAddon + childSeatAddon).toFixed(2));
+            setEditBaseTripPrice(tripPrice);
             setEditForm(prev => ({ ...prev, price: total }));
           }
         }
@@ -866,7 +872,7 @@ export default function AdminPage() {
       .catch(() => {})
       .finally(() => setEditPriceCalcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editPickupValid, editDropoffValid, editZwischenstoppValid, editForm.vehicle_type, editRecalcArmed]);
+  }, [editPickupValid, editDropoffValid, editZwischenstoppValid, editForm.vehicle_type, editForm.trip_type, editRecalcArmed]);
 
   // Update price when fahrrad or child seat counts change
   useEffect(() => {
@@ -4684,7 +4690,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Fahrttyp</label>
-                      <select value={editForm.trip_type || 'oneway'} onChange={(e) => setEditForm(p => ({ ...p, trip_type: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                      <select value={editForm.trip_type || 'oneway'} onChange={(e) => { setEditForm(p => ({ ...p, trip_type: e.target.value })); setEditRecalcArmed(true); }} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                         <option value="oneway">Einfache Fahrt</option>
                         <option value="roundtrip">Hin- & Rückfahrt</option>
                       </select>
