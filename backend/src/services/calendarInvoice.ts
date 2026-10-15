@@ -490,6 +490,23 @@ function extractEmails(desc: string): string[] {
   return [...new Set(out.map((e) => e.replace(/[.,;]+$/, '').toLowerCase()))].filter((e) => !OWN_EMAIL.test(e));
 }
 
+// Eine einzige Zeile "Firma, Straße 1, 80331 Stadt, P.IVA 123…" in Name / Adresse / Steuernummer trennen.
+// Nur wenn hinter dem Namen wirklich Adress- bzw. Steuerangaben (Ziffern) stehen — sonst bleibt die Zeile wie sie ist.
+const RE_INLINE_VAT = /^(?:p\.?\s*iva|partita\s+iva|vat(?:\s*(?:id|number|no\.?))?|ust-?id\w*|uid|tax\s*id|steuer-?(?:nummer|nr\.?))\s*[:#.]?\s*(.+)$/i;
+function splitInlineBilling(line: string): { name: string; address: string; id: string | null } | null {
+  const parts = line.split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  let id: string | null = null;
+  const rest: string[] = [];
+  for (const part of parts) {
+    const m = part.match(RE_INLINE_VAT);
+    if (m && /\d/.test(m[1])) id = cleanValue(m[1]);
+    else rest.push(part);
+  }
+  if (!rest.length || (rest.length < 2 && !id) || (!id && !rest.slice(1).some((x) => /\d/.test(x)))) return null;
+  return { name: rest[0], address: rest.slice(1).join(', '), id };
+}
+
 function extractBilling(desc: string): BillingInfo | null {
   const ls = lines(desc);
   const ust = desc.match(/(?:UID|USt\.?-?Id(?:Nr)?\.?|VAT)[\s.-]*(?:Nr\.?)?\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})/i)?.[1] || null;
@@ -515,6 +532,8 @@ function extractBilling(desc: string): BillingInfo | null {
       block.push(l);
     }
     if (block.length) {
+      const one = block.length === 1 ? splitInlineBilling(block[0]) : null;
+      if (one) return { name: one.name, address: one.address, email: email || emails[0] || null, ust_idnr: ust || one.id, project };
       return { name: block[0], address: block.slice(1).join(', '), email: email || emails[0] || null, ust_idnr: ust, project };
     }
   }
@@ -551,8 +570,18 @@ function extractBilling(desc: string): BillingInfo | null {
       block.push(l);
     }
     if (block.length) {
+      const one = block.length === 1 ? splitInlineBilling(block[0]) : null;
+      if (one) return { name: one.name, address: one.address, email: email || emails[0] || null, ust_idnr: ust || id || one.id, project: null };
       return { name: block[0], address: block.slice(1).join(', '), email: email || emails[0] || null, ust_idnr: ust || id, project: null };
     }
+  }
+
+  // 4) "Payment: Invoice (Firma, Straße 1, 80331 Stadt, P.IVA 123…)" — Empfänger in Klammern hinter Zahlungsart.
+  //    Nur wenn 1)–3) nichts gefunden haben.
+  for (const l of ls) {
+    const m = l.match(/(?:payment|zahlungsart|zahlung|ödeme)\s*:?\s*(?:invoice|rechnung|fatura)\s*\(([^)]+)\)/i);
+    const one = m ? splitInlineBilling(cleanValue(m[1])) : null;
+    if (one) return { name: one.name, address: one.address, email: emails[0] || null, ust_idnr: ust || one.id, project: null };
   }
   return null;
 }
