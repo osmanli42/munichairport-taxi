@@ -697,7 +697,7 @@ export function generateSammelrechnungPdf(opts: {
       .text(company.company_name, marginL, addrY, { width: pageW, lineBreak: false });
     addrY += 16;
     doc.fontSize(9).font('WorkSans').fillColor('#374151');
-    if (company.contact_name) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
+    if (company.contact_name && company.contact_name.trim().toLowerCase() !== String(company.company_name || '').trim().toLowerCase()) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.address) { doc.text(company.address, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (projectName) { doc.text(T.project + projectName, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
     if (company.ust_idnr) { doc.text(T.custVat + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }

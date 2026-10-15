@@ -276,7 +276,7 @@ export async function stornoCompanyInvoice(
 
   const recipient = [company.company_name, company.contact_name, company.address,
     company.ust_idnr ? `${isEn ? 'VAT ID' : 'USt-IdNr.'}: ${company.ust_idnr}` : '']
-    .map((l) => String(l || '').trim()).filter(Boolean);
+    .map((l) => String(l || '').trim()).filter((l, i, a) => l && a.findIndex((x) => String(x || '').trim().toLowerCase() === l.toLowerCase()) === i);
 
   const storno = await createStorno({
     kind: 'sammel', company_invoice_id: inv.id, original_number: inv.invoice_number,
