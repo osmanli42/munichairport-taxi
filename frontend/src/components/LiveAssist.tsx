@@ -20,13 +20,14 @@ import CallbackRequest from '@/components/CallbackRequest';
 import { buildWhatsAppLink } from '@/lib/utils';
 import {
   useLiveAssistConfig, getSessionId, isPricePage, isBookingPage, readTripContext, loadLiveAssistWelcome, LiveAssistWelcome,
-  draftPath, ackLiveAssist, LIVE_PROMO_KEY, LA_ONLINE_EVENT, LA_PROMO_EVENT, imageToDataUrl,
+  draftPath, ackLiveAssist, LIVE_PROMO_KEY, LA_ONLINE_EVENT, LA_PROMO_EVENT, imageToDataUrl, refreshLiveAssistConfig,
 } from '@/lib/liveAssist';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const POLL_OPEN_MS = 3_000;
 const POLL_IDLE_MS = 8_000;
 const MAX_POLL_MS = 2 * 60 * 60 * 1000;
+const CONFIG_RECHECK_MS = 15_000;
 const AUTO_FLAG = 'mt_la_auto_shown';
 
 interface Promo { code: string; type: 'fixed' | 'percent'; value: number }
@@ -159,6 +160,19 @@ export default function LiveAssist() {
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [cfg?.enabled, poll]);
+
+  // Chat war beim Seitenaufruf aus → alle 15 s nachsehen. Schaltet der Admin ihn ein, startet
+  // hier das Abholen, und seine Nachricht an diesen Besucher öffnet den Chat (proaktiv).
+  const cfgLoaded = cfg !== null;
+  useEffect(() => {
+    if (!cfgLoaded || cfg?.enabled) return;
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (Date.now() - started > MAX_POLL_MS) { clearInterval(timer); return; }
+      if (document.visibilityState === 'visible') refreshLiveAssistConfig();
+    }, CONFIG_RECHECK_MS);
+    return () => clearInterval(timer);
+  }, [cfgLoaded, cfg?.enabled]);
 
   useEffect(() => {
     if (!cfg?.returning_greet) return;

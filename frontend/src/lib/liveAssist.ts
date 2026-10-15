@@ -53,12 +53,26 @@ export function loadLiveAssistConfig(): Promise<LiveAssistConfig> {
   return configPromise;
 }
 
+// Neu laden, z. B. wenn der Chat beim Seitenaufruf aus war und der Admin ihn später einschaltet —
+// alle Nutzer von useLiveAssistConfig (LiveAssist, WhatsAppButton) bekommen den neuen Stand.
+export const LA_CONFIG_EVENT = 'la:config';
+export async function refreshLiveAssistConfig(): Promise<LiveAssistConfig> {
+  const c: LiveAssistConfig = await fetch(`${API_BASE}/live-assist/config`, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : OFF))
+    .catch(() => OFF);
+  configPromise = Promise.resolve(c);
+  window.dispatchEvent(new CustomEvent(LA_CONFIG_EVENT, { detail: c }));
+  return c;
+}
+
 export function useLiveAssistConfig(): LiveAssistConfig | null {
   const [cfg, setCfg] = useState<LiveAssistConfig | null>(null);
   useEffect(() => {
     let alive = true;
     loadLiveAssistConfig().then((c) => { if (alive) setCfg(c); });
-    return () => { alive = false; };
+    const onConfig = (e: Event) => setCfg((e as CustomEvent<LiveAssistConfig>).detail);
+    window.addEventListener(LA_CONFIG_EVENT, onConfig);
+    return () => { alive = false; window.removeEventListener(LA_CONFIG_EVENT, onConfig); };
   }, []);
   return cfg;
 }
