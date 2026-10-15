@@ -836,8 +836,14 @@ function BuchenContent() {
           // Enhanced Conversions matches on E.164 — a raw '0151…' silently fails to match.
           phone_number: toSubmitValue(phone, phoneCountry),
         });
+        // Conversion value = the price actually booked. Without value/currency every booking
+        // looks identical to Google Ads, so it bids for the cheapest rides it can win.
+        // The server price is authoritative; the client price is only a fallback.
+        const conversionValue = serverPrice != null ? Number(serverPrice) : finalPriceWithAutoDiscount;
         (window as any).gtag('event', 'conversion', {
           send_to: 'AW-829027982/VhRbCJL0oXgQju2niwM',
+          value: Number.isFinite(conversionValue) && conversionValue > 0 ? conversionValue : undefined,
+          currency: 'EUR',
           transaction_id: data.booking_number || '',
         });
       }
