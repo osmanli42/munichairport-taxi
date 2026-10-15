@@ -131,6 +131,7 @@ interface Alias {
 type RideEdit = Partial<Pick<Ride, 'pickup_datetime' | 'pickup_address' | 'dropoff_address' | 'via' | 'guest_name' | 'price' | 'steuersatz' | 'distance_km' | 'mwst_source'>> & {
   // null = "Yeni müşteri (fatura adresinden)", Zahl = bestehende Firma
   customer?: number | 'new' | null;
+  newGroup?: string; // Schlüssel der „Yeni müşteri“-Gruppe, in der diese Fahrt mitläuft (eine Adresse für mehrere Fahrten)
   mwst_manual?: boolean; // MwSt von Hand gewählt → Neuberechnung der Strecke überschreibt sie nicht
 };
 
@@ -371,6 +372,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
       const e = edits[r.key];
       let customerKey: string;
       if (r.company_id) customerKey = `c:${r.company_id}`;
+      else if (e?.customer === 'new' && e.newGroup) customerKey = e.newGroup;
       else if (e?.customer === 'new' || (e?.customer === undefined && r.billing)) customerKey = r.billing ? `n:${normName(r.billing.name)}` : `n:${r.key}`;
       else customerKey = 'u';
       const key = `${customerKey}|${r.month}`;
@@ -942,13 +944,26 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                   </select>
                   {isUnknown && (
                     <button
-                      onClick={() => g.rides.forEach((r) => updateRide(r.key, { customer: 'new' }))}
+                      onClick={() => g.rides.forEach((r) => updateRide(r.key, { customer: 'new', newGroup: `n:${g.rides[0].key}` }))}
                       className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
                     >
                       <UserPlus size={14} /> Yeni müşteri
                     </button>
                   )}
                 </div>
+                {isNew && (() => {
+                  const others = groups.filter((o) => o.key !== g.key && o.month === g.month && !o.companyId && o.customerKey.startsWith('n:'));
+                  const movable = others.flatMap((o) => o.rides.filter((r) => !excluded.has(r.key)));
+                  if (!movable.length) return null;
+                  return (
+                    <button
+                      onClick={() => movable.forEach((r) => updateRide(r.key, { customer: 'new', newGroup: g.customerKey }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                    >
+                      <UserPlus size={14} /> Aynı müşteri: seçili diğer {movable.length} fahrt'ı da bu adrese ekle
+                    </button>
+                  );
+                })()}
                 {isNew && nf && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     <Field label="Müşteri / Firma adı (faturada)">
