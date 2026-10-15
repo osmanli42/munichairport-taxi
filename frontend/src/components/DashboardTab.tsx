@@ -658,8 +658,8 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
               <div className="flex items-start gap-2.5">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><Network size={15} /></span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-red-700">SEO: {seoIdx.dropped} Seite{seoIdx.dropped === 1 ? '' : 'n'} aus dem Google-Index gefallen</div>
-                  <div className="text-[11px] text-red-600/80">War indexiert, jetzt nicht mehr · SEO → Indexierung</div>
+                  <div className="text-sm font-semibold text-red-700">SEO: Google-Index fällt — {seoIdx.dropped} Seite{seoIdx.dropped === 1 ? '' : 'n'} unter dem 7-Tage-Höchststand</div>
+                  <div className="text-[11px] text-red-600/80">Die Zahl indexierter Seiten sinkt wirklich · SEO → Indexierung</div>
                 </div>
                 <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
               </div>

@@ -17,7 +17,12 @@ const SITEMAP_URL = 'https://flughafen-muenchen.taxi/sitemap.xml';
 const RECHECK_HOURS = 20;
 const GAP_MS = 250;
 const PARALLEL = 5;
-const DROP_DAYS = 14; // a dropped page stays a reminder this long (or until it is back)
+const DROP_DAYS = 14; // a dropped page is listed ("Düşenler") this long (or until it is back)
+// The red alert is about the TOTAL: it fires only when the indexed count falls this many pages below
+// its best value of the previous 7 days. Single pages dropping while others come in is normal
+// (Google tries new pages and sorts out the weak ones) and only shows as a calm note.
+const FALL_ALERT_PAGES = 5;
+const FALL_WINDOW_DAYS = 7;
 
 const sha = (u: string) => crypto.createHash('sha1').update(u).digest('hex');
 const sqlTime = (iso: string | null | undefined) => (iso ? iso.replace('T', ' ').replace(/\.\d+Z?$|Z$/, '').slice(0, 19) : null);
@@ -213,13 +218,34 @@ const section = (u: string) => {
   return 'main';
 };
 
+/**
+ * due     = the indexed total is ≥ FALL_ALERT_PAGES below its best value of the last 7 days (red alert)
+ * dropped = how many pages the alert is about when due (pages below that best value), else 0 — what the
+ *           badges and the dashboard row show
+ * gross   = pages that dropped out in the last 14 days and are still out (the "Düşenler" list)
+ * net14   = indexed total now minus 14 days ago
+ */
 export async function indexReminder() {
   const enabled = await indexMonitorEnabled();
-  if (!enabled) return { enabled, due: false, dropped: 0 };
+  if (!enabled) return { enabled, due: false, dropped: 0, gross: 0, fall: 0, net14: 0 };
   const [d] = await query<any>(`SELECT COUNT(*) AS n FROM seo_index_pages WHERE in_sitemap = 1 AND dropped_at IS NOT NULL
     AND dropped_at >= NOW() - INTERVAL ${DROP_DAYS} DAY AND (verdict IS NULL OR verdict <> 'PASS')`);
-  const dropped = Number(d?.n) || 0;
-  return { enabled, due: dropped > 0, dropped };
+  const gross = Number(d?.n) || 0;
+  const hist = await query<{ date: string; indexed: number }>(
+    `SELECT DATE_FORMAT(date, '%Y-%m-%d') AS date, indexed FROM seo_index_daily ORDER BY date DESC LIMIT 20`);
+  let fall = 0;
+  let net14 = 0;
+  if (hist.length >= 2) {
+    const latest = hist[0];
+    const dayMs = 86_400_000;
+    const age = (h: { date: string }) => Math.round((Date.parse(`${latest.date}T00:00:00Z`) - Date.parse(`${h.date}T00:00:00Z`)) / dayMs);
+    const recent = hist.filter((h) => age(h) >= 1 && age(h) <= FALL_WINDOW_DAYS);
+    if (recent.length) fall = Math.max(0, Math.max(...recent.map((h) => Number(h.indexed))) - Number(latest.indexed));
+    const base = hist.filter((h) => age(h) >= 14).sort((a, b) => age(a) - age(b))[0] || hist[hist.length - 1];
+    net14 = Number(latest.indexed) - Number(base.indexed);
+  }
+  const due = fall >= FALL_ALERT_PAGES;
+  return { enabled, due, dropped: due ? fall : 0, gross, fall, net14 };
 }
 
 export async function indexOverview() {
@@ -272,7 +298,10 @@ export async function indexOverview() {
       indexed,
       not_indexed: checked.length - indexed,
       unchecked: pages.length - checked.length,
-      dropped: reminder.dropped,
+      dropped: reminder.gross,       // pages that dropped out in the last 14 days and are still out
+      fall: reminder.fall,           // the indexed total below its 7-day best
+      net14: reminder.net14,         // indexed total now vs 14 days ago
+      alert: reminder.due,           // red only when the total really falls
       canonical_mismatch: pages.filter((p) => p.canonical_mismatch).length,
       canonical_stale: pages.filter((p) => p.canonical_fixed).length,
       last_check: checked.reduce<string | null>((m, p) => (!m || p.checked_at > m ? p.checked_at : m), null),

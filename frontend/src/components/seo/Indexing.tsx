@@ -26,7 +26,7 @@ function Status({ p }: { p: Page }) {
   if (p.error) return <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">Hata</span>;
   if (!p.checked_at) return <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">Kontrol edilmedi</span>;
   if (p.verdict === 'PASS') return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"><CheckCircle2 size={12} /> İndeksli</span>;
-  if (p.dropped_at) return <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white"><XCircle size={12} /> Düştü</span>;
+  if (p.dropped_at) return <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700"><XCircle size={12} /> Düştü</span>;
   return <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"><AlertTriangle size={12} /> İndekste değil</span>;
 }
 
@@ -120,14 +120,28 @@ export default function Indexing({ onRemindersChange }: { onRemindersChange?: ()
 
   return (
     <div className="space-y-6">
-      {s.dropped > 0 && (
+      {s.alert && (
         <div className="flex items-start gap-3 rounded-2xl bg-red-50 ring-1 ring-red-200 px-5 py-4">
           <XCircle className="text-red-600 shrink-0 mt-0.5" size={20} />
           <div className="text-sm">
-            <div className="font-semibold text-red-700">{s.dropped} sayfa Google indeksinden düştü</div>
-            <div className="text-red-600/80 text-xs mt-0.5">Önceki kontrolde indeksliydi, şimdi değil. Aşağıda „Düşenler“ filtresine bak; sebebi ve yapılacak iş satırda yazıyor.</div>
+            <div className="font-semibold text-red-700">İndeksli sayfa sayısı düşüyor: son 7 günün zirvesinin {s.fall} sayfa altında</div>
+            <div className="text-red-600/80 text-xs mt-0.5">Bu gerçek bir düşüş (tek tek sayfaların girip çıkması değil). Aşağıda „Düşenler“ filtresine bak; sebebi ve yapılacak iş satırda yazıyor.</div>
           </div>
           <button onClick={() => setFilter('dropped')} className="ml-auto shrink-0 text-xs font-semibold text-red-700 hover:underline">Göster →</button>
+        </div>
+      )}
+      {!s.alert && s.dropped > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl bg-slate-50 ring-1 ring-slate-200 px-5 py-4">
+          <Info className="text-slate-500 shrink-0 mt-0.5" size={18} />
+          <div className="text-sm">
+            <div className="font-semibold text-slate-800">
+              14 günde net {s.net14 >= 0 ? '+' : '−'}{Math.abs(s.net14)} sayfa{s.net14 >= 0 ? ' indekslendi' : ' azaldı'} · {s.dropped} sayfa geçici olarak düştü
+            </div>
+            <div className="text-slate-600 text-xs mt-0.5 leading-relaxed">
+              Alarm yok: Google yeni sayfaları önce deneyip zayıf bulduklarını eliyor; toplam artıyor. Kırmızı uyarı yalnızca toplam sayı son 7 günün zirvesinin 5+ sayfa altına inerse çıkar.
+            </div>
+          </div>
+          <button onClick={() => setFilter('dropped')} className="ml-auto shrink-0 text-xs font-semibold text-slate-600 hover:underline">Düşenler →</button>
         </div>
       )}
 
@@ -149,7 +163,7 @@ export default function Indexing({ onRemindersChange }: { onRemindersChange?: ()
         <Kpi label="İndeksli sayfa" value={<>{s.indexed}<span className="text-base text-gray-400 font-medium"> / {s.total}</span></>}
           sub={s.checked ? `kontrol edilenlerin %${share}’i` : 'henüz kontrol yok'} tone="text-emerald-600" icon={<CheckCircle2 size={16} />} />
         <Kpi label="İndekste değil" value={s.not_indexed} sub="Google bulmuş ama almamış / tanımıyor" tone={s.not_indexed ? 'text-amber-600' : 'text-gray-900'} icon={<AlertTriangle size={16} />} />
-        <Kpi label="Düşen (14 gün)" value={s.dropped} sub="önce indeksliydi" tone={s.dropped ? 'text-red-600' : 'text-gray-900'} icon={<XCircle size={16} />} />
+        <Kpi label="Düşen (14 gün)" value={s.dropped} sub={`önce indeksliydi · net ${s.net14 >= 0 ? '+' : '−'}${Math.abs(s.net14)}`} tone={s.alert ? 'text-red-600' : s.dropped ? 'text-amber-600' : 'text-gray-900'} icon={<XCircle size={16} />} />
         <Kpi label="Son kontrol" value={<span className="text-lg">{dateTime(s.last_check)}</span>} sub={s.unchecked ? `${s.unchecked} sayfa sırada` : 'tüm sitemap kontrol edildi'} icon={<RefreshCw size={16} />} />
       </div>
 
@@ -255,7 +269,7 @@ export default function Indexing({ onRemindersChange }: { onRemindersChange?: ()
           {([['all', 'Tümü'], ['dropped', 'Düşenler'], ['not', 'İndekste değil'], ['indexed', 'İndeksli'], ['unchecked', 'Kontrol edilmedi']] as Array<[Filter, string]>).map(([k, label]) => (
             <button key={k} onClick={() => { setFilter(k); setLimit(60); }}
               className={cn('shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold', filter === k ? 'bg-primary-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100')}>
-              {label} <span className={cn('rounded-full px-1.5 text-[10px]', filter === k ? 'bg-white/25' : k === 'dropped' && counts[k] ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600')}>{counts[k]}</span>
+              {label} <span className={cn('rounded-full px-1.5 text-[10px]', filter === k ? 'bg-white/25' : k === 'dropped' && counts[k] ? (s.alert ? 'bg-red-500 text-white' : 'bg-orange-400 text-white') : 'bg-gray-200 text-gray-600')}>{counts[k]}</span>
             </button>
           ))}
           {sectionF && <button onClick={() => setSectionF('')} className="shrink-0 rounded-lg bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700">{SECTIONS[sectionF]} ✕</button>}

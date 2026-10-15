@@ -160,7 +160,7 @@ router.get('/backlinks', authenticateAdmin, wrap(async (req, res) => {
 
 // Things due in the SEO tab (badge on the admin tab bar).
 router.get('/reminders', authenticateAdmin, wrap(async (_req, res) => {
-  const [backlinks, indexing] = await Promise.all([backlinkReminder(), indexReminder().catch(() => ({ enabled: false, due: false, dropped: 0 }))]);
+  const [backlinks, indexing] = await Promise.all([backlinkReminder(), indexReminder().catch(() => ({ enabled: false, due: false, dropped: 0, gross: 0, fall: 0, net14: 0 }))]);
   res.json({ count: (backlinks.due ? 1 : 0) + (indexing.due ? 1 : 0), backlinks, indexing });
 }));
 
