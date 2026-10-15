@@ -158,8 +158,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     // Reaches back to the 1st of last month, so month-to-date can be set against the same
     // span of last month.
     const dom = +today.slice(8, 10);
-    const created = await query<{ created_utc: string; price: number; status: string; payment_method: string }>(`
-      SELECT DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_utc, price, status, payment_method
+    const created = await query<{ created_utc: string; price: number; status: string; payment_method: string; source: string | null }>(`
+      SELECT DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_utc, price, status, payment_method, source
         FROM bookings WHERE created_at >= ?`,
       [berlinMidnightUtcSql(-(dom - 1) - 31)]);
 
@@ -186,13 +186,18 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       if (date.slice(0, 7) === month) status[r.status] = (status[r.status] || 0) + 1;
       if (r.status === 'cancelled') continue;
       const price = Number(r.price) || 0;
-      if (date === today) add(intake.today, price);
-      if (date === yesterday) {
-        add(intake.yesterday, price);
-        if (time <= nowTime) add(intake.yesterdaySameTime, price);
+      // Rides taken from the calendar become bookings only when the Rechnung is made. They already counted on the
+      // day they were entered in the calendar (see below), so the "taken" windows and the chart skip them here.
+      const viaCalendar = r.source === 'calendar';
+      if (!viaCalendar) {
+        if (date === today) add(intake.today, price);
+        if (date === yesterday) {
+          add(intake.yesterday, price);
+          if (time <= nowTime) add(intake.yesterdaySameTime, price);
+        }
+        if (date >= weekStart) add(intake.week, price);
+        else if (date >= prevWeekStart) add(intake.prevWeek, price);
       }
-      if (date >= weekStart) add(intake.week, price);
-      else if (date >= prevWeekStart) add(intake.prevWeek, price);
       if (date.slice(0, 7) === month) {
         add(intake.mtd, price);
         const pm = r.payment_method || 'cash';
@@ -202,7 +207,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
         const day = +date.slice(8, 10);
         if (day < dom || (day === dom && time <= nowTime)) add(intake.prevMtd, price);
       }
-      if (date >= chartStart && chartMap.has(date)) add(chartMap.get(date)!, price);
+      if (!viaCalendar && date >= chartStart && chartMap.has(date)) add(chartMap.get(date)!, price);
     }
     // "Neue Buchungen" = rides taken: calendar-only rides count on the day they were entered in the
     // calendar (Google "created"), next to the web bookings. Only today / yesterday / the 7-day
@@ -211,7 +216,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const intakeCalendar = { today: agg(), yesterday: agg(), week: agg() };
     if (includeCalendar) {
       const entries = await query<{ at: string; price: number | null }>(
-        `SELECT ${ENTERED} AS at, price FROM calendar_rides WHERE kind = 'ride' AND ${ENTERED} >= ?`,
+        `SELECT ${ENTERED} AS at, price FROM calendar_rides WHERE kind IN ('ride', 'imported') AND ${ENTERED} >= ?`,
         [`${prevWeekStart}T00:00`]);
       for (const e of entries) {
         const date = e.at.slice(0, 10);
@@ -335,7 +340,7 @@ async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', i
         SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
                b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc
           FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
-         WHERE b.status <> 'cancelled' AND b.created_at >= ? AND b.created_at < ?
+         WHERE b.status <> 'cancelled' AND COALESCE(b.source, '') <> 'calendar' AND b.created_at >= ? AND b.created_at < ?
          ORDER BY b.created_at`,
         [berlinMidnightUtcSql(dayDiff(today, from)), berlinMidnightUtcSql(dayDiff(today, to) + 1)])
     : await query<any>(`
@@ -348,7 +353,7 @@ async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', i
   const rides = !includeCalendar ? [] : await query<any>(`
     SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price
       FROM calendar_rides
-     WHERE kind = 'ride' AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
+     WHERE kind IN (${mode === 'booked' ? "'ride', 'imported'" : "'ride'"}) AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
      ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
     [`${from}T00:00`, `${to}T23:59`]);
 
