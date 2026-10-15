@@ -322,46 +322,89 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
 // web/system bookings plus calendar-only rides. booked = taken that day (booking date / entered
 // in the calendar), driven = rides of that day (pickup date; a round trip's whole price sits on
 // the outbound day).
+// Also ?from=YYYY-MM-DD&to=YYYY-MM-DD for a period (7/14/30 Tage or any range): same totals,
+// plus a per-day breakdown and the previous period of the same length for comparison.
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+const shiftDay = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', includeCalendar: boolean) {
+  const today = berlinDateSql(0);
+  const bookings = mode === 'booked'
+    ? await query<any>(`
+        SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
+               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc
+          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+         WHERE b.status <> 'cancelled' AND b.created_at >= ? AND b.created_at < ?
+         ORDER BY b.created_at`,
+        [berlinMidnightUtcSql(dayDiff(today, from)), berlinMidnightUtcSql(dayDiff(today, to) + 1)])
+    : await query<any>(`
+        SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
+               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc
+          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+         WHERE b.status <> 'cancelled' AND LEFT(b.pickup_datetime, 10) BETWEEN ? AND ?
+         ORDER BY b.pickup_datetime`, [from, to]);
+
+  const rides = !includeCalendar ? [] : await query<any>(`
+    SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price
+      FROM calendar_rides
+     WHERE kind = 'ride' AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
+     ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
+    [`${from}T00:00`, `${to}T23:59`]);
+
+  // Day each item counts for: Berlin booking day (created_at is UTC) or the ride day
+  const webDay = (b: any) => mode === 'booked'
+    ? berlinNowSql(new Date(`${String(b.created_utc).replace(' ', 'T')}Z`)).slice(0, 10)
+    : wall(b.pickup_datetime).slice(0, 10);
+  const calDay = (r: any) => String(mode === 'booked' ? r.entered : r.ride_time).slice(0, 10);
+  return { bookings, rides, webDay, calDay };
+}
+
 router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const date = String(req.query.date || '');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { res.status(400).json({ error: 'date required (YYYY-MM-DD)' }); return; }
+    const single = String(req.query.date || '');
+    const from = String(req.query.from || single);
+    const to = String(req.query.to || single);
+    if (!ISO_DAY.test(from) || !ISO_DAY.test(to) || to < from) { res.status(400).json({ error: 'date or from/to required (YYYY-MM-DD)' }); return; }
+    const span = dayDiff(from, to) + 1;
+    if (span > 400) { res.status(400).json({ error: 'Zeitraum zu lang (max. 400 Tage)' }); return; }
     const mode = req.query.mode === 'driven' ? 'driven' : 'booked';
-    const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${berlinDateSql(0)}T00:00:00Z`)) / 86_400_000);
-
-    const bookings = mode === 'booked'
-      ? await query<any>(`
-          SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
-                 b.price, b.payment_method, c.company_name
-            FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
-           WHERE b.status <> 'cancelled' AND b.created_at >= ? AND b.created_at < ?
-           ORDER BY b.created_at`,
-          [berlinMidnightUtcSql(offset), berlinMidnightUtcSql(offset + 1)])
-      : await query<any>(`
-          SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
-                 b.price, b.payment_method, c.company_name
-            FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
-           WHERE b.status <> 'cancelled' AND LEFT(b.pickup_datetime, 10) = ?
-           ORDER BY b.pickup_datetime`, [date]);
-
     const includeCalendar = await includeCalendarInStats();
-    const rides = !includeCalendar ? [] : await query<any>(`
-      SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price
-        FROM calendar_rides
-       WHERE kind = 'ride' AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
-       ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
-      [`${date}T00:00`, `${date}T23:59`]);
 
+    const { bookings, rides, webDay, calDay } = await loadPeriod(from, to, mode, includeCalendar);
     const webRevenue = bookings.reduce((s, b) => s + (Number(b.price) || 0), 0);
     const calRevenue = rides.reduce((s, r) => s + (Number(r.price) || 0), 0);
+
+    // Per-day breakdown (every day of the period, also empty ones) — only for a period
+    let days: { date: string; web: Agg; calendar: Agg }[] | undefined;
+    let prev: { from: string; to: string; total: Agg } | undefined;
+    if (span > 1) {
+      const byDay = new Map<string, { date: string; web: Agg; calendar: Agg }>();
+      for (let i = 0; i < span; i++) { const d = shiftDay(from, i); byDay.set(d, { date: d, web: agg(), calendar: agg() }); }
+      for (const b of bookings) { const d = byDay.get(webDay(b)); if (d) add(d.web, b.price); }
+      for (const r of rides) { const d = byDay.get(calDay(r)); if (d) add(d.calendar, r.price); }
+      days = [...byDay.values()];
+
+      // Same length directly before — for "+12 % zum Vorzeitraum"
+      const pFrom = shiftDay(from, -span), pTo = shiftDay(from, -1);
+      const p = await loadPeriod(pFrom, pTo, mode, includeCalendar);
+      prev = {
+        from: pFrom, to: pTo,
+        total: {
+          count: p.bookings.length + p.rides.length,
+          revenue: p.bookings.reduce((s, b) => s + (Number(b.price) || 0), 0) + p.rides.reduce((s, r) => s + (Number(r.price) || 0), 0),
+        },
+      };
+    }
+
     res.json({
-      date, mode, calendar_enabled: includeCalendar,
+      date: from, from, to, mode, calendar_enabled: includeCalendar,
       web: {
         count: bookings.length, revenue: webRevenue,
         items: bookings.map((b) => ({
           id: b.id, booking_number: b.booking_number, name: b.name, from: b.pickup_address, to: b.dropoff_address,
           pickup: wall(b.pickup_datetime), trip_type: b.trip_type, price: Number(b.price) || 0,
-          payment_method: b.payment_method, company: b.company_name || null,
+          payment_method: b.payment_method, company: b.company_name || null, day: webDay(b),
         })),
       },
       calendar: {
@@ -372,6 +415,7 @@ router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): P
         })),
       },
       total: { count: bookings.length + rides.length, revenue: webRevenue + calRevenue },
+      days, prev,
     });
   } catch (error) {
     console.error('[admin-dashboard/day]', error);
