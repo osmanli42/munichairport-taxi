@@ -33,19 +33,20 @@ const wallMs = (w: string) => Date.parse(`${w.length === 10 ? `${w}T00:00` : w}:
 const msWall = (ms: number) => new Date(ms).toISOString().slice(0, 16);
 const addDays = (date: string, n: number) => msWall(wallMs(date) + n * 86_400_000).slice(0, 10);
 
-type DemandSettings = { enabled: boolean; minExpected: number; horizonDays: number; gapEnabled: boolean };
+type DemandSettings = { enabled: boolean; minExpected: number; horizonDays: number; gapEnabled: boolean; leerEnabled: boolean };
 let settingsCache: (DemandSettings & { at: number }) | null = null;
 
 export async function demandSettings(): Promise<DemandSettings> {
   if (settingsCache && Date.now() - settingsCache.at < SETTINGS_CACHE_MS) return settingsCache;
   const rows = await query<{ setting_key: string; setting_value: string }>(
-    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled')`
+    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled')`
   );
   const m = Object.fromEntries(rows.map(r => [r.setting_key, r.setting_value]));
   const num = (v: unknown, d: number) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   settingsCache = {
     enabled: m.demand_discount_enabled === '1',
     gapEnabled: m.gap_discount_enabled === '1',
+    leerEnabled: m.leer_discount_enabled === '1',
     minExpected: num(m.demand_min_expected, 2),
     horizonDays: num(m.demand_horizon_days, 14),
     at: Date.now(),

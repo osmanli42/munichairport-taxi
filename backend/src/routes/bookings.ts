@@ -5,6 +5,7 @@ import { query, run } from '../db';
 import { sendAllNotifications, BookingNotificationData } from '../services/notifications';
 import { tripInZone, haversineKm, PgConfig, Coords } from '../utils/geo';
 import { geocodeAddress } from './maps';
+import { geocodeCached } from '../services/leerfahrt';
 import { findFixedRoute, getFixedPrice } from './fixed-routes';
 import { getVisitorCoords, getClientIp } from '../utils/ipGeo';
 import { isRateLimited, registerFailure, clearRateLimit } from '../utils/rateLimit';
@@ -456,6 +457,11 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         priceBasis: pgFareFloor > 0 ? 'pflichttarif' : 'normal',
         visitorDistanceKm: adVisitor.distanceKm,
         visitorIsFar: visitorIsFarAway(adVisitor),
+        // Leerfahrt-Regeln: Abholort aus dem Formular, sonst einmal geokodiert (gecacht)
+        pickupCoords: async () => (pickup_lat && pickup_lng)
+          ? { lat: parseFloat(pickup_lat), lng: parseFloat(pickup_lng) }
+          : geocodeCached(pickup_address),
+        pickupAddress: pickup_address || null,
         isBusinessCustomer: businessCustomer,
         // Besuchszahl serverseitig zählen — der Client könnte sie sonst hochsetzen und
         // sich so einen Wiederkehrer-Rabatt selbst freischalten.
@@ -958,6 +964,10 @@ export async function computeRoutePrice(
       priceBasis: pgFloorValue != null ? 'pflichttarif' : 'normal',
       visitorDistanceKm: previewVisitor.distanceKm,
       visitorIsFar: visitorIsFarAway(previewVisitor),
+      pickupCoords: async () => (pickup_lat && pickup_lng)
+        ? { lat: parseFloat(String(pickup_lat)), lng: parseFloat(String(pickup_lng)) }
+        : geocodeCached(pickup_address),
+      pickupAddress: pickup_address || null,
       isBusinessCustomer: previewBusiness,
       // Besuchszahl serverseitig — siehe POST /api/bookings
       visitCount: await countVisitorSessions(options?.visitorId || null),

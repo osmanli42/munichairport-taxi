@@ -869,6 +869,17 @@ export async function initializeDatabase(): Promise<void> {
     // Rides from the operator's Google Calendar, mirrored for the statistics
     // (services/calendarRides.ts). kind tells whether an event is a ride of its own or
     // just the calendar copy of a booking / an imported booking / cancelled.
+    // Leerfahrt-Rabatt: Adress-Koordinaten einmal geokodieren (services/leerfahrt.ts)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS geo_cache (
+        addr_key CHAR(40) NOT NULL,
+        address VARCHAR(500) NOT NULL,
+        lat DOUBLE DEFAULT NULL,
+        lng DOUBLE DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (addr_key)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS calendar_rides (
         uid VARCHAR(255) NOT NULL,
@@ -1396,6 +1407,13 @@ export async function initializeDatabase(): Promise<void> {
       // ±gap_window_minutes um die Abholzeit höchstens gap_max_rides Fahrten stehen.
       ['gap_window_minutes', 'INT DEFAULT NULL'],
       ['gap_max_rides', 'INT DEFAULT NULL'],
+      // Leerfahrt: Rabatt, wenn die Abholung höchstens leer_radius_km vom Ziel einer geplanten
+      // Fahrt entfernt ist und leer_after_min–leer_before_min nach deren Ankunft liegt.
+      ['leer_radius_km', 'DECIMAL(6,1) DEFAULT NULL'],
+      ['leer_after_min', 'INT DEFAULT NULL'],
+      ['leer_before_min', 'INT DEFAULT NULL'],
+      // 'muenchen' = nur Flughafen → Stadt München, Rückweg-Abholung in München; NULL = überall
+      ['leer_area', 'VARCHAR(20) DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
@@ -1417,6 +1435,8 @@ export async function initializeDatabase(): Promise<void> {
       ['demand_discount_enabled', '0'],
       // Hauptschalter für alle Boş-saat-Regeln (Lücken im Tagesplan). Start: aus.
       ['gap_discount_enabled', '0'],
+      // Hauptschalter für alle Leerfahrt-Regeln. Start: aus.
+      ['leer_discount_enabled', '0'],
       ['demand_min_expected', '2'],
       ['demand_horizon_days', '14'],
     ]) {

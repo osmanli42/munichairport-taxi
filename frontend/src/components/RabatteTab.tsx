@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
 import DemandPanel from '@/components/discount/DemandPanel';
 import GapPanel from '@/components/discount/GapPanel';
+import LeerPanel from '@/components/discount/LeerPanel';
 
 const WEEKDAYS = [
   { v: 1, label: 'Mo' }, { v: 2, label: 'Di' }, { v: 3, label: 'Mi' }, { v: 4, label: 'Do' },
@@ -43,6 +44,7 @@ const emptyForm = (): FormState => ({
   visit_min: null, allow_fixed_routes: 0,
   demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
   exclude_business: 0, max_days_ahead: null, gap_window_minutes: null, gap_max_rides: null,
+  leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null,
 });
 
 // Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
@@ -73,6 +75,19 @@ const gapTemplate = (): FormState => ({
   name: 'Boş Saat 7 %', discount_value: 7, zone_scope: 'any', max_discount_amount: 10,
   gap_window_minutes: 120, gap_max_rides: 0, trip_time_from: 10 * 60, trip_time_to: 22 * 60,
   max_days_ahead: 3, ip_bypass_mode: 'alle', roundtrip_value: 2, priority: 15,
+  booking_index_max: 2, exclude_business: 1,
+  show_countdown: 0, show_remaining: 0,
+  label_de: 'Sonderangebot · solange verfügbar', label_en: 'Special offer · while available', label_tr: 'Özel teklif · sınırlı sayıda',
+});
+
+// Hazır şablon: Leerfahrt (kullanıcı kararları 16 Eki 2026 — %10, en fazla 15 €; sadece
+// Havalimanı → München fahrt'ı bitince München'den yeni alış; 25 km; varıştan 45–120 dk sonra).
+// Boş dönüşü kurtarmak en kârlı durum, bu yüzden en yüksek öncelik.
+const leerTemplate = (): FormState => ({
+  ...emptyForm(),
+  name: 'Leerfahrt 10 %', discount_value: 10, zone_scope: 'any', max_discount_amount: 15,
+  leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen',
+  ip_bypass_mode: 'alle', roundtrip_value: 2, priority: 30,
   booking_index_max: 2, exclude_business: 1,
   show_countdown: 0, show_remaining: 0,
   label_de: 'Sonderangebot · solange verfügbar', label_en: 'Special offer · while available', label_tr: 'Özel teklif · sınırlı sayıda',
@@ -276,6 +291,7 @@ export default function RabatteTab({ token }: { token: string }) {
   const startCreate = () => { setEditing(emptyForm()); setEditingId(null); setCopying(false); };
   const startDemandTemplate = (tier: DemandTier) => { setEditing(demandTemplate(tier)); setEditingId(null); setCopying(false); };
   const startGapTemplate = () => { setEditing(gapTemplate()); setEditingId(null); setCopying(false); };
+  const startLeerTemplate = () => { setEditing(leerTemplate()); setEditingId(null); setCopying(false); };
 
   // Kopieren: alle Einstellungen übernehmen, aber als neue Regel speichern — praktisch für
   // Aktionen, die sich nur in der Uhrzeit unterscheiden (z.B. 18:30–00:00 und 00:00–07:00).
@@ -373,6 +389,9 @@ export default function RabatteTab({ token }: { token: string }) {
 
       {/* Boş saat indirimi — ana şalter + takvim şeridi */}
       <GapPanel onTemplate={startGapTemplate} refreshKey={demandRefresh} disabled={saving} />
+
+      {/* Leerfahrt indirimi — ana şalter + boşa dönecek araçlar */}
+      <LeerPanel onTemplate={startLeerTemplate} refreshKey={demandRefresh} disabled={saving} />
 
       {/* Tarif-Untergrenze — §51 PBefG */}
       <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>
@@ -473,8 +492,13 @@ export default function RabatteTab({ token }: { token: string }) {
                     {r.exclude_business ? ' · firma/Rechnung müşterisi hariç' : ''}
                     {r.max_days_ahead != null ? ` · en fazla ${r.max_days_ahead} gün sonrası` : ''}
                   </p>
-                  {(r.demand_pace_max != null || r.ip_bypass_mode || r.gap_window_minutes != null) && (
+                  {(r.demand_pace_max != null || r.ip_bypass_mode || r.gap_window_minutes != null || r.leer_radius_km != null) && (
                     <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                      {r.leer_radius_km != null && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                          Leerfahrt · {r.leer_area === 'muenchen' ? 'MUC → München' : 'her yer'} · {Number(r.leer_radius_km)} km · {r.leer_after_min ?? 45}–{r.leer_before_min ?? 120} dk
+                        </span>
+                      )}
                       {r.gap_window_minutes != null && (
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                           Boş saat · ±{Number(r.gap_window_minutes) % 60 === 0 ? `${Number(r.gap_window_minutes) / 60} sa` : `${r.gap_window_minutes} dk`} · en fazla {r.gap_max_rides ?? 0} fahrt
@@ -566,6 +590,59 @@ export default function RabatteTab({ token }: { token: string }) {
                     disabled={editing.discount_type === 'fixed'}
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400" />
                 </div>
+              </div>
+
+              {/* Leerfahrt */}
+              <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-3 space-y-3">
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={editing.leer_radius_km != null}
+                    onChange={e => patch(e.target.checked
+                      ? { leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen' }
+                      : { leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null })} />
+                  <span>
+                    <strong>Sadece boş dönüşü doldururken (Leerfahrt)</strong>
+                    <span className="block text-xs text-gray-500">
+                      Planlı bir fahrt'ın bittiği yere yakın ve kısa süre sonra alış isteyen müşteriye geçerli — araç
+                      zaten orada, boş dönmez. Üstteki „Leerfahrt indirimi“ ana şalteri kapalıysa bu kural hiç çalışmaz.
+                    </span>
+                  </span>
+                </label>
+                {editing.leer_radius_km != null && (
+                  <>
+                    <div>
+                      <label className="text-xs text-gray-500">Hangi fahrt'lar</label>
+                      <select value={editing.leer_area ?? ''} onChange={e => patch({ leer_area: e.target.value === 'muenchen' ? 'muenchen' : null })}
+                        className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value="muenchen">Sadece Havalimanı → München, yeni alış München'den</option>
+                        <option value="">Her yer (sadece mesafe ve saat)</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500">En fazla km</label>
+                        <input type="number" min={1} max={100} step={1} value={editing.leer_radius_km ?? ''}
+                          onChange={e => patch({ leer_radius_km: e.target.value === '' ? 25 : parseFloat(e.target.value) })}
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500">Varıştan en erken (dk)</label>
+                        <input type="number" min={0} max={600} step={5} value={editing.leer_after_min ?? 45}
+                          onChange={e => patch({ leer_after_min: e.target.value === '' ? 45 : parseInt(e.target.value, 10) })}
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500">Varıştan en geç (dk)</label>
+                        <input type="number" min={0} max={600} step={5} value={editing.leer_before_min ?? 120}
+                          onChange={e => patch({ leer_before_min: e.target.value === '' ? 120 : parseInt(e.target.value, 10) })}
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Örn. 08:00 havalimanından alış, ~08:45 Schwabing'de biter → 45–120 dk ile 09:30–10:45 arası
+                      München'den alışa indirim. Müşterinin hemen çıkmaması için „en erken“ değeri tampon bırakır.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Boş saat */}

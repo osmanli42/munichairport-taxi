@@ -329,6 +329,26 @@ export interface AutoDiscount {
   gap_window_minutes: number | null;
   /** Höchstzahl Fahrten im Fenster (0 = leer) */
   gap_max_rides: number | null;
+  /** Leerfahrt: Abholung höchstens so weit vom Ziel einer geplanten Fahrt (null = aus) */
+  leer_radius_km: number | null;
+  /** Leerfahrt-Fenster nach der geschätzten Ankunft (Minuten) */
+  leer_after_min: number | null;
+  leer_before_min: number | null;
+  /** 'muenchen' = nur Flughafen → Stadt München, Abholung in München; null = überall */
+  leer_area: 'muenchen' | null;
+}
+
+export interface LeerItem {
+  start: string; from: string; to: string; label: string;
+  freeAt: string; windowFrom: string; windowTo: string;
+  usedBy: { start: string; from: string; label: string } | null;
+}
+export interface LeerOverview {
+  enabled: boolean;
+  rule: { id: number; name: string; type: 'percent' | 'fixed'; value: number } | null;
+  radiusKm: number; afterMin: number; beforeMin: number; area: 'muenchen' | null;
+  items: LeerItem[];
+  stats: { bookings: number; discount: number; revenue: number };
 }
 
 export interface GapDay {
@@ -361,6 +381,10 @@ export interface DemandOverview {
 export const autoDiscountsApi = {
   demand: async (): Promise<DemandOverview> => {
     const response = await api.get('/auto-discounts/admin/demand');
+    return response.data;
+  },
+  leer: async (): Promise<LeerOverview> => {
+    const response = await api.get('/auto-discounts/admin/leer');
     return response.data;
   },
   gaps: async (): Promise<GapOverview> => {

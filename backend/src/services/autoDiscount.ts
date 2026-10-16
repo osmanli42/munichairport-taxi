@@ -2,6 +2,7 @@
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
 import { query } from '../db';
 import { paceForTrip, ruleUsesOnTripDate, ridesNear, demandSettings } from './demandPace';
+import { leerMatch, Coords } from './leerfahrt';
 
 export interface AutoDiscountRule {
   id: number;
@@ -79,6 +80,13 @@ export interface AutoDiscountRule {
   gap_window_minutes: number | null;
   /** Höchstzahl Fahrten im Fenster (0 = Fenster muss leer sein). */
   gap_max_rides: number | null;
+  /** Leerfahrt: Abholung höchstens so weit vom Ziel einer geplanten Fahrt (null = aus). */
+  leer_radius_km: number | null;
+  /** Leerfahrt-Fenster nach der geschätzten Ankunft dieser Fahrt, in Minuten. */
+  leer_after_min: number | null;
+  leer_before_min: number | null;
+  /** 'muenchen' = nur Flughafen → Stadt München und neue Abholung in München; null = überall. */
+  leer_area: 'muenchen' | null;
 }
 
 /** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
@@ -126,6 +134,12 @@ export interface AutoDiscountInput {
    * unabhängig davon, ob die Fahrt im Pflichtgebiet liegt. Grundlage für ip_bypass_mode.
    */
   visitorIsFar: boolean;
+  /**
+   * Abholort, erst bei Bedarf ermittelt (nur Leerfahrt-Regeln brauchen ihn) — so kostet eine
+   * Preisanfrage ohne solche Regeln keinen Geokodier-Aufruf.
+   */
+  pickupCoords?: () => Promise<Coords | null>;
+  pickupAddress?: string | null;
   /** Firmen-/Rechnungskunde? null = unbekannt (Vorschau ohne Kundendaten) → Regel greift. */
   isBusinessCustomer: boolean | null;
 }
@@ -370,6 +384,20 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       const near = await ridesNear(trip.dateStr, trip.minutes, Number(r.gap_window_minutes));
       if (near > Number(r.gap_max_rides ?? 0)) continue;
     }
+    if (r.leer_radius_km != null) {
+      // Eigener Hauptschalter "Leerfahrt"; ohne Abholzeit/-ort kein Abgleich möglich
+      if (!trip || !input.pickupCoords || !(await demandSettings()).leerEnabled) continue;
+      const pickup = await input.pickupCoords();
+      if (!pickup) continue;
+      const hh = String(Math.floor(trip.minutes / 60)).padStart(2, '0');
+      const mm = String(trip.minutes % 60).padStart(2, '0');
+      const match = await leerMatch({
+        pickup, pickupAddress: input.pickupAddress ?? null, area: r.leer_area === 'muenchen' ? 'muenchen' : null,
+        pickupWall: `${trip.dateStr}T${hh}:${mm}`, radiusKm: Number(r.leer_radius_km),
+        afterMin: Number(r.leer_after_min ?? 45), beforeMin: Number(r.leer_before_min ?? 120),
+      });
+      if (!match) continue;
+    }
     if (r.trip_date_max_uses != null) {
       if (!tripDateStr) continue;
       if (await ruleUsesOnTripDate(r.id, tripDateStr) >= Number(r.trip_date_max_uses)) continue;
@@ -513,7 +541,7 @@ export async function resolveBannerDiscount(
   const { rules, enabled } = await loadRules();
   if (!enabled) return null;
   // Ruhiger-Tag-Regeln hängen vom Fahrtdatum ab, das beim Banner noch unbekannt ist.
-  const candidates = rules.filter(r => Number(r.show_in_banner) === 1 && r.demand_pace_max == null && r.gap_window_minutes == null);
+  const candidates = rules.filter(r => Number(r.show_in_banner) === 1 && r.demand_pace_max == null && r.gap_window_minutes == null && r.leer_radius_km == null);
   if (candidates.length === 0) return null;
   const now = new Date();
   const booking = berlinParts(now);

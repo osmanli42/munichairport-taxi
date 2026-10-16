@@ -4,7 +4,8 @@ import { authenticateAdmin } from '../middleware/auth';
 import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels, windowMatches } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
-import { berlinDateSql } from '../utils/berlinTime';
+import { vacanciesAround } from '../services/leerfahrt';
+import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
     price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
     demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
-    gap_window_minutes, gap_max_rides,
+    gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -56,6 +57,15 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     if (!Number.isInteger(w) || w < 15 || w > 360) return { error: 'Boş saat: pencere 15–360 dakika olmalı' };
     const m = isEmpty(gap_max_rides) ? 0 : Number(gap_max_rides);
     if (!Number.isInteger(m) || m < 0 || m > 10) return { error: 'Boş saat: penceredeki en fazla fahrt 0–10 olmalı' };
+  }
+  if (!isEmpty(leer_radius_km)) {
+    const r = Number(leer_radius_km);
+    const a = isEmpty(leer_after_min) ? 45 : Number(leer_after_min);
+    const b = isEmpty(leer_before_min) ? 120 : Number(leer_before_min);
+    if (!Number.isFinite(r) || r < 1 || r > 100) return { error: 'Leerfahrt: mesafe 1–100 km olmalı' };
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b > 600 || a >= b) {
+      return { error: 'Leerfahrt: zaman penceresi 0–600 dk, „en erken“ „en geç“ten küçük olmalı' };
+    }
   }
   if (!isEmpty(ip_bypass_mode) && !['fern', 'nah', 'alle'].includes(String(ip_bypass_mode))) {
     return { error: 'Besucherkreis ungültig' };
@@ -117,6 +127,10 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       intOrNull(max_days_ahead),
       intOrNull(gap_window_minutes),
       isEmpty(gap_window_minutes) ? null : (intOrNull(gap_max_rides) ?? 0),
+      numOrNull(leer_radius_km),
+      isEmpty(leer_radius_km) ? null : (intOrNull(leer_after_min) ?? 45),
+      isEmpty(leer_radius_km) ? null : (intOrNull(leer_before_min) ?? 120),
+      isEmpty(leer_radius_km) || leer_area !== 'muenchen' ? null : 'muenchen',
     ],
   };
 }
@@ -128,7 +142,7 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
   price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
   demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
-  gap_window_minutes, gap_max_rides`;
+  gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -257,6 +271,62 @@ router.get('/admin/gaps', authenticateAdmin, async (_req: Request, res: Response
   } catch (e: any) {
     console.error('gap overview failed:', e?.message);
     res.status(500).json({ error: 'Failed to load gap overview' });
+  }
+});
+
+// GET /api/auto-discounts/admin/leer — freie Autos der nächsten Tage (Ziel einer geplanten
+// Fahrt) und das Zeitfenster, in dem eine Leerfahrt-Regel dort Rabatt geben würde.
+router.get('/admin/leer', authenticateAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await demandSettings();
+    const rules = await query<{ id: number; name: string; discount_type: string; discount_value: number; active: number;
+      leer_radius_km: number; leer_after_min: number | null; leer_before_min: number | null; max_days_ahead: number | null;
+      leer_area: string | null }>(
+      `SELECT id, name, discount_type, discount_value, active, leer_radius_km, leer_after_min, leer_before_min, max_days_ahead, leer_area
+         FROM auto_discounts WHERE leer_radius_km IS NOT NULL ORDER BY priority DESC`
+    );
+    // Maßgeblich für die Anzeige: die aktive Regel mit höchster Priorität (sonst Vorlagenwerte)
+    const lead = rules.find(r => Number(r.active) === 1) ?? null;
+    const radiusKm = lead ? Number(lead.leer_radius_km) : 25;
+    const afterMin = lead?.leer_after_min != null ? Number(lead.leer_after_min) : 45;
+    const beforeMin = lead?.leer_before_min != null ? Number(lead.leer_before_min) : 120;
+    const area = (lead ? lead.leer_area : 'muenchen') === 'muenchen' ? 'muenchen' as const : null;
+    const nowWall = berlinNowSql().replace(' ', 'T').slice(0, 16);
+    const addMin = (w: string, m: number) => new Date(Date.parse(`${w}:00Z`) + m * 60_000).toISOString().slice(0, 16);
+    const items = [];
+    for (let i = 0; i <= 2; i++) {
+      const date = berlinDateSql(i);
+      for (const v of await vacanciesAround(date, radiusKm, beforeMin, area)) {
+        if (v.freeAt.slice(0, 10) !== date) continue; // Vortag nur als Quelle, angezeigt am Tag des Freiwerdens
+        const windowFrom = addMin(v.freeAt, afterMin);
+        const windowTo = addMin(v.freeAt, beforeMin);
+        if (windowTo < nowWall) continue; // Fenster schon vorbei
+        items.push({
+          start: v.leg.start, from: v.leg.from, to: v.leg.to, label: v.leg.label,
+          freeAt: v.freeAt, windowFrom, windowTo,
+          usedBy: v.usedBy ? { start: v.usedBy.start, from: v.usedBy.from, label: v.usedBy.label } : null,
+        });
+      }
+    }
+    let stats = { bookings: 0, discount: 0, revenue: 0 };
+    if (rules.length) {
+      const [row] = await query<{ n: number; disc: number; rev: number }>(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(auto_discount_amount), 0) AS disc, COALESCE(SUM(price), 0) AS rev
+           FROM bookings
+          WHERE auto_discount_id IN (${rules.map(() => '?').join(',')})
+            AND status != 'cancelled' AND created_at >= NOW() - INTERVAL 30 DAY`,
+        rules.map(r => r.id)
+      );
+      stats = { bookings: Number(row?.n) || 0, discount: Number(row?.disc) || 0, revenue: Number(row?.rev) || 0 };
+    }
+    res.json({
+      enabled: settings.leerEnabled,
+      rule: lead ? { id: lead.id, name: lead.name, type: lead.discount_type, value: Number(lead.discount_value) } : null,
+      radiusKm, afterMin, beforeMin, area, items, stats,
+    });
+  } catch (e: any) {
+    console.error('leer overview failed:', e?.message);
+    res.status(500).json({ error: 'Failed to load Leerfahrt overview' });
   }
 });
 
