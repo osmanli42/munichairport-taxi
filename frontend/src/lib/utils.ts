@@ -49,27 +49,27 @@ export const VEHICLE_PRICES = {
 
 // vignette: 1× per trip. tunnelOneWay: taksi boş dönüş nedeniyle her zaman 2× uygulanır.
 // Müşteri Rückfahrt seçerse oneWayWithToll × 2 üzerinden hesap yapıldığı için tünel ×2 zaten dahil.
-// Gerçek 2025 Maut tarifeleri. tunnelOneWay: taksi boş dönüş için daima ×2 uygulanır.
+// Gerçek 2026 Maut tarifeleri (Ekim 2026 doğrulandı: ASFINAG, ASTRA, Sund & Bælt; kur 1 EUR = 0,927 CHF / 7,47 DKK / 24,3 CZK). tunnelOneWay: taksi boş dönüş için daima ×2 uygulanır.
 // AT: bölge bazlı, yukarıdaki getAustrianToll() ile hesaplanır.
 export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: number }> = {
-  CH: { vignette: 41,   tunnelOneWay: 0 },
-  // CHF 40 e-Vignette 2025 ≈ €41. İsviçre'de özel tünel ücreti yok (kapsüllü).
+  CH: { vignette: 43.15, tunnelOneWay: 0 },
+  // CHF 40 e-Vignette 2026 ≈ €43,15. İsviçre'de özel tünel ücreti yok (kapsüllü).
 
-  IT: { vignette: 9.9,  tunnelOneWay: 16 },
-  // AT vignette(9,90) + Brenner A13 Sondermaut(11€/yön)×2 + İtalya A22 ort.(5€/yön)×2
-  // Toplam: 9,90 + 22 + 10 = ~41,90€ (Südtirol/Bozen odaklı)
+  IT: { vignette: 12.8, tunnelOneWay: 17.5 },
+  // AT vignette(12,80) + Brenner A13 Sondermaut(12,50€/yön)×2 + İtalya A22 ort.(5€/yön, doğrulanmadı)×2
+  // Toplam: 12,80 + 25 + 10 = ~47,80€ (Südtirol/Bozen odaklı)
 
   FR: { vignette: 0,    tunnelOneWay: 15 },
   // Fransa'da vignette yok. Autoroute ort. ~30€ RT (Strasbourg~10, Lyon~40, Paris~55)
 
-  CZ: { vignette: 12.5, tunnelOneWay: 0 },
-  // 10-Tage e-Vignette 2025: CZK 310 ≈ €12,50. Tünel yok.
+  CZ: { vignette: 12.3, tunnelOneWay: 0 },
+  // 10-Tage e-Vignette 2026: CZK 300 ≈ €12,30. Tünel yok.
 
   PL: { vignette: 0,    tunnelOneWay: 6 },
   // A1/A2/A4 otoyol ücretleri ort. ~12€ RT
 
-  DK: { vignette: 0,    tunnelOneWay: 17.5 },
-  // Storebælt Köprüsü 2025: DKK 265 ≈ €35 RT (Zealand/Kopenhag'a giden rotalar)
+  DK: { vignette: 0,    tunnelOneWay: 27.45 },
+  // Storebælt Köprüsü 2026: DKK 205/yön (otomatik ödeme) ≈ €27,45 (Zealand/Kopenhag'a giden rotalar)
 
   BE: { vignette: 0,    tunnelOneWay: 0 },  // Araç için otoyol ücreti yok
   NL: { vignette: 0,    tunnelOneWay: 0 },  // Araç için otoyol ücreti yok
@@ -77,17 +77,17 @@ export const TOLL_BY_COUNTRY: Record<string, { vignette: number; tunnelOneWay: n
   DE: { vignette: 0,    tunnelOneWay: 0 },
 };
 
-// Avusturya posta koduna göre bölge tespiti (2025 gerçek tarifeleri):
-// 8xxx = Steiermark → Tauerntunnel A10 (€13,50/yön, 2025)
-// 9xxx = Kärnten + Osttirol → Tauerntunnel A10 (€13,50/yön, 2025)
+// Avusturya posta koduna göre bölge tespiti (2026 gerçek tarifeleri):
+// 8xxx = Steiermark → Tauerntunnel A10 (€15,00/yön, 2026)
+// 9xxx = Kärnten + Osttirol → Tauerntunnel A10 (€15,00/yön, 2026)
 // diğerleri = Tirol/Vorarlberg/Wien/NÖ/OÖ/Salzburg/Bgld → sadece vignette
 function getAustrianToll(addr: string): number {
-  const vignette = 9.9; // 10-Tage Vignette 2025
+  const vignette = 12.8; // 10-Tage Vignette 2026
   const plz = addr.match(/\b(\d{4})\b/)?.[1];
   if (plz && (plz[0] === '8' || plz[0] === '9')) {
     // Steiermark & Kärnten: her iki bölge de Tauerntunnel (A10) üzerinden ulaşılır
-    // Taksi boş dönüş yaptığı için tünel 2× → 9,90 + 13,50×2 = 36,90€
-    return vignette + 13.5 * 2;
+    // Taksi boş dönüş yaptığı için tünel 2× → 12,80 + 15×2 = 42,80€
+    return vignette + 15 * 2;
   }
   return vignette; // Tirol(6xxx), Wien(1xxx), NÖ(2-3xxx), OÖ(4xxx), Salzburg(5xxx), Bgld(7xxx), Vbg(6xxx)
 }
