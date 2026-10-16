@@ -365,6 +365,17 @@ async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', i
   return { bookings, rides, webDay, calDay };
 }
 
+// "Heute" für die Live-Karten (Bugün rezervasyon/gelir) — exakt dieselbe Rechnung wie das Tagesarchiv
+// "Nach Buchungsdatum" (Web + Kalender), damit beide Stellen nie auseinanderlaufen.
+export async function todayBookedTotals(): Promise<{ count: number; revenue: number }> {
+  const day = berlinDateSql(0);
+  const { bookings, rides } = await loadPeriod(day, day, 'booked', await includeCalendarInStats());
+  return {
+    count: bookings.length + rides.length,
+    revenue: bookings.reduce((s, b) => s + (Number(b.price) || 0), 0) + rides.reduce((s, r) => s + (Number(r.price) || 0), 0),
+  };
+}
+
 router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const single = String(req.query.date || '');

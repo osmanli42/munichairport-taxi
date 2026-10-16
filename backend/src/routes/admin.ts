@@ -17,6 +17,7 @@ import { getClientIp } from '../utils/ipGeo';
 import { ensureInvoiceCustomersTable } from './invoiceCustomers';
 import { isOwnEmail, ownEmailSql, OWN_PHONE_E164 } from '../utils/recipient';
 import { mailOpenPixelUrl } from '../utils/bookingConfirmToken';
+import { todayBookedTotals } from './admin-dashboard';
 
 
 
@@ -737,14 +738,11 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
 // GET /api/admin/stats - Dashboard statistics
 router.get('/stats', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const today = berlinMidnightUtcSql(0);
     const weekStart = berlinMidnightUtcSql(-7);
     const monthStart = berlinMidnightUtcSql(-(berlinDayOfMonth() - 1));
 
-    const [todayStats] = await query<{ count: number; revenue: number }>(`
-      SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
-      FROM bookings WHERE created_at >= ? AND status != 'cancelled'
-    `, [today]);
+    // Wie Tagesarchiv "Nach Buchungsdatum" (Web + Kalender) — eine gemeinsame Rechnung.
+    const todayStats = await todayBookedTotals();
 
     const [weekStats] = await query<{ count: number; revenue: number }>(`
       SELECT COUNT(*) as count, COALESCE(SUM(price), 0) as revenue
