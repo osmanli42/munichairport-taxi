@@ -4,7 +4,7 @@ import { authenticateAdmin } from '../middleware/auth';
 import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels, windowMatches } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
-import { vacanciesAround } from '../services/leerfahrt';
+import { vacanciesAround, DEFAULT_LEER_END_KM } from '../services/leerfahrt';
 import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 
 const router = Router();
@@ -18,7 +18,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
     price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
     demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
-    gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area,
+    gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area, leer_end_km,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -63,6 +63,9 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     const a = isEmpty(leer_after_min) ? 45 : Number(leer_after_min);
     const b = isEmpty(leer_before_min) ? 120 : Number(leer_before_min);
     if (!Number.isFinite(r) || r < 1 || r > 100) return { error: 'Leerfahrt: mesafe 1–100 km olmalı' };
+    if (!isEmpty(leer_end_km) && (!Number.isFinite(Number(leer_end_km)) || Number(leer_end_km) < 0 || Number(leer_end_km) > 60)) {
+      return { error: 'Leerfahrt: varış bölgesi Marienplatz\'a 0–60 km olmalı' };
+    }
     if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b > 600 || a >= b) {
       return { error: 'Leerfahrt: zaman penceresi 0–600 dk, „en erken“ „en geç“ten küçük olmalı' };
     }
@@ -131,6 +134,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       isEmpty(leer_radius_km) ? null : (intOrNull(leer_after_min) ?? 45),
       isEmpty(leer_radius_km) ? null : (intOrNull(leer_before_min) ?? 120),
       isEmpty(leer_radius_km) || leer_area !== 'muenchen' ? null : 'muenchen',
+      isEmpty(leer_radius_km) || leer_area !== 'muenchen' ? null : numOrNull(leer_end_km),
     ],
   };
 }
@@ -142,7 +146,7 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
   price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
   demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
-  gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area`;
+  gap_window_minutes, gap_max_rides, leer_radius_km, leer_after_min, leer_before_min, leer_area, leer_end_km`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -281,8 +285,8 @@ router.get('/admin/leer', authenticateAdmin, async (_req: Request, res: Response
     const settings = await demandSettings();
     const rules = await query<{ id: number; name: string; discount_type: string; discount_value: number; active: number;
       leer_radius_km: number; leer_after_min: number | null; leer_before_min: number | null; max_days_ahead: number | null;
-      leer_area: string | null }>(
-      `SELECT id, name, discount_type, discount_value, active, leer_radius_km, leer_after_min, leer_before_min, max_days_ahead, leer_area
+      leer_area: string | null; leer_end_km: number | null }>(
+      `SELECT id, name, discount_type, discount_value, active, leer_radius_km, leer_after_min, leer_before_min, max_days_ahead, leer_area, leer_end_km
          FROM auto_discounts WHERE leer_radius_km IS NOT NULL ORDER BY priority DESC`
     );
     // Maßgeblich für die Anzeige: die aktive Regel mit höchster Priorität (sonst Vorlagenwerte)
@@ -291,12 +295,13 @@ router.get('/admin/leer', authenticateAdmin, async (_req: Request, res: Response
     const afterMin = lead?.leer_after_min != null ? Number(lead.leer_after_min) : 45;
     const beforeMin = lead?.leer_before_min != null ? Number(lead.leer_before_min) : 120;
     const area = (lead ? lead.leer_area : 'muenchen') === 'muenchen' ? 'muenchen' as const : null;
+    const endKm = lead?.leer_end_km != null ? Number(lead.leer_end_km) : DEFAULT_LEER_END_KM;
     const nowWall = berlinNowSql().replace(' ', 'T').slice(0, 16);
     const addMin = (w: string, m: number) => new Date(Date.parse(`${w}:00Z`) + m * 60_000).toISOString().slice(0, 16);
     const items = [];
     for (let i = 0; i <= 2; i++) {
       const date = berlinDateSql(i);
-      for (const v of await vacanciesAround(date, radiusKm, beforeMin, area)) {
+      for (const v of await vacanciesAround(date, radiusKm, beforeMin, area, endKm)) {
         if (v.freeAt.slice(0, 10) !== date) continue; // Vortag nur als Quelle, angezeigt am Tag des Freiwerdens
         const windowFrom = addMin(v.freeAt, afterMin);
         const windowTo = addMin(v.freeAt, beforeMin);
@@ -322,7 +327,7 @@ router.get('/admin/leer', authenticateAdmin, async (_req: Request, res: Response
     res.json({
       enabled: settings.leerEnabled,
       rule: lead ? { id: lead.id, name: lead.name, type: lead.discount_type, value: Number(lead.discount_value) } : null,
-      radiusKm, afterMin, beforeMin, area, items, stats,
+      radiusKm, afterMin, beforeMin, area, endKm, items, stats,
     });
   } catch (e: any) {
     console.error('leer overview failed:', e?.message);

@@ -90,7 +90,7 @@ export default function LeerPanel({
               <span className="ml-2 font-normal text-gray-500">{open} açık · {data.items.length - open} dolu</span>
             </p>
             <p className="text-xs text-gray-500">
-              {data.area === 'muenchen' ? 'Sadece Havalimanı → München, dönüş München\'den' : 'Her yer'}
+              {data.area === 'muenchen' ? `Havalimanı → München (+${data.endKm} km çevresi), yeni alış München'den` : 'Her yer'}
               {' · '}{data.radiusKm} km · varıştan {data.afterMin}–{data.beforeMin} dk sonra
               {data.rule ? <> · <span className="font-semibold text-violet-700">{formatDiscountValue(data.rule.type, data.rule.value, 'de')} {data.rule.name}</span></> : ' · aktif kural yok'}
             </p>

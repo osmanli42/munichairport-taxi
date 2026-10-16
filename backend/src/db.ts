@@ -1414,6 +1414,8 @@ export async function initializeDatabase(): Promise<void> {
       ['leer_before_min', 'INT DEFAULT NULL'],
       // 'muenchen' = nur Flughafen → Stadt München, Rückweg-Abholung in München; NULL = überall
       ['leer_area', 'VARCHAR(20) DEFAULT NULL'],
+      // München-Modus: Fahrtziel darf auch im Umland liegen, höchstens so weit vom Marienplatz
+      ['leer_end_km', 'DECIMAL(5,1) DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);

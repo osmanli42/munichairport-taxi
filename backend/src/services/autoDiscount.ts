@@ -87,6 +87,8 @@ export interface AutoDiscountRule {
   leer_before_min: number | null;
   /** 'muenchen' = nur Flughafen → Stadt München und neue Abholung in München; null = überall. */
   leer_area: 'muenchen' | null;
+  /** München-Modus: Ziel der Fahrt höchstens so weit vom Marienplatz (Umland), null = 15 km. */
+  leer_end_km: number | null;
 }
 
 /** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
@@ -393,6 +395,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       const mm = String(trip.minutes % 60).padStart(2, '0');
       const match = await leerMatch({
         pickup, pickupAddress: input.pickupAddress ?? null, area: r.leer_area === 'muenchen' ? 'muenchen' : null,
+        endKm: r.leer_end_km != null ? Number(r.leer_end_km) : undefined,
         pickupWall: `${trip.dateStr}T${hh}:${mm}`, radiusKm: Number(r.leer_radius_km),
         afterMin: Number(r.leer_after_min ?? 45), beforeMin: Number(r.leer_before_min ?? 120),
       });

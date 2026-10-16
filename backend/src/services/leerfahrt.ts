@@ -79,6 +79,17 @@ export function isMunichCity(address: string | null | undefined, c?: Coords | nu
   return !!c && haversineKm(c.lat, c.lng, MARIENPLATZ.lat, MARIENPLATZ.lng) <= 12;
 }
 
+/**
+ * Wo darf das Auto frei werden: Stadt München oder höchstens endKm vom Marienplatz (z. B. Pullach,
+ * Grünwald, Unterhaching) — auf dem Rückweg fährt es ohnehin durch die Stadt.
+ */
+export function isMunichArea(address: string | null | undefined, c: Coords | null | undefined, endKm: number): boolean {
+  if (isMunichCity(address, c)) return true;
+  return !!c && haversineKm(c.lat, c.lng, MARIENPLATZ.lat, MARIENPLATZ.lng) <= endKm;
+}
+
+export const DEFAULT_LEER_END_KM = 15;
+
 // ---- Fahrten der nächsten Tage -------------------------------------------------------------
 
 export interface PlannedLeg {
@@ -154,7 +165,9 @@ export function invalidateLeerCache(): void { legCache.clear(); }
  * freigeben, daher wird ab dem Vortag gelesen. Als "schon genutzt" gilt ein freies Auto, wenn
  * eine andere geplante Fahrt nahe am Ziel innerhalb von beforeMin nach der Ankunft startet.
  */
-export async function vacanciesAround(date: string, radiusKm: number, beforeMin: number, area: LeerArea = null): Promise<Vacancy[]> {
+export async function vacanciesAround(
+  date: string, radiusKm: number, beforeMin: number, area: LeerArea = null, endKm: number = DEFAULT_LEER_END_KM,
+): Promise<Vacancy[]> {
   const prev = msWall(wallMs(`${date}T00:00`) - 86_400_000).slice(0, 10);
   const legs = await legsCached(prev, date);
   const coords = await cachedCoords(legs.flatMap(l => [l.from, l.to]));
@@ -163,8 +176,8 @@ export async function vacanciesAround(date: string, radiusKm: number, beforeMin:
   for (const leg of legs) {
     const at = c(leg.to);
     if (!at) continue;
-    // München-Modus: nur Flughafen → Stadt München zählt als freies Auto
-    if (area === 'muenchen' && !(isAirport(leg.from, c(leg.from)) && isMunichCity(leg.to, at))) continue;
+    // München-Modus: nur Flughafen → München (Stadt oder nahes Umland) zählt als freies Auto
+    if (area === 'muenchen' && !(isAirport(leg.from, c(leg.from)) && isMunichArea(leg.to, at, endKm))) continue;
     const dur = leg.durationMin ?? estimateMinutes(c(leg.from), at);
     const freeMs = wallMs(leg.start) + dur * 60_000;
     const freeAt = msWall(freeMs);
@@ -186,13 +199,13 @@ export async function vacanciesAround(date: string, radiusKm: number, beforeMin:
  */
 export async function leerMatch(params: {
   pickup: Coords; pickupAddress?: string | null; pickupWall: string; radiusKm: number; afterMin: number; beforeMin: number;
-  area?: LeerArea;
+  area?: LeerArea; endKm?: number;
 }): Promise<Vacancy | null> {
   // München-Modus: die neue Abholung muss selbst in der Stadt München liegen
   if (params.area === 'muenchen' && !isMunichCity(params.pickupAddress, params.pickup)) return null;
   const date = params.pickupWall.slice(0, 10);
   const t = wallMs(params.pickupWall);
-  const vac = await vacanciesAround(date, params.radiusKm, params.beforeMin, params.area ?? null);
+  const vac = await vacanciesAround(date, params.radiusKm, params.beforeMin, params.area ?? null, params.endKm ?? DEFAULT_LEER_END_KM);
   return vac.find(v => {
     if (v.usedBy) return false;
     const free = wallMs(v.freeAt);

@@ -44,7 +44,7 @@ const emptyForm = (): FormState => ({
   visit_min: null, allow_fixed_routes: 0,
   demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
   exclude_business: 0, max_days_ahead: null, gap_window_minutes: null, gap_max_rides: null,
-  leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null,
+  leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null, leer_end_km: null,
 });
 
 // Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
@@ -86,7 +86,8 @@ const gapTemplate = (): FormState => ({
 const leerTemplate = (): FormState => ({
   ...emptyForm(),
   name: 'Leerfahrt 10 %', discount_value: 10, zone_scope: 'any', max_discount_amount: 15,
-  leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen',
+  // Varış München'in hemen çevresinde de olabilir (Pullach vb.): dönüşte şehir içinden geçer
+  leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen', leer_end_km: 15,
   ip_bypass_mode: 'alle', roundtrip_value: 2, priority: 30,
   booking_index_max: 2, exclude_business: 1,
   show_countdown: 0, show_remaining: 0,
@@ -496,7 +497,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
                       {r.leer_radius_km != null && (
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
-                          Leerfahrt · {r.leer_area === 'muenchen' ? 'MUC → München' : 'her yer'} · {Number(r.leer_radius_km)} km · {r.leer_after_min ?? 45}–{r.leer_before_min ?? 120} dk
+                          Leerfahrt · {r.leer_area === 'muenchen' ? `MUC → München +${r.leer_end_km != null ? Number(r.leer_end_km) : 15} km` : 'her yer'} · {Number(r.leer_radius_km)} km · {r.leer_after_min ?? 45}–{r.leer_before_min ?? 120} dk
                         </span>
                       )}
                       {r.gap_window_minutes != null && (
@@ -597,8 +598,8 @@ export default function RabatteTab({ token }: { token: string }) {
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
                   <input type="checkbox" className="mt-0.5" checked={editing.leer_radius_km != null}
                     onChange={e => patch(e.target.checked
-                      ? { leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen' }
-                      : { leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null })} />
+                      ? { leer_radius_km: 25, leer_after_min: 45, leer_before_min: 120, leer_area: 'muenchen', leer_end_km: 15 }
+                      : { leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null, leer_end_km: null })} />
                   <span>
                     <strong>Sadece boş dönüşü doldururken (Leerfahrt)</strong>
                     <span className="block text-xs text-gray-500">
@@ -613,10 +614,22 @@ export default function RabatteTab({ token }: { token: string }) {
                       <label className="text-xs text-gray-500">Hangi fahrt'lar</label>
                       <select value={editing.leer_area ?? ''} onChange={e => patch({ leer_area: e.target.value === 'muenchen' ? 'muenchen' : null })}
                         className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-                        <option value="muenchen">Sadece Havalimanı → München, yeni alış München'den</option>
+                        <option value="muenchen">Sadece Havalimanı → München (+ çevresi), yeni alış München'den</option>
                         <option value="">Her yer (sadece mesafe ve saat)</option>
                       </select>
                     </div>
+                    {editing.leer_area === 'muenchen' && (
+                      <div>
+                        <label className="text-xs text-gray-500">Varış noktası Marienplatz'a en fazla (km)</label>
+                        <input type="number" min={0} max={60} step={1} value={editing.leer_end_km ?? 15}
+                          onChange={e => patch({ leer_end_km: e.target.value === '' ? 15 : parseFloat(e.target.value) })}
+                          className="mt-1 w-full max-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                        <p className="text-xs text-gray-400 mt-1">
+                          München şehri her zaman sayılır. 15 km: Pullach, Grünwald, Unterhaching, Ottobrunn, Haar girer;
+                          Dachau, Freising, Erding girmez. Araç dönüşte şehir içinden geçtiği için München'den alış yol üstünde.
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs text-gray-500">En fazla km</label>

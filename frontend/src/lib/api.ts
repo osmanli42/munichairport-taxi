@@ -336,6 +336,8 @@ export interface AutoDiscount {
   leer_before_min: number | null;
   /** 'muenchen' = nur Flughafen → Stadt München, Abholung in München; null = überall */
   leer_area: 'muenchen' | null;
+  /** München-Modus: Fahrtziel höchstens so weit vom Marienplatz (Umland), null = 15 km */
+  leer_end_km: number | null;
 }
 
 export interface LeerItem {
@@ -346,7 +348,7 @@ export interface LeerItem {
 export interface LeerOverview {
   enabled: boolean;
   rule: { id: number; name: string; type: 'percent' | 'fixed'; value: number } | null;
-  radiusKm: number; afterMin: number; beforeMin: number; area: 'muenchen' | null;
+  radiusKm: number; afterMin: number; beforeMin: number; area: 'muenchen' | null; endKm: number;
   items: LeerItem[];
   stats: { bookings: number; discount: number; revenue: number };
 }
