@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MapPin, Clock, Users, Luggage, CheckCircle, ArrowRight, Calendar, ChevronLeft, Tag } from 'lucide-react';
-import { formatPrice, cn, calculateToll, extractCountryFromAddress } from '@/lib/utils';
+import { formatPrice, cn, calculateTripToll } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -78,7 +78,7 @@ export default function PortalVehicleSelect({
   const isRoundtrip = (searchParams.get('trip_type') || 'oneway') === 'roundtrip';
   const anfahrtKm = Number(searchParams.get('anfahrt_km') || 0);
 
-  const onewayToll = calculateToll(extractCountryFromAddress(dropoff), dropoff);
+  const onewayToll = calculateTripToll(pickup, dropoff);
 
   const [apiPrices, setApiPrices] = useState<Record<string, PriceData> | null>(null);
   const [fixedRoutes, setFixedRoutes] = useState<FixedRoute[]>([]);

@@ -113,6 +113,16 @@ export function calculateToll(country: string | undefined, addr?: string): numbe
   return rule.vignette + rule.tunnelOneWay * 2;
 }
 
+// Fahrt-Maut: Taxi fährt immer bis zur Abholadresse und zurück → Vignette/Tunnel zählt für Abhol- UND Zielland.
+// Gleiches Land auf beiden Seiten: nur einmal (höherer Wert). Unterschiedliche Länder: Summe.
+export function calculateTripToll(pickup?: string, dropoff?: string): number {
+  const pc = extractCountryFromAddress(pickup);
+  const dc = extractCountryFromAddress(dropoff);
+  const pt = calculateToll(pc, pickup);
+  const dt = calculateToll(dc, dropoff);
+  return pc === dc ? Math.max(pt, dt) : pt + dt;
+}
+
 export const CONTACT_INFO = {
   phone: '+49 151 41620000',
   phoneHref: 'tel:+4915141620000',

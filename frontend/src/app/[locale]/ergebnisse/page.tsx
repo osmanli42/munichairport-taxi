@@ -7,7 +7,7 @@ import {
   MapPin, Clock, ArrowRight, Baby, Tag, Plane, CalendarDays, CalendarCheck, UsersRound, UserRound, Pencil,
   ChevronRight, ShieldCheck, CircleCheck, ArrowLeftRight, BriefcaseBusiness, Info, CarFront, Headphones, X,
 } from 'lucide-react';
-import { formatPrice, cn, calculateToll, extractCountryFromAddress, addressIcon } from '@/lib/utils';
+import { formatPrice, cn, calculateTripToll, addressIcon } from '@/lib/utils';
 import SocialProofToast from '@/components/SocialProofToast';
 import SearchBar, { DateTimeField } from '@/components/SearchBar';
 import Countdown from '@/components/discount/Countdown';
@@ -206,8 +206,8 @@ function ResultsContent() {
   // PLZ surcharge
   const [plzSurcharge, setPlzSurcharge] = useState(0);
 
-  // Maut — component seviyesinde, tüm araçlar için ortak (varış ülkesine bağlı)
-  const onewayToll = calculateToll(extractCountryFromAddress(dropoff), dropoff);
+  // Maut — component seviyesinde, tüm araçlar için ortak (alış + varış ülkesine bağlı)
+  const onewayToll = calculateTripToll(pickup, dropoff);
 
   // Airport transfer filter — redirect if neither address is airport area (unless stadtfahrt enabled)
   const isAirportArea = (addr: string) => {
