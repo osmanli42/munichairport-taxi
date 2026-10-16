@@ -338,6 +338,8 @@ export interface AutoDiscount {
   leer_area: 'muenchen' | null;
   /** München-Modus: Fahrtziel höchstens so weit vom Marienplatz (Umland), null = 15 km */
   leer_end_km: number | null;
+  /** München-Modus: PLZ, deren Fahrtziel nicht zählt (null = Standardliste, '' = keine) */
+  leer_exclude_plz: string | null;
 }
 
 export interface LeerItem {
@@ -348,7 +350,7 @@ export interface LeerItem {
 export interface LeerOverview {
   enabled: boolean;
   rule: { id: number; name: string; type: 'percent' | 'fixed'; value: number } | null;
-  radiusKm: number; afterMin: number; beforeMin: number; area: 'muenchen' | null; endKm: number;
+  radiusKm: number; afterMin: number; beforeMin: number; area: 'muenchen' | null; endKm: number; excludePlz: string[];
   items: LeerItem[];
   stats: { bookings: number; discount: number; revenue: number };
 }

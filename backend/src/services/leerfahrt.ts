@@ -83,12 +83,28 @@ export function isMunichCity(address: string | null | undefined, c?: Coords | nu
  * Wo darf das Auto frei werden: Stadt München oder höchstens endKm vom Marienplatz (z. B. Pullach,
  * Grünwald, Unterhaching) — auf dem Rückweg fährt es ohnehin durch die Stadt.
  */
-export function isMunichArea(address: string | null | undefined, c: Coords | null | undefined, endKm: number): boolean {
+export function isMunichArea(
+  address: string | null | undefined, c: Coords | null | undefined, endKm: number, excludePlz: string[] = [],
+): boolean {
+  const plz = address?.match(/\b(\d{5})\b/)?.[1];
+  if (plz && excludePlz.some(p => plz.startsWith(p))) return false;
   if (isMunichCity(address, c)) return true;
   return !!c && haversineKm(c.lat, c.lng, MARIENPLATZ.lat, MARIENPLATZ.lng) <= endKm;
 }
 
 export const DEFAULT_LEER_END_KM = 15;
+
+/**
+ * Orte im Umland, die nicht zählen (Rückweg führt nicht durch die Stadt): Dachau, Karlsfeld,
+ * Unterschleißheim, Oberschleißheim. Gilt, solange die Regel keine eigene Liste hat.
+ */
+export const DEFAULT_LEER_EXCLUDE_PLZ = ['85221', '85757', '85716', '85764'];
+
+/** Regelwert → PLZ-Liste: NULL = Standardliste, '' = keine Ausschlüsse. */
+export function parsePlzList(v: string | null | undefined): string[] {
+  if (v == null) return DEFAULT_LEER_EXCLUDE_PLZ;
+  return v.split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d{2,5}$/.test(s));
+}
 
 // ---- Fahrten der nächsten Tage -------------------------------------------------------------
 
@@ -167,6 +183,7 @@ export function invalidateLeerCache(): void { legCache.clear(); }
  */
 export async function vacanciesAround(
   date: string, radiusKm: number, beforeMin: number, area: LeerArea = null, endKm: number = DEFAULT_LEER_END_KM,
+  excludePlz: string[] = DEFAULT_LEER_EXCLUDE_PLZ,
 ): Promise<Vacancy[]> {
   const prev = msWall(wallMs(`${date}T00:00`) - 86_400_000).slice(0, 10);
   const legs = await legsCached(prev, date);
@@ -177,7 +194,7 @@ export async function vacanciesAround(
     const at = c(leg.to);
     if (!at) continue;
     // München-Modus: nur Flughafen → München (Stadt oder nahes Umland) zählt als freies Auto
-    if (area === 'muenchen' && !(isAirport(leg.from, c(leg.from)) && isMunichArea(leg.to, at, endKm))) continue;
+    if (area === 'muenchen' && !(isAirport(leg.from, c(leg.from)) && isMunichArea(leg.to, at, endKm, excludePlz))) continue;
     const dur = leg.durationMin ?? estimateMinutes(c(leg.from), at);
     const freeMs = wallMs(leg.start) + dur * 60_000;
     const freeAt = msWall(freeMs);
@@ -199,13 +216,14 @@ export async function vacanciesAround(
  */
 export async function leerMatch(params: {
   pickup: Coords; pickupAddress?: string | null; pickupWall: string; radiusKm: number; afterMin: number; beforeMin: number;
-  area?: LeerArea; endKm?: number;
+  area?: LeerArea; endKm?: number; excludePlz?: string[];
 }): Promise<Vacancy | null> {
   // München-Modus: die neue Abholung muss selbst in der Stadt München liegen
   if (params.area === 'muenchen' && !isMunichCity(params.pickupAddress, params.pickup)) return null;
   const date = params.pickupWall.slice(0, 10);
   const t = wallMs(params.pickupWall);
-  const vac = await vacanciesAround(date, params.radiusKm, params.beforeMin, params.area ?? null, params.endKm ?? DEFAULT_LEER_END_KM);
+  const vac = await vacanciesAround(date, params.radiusKm, params.beforeMin, params.area ?? null, params.endKm ?? DEFAULT_LEER_END_KM,
+    params.excludePlz ?? DEFAULT_LEER_EXCLUDE_PLZ);
   return vac.find(v => {
     if (v.usedBy) return false;
     const free = wallMs(v.freeAt);

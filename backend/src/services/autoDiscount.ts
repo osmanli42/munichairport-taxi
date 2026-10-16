@@ -2,7 +2,7 @@
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
 import { query } from '../db';
 import { paceForTrip, ruleUsesOnTripDate, ridesNear, demandSettings } from './demandPace';
-import { leerMatch, Coords } from './leerfahrt';
+import { leerMatch, Coords, parsePlzList } from './leerfahrt';
 
 export interface AutoDiscountRule {
   id: number;
@@ -89,6 +89,8 @@ export interface AutoDiscountRule {
   leer_area: 'muenchen' | null;
   /** München-Modus: Ziel der Fahrt höchstens so weit vom Marienplatz (Umland), null = 15 km. */
   leer_end_km: number | null;
+  /** München-Modus: PLZ, deren Fahrtziel nicht zählt (NULL = Standardliste, '' = keine). */
+  leer_exclude_plz: string | null;
 }
 
 /** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
@@ -396,6 +398,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       const match = await leerMatch({
         pickup, pickupAddress: input.pickupAddress ?? null, area: r.leer_area === 'muenchen' ? 'muenchen' : null,
         endKm: r.leer_end_km != null ? Number(r.leer_end_km) : undefined,
+        excludePlz: parsePlzList(r.leer_exclude_plz),
         pickupWall: `${trip.dateStr}T${hh}:${mm}`, radiusKm: Number(r.leer_radius_km),
         afterMin: Number(r.leer_after_min ?? 45), beforeMin: Number(r.leer_before_min ?? 120),
       });

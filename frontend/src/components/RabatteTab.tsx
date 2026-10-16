@@ -44,7 +44,7 @@ const emptyForm = (): FormState => ({
   visit_min: null, allow_fixed_routes: 0,
   demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
   exclude_business: 0, max_days_ahead: null, gap_window_minutes: null, gap_max_rides: null,
-  leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null, leer_end_km: null,
+  leer_radius_km: null, leer_after_min: null, leer_before_min: null, leer_area: null, leer_end_km: null, leer_exclude_plz: null,
 });
 
 // Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
@@ -497,7 +497,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
                       {r.leer_radius_km != null && (
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
-                          Leerfahrt · {r.leer_area === 'muenchen' ? `MUC → München +${r.leer_end_km != null ? Number(r.leer_end_km) : 15} km` : 'her yer'} · {Number(r.leer_radius_km)} km · {r.leer_after_min ?? 45}–{r.leer_before_min ?? 120} dk
+                          Leerfahrt · {r.leer_area === 'muenchen' ? `MUC → München +${r.leer_end_km != null ? Number(r.leer_end_km) : 15} km${r.leer_exclude_plz === '' ? '' : ` −${(r.leer_exclude_plz ?? '85221,85757,85716,85764').split(',').filter(Boolean).length} PLZ`}` : 'her yer'} · {Number(r.leer_radius_km)} km · {r.leer_after_min ?? 45}–{r.leer_before_min ?? 120} dk
                         </span>
                       )}
                       {r.gap_window_minutes != null && (
@@ -662,6 +662,15 @@ export default function RabatteTab({ token }: { token: string }) {
                         <p className="text-xs text-gray-400 mt-1">
                           München şehri her zaman sayılır. 15 km: Pullach, Grünwald, Unterhaching, Ottobrunn, Haar girer;
                           Dachau, Freising, Erding girmez. Araç dönüşte şehir içinden geçtiği için München'den alış yol üstünde.
+                        </p>
+                        <label className="text-xs text-gray-500 mt-3 block">Hariç PLZ'ler (bu PLZ'lerde biten fahrt sayılmaz)</label>
+                        <input type="text" value={editing.leer_exclude_plz ?? '85221, 85757, 85716, 85764'}
+                          onChange={e => patch({ leer_exclude_plz: e.target.value })}
+                          placeholder="boş = hariç yok"
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Virgülle ayır. Varsayılan: 85221 Dachau, 85757 Karlsfeld, 85716 Unterschleißheim, 85764 Oberschleißheim
+                          — oradan dönüş şehir içinden geçmez. Başlangıç da yazılabilir (örn. 852 = 852xx'lerin hepsi).
                         </p>
                       </div>
                     )}

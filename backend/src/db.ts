@@ -1416,6 +1416,9 @@ export async function initializeDatabase(): Promise<void> {
       ['leer_area', 'VARCHAR(20) DEFAULT NULL'],
       // München-Modus: Fahrtziel darf auch im Umland liegen, höchstens so weit vom Marienplatz
       ['leer_end_km', 'DECIMAL(5,1) DEFAULT NULL'],
+      // München-Modus: PLZ, deren Fahrtziel nicht zählt (NULL = Standardliste Dachau/Karlsfeld/
+      // Unter-/Oberschleißheim, '' = keine Ausschlüsse)
+      ['leer_exclude_plz', 'VARCHAR(500) DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
