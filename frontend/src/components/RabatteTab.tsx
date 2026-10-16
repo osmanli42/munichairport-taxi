@@ -593,6 +593,41 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
+              {/* Geçerli saatler — tüm kural türleri için (Leerfahrt, boş saat, sakin gün dahil) */}
+              <div className="rounded-xl border border-gray-200 p-3">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Geçerli saatler — müşterinin alış saati (boş = tüm gün)</label>
+                <p className="text-xs text-gray-400 mb-2">
+                  İndirim sadece bu saatler arasında alış seçen müşteriye gösterilir. Gece yarısını geçebilir, örn. 22:00–06:00.
+                  Bitiş saati dahil değildir — gece yarısına kadar: 00:00.
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {([['Tüm gün', null, null], ['06–12', 360, 720], ['10–18', 600, 1080], ['12–18', 720, 1080], ['10–22', 600, 1320], ['18–24', 1080, 0]] as const).map(([label, f, t]) => {
+                    const active = (editing.trip_time_from ?? null) === f && (editing.trip_time_to ?? null) === t;
+                    return (
+                      <button key={label} type="button" onClick={() => patch({ trip_time_from: f, trip_time_to: t })}
+                        className={cn('px-2.5 py-1 rounded-lg text-xs font-semibold border',
+                          active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50')}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">von</label>
+                    <input type="time" value={minutesToHHMM(editing.trip_time_from)}
+                      onChange={e => patch({ trip_time_from: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">bis</label>
+                    <input type="time" value={minutesToHHMM(editing.trip_time_to)}
+                      onChange={e => patch({ trip_time_to: hhmmToMinutes(e.target.value) })}
+                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+              </div>
+
               {/* Leerfahrt */}
               <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-3 space-y-3">
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
@@ -691,7 +726,7 @@ export default function RabatteTab({ token }: { token: string }) {
                     </div>
                     <p className="text-xs text-gray-500">
                       Örn. ±120 dk ve 0 fahrt: müşteri 14:00 seçerse, 12:00–16:00 arası takvimde hiç fahrt yoksa indirim.
-                      Hangi saatlerde geçerli olacağını aşağıdaki <strong>„Yolculuk saati“</strong>, kaç gün ileriye
+                      Hangi saatlerde geçerli olacağını yukarıdaki <strong>„Geçerli saatler“</strong>, kaç gün ileriye
                       kadar geçerli olacağını <strong>„En fazla kaç gün sonrası“</strong> alanından ayarla — uzak günlerde
                       takvim hep boş görünür, o yüzden gün sınırı önemli.
                     </p>
@@ -910,24 +945,6 @@ export default function RabatteTab({ token }: { token: string }) {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuk saati (boş = tüm gün)</label>
-                <p className="text-xs text-gray-400 mb-1">Alış saati. Gece yarısını geçebilir, örn. 22:00–06:00. Bitiş saati dahil değildir — gece yarısına kadar: 00:00.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400">von</label>
-                    <input type="time" value={minutesToHHMM(editing.trip_time_from)}
-                      onChange={e => patch({ trip_time_from: hhmmToMinutes(e.target.value) })}
-                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400">bis</label>
-                    <input type="time" value={minutesToHHMM(editing.trip_time_to)}
-                      onChange={e => patch({ trip_time_to: hhmmToMinutes(e.target.value) })}
-                      className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                  </div>
-                </div>
-              </div>
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Yolculuğun haftanın günleri (boş = hepsi)</label>
                 <div className="mt-1 flex gap-1.5">
