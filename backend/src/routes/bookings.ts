@@ -373,7 +373,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount + plzSurcharge;
+    // Maut bei Hin- & Rückfahrt wie auf der Webseite: (Einfach + Maut) × 2 × (1 − Rabatt).
+    // tripPrice / effectiveOneWay ist genau dieser Faktor (1 bei Einzelfahrt, 2 × (1 − Rabatt) bei Hin & Rück),
+    // egal ob Festpreisroute, Pflichtgebiet oder Promo den Rabatt verändert haben.
+    const tollTotal = effectiveOneWay > 0 ? parsedTollAmount * tripPrice / effectiveOneWay : parsedTollAmount;
+
+    const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + tollTotal + plzSurcharge;
 
     if (validatedPromoCode) {
       const [promo] = await query<any>('SELECT * FROM promotions WHERE code = ?', [validatedPromoCode]);
@@ -394,7 +399,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         tripPrice = isRoundtrip ? effectiveOneWay * 2 : effectiveOneWay;
         effectiveRoundtripDiscount = 0;
       }
-      const preTotalForDiscount = tripPrice + fahrradCost + parsedAnfahrtCost + parsedTollAmount + plzSurcharge - promoDiscount;
+      const preTotalForDiscount = tripPrice + fahrradCost + parsedAnfahrtCost + tollTotal + plzSurcharge - promoDiscount;
       companyDiscount = Math.round(preTotalForDiscount * (corpPct / 100) * 100) / 100;
     }
 
