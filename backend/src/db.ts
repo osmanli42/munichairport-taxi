@@ -1392,6 +1392,10 @@ export async function initializeDatabase(): Promise<void> {
       // Fahrt höchstens so viele Tage nach heute (NULL = egal). Für Ruhiger-Tag-Regeln: weit
       // entfernte Tage haben nur ein schwaches Auslastungssignal — dort nur der kleine Rabatt.
       ['max_days_ahead', 'INT DEFAULT NULL'],
+      // "Boş saat": Regel greift nur, wenn im Tagesplan (Buchungen + Kalender) im Fenster
+      // ±gap_window_minutes um die Abholzeit höchstens gap_max_rides Fahrten stehen.
+      ['gap_window_minutes', 'INT DEFAULT NULL'],
+      ['gap_max_rides', 'INT DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
@@ -1411,6 +1415,8 @@ export async function initializeDatabase(): Promise<void> {
       ['auto_discount_vpn_as_unknown', '1'],
       // Hauptschalter für alle Ruhiger-Tag-Regeln (andere Rabatte unberührt). Start: aus.
       ['demand_discount_enabled', '0'],
+      // Hauptschalter für alle Boş-saat-Regeln (Lücken im Tagesplan). Start: aus.
+      ['gap_discount_enabled', '0'],
       ['demand_min_expected', '2'],
       ['demand_horizon_days', '14'],
     ]) {

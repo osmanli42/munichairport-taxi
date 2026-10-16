@@ -325,6 +325,22 @@ export interface AutoDiscount {
   exclude_business: number;
   /** Fahrt höchstens so viele Tage nach heute (null = egal) */
   max_days_ahead: number | null;
+  /** "Boş saat": Fenster ±Minuten um die Abholzeit (null = aus) */
+  gap_window_minutes: number | null;
+  /** Höchstzahl Fahrten im Fenster (0 = leer) */
+  gap_max_rides: number | null;
+}
+
+export interface GapDay {
+  date: string;
+  rides: number;
+  hours: number[]; // 24 Werte: Fahrten je Stunde
+  slots: ({ id: number; name: string; type: 'percent' | 'fixed'; value: number } | null)[]; // 48 Halbstunden
+}
+export interface GapOverview {
+  enabled: boolean;
+  days: GapDay[];
+  stats: { bookings: number; discount: number; revenue: number };
 }
 
 export interface DemandDay {
@@ -345,6 +361,10 @@ export interface DemandOverview {
 export const autoDiscountsApi = {
   demand: async (): Promise<DemandOverview> => {
     const response = await api.get('/auto-discounts/admin/demand');
+    return response.data;
+  },
+  gaps: async (): Promise<GapOverview> => {
+    const response = await api.get('/auto-discounts/admin/gaps');
     return response.data;
   },
   getAll: async (): Promise<AutoDiscount[]> => {

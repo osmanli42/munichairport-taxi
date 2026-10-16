@@ -33,18 +33,19 @@ const wallMs = (w: string) => Date.parse(`${w.length === 10 ? `${w}T00:00` : w}:
 const msWall = (ms: number) => new Date(ms).toISOString().slice(0, 16);
 const addDays = (date: string, n: number) => msWall(wallMs(date) + n * 86_400_000).slice(0, 10);
 
-type DemandSettings = { enabled: boolean; minExpected: number; horizonDays: number };
+type DemandSettings = { enabled: boolean; minExpected: number; horizonDays: number; gapEnabled: boolean };
 let settingsCache: (DemandSettings & { at: number }) | null = null;
 
 export async function demandSettings(): Promise<DemandSettings> {
   if (settingsCache && Date.now() - settingsCache.at < SETTINGS_CACHE_MS) return settingsCache;
   const rows = await query<{ setting_key: string; setting_value: string }>(
-    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days')`
+    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled')`
   );
   const m = Object.fromEntries(rows.map(r => [r.setting_key, r.setting_value]));
   const num = (v: unknown, d: number) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
   settingsCache = {
     enabled: m.demand_discount_enabled === '1',
+    gapEnabled: m.gap_discount_enabled === '1',
     minExpected: num(m.demand_min_expected, 2),
     horizonDays: num(m.demand_horizon_days, 14),
     at: Date.now(),
@@ -55,9 +56,12 @@ export async function demandSettings(): Promise<DemandSettings> {
 export function invalidateDemandCache(): void {
   settingsCache = null;
   paceCache.clear();
+  gapCache.clear();
 }
 
-type Leg = { date: string; bookedAt: string }; // bookedAt = Berlin-Wanduhr
+// bookedAt = Berlin-Wanduhr; minute = Abholzeit als Minute des Tages (0–1439)
+type Leg = { date: string; bookedAt: string; minute: number };
+const minuteOf = (w: string) => Number(w.slice(11, 13)) * 60 + Number(w.slice(14, 16));
 
 // Alle Fahrten an den gegebenen Tagen, jeweils mit dem Zeitpunkt, ab dem sie feststanden.
 async function legsOn(dates: string[]): Promise<Leg[]> {
@@ -78,11 +82,11 @@ async function legsOn(dates: string[]): Promise<Leg[]> {
   for (const b of bookings) {
     // created_at ist UTC → Berliner Wanduhr, damit alles in derselben Uhr verglichen wird
     const bookedAt = wall(berlinNowSql(new Date(b.created_utc)));
-    const out = wall(b.pickup_datetime).slice(0, 10);
-    if (set.has(out)) legs.push({ date: out, bookedAt });
+    const out = wall(b.pickup_datetime);
+    if (set.has(out.slice(0, 10))) legs.push({ date: out.slice(0, 10), bookedAt, minute: minuteOf(out) });
     if (b.trip_type === 'roundtrip' && b.return_datetime) {
-      const back = wall(b.return_datetime).slice(0, 10);
-      if (set.has(back)) legs.push({ date: back, bookedAt });
+      const back = wall(b.return_datetime);
+      if (set.has(back.slice(0, 10))) legs.push({ date: back.slice(0, 10), bookedAt, minute: minuteOf(back) });
     }
   }
 
@@ -95,7 +99,7 @@ async function legsOn(dates: string[]): Promise<Leg[]> {
     const rideTime = wall(c.ride_time);
     // Ältere Spiegelzeilen ohne Google-"created": typischer Vorlauf von einem Tag angenommen
     const bookedAt = c.entered_at ? wall(c.entered_at) : msWall(wallMs(rideTime) - 86_400_000);
-    legs.push({ date: rideTime.slice(0, 10), bookedAt });
+    legs.push({ date: rideTime.slice(0, 10), bookedAt, minute: minuteOf(rideTime) });
   }
   return legs;
 }
@@ -172,4 +176,33 @@ export async function ruleUsesOnTripDate(ruleId: number, date: string): Promise<
     [ruleId, date]
   );
   return Number(rows[0]?.cnt || 0);
+}
+
+// ---- Lücken im Tagesplan ("Boş saat") ---------------------------------------------------
+// Grundlage ist der echte Plan des Tages (Buchungen + Kalender), nicht der Vergleich mit
+// früheren Wochen: eine Abholzeit gilt als Lücke, wenn rundherum keine Fahrt eingetragen ist.
+
+const GAP_CACHE_MS = 2 * 60_000; // kurz, damit eine neue Buchung die Lücke schnell schließt
+const gapCache = new Map<string, { minutes: number[]; at: number }>();
+
+/** Abholzeiten (Minute des Tages) aller Fahrten an einem Datum. */
+export async function rideMinutesOn(date: string): Promise<number[]> {
+  const hit = gapCache.get(date);
+  if (hit && Date.now() - hit.at < GAP_CACHE_MS) return hit.minutes;
+  const minutes = (await legsOn([date])).map(l => l.minute).sort((a, b) => a - b);
+  gapCache.set(date, { minutes, at: Date.now() });
+  return minutes;
+}
+
+/**
+ * Fahrten mit Abholzeit im Fenster [minute − window, minute + window]. Fenster, die über
+ * Mitternacht reichen, schauen in den Vor- bzw. Folgetag.
+ */
+export async function ridesNear(date: string, minute: number, windowMin: number): Promise<number> {
+  const from = minute - windowMin;
+  const to = minute + windowMin;
+  let n = (await rideMinutesOn(date)).filter(m => m >= from && m <= to).length;
+  if (from < 0) n += (await rideMinutesOn(addDays(date, -1))).filter(m => m >= 1440 + from).length;
+  if (to > 1439) n += (await rideMinutesOn(addDays(date, 1))).filter(m => m <= to - 1440).length;
+  return n;
 }

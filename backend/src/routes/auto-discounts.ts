@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { query, run } from '../db';
 import { authenticateAdmin } from '../middleware/auth';
-import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels } from '../services/autoDiscount';
+import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels, windowMatches } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
-import { demandSettings, getDayPace } from '../services/demandPace';
+import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
 import { berlinDateSql } from '../utils/berlinTime';
 
 const router = Router();
@@ -17,6 +17,7 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
     priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
     price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
     demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
+    gap_window_minutes, gap_max_rides,
   } = body;
 
   if (!name || String(name).trim().length === 0) return { error: 'name erforderlich' };
@@ -49,6 +50,12 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
   }
   if (!isEmpty(max_days_ahead) && (!Number.isInteger(Number(max_days_ahead)) || Number(max_days_ahead) < 0 || Number(max_days_ahead) > 365)) {
     return { error: 'En fazla kaç gün sonrası: 0–365 arası tam sayı olmalı' };
+  }
+  if (!isEmpty(gap_window_minutes)) {
+    const w = Number(gap_window_minutes);
+    if (!Number.isInteger(w) || w < 15 || w > 360) return { error: 'Boş saat: pencere 15–360 dakika olmalı' };
+    const m = isEmpty(gap_max_rides) ? 0 : Number(gap_max_rides);
+    if (!Number.isInteger(m) || m < 0 || m > 10) return { error: 'Boş saat: penceredeki en fazla fahrt 0–10 olmalı' };
   }
   if (!isEmpty(ip_bypass_mode) && !['fern', 'nah', 'alle'].includes(String(ip_bypass_mode))) {
     return { error: 'Besucherkreis ungültig' };
@@ -108,6 +115,8 @@ function parseRuleBody(body: any): { error?: string; values?: any[] } {
       numOrNull(roundtrip_value),
       exclude_business ? 1 : 0,
       intOrNull(max_days_ahead),
+      intOrNull(gap_window_minutes),
+      isEmpty(gap_window_minutes) ? null : (intOrNull(gap_max_rides) ?? 0),
     ],
   };
 }
@@ -118,7 +127,8 @@ const RULE_COLS = `name, discount_type, discount_value, zone_scope, min_km, max_
   vehicle_types, trip_types, start_date, end_date, booking_start_date, booking_end_date,
   priority, stackable_with_promo, label_de, label_en, label_tr, show_in_banner, show_countdown, show_remaining,
   price_basis, visitor_min_km, visitor_max_km, visitor_unknown_ok, visit_min, allow_fixed_routes,
-  demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead`;
+  demand_pace_max, trip_date_max_uses, ip_bypass_mode, roundtrip_value, exclude_business, max_days_ahead,
+  gap_window_minutes, gap_max_rides`;
 
 // GET /api/auto-discounts/public/banner?locale=de — Startseiten-Banner (öffentlich)
 router.get('/public/banner', async (req: Request, res: Response): Promise<void> => {
@@ -191,6 +201,62 @@ router.get('/admin/demand', authenticateAdmin, async (_req: Request, res: Respon
   } catch (e: any) {
     console.error('demand overview failed:', e?.message);
     res.status(500).json({ error: 'Failed to load demand overview' });
+  }
+});
+
+// GET /api/auto-discounts/admin/gaps — Tagesplan der nächsten Tage stundenweise und wo eine
+// Boş-saat-Regel greifen würde (nur Zeit-/Planbedingungen, keine kundenbezogenen).
+router.get('/admin/gaps', authenticateAdmin, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await demandSettings();
+    const rules = await query<{ id: number; name: string; discount_type: string; discount_value: number; active: number;
+      priority: number; max_days_ahead: number | null; gap_window_minutes: number; gap_max_rides: number | null;
+      trip_time_from: number | null; trip_time_to: number | null }>(
+      `SELECT id, name, discount_type, discount_value, active, priority, max_days_ahead, gap_window_minutes, gap_max_rides,
+              trip_time_from, trip_time_to
+         FROM auto_discounts WHERE gap_window_minutes IS NOT NULL ORDER BY priority DESC`
+    );
+    const active = rules.filter(r => Number(r.active) === 1);
+    // So weit voraus, wie die aktiven Regeln reichen (mind. 3, höchstens 7 Tage)
+    const span = Math.min(7, Math.max(3, ...active.map(r => (r.max_days_ahead == null ? 3 : Number(r.max_days_ahead)))));
+    const days = [];
+    for (let i = 0; i <= span; i++) {
+      const date = berlinDateSql(i);
+      const minutes = await rideMinutesOn(date);
+      const hours = Array.from({ length: 24 }, (_, h) => minutes.filter(m => Math.floor(m / 60) === h).length);
+      // Je halbe Stunde: welche Regel würde für eine Abholung genau dann greifen?
+      const slots: ({ id: number; name: string; type: string; value: number } | null)[] = [];
+      for (let s = 0; s < 48; s++) {
+        const minute = s * 30;
+        let hit: typeof active[number] | null = null;
+        if (settings.gapEnabled) {
+          for (const r of active) {
+            if (r.max_days_ahead != null && i > Number(r.max_days_ahead)) continue;
+            if (!windowMatches(r.trip_time_from, r.trip_time_to, minute)) continue;
+            if (await ridesNear(date, minute, Number(r.gap_window_minutes)) > Number(r.gap_max_rides ?? 0)) continue;
+            hit = r;
+            break;
+          }
+        }
+        slots.push(hit ? { id: hit.id, name: hit.name, type: hit.discount_type, value: Number(hit.discount_value) } : null);
+      }
+      days.push({ date, rides: minutes.length, hours, slots });
+    }
+    let stats = { bookings: 0, discount: 0, revenue: 0 };
+    if (rules.length) {
+      const [row] = await query<{ n: number; disc: number; rev: number }>(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(auto_discount_amount), 0) AS disc, COALESCE(SUM(price), 0) AS rev
+           FROM bookings
+          WHERE auto_discount_id IN (${rules.map(() => '?').join(',')})
+            AND status != 'cancelled' AND created_at >= NOW() - INTERVAL 30 DAY`,
+        rules.map(r => r.id)
+      );
+      stats = { bookings: Number(row?.n) || 0, discount: Number(row?.disc) || 0, revenue: Number(row?.rev) || 0 };
+    }
+    res.json({ enabled: settings.gapEnabled, days, stats });
+  } catch (e: any) {
+    console.error('gap overview failed:', e?.message);
+    res.status(500).json({ error: 'Failed to load gap overview' });
   }
 });
 

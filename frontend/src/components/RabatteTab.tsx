@@ -6,6 +6,7 @@ import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi, pflichtgebietApi
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
 import DemandPanel from '@/components/discount/DemandPanel';
+import GapPanel from '@/components/discount/GapPanel';
 
 const WEEKDAYS = [
   { v: 1, label: 'Mo' }, { v: 2, label: 'Di' }, { v: 3, label: 'Mi' }, { v: 4, label: 'Do' },
@@ -41,7 +42,7 @@ const emptyForm = (): FormState => ({
   price_basis: 'any', visitor_min_km: null, visitor_max_km: null, visitor_unknown_ok: 1,
   visit_min: null, allow_fixed_routes: 0,
   demand_pace_max: null, trip_date_max_uses: null, ip_bypass_mode: null, roundtrip_value: null,
-  exclude_business: 0, max_days_ahead: null,
+  exclude_business: 0, max_days_ahead: null, gap_window_minutes: null, gap_max_rides: null,
 });
 
 // Hazır şablonlar: sakin gün kuralları (kullanıcı kararları 13 Eki 2026 — %7 doluluk < %50,
@@ -61,6 +62,19 @@ const demandTemplate = (tier: DemandTier): FormState => ({
   // Müşteri metni bilinçli olarak „sakin gün“ demiyor — kazanç gibi okunmalı, boşluk gibi değil.
   // „Nur für heute“ değil: indirim yarın da sürebilir, o zaman yanıltıcı aciliyet olur (UWG §5).
   // „Solange verfügbar“ doğru: gün dolunca ya da fahrt günü kontenjanı bitince kalkıyor.
+  label_de: 'Sonderangebot · solange verfügbar', label_en: 'Special offer · while available', label_tr: 'Özel teklif · sınırlı sayıda',
+});
+
+// Hazır şablon: boş saat kuralı (kullanıcı kararları 16 Eki 2026 — %7, alış 10:00–22:00,
+// en fazla 3 gün sonrası, ±2 saatte takvimde hiç fahrt yoksa). Diğer sınırlar sakin gün
+// kurallarıyla aynı; IP-Bypass canlıdaki sakin gün kuralları gibi „herkes“.
+const gapTemplate = (): FormState => ({
+  ...emptyForm(),
+  name: 'Boş Saat 7 %', discount_value: 7, zone_scope: 'any', max_discount_amount: 10,
+  gap_window_minutes: 120, gap_max_rides: 0, trip_time_from: 10 * 60, trip_time_to: 22 * 60,
+  max_days_ahead: 3, ip_bypass_mode: 'alle', roundtrip_value: 2, priority: 15,
+  booking_index_max: 2, exclude_business: 1,
+  show_countdown: 0, show_remaining: 0,
   label_de: 'Sonderangebot · solange verfügbar', label_en: 'Special offer · while available', label_tr: 'Özel teklif · sınırlı sayıda',
 });
 
@@ -261,6 +275,7 @@ export default function RabatteTab({ token }: { token: string }) {
 
   const startCreate = () => { setEditing(emptyForm()); setEditingId(null); setCopying(false); };
   const startDemandTemplate = (tier: DemandTier) => { setEditing(demandTemplate(tier)); setEditingId(null); setCopying(false); };
+  const startGapTemplate = () => { setEditing(gapTemplate()); setEditingId(null); setCopying(false); };
 
   // Kopieren: alle Einstellungen übernehmen, aber als neue Regel speichern — praktisch für
   // Aktionen, die sich nur in der Uhrzeit unterscheiden (z.B. 18:30–00:00 und 00:00–07:00).
@@ -355,6 +370,9 @@ export default function RabatteTab({ token }: { token: string }) {
 
       {/* Sakin gün indirimi — ana şalter + doluluk */}
       <DemandPanel onTemplate={startDemandTemplate} refreshKey={demandRefresh} disabled={saving} />
+
+      {/* Boş saat indirimi — ana şalter + takvim şeridi */}
+      <GapPanel onTemplate={startGapTemplate} refreshKey={demandRefresh} disabled={saving} />
 
       {/* Tarif-Untergrenze — §51 PBefG */}
       <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>
@@ -455,8 +473,13 @@ export default function RabatteTab({ token }: { token: string }) {
                     {r.exclude_business ? ' · firma/Rechnung müşterisi hariç' : ''}
                     {r.max_days_ahead != null ? ` · en fazla ${r.max_days_ahead} gün sonrası` : ''}
                   </p>
-                  {(r.demand_pace_max != null || r.ip_bypass_mode) && (
+                  {(r.demand_pace_max != null || r.ip_bypass_mode || r.gap_window_minutes != null) && (
                     <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                      {r.gap_window_minutes != null && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                          Boş saat · ±{Number(r.gap_window_minutes) % 60 === 0 ? `${Number(r.gap_window_minutes) / 60} sa` : `${r.gap_window_minutes} dk`} · en fazla {r.gap_max_rides ?? 0} fahrt
+                        </span>
+                      )}
                       {r.demand_pace_max != null && (
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200">
                           Sakin gün · doluluk &lt; %{Math.round(Number(r.demand_pace_max) * 100)}
@@ -543,6 +566,47 @@ export default function RabatteTab({ token }: { token: string }) {
                     disabled={editing.discount_type === 'fixed'}
                     className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400" />
                 </div>
+              </div>
+
+              {/* Boş saat */}
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 space-y-3">
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" className="mt-0.5" checked={editing.gap_window_minutes != null}
+                    onChange={e => patch(e.target.checked
+                      ? { gap_window_minutes: 120, gap_max_rides: 0 }
+                      : { gap_window_minutes: null, gap_max_rides: null })} />
+                  <span>
+                    <strong>Sadece takvimde boş saatlerde</strong>
+                    <span className="block text-xs text-gray-500">
+                      Müşterinin seçtiği alış saatinin çevresinde o gün takvimde (web + Google Takvim) fahrt yoksa
+                      geçerli. Üstteki „Boş saat indirimi“ ana şalteri kapalıysa bu kural hiç çalışmaz.
+                    </span>
+                  </span>
+                </label>
+                {editing.gap_window_minutes != null && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500">Pencere (± dakika)</label>
+                        <input type="number" min={15} max={360} step={15} value={editing.gap_window_minutes ?? ''}
+                          onChange={e => patch({ gap_window_minutes: e.target.value === '' ? 120 : parseInt(e.target.value, 10) })}
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500">Penceredeki en fazla fahrt</label>
+                        <input type="number" min={0} max={10} value={editing.gap_max_rides ?? 0}
+                          onChange={e => patch({ gap_max_rides: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })}
+                          className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Örn. ±120 dk ve 0 fahrt: müşteri 14:00 seçerse, 12:00–16:00 arası takvimde hiç fahrt yoksa indirim.
+                      Hangi saatlerde geçerli olacağını aşağıdaki <strong>„Yolculuk saati“</strong>, kaç gün ileriye
+                      kadar geçerli olacağını <strong>„En fazla kaç gün sonrası“</strong> alanından ayarla — uzak günlerde
+                      takvim hep boş görünür, o yüzden gün sınırı önemli.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Sakin gün */}

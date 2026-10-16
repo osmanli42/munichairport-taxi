@@ -1,7 +1,7 @@
 // Automatische Rabatte (Rabatte-Tab): kural bazlı, kod gerektirmeyen indirim motoru.
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
 import { query } from '../db';
-import { paceForTrip, ruleUsesOnTripDate } from './demandPace';
+import { paceForTrip, ruleUsesOnTripDate, ridesNear, demandSettings } from './demandPace';
 
 export interface AutoDiscountRule {
   id: number;
@@ -75,6 +75,10 @@ export interface AutoDiscountRule {
   exclude_business: number;
   /** Fahrt höchstens so viele Tage nach heute (Berlin), null = egal. */
   max_days_ahead: number | null;
+  /** "Boş saat": nur wenn im Fenster ±so viele Minuten um die Abholzeit kaum Fahrten stehen. */
+  gap_window_minutes: number | null;
+  /** Höchstzahl Fahrten im Fenster (0 = Fenster muss leer sein). */
+  gap_max_rides: number | null;
 }
 
 /** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
@@ -197,7 +201,7 @@ export function pickupParts(raw: string | null | undefined): LocalParts | null {
 }
 
 // Minutenfenster [from, to): from === to → ganzer Tag; from > to → über Mitternacht (22:00–06:00).
-function windowMatches(from: number | null, to: number | null, minutes: number | null): boolean {
+export function windowMatches(from: number | null, to: number | null, minutes: number | null): boolean {
   if (from == null || to == null) return true;
   if (minutes == null) return false;
   const f = Number(from);
@@ -360,6 +364,12 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       const pace = await paceForTrip(tripDateStr);
       if (pace == null || pace >= Number(r.demand_pace_max)) continue;
     }
+    if (r.gap_window_minutes != null) {
+      // Eigener Hauptschalter "Boş saat indirimi"; ohne Abholzeit keine Lücke prüfbar
+      if (!trip || !(await demandSettings()).gapEnabled) continue;
+      const near = await ridesNear(trip.dateStr, trip.minutes, Number(r.gap_window_minutes));
+      if (near > Number(r.gap_max_rides ?? 0)) continue;
+    }
     if (r.trip_date_max_uses != null) {
       if (!tripDateStr) continue;
       if (await ruleUsesOnTripDate(r.id, tripDateStr) >= Number(r.trip_date_max_uses)) continue;
@@ -503,7 +513,7 @@ export async function resolveBannerDiscount(
   const { rules, enabled } = await loadRules();
   if (!enabled) return null;
   // Ruhiger-Tag-Regeln hängen vom Fahrtdatum ab, das beim Banner noch unbekannt ist.
-  const candidates = rules.filter(r => Number(r.show_in_banner) === 1 && r.demand_pace_max == null);
+  const candidates = rules.filter(r => Number(r.show_in_banner) === 1 && r.demand_pace_max == null && r.gap_window_minutes == null);
   if (candidates.length === 0) return null;
   const now = new Date();
   const booking = berlinParts(now);
