@@ -890,6 +890,29 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
        ORDER BY sessions DESC`
     );
 
+    // Länderverteilung: Besucher + Web-Buchungen je Land. Buchungen laufen wie im Funnel
+    // über bookings.session_id (source='web'), damit die Zahlen zusammenpassen.
+    const countries = await query<any>(
+      `SELECT v.country, v.visitors, v.sessions, COALESCE(bk.bookings, 0) AS bookings
+       FROM (
+         SELECT COALESCE(NULLIF(country, ''), '??') AS country,
+                COUNT(DISTINCT visitor_id) AS visitors, COUNT(*) AS sessions
+         FROM visitor_sessions
+         WHERE is_bot = 0 AND first_seen >= ${since}
+         GROUP BY COALESCE(NULLIF(country, ''), '??')
+       ) v
+       LEFT JOIN (
+         SELECT COALESCE(NULLIF(s2.country, ''), '??') AS country, COUNT(*) AS bookings
+         FROM bookings b
+         JOIN visitor_sessions s2 ON s2.session_id = b.session_id
+         WHERE b.status != 'cancelled' AND b.source = 'web'
+           AND s2.is_bot = 0 AND s2.first_seen >= ${since}
+         GROUP BY COALESCE(NULLIF(s2.country, ''), '??')
+       ) bk ON bk.country = v.country
+       ORDER BY v.visitors DESC
+       LIMIT 20`
+    );
+
     const hourly = await query<any>(
       `SELECT
          DATE_FORMAT(first_seen, '%Y-%m-%d %H:00') AS hour,
@@ -940,6 +963,7 @@ router.get('/admin/visitor-stats', authenticateAdmin, async (req: AuthRequest, r
       topPages,
       sources,
       devices,
+      countries,
       hourly,
       funnel: {
         ...(funnel || {}),

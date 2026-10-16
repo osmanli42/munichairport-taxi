@@ -86,6 +86,7 @@ interface Stats {
   topPages: Array<{ path: string; views: number }>;
   sources: Array<{ source: string; sessions: number }>;
   devices: Array<{ device: string; sessions: number }>;
+  countries?: Array<{ country: string; visitors: number; sessions: number; bookings: number }>;
   hourly: Array<{ hour: string; sessions: number }>;
   funnel: { visited: number; saw_prices: number; started_booking: number; bookings: number; all_bookings: number };
 }
@@ -1205,6 +1206,54 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
             <h4 className="text-xs font-semibold mb-3 text-gray-600 uppercase tracking-wide">Cihaz Dağılımı</h4>
             <DeviceBar devices={stats?.devices || []} />
           </div>
+        </div>
+
+        {/* Countries */}
+        <div className="mt-6">
+          <h4 className="text-xs font-semibold mb-3 text-gray-600 uppercase tracking-wide flex items-center gap-1">
+            <Globe size={11} /> Ülkeler
+            <span className="normal-case font-normal text-gray-400 ml-1">(IP konumu · bot hariç · rezervasyon = site üzerinden)</span>
+          </h4>
+          {(!stats?.countries || stats.countries.length === 0) ? (
+            <div className="text-xs text-gray-400">Veri yok</div>
+          ) : (() => {
+            const rows = stats.countries;
+            const maxV = Math.max(...rows.map(r => Number(r.visitors)), 1);
+            const totalV = rows.reduce((a, r) => a + Number(r.visitors), 0);
+            return (
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-[2.5rem_1fr_3.5rem_3.5rem_3.5rem] gap-2 text-[10px] uppercase tracking-wide text-gray-400">
+                  <span />
+                  <span>Ülke</span>
+                  <span className="text-right">Ziyaretçi</span>
+                  <span className="text-right">Rezerv.</span>
+                  <span className="text-right">Dönüşüm</span>
+                </div>
+                {rows.map(r => {
+                  const v = Number(r.visitors);
+                  const b = Number(r.bookings);
+                  const pct = totalV > 0 ? Math.round((v / totalV) * 100) : 0;
+                  return (
+                    <div key={r.country} className="grid grid-cols-[2.5rem_1fr_3.5rem_3.5rem_3.5rem] gap-2 items-center">
+                      <span className="text-sm">{r.country === '??' ? '🌍' : countryFlag(r.country)}</span>
+                      <div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs text-gray-600">{r.country === '??' ? 'Bilinmiyor' : r.country}</span>
+                          <span className="text-[10px] text-gray-400">{pct}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(v / maxV) * 100}%` }} />
+                        </div>
+                      </div>
+                      <span className="text-xs text-right text-gray-700 font-medium">{v}</span>
+                      <span className={`text-xs text-right font-medium ${b > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>{b}</span>
+                      <span className="text-xs text-right text-gray-500">{v > 0 ? ((b / v) * 100).toFixed(1) : '0.0'}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
