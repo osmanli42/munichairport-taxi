@@ -12,7 +12,7 @@ interface Company {
   allowed_payment_methods: string; pg_discount_override: number; discount_kombinierbar: number;
   payment_term_days: number; status: string; created_at: string;
   charge_mode?: 'manual' | 'on_confirm' | 'on_completion';
-  card_brand?: string; card_last4?: string;
+  card_brand?: string; card_last4?: string; invoice_email?: string | null;
   user_count?: number; booking_count?: number; users?: any[];
 }
 
@@ -216,6 +216,7 @@ export default function B2BTab({ token }: { token: string }) {
   const handleUpdateCompany = async (c: Company) => {
     const res = await api(`/${c.id}`, token, { method: 'PUT', body: JSON.stringify(c) });
     if (res.ok) { flash('Gespeichert'); setEditModal(null); loadCompanies(); }
+    else { const data = await res.json().catch(() => ({})); flash(data.error || 'Speichern fehlgeschlagen'); }
   };
 
   const handleCreateSR = async (companyId: number, month: string, mwst: number, sendEmail: boolean, projectName: string) => {
@@ -384,6 +385,7 @@ export default function B2BTab({ token }: { token: string }) {
                       <div><span className="text-gray-500">Telefon:</span> <span className="font-medium">{c.phone}</span></div>
                       <div><span className="text-gray-500">Adresse:</span> <span className="font-medium">{c.address || '—'}</span></div>
                       <div><span className="text-gray-500">USt-IdNr.:</span> <span className="font-medium">{c.ust_idnr || '—'}</span></div>
+                      {c.invoice_email && <div><span className="text-gray-500">Rechnungs-E-Mail:</span> <span className="font-medium">{c.invoice_email}</span></div>}
                       <div><span className="text-gray-500">Rabatt:</span> <span className="font-medium">{c.discount_percent}%</span></div>
                       <div><span className="text-gray-500">Zahlungsziel:</span> <span className="font-medium">{c.payment_term_days || 14} Tage</span></div>
                       <div><span className="text-gray-500">Zahlung:</span> <span className="font-medium">{c.allowed_payment_methods || 'cash,card'}</span></div>
@@ -898,8 +900,26 @@ function ApproveModal({ company, onApprove, onClose }: { company: Company; onApp
   );
 }
 
+// Adresse ist ein Feld "Straße Nr., PLZ Ort" (so steht sie auf der Rechnung) — im Formular getrennt
+function splitAddress(a: string | null | undefined): { street: string; plz: string; city: string } {
+  const s = String(a || '').replace(/\s*\n+\s*/g, ', ').trim();
+  const m = s.match(/^(.*?)(?:,\s*|\s+)(\d{4,5})\s+(.+)$/);
+  return m ? { street: m[1].trim().replace(/,$/, ''), plz: m[2], city: m[3].trim() } : { street: s, plz: '', city: '' };
+}
+const joinAddress = (a: { street: string; plz: string; city: string }) =>
+  [a.street.trim(), [a.plz.trim(), a.city.trim()].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+
 function EditModal({ company, onSave, onClose }: { company: Company; onSave: (c: Company) => void; onClose: () => void }) {
   const [c, setC] = useState(company);
+  const [addr, setAddr] = useState(() => splitAddress(company.address));
+  const field = (label: string, key: 'company_name' | 'contact_name' | 'email' | 'phone' | 'ust_idnr' | 'invoice_email', opts?: { type?: string; placeholder?: string; full?: boolean }) => (
+    <div className={opts?.full ? 'col-span-2' : ''}>
+      <label className="text-xs font-medium text-gray-500">{label}</label>
+      <input type={opts?.type || 'text'} value={(c[key] as string) || ''} placeholder={opts?.placeholder}
+        onChange={e => setC({ ...c, [key]: e.target.value })}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+    </div>
+  );
   const payArr = (c.allowed_payment_methods || 'cash,card').split(',');
 
   const togglePay = (m: string) => {
@@ -910,9 +930,37 @@ function EditModal({ company, onSave, onClose }: { company: Company; onSave: (c:
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <h3 className="font-bold text-gray-900">{c.company_name} bearbeiten</h3>
+        <h3 className="font-bold text-gray-900">{company.company_name} bearbeiten</h3>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="text-xs font-semibold text-gray-700 mb-2">Firmendaten (Rechnungsempfänger)</div>
+          <div className="grid grid-cols-2 gap-3">
+            {field('Firmenname', 'company_name', { full: true })}
+            {field('Ansprechpartner', 'contact_name', { full: true })}
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-gray-500">Straße und Hausnummer</label>
+              <input value={addr.street} onChange={e => setAddr({ ...addr, street: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500">PLZ</label>
+              <input value={addr.plz} inputMode="numeric" maxLength={10} onChange={e => setAddr({ ...addr, plz: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500">Ort</label>
+              <input value={addr.city} onChange={e => setAddr({ ...addr, city: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            {field('E-Mail', 'email', { type: 'email' })}
+            {field('Telefon', 'phone', { type: 'tel' })}
+            {field('Rechnungs-E-Mail', 'invoice_email', { type: 'email', placeholder: 'leer = E-Mail oben' })}
+            {field('USt-IdNr.', 'ust_idnr')}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">Auf der Rechnung: {joinAddress(addr) || '—'}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
           <div>
             <label className="text-xs font-medium text-gray-500">Rabatt (%)</label>
             <input type="number" min={0} max={50} value={c.discount_percent}
@@ -979,7 +1027,7 @@ function EditModal({ company, onSave, onClose }: { company: Company; onSave: (c:
         </div>
 
         <div className="flex gap-2">
-          <button onClick={() => onSave(c)} className="flex-1 bg-primary-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-700">
+          <button onClick={() => onSave({ ...c, address: joinAddress(addr) })} className="flex-1 bg-primary-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-700">
             Speichern
           </button>
           <button onClick={onClose} className="px-4 py-2 bg-gray-100 rounded-lg text-sm">Abbrechen</button>

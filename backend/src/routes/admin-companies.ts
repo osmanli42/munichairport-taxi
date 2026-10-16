@@ -178,6 +178,29 @@ router.put('/:id', authenticateAdmin, async (req: AuthRequest, res: Response): P
     if (status && ['active', 'suspended'].includes(status)) { updates.push('status = ?'); params.push(status); }
     if (charge_mode && ['manual', 'on_confirm', 'on_completion'].includes(charge_mode)) { updates.push('charge_mode = ?'); params.push(charge_mode); }
 
+    // Firmendaten (Rechnungsempfänger) — Adresse bleibt ein Feld "Straße, PLZ Ort" wie bisher
+    const text = (v: unknown, max: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+    const isMail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    if (req.body.company_name !== undefined) {
+      const v = text(req.body.company_name, 200);
+      if (!v) { res.status(400).json({ error: 'Firmenname darf nicht leer sein' }); return; }
+      updates.push('company_name = ?'); params.push(v);
+    }
+    if (req.body.contact_name !== undefined) { updates.push('contact_name = ?'); params.push(text(req.body.contact_name, 200)); }
+    if (req.body.email !== undefined) {
+      const v = text(req.body.email, 200);
+      if (v && !isMail(v)) { res.status(400).json({ error: 'E-Mail-Adresse ist ungültig' }); return; }
+      updates.push('email = ?'); params.push(v);
+    }
+    if (req.body.invoice_email !== undefined) {
+      const v = text(req.body.invoice_email, 200);
+      if (v && !isMail(v)) { res.status(400).json({ error: 'Rechnungs-E-Mail ist ungültig' }); return; }
+      updates.push('invoice_email = ?'); params.push(v || null);
+    }
+    if (req.body.phone !== undefined) { updates.push('phone = ?'); params.push(text(req.body.phone, 50)); }
+    if (req.body.address !== undefined) { updates.push('address = ?'); params.push(text(req.body.address, 300)); }
+    if (req.body.ust_idnr !== undefined) { updates.push('ust_idnr = ?'); params.push(text(req.body.ust_idnr, 50) || null); }
+
     if (updates.length === 0) { res.status(400).json({ error: 'No fields to update' }); return; }
 
     params.push(req.params.id);
