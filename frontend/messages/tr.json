@@ -254,6 +254,7 @@
   "cookie": {
     "title": "🍪 Çerez Ayarları",
     "message": "Web sitemizde size en iyi deneyimi sunmak için çerezler kullanıyoruz. Hangi çerezlere izin vermek istediğinizi seçebilirsiniz.",
+    "message_short": "Gerekli çerezleri ve – yalnızca onayınızla – harita, istatistik ve reklam çerezlerini hizmetimizi iyileştirmek için kullanıyoruz.",
     "accept_all": "Tümünü Kabul Et",
     "accept_selected": "Seçimi Onayla",
     "decline_all": "Sadece Gerekli",

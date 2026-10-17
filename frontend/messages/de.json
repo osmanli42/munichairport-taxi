@@ -254,6 +254,7 @@
   "cookie": {
     "title": "🍪 Cookie-Einstellungen",
     "message": "Wir verwenden Cookies, um Ihnen die bestmögliche Erfahrung auf unserer Website zu bieten. Sie können wählen, welche Cookies Sie zulassen möchten.",
+    "message_short": "Wir nutzen notwendige Cookies und – nur mit Ihrer Zustimmung – Cookies für Karten, Statistik und Werbung, um unser Angebot zu verbessern.",
     "accept_all": "Alle akzeptieren",
     "accept_selected": "Auswahl bestätigen",
     "decline_all": "Nur notwendige",

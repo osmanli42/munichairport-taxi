@@ -316,6 +316,8 @@ const ALLOWED_EVENT_TYPES = new Set([
   // vazgeçme analizi (BookingFunnelTracker)
   'field_focus', 'field_error', 'js_error', 'api_error',
   'price_shown', 'call_click', 'tab_away', 'price_copy', 'address_unverified',
+  // Cookie-Banner (CookieBanner): gezeigt (target = popup|bottom) und Wahl (target = all|necessary|custom|<style>)
+  'consent_shown', 'consent',
 ]);
 
 router.post('/track/event', async (req: Request, res: Response) => {
@@ -734,6 +736,50 @@ async function customerHistories(visitorIds: string[]): Promise<Map<string, any>
 // day's timeline is derived fresh on each read. That means it can't miss events
 // from periods when no admin had the tab open, and there's nothing to keep running
 // or to reset at midnight — "today" is just the WHERE clause.
+// GET /api/admin/consent-stats?days=14 — Cookie-Banner je Darstellung (popup/bottom):
+// wie viele haben was gewählt, wer ging ohne jeden Klick (<30 s), wer hat gebucht.
+// Nur Sitzungen, in denen der Banner gezeigt wurde (Erstbesuch ohne gespeicherte Wahl).
+router.get('/admin/consent-stats', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureTables();
+    const days = Math.min(90, Math.max(1, parseInt(String(req.query.days || '14'), 10) || 14));
+    const rows = await query<any>(`
+      SELECT x.style,
+             COUNT(*) AS shown,
+             SUM(x.choice = 'all') AS chose_all,
+             SUM(x.choice = 'necessary') AS chose_necessary,
+             SUM(x.choice = 'custom') AS chose_custom,
+             SUM(x.choice IS NULL) AS no_choice,
+             SUM(x.ads) AS ads,
+             SUM(x.ads AND NOT x.clicked AND x.dur < 30) AS ads_left_fast,
+             SUM(x.booked) AS booked
+        FROM (
+          SELECT
+            (SELECT e.target FROM visitor_events e WHERE e.session_id = s.session_id AND e.type = 'consent_shown' ORDER BY e.id LIMIT 1) AS style,
+            (SELECT SUBSTRING_INDEX(e.target, '|', 1) FROM visitor_events e WHERE e.session_id = s.session_id AND e.type = 'consent' ORDER BY e.id LIMIT 1) AS choice,
+            ((s.gclid IS NOT NULL AND s.gclid <> '') OR s.utm_source = 'google_ads') AS ads,
+            EXISTS (SELECT 1 FROM visitor_events e WHERE e.session_id = s.session_id AND e.type = 'click') AS clicked,
+            TIMESTAMPDIFF(SECOND, s.first_seen, s.last_seen) AS dur,
+            EXISTS (SELECT 1 FROM bookings b WHERE b.session_id = s.session_id) AS booked
+          FROM visitor_sessions s
+          WHERE s.first_seen >= NOW() - INTERVAL ? DAY AND s.is_bot = 0
+            AND EXISTS (SELECT 1 FROM visitor_events e WHERE e.session_id = s.session_id AND e.type = 'consent_shown')
+        ) x
+       GROUP BY x.style`, [days]);
+    const n = (v: unknown) => Number(v) || 0;
+    res.json({
+      days,
+      styles: rows.filter((r) => r.style === 'popup' || r.style === 'bottom').map((r) => ({
+        style: r.style, shown: n(r.shown), all: n(r.chose_all), necessary: n(r.chose_necessary), custom: n(r.chose_custom),
+        none: n(r.no_choice), ads: n(r.ads), ads_left_fast: n(r.ads_left_fast), booked: n(r.booked),
+      })),
+    });
+  } catch (err: any) {
+    console.error('consent-stats error:', err.message);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
 router.get('/admin/activity-events', authenticateAdmin, async (req: AuthRequest, res: Response) => {
   try {
     await ensureTables();
