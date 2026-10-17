@@ -637,6 +637,9 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
   const [passengers, setPassengers] = useState(init?.passengers || 2);
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
+  // Ursache des roten Hinweises — damit er verschwindet, sobald sie behoben ist (nicht erst beim nächsten "Suchen")
+  const errKindRef = useRef<'from' | 'to' | 'date' | 'soon' | 'airport' | 'route' | null>(null);
+  const routeErrAtRef = useRef<{ p: string; d: string } | null>(null);
   // Zähler: erhöhen = betreffendes Adressfeld öffnet seine Vorschlagsliste (AddressField.openSignal)
   const [openFrom, setOpenFrom] = useState(0);
   const [openTo, setOpenTo] = useState(0);
@@ -733,20 +736,35 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
           : `Buchungen müssen mindestens ${minAdvanceHours} Stunden im Voraus erfolgen.`)
     : '';
 
+  // Roten Hinweis entfernen, sobald der Kunde die Ursache behoben hat (z. B. Adresse aus der Liste gewählt)
+  useEffect(() => {
+    if (!formError) return;
+    const k = errKindRef.current;
+    const fixed =
+      (k === 'from' && !!pickupVal) ||
+      (k === 'to' && !!dropoffVal) ||
+      (k === 'date' && !!date) ||
+      (k === 'soon' && !isTooSoon(date, time)) ||
+      (k === 'airport' && (stadtfahrtEnabled || isAirportArea(pickupVal) || isAirportArea(dropoffVal))) ||
+      (k === 'route' && !!routeErrAtRef.current && (routeErrAtRef.current.p !== pickupVal || routeErrAtRef.current.d !== dropoffVal));
+    if (fixed) { errKindRef.current = null; setFormError(''); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickupVal, dropoffVal, date, time, stadtfahrtEnabled, formError]);
+
   async function handleSearch() {
     // pickupVal/dropoffVal are only set once an address has been resolved via
     // the suggestion list (mouse or keyboard) — never fall back to raw typed
     // text here, since Google's Distance Matrix can silently "resolve" vague
     // text to the wrong nearby place and produce a wrong fare.
     // Getippt, aber kein Vorschlag gewählt → Liste öffnen und genau das sagen.
-    if (!pickupVal) { setFormError(pickup.trim() ? `${l.errFrom}: ${l.errPick}` : l.errFrom); setOpenFrom(n => n + 1); return; }
-    if (!dropoffVal) { setFormError(dropoff.trim() ? `${l.errTo}: ${l.errPick}` : l.errTo); setOpenTo(n => n + 1); return; }
-    if (!date) { setFormError(l.errDate); return; }
-    if (isTooSoon(date, time)) { setFormError(advanceWarning); return; }
+    if (!pickupVal) { errKindRef.current = 'from'; setFormError(pickup.trim() ? `${l.errFrom}: ${l.errPick}` : l.errFrom); setOpenFrom(n => n + 1); return; }
+    if (!dropoffVal) { errKindRef.current = 'to'; setFormError(dropoff.trim() ? `${l.errTo}: ${l.errPick}` : l.errTo); setOpenTo(n => n + 1); return; }
+    if (!date) { errKindRef.current = 'date'; setFormError(l.errDate); return; }
+    if (isTooSoon(date, time)) { errKindRef.current = 'soon'; setFormError(advanceWarning); return; }
     // At least one address must be airport or nearby area (unless stadtfahrt enabled)
     const isAirportTrip = isAirportArea(pickupVal) || isAirportArea(dropoffVal);
     if (!isAirportTrip && !stadtfahrtEnabled) {
-      setFormError(l.errAirport); return;
+      errKindRef.current = 'airport'; setFormError(l.errAirport); return;
     }
     setFormError('');
     setSearching(true);
@@ -780,6 +798,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
         router.push(`${prefix}/ergebnisse?${params.toString()}`);
       }
     } catch {
+      errKindRef.current = 'route'; routeErrAtRef.current = { p: pickupVal, d: dropoffVal };
       setFormError(l.errRoute);
     } finally {
       setSearching(false);
