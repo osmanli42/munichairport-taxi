@@ -5,6 +5,7 @@ import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels, windowM
 import { visitorDistanceToBase } from '../services/visitorDistance';
 import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
 import { vacanciesAround, DEFAULT_LEER_END_KM, parsePlzList } from '../services/leerfahrt';
+import { searchStats } from '../services/searchDemand';
 import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 
 const router = Router();
@@ -336,6 +337,24 @@ router.get('/admin/leer', authenticateAdmin, async (_req: Request, res: Response
   } catch (e: any) {
     console.error('leer overview failed:', e?.message);
     res.status(500).json({ error: 'Failed to load Leerfahrt overview' });
+  }
+});
+
+// GET /api/auto-discounts/admin/search-stats?from=YYYY-MM-DD&to=YYYY-MM-DD — Arama talebi:
+// wofür gesucht wurde (Fahrtag/-stunde) und wie viel davon gebucht wurde (Replay-Daten).
+router.get('/admin/search-stats', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
+  const re = /^\d{4}-\d{2}-\d{2}$/;
+  const to = re.test(String(req.query.to)) ? String(req.query.to) : berlinDateSql(0);
+  const from = re.test(String(req.query.from)) ? String(req.query.from) : berlinDateSql(-6);
+  if (from > to || (Date.parse(to) - Date.parse(from)) / 86_400_000 > 92) {
+    res.status(400).json({ error: 'Zeitraum ungültig (höchstens 92 Tage)' });
+    return;
+  }
+  try {
+    res.json(await searchStats(from, to));
+  } catch (e: any) {
+    console.error('search stats failed:', e?.message);
+    res.status(500).json({ error: 'Failed to load search stats' });
   }
 });
 

@@ -24,6 +24,8 @@ const FLUSH_INTERVAL_MS = 5_000;
  *  - call_click  : telefon / WhatsApp tıklaması — bu müşteri "vazgeçmedi", kanal değiştirdi
  *  - tab_away    : fiyat/form sayfasında sekmeden ayrılıp geri döndü (saniye) — karşılaştırma
  *  - price_copy  : fiyat kopyalandı — rakip karşılaştırma sinyali
+ *  - discount_shown : araç kartında otomatik indirim gösterildi (tutar|kural) — indirimi
+ *                     görenlerin rezervasyon oranını ölçmek için (Rabatte → Arama talebi)
  */
 // "http://host/api/bookings?x=1" → "/bookings" — hata etiketini kısa ve gruplanabilir tutar
 function shortPath(url: string): string {
@@ -127,6 +129,18 @@ export default function BookingFunnelTracker() {
       push('price_shown', `${best.price.toFixed(2)}|${km}|${best.vehicle}`);
     };
 
+    // --- 3b) Gösterilen indirim: kartlarda bir otomatik indirim varsa bir kez yaz.
+    // İndirim fiyattan sonra yüklenir, bu yüzden fiyattan ayrı ve birkaç saniye boyunca bakılır.
+    let discountSent = false;
+    const reportDiscount = () => {
+      if (discountSent) return;
+      const card = document.querySelector('[data-discount]') as HTMLElement | null;
+      const v = card?.getAttribute('data-discount') || '';
+      if (!v) return;
+      discountSent = true;
+      push('discount_shown', v);
+    };
+
     // --- 4) Telefon / WhatsApp: kanal değiştiren müşteri terk sayılmamalı ---
     const onClick = (e: Event) => {
       const a = (e.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
@@ -219,8 +233,13 @@ export default function BookingFunnelTracker() {
     window.addEventListener('unhandledrejection', onRejection);
     reportErrors(document); // ilk render'da zaten görünen hatalar
     reportPrice();
-    // Fiyatlar API'den sonra geldiği için kısa bir süre boyunca tekrar denenir
-    const priceTimer = window.setInterval(() => { reportPrice(); if (priceSent) window.clearInterval(priceTimer); }, 1_000);
+    reportDiscount();
+    // Fiyatlar ve indirim API'den sonra geldiği için kısa bir süre boyunca tekrar denenir
+    const priceTimer = window.setInterval(() => {
+      reportPrice();
+      reportDiscount();
+      if (priceSent && discountSent) window.clearInterval(priceTimer);
+    }, 1_000);
     window.setTimeout(() => window.clearInterval(priceTimer), 20_000);
 
     document.addEventListener('click', onClick, true);

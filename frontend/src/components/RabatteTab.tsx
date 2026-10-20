@@ -8,6 +8,7 @@ import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/
 import DemandPanel from '@/components/discount/DemandPanel';
 import GapPanel from '@/components/discount/GapPanel';
 import LeerPanel from '@/components/discount/LeerPanel';
+import SearchDemandPanel from '@/components/discount/SearchDemandPanel';
 
 const WEEKDAYS = [
   { v: 1, label: 'Mo' }, { v: 2, label: 'Di' }, { v: 3, label: 'Mi' }, { v: 4, label: 'Do' },
@@ -393,6 +394,9 @@ export default function RabatteTab({ token }: { token: string }) {
 
       {/* Leerfahrt indirimi — ana şalter + boşa dönecek araçlar */}
       <LeerPanel onTemplate={startLeerTemplate} refreshKey={demandRefresh} disabled={saving} />
+
+      {/* Arama talebi — hangi gün/saatler aranıyor, kaçı rezervasyona dönüyor (dönem karşılaştırmalı) */}
+      <SearchDemandPanel refreshKey={demandRefresh} />
 
       {/* Tarif-Untergrenze — §51 PBefG */}
       <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>

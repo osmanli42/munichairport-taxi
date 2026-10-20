@@ -316,6 +316,8 @@ const ALLOWED_EVENT_TYPES = new Set([
   // vazgeçme analizi (BookingFunnelTracker)
   'field_focus', 'field_error', 'js_error', 'api_error',
   'price_shown', 'call_click', 'tab_away', 'price_copy', 'address_unverified',
+  // Rabatte → Arama talebi: araç kartında gösterilen otomatik indirim (tutar|kural)
+  'discount_shown',
   // Cookie-Banner (CookieBanner): gezeigt (target = popup|bottom) und Wahl (target = all|necessary|custom|<style>)
   'consent_shown', 'consent',
 ]);

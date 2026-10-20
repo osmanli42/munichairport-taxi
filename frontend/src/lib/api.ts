@@ -382,7 +382,24 @@ export interface DemandOverview {
   stats: { bookings: number; discount: number; revenue: number };
 }
 
+export interface SearchBucket { searches: number; booked: number }
+export interface SearchStats {
+  from: string; to: string;
+  totals: { searches: number; sessions: number; booked: number; bookings: number };
+  byHour: SearchBucket[];
+  defaultTime: SearchBucket;
+  byBlock: (SearchBucket & { key: string })[];
+  byWeekday: SearchBucket[];
+  byLead: (SearchBucket & { key: string })[];
+  discount: { shown: SearchBucket; notShown: SearchBucket };
+  upcoming: (SearchBucket & { date: string })[];
+}
+
 export const autoDiscountsApi = {
+  searchStats: async (from: string, to: string): Promise<SearchStats> => {
+    const response = await api.get('/auto-discounts/admin/search-stats', { params: { from, to } });
+    return response.data;
+  },
   demand: async (): Promise<DemandOverview> => {
     const response = await api.get('/auto-discounts/admin/demand');
     return response.data;
