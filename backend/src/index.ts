@@ -101,6 +101,15 @@ app.get('/api/smtp-test', async (req, res) => {
 });
 
 // Routes
+// Admin data and every PDF (invoices, Storno, proforma) are per-user and change over time under the
+// same URL (e.g. …/rechnung.pdf after a re-issue). Cloudflare adds a 4 h browser cache to .pdf by
+// default, so the browser kept showing the old invoice — never let these be cached anywhere.
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/admin') || /\.pdf$/i.test(req.path) || req.path.startsWith('/company')) {
+    res.set('Cache-Control', 'private, no-store, max-age=0');
+  }
+  next();
+});
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin/2fa', admin2faRouter);
 app.use('/api/booking-confirm', bookingConfirmRouter);
