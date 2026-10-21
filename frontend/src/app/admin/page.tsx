@@ -9,15 +9,15 @@ import {
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
-  Settings2, Route, Euro, Timer, Milestone, MoonStar, Moon, PhoneCall, TextCursorInput, Plane, Smartphone,
-  ClipboardCheck, Hotel, Megaphone, Workflow, Landmark,
+  Settings, Settings2, Route, Milestone, Moon, Plane, Megaphone, Workflow, Landmark, Clock, Phone, Ban, CarFront,
+  ClipboardList, Bike, Save, Trash2, Bell,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 import { InvoiceCustomerBookingCard, InvoiceCustomersList } from '@/components/InvoiceCustomerAdmin';
-import { Toggle, SettingsGroup, SettingRow, FieldPanel, UnitField, SaveButton } from '@/components/admin/SettingsUI';
+import { Toggle, SectionCard, SettingCard, Field, BlockField, HourSelect, SectionNav } from '@/components/admin/SettingsUI';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
@@ -190,6 +190,10 @@ export default function AdminPage() {
   const [newPlzStadt, setNewPlzStadt] = useState('');
   const [newPlzSurcharge, setNewPlzSurcharge] = useState('10');
   const [plzSaving, setPlzSaving] = useState(false);
+  // Preise-Tab: geänderte, noch nicht gespeicherte Einstellungs-Schlüssel (gesammelt gespeichert)
+  const [settingsDirty, setSettingsDirty] = useState<string[]>([]);
+  const [editingPlz, setEditingPlz] = useState<{ id: number; stadt: string; surcharge: string } | null>(null);
+  const [showPlzForm, setShowPlzForm] = useState(false);
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
     bank_name: '', bank_iban: '', bank_bic: '', bank_kontoinhaber: '',
     company_name: '', company_address: '', company_phone: '', company_email: '',
@@ -915,21 +919,61 @@ export default function AdminPage() {
   }
 
   // Allgemeine Einstellungen: ein Feld/mehrere Felder speichern und Erfolgsmeldung zeigen
-  const saveSettingsPatch = async (patch: Record<string, string>, message: string) => {
+  const saveSettingsPatch = async (patch: Record<string, string>, message: string): Promise<boolean> => {
     setSettingsSaving(true);
+    let ok = false;
     try {
       const updated = await adminApi.updateSettings(patch);
-      setSettings(updated);
+      // noch ungespeicherte Eingaben anderer Felder nicht mit dem Serverstand überschreiben
+      const keep = settingsDirty.filter(k => !(k in patch));
+      setSettings(prev => { const next = { ...updated }; keep.forEach(k => { next[k] = prev[k]; }); return next; });
       setPriceSuccess(message);
       setTimeout(() => setPriceSuccess(''), 3000);
+      ok = true;
     } catch { }
     setSettingsSaving(false);
+    return ok;
   };
   // defaultOn: Schalter, die ohne gespeicherten Wert als aktiv gelten (!== '0' statt === '1')
   const settingOn = (key: string, defaultOn = false) => (defaultOn ? settings[key] !== '0' : settings[key] === '1');
   const toggleSetting = (key: string, label: string, defaultOn = false) => {
     const newVal = settingOn(key, defaultOn) ? '0' : '1';
     return saveSettingsPatch({ [key]: newVal }, `${label} ${newVal === '1' ? 'aktiviert' : 'deaktiviert'}`);
+  };
+  // Wertfelder werden erst über „Änderungen speichern“ gesammelt gesichert
+  const editSetting = (key: string, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettingsDirty(prev => (prev.includes(key) ? prev : [...prev, key]));
+  };
+  const normalizeSetting = (key: string, value: string | undefined): string => {
+    if (key === 'night_cancel_start') return toClock(value, '20:30');
+    if (key === 'night_cancel_end') return toClock(value, '08:30');
+    if (key === 'night_confirm_ride_until') return value || '9';
+    return value ?? '';
+  };
+  // Fahrzeugkarte geändert? (Vergleich mit dem zuletzt geladenen Stand, gleiche Umrechnung wie loadPrices)
+  const vehicleDirty = (p: Price) => {
+    const e = priceEdits[p.vehicle_type];
+    if (!e) return false;
+    return e.base_price !== p.base_price.toString()
+      || e.price_per_km !== p.price_per_km.toString()
+      || e.roundtrip_discount !== (p.roundtrip_discount ?? 5).toString()
+      || e.fahrrad_price !== (p.fahrrad_price ?? 10).toString()
+      || e.fahrrad_enabled !== (p.fahrrad_enabled !== 0)
+      || e.max_passengers !== (p.max_passengers ?? 8).toString()
+      || e.max_luggage !== (p.max_luggage ?? 10).toString()
+      || e.min_price !== (p.min_price ?? 0).toString()
+      || e.min_price_km !== (p.min_price_km ?? 15).toString();
+  };
+  const dirtyVehicles = prices.filter(vehicleDirty).map(p => p.vehicle_type);
+  const pendingChanges = settingsDirty.length + dirtyVehicles.length;
+  const saveAllChanges = async () => {
+    if (settingsDirty.length) {
+      const patch: Record<string, string> = {};
+      settingsDirty.forEach(k => { patch[k] = normalizeSetting(k, settings[k]); });
+      if (await saveSettingsPatch(patch, 'Änderungen gespeichert')) setSettingsDirty([]);
+    }
+    for (const vt of dirtyVehicles) await savePrice(vt);
   };
 
   if (!isLoggedIn) {
@@ -1525,673 +1569,476 @@ export default function AdminPage() {
         )}
 
         {/* Prices */}
-        {activeTab === 'prices' && (
-          <div className="space-y-4">
-            {priceSuccess && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-                {priceSuccess}
+        {activeTab === 'prices' && (() => {
+          const sw = (key: string, label: string, defaultOn = false) => (
+            <Toggle on={settingOn(key, defaultOn)} disabled={settingsSaving} label={label} onClick={() => toggleSetting(key, label, defaultOn)} />
+          );
+          const sv = (key: string, fallback: string) => ({
+            value: settings[key] || fallback,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => editSetting(key, e.target.value),
+          });
+          type PriceEditKey = 'base_price' | 'price_per_km' | 'roundtrip_discount' | 'fahrrad_price' | 'max_passengers' | 'max_luggage' | 'min_price' | 'min_price_km';
+          const pe = (vt: string, key: PriceEditKey) => ({
+            value: priceEdits[vt]?.[key] ?? '',
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => setPriceEdits(prev => ({ ...prev, [vt]: { ...prev[vt], [key]: e.target.value } })),
+          });
+          const vehicleMeta: Record<string, { name: string; tagline: string; img: string }> = {
+            kombi: { name: 'Kombi / Limousine', tagline: 'Ideal für kleine Gruppen', img: '/images/kombi.webp' },
+            van: { name: 'Van', tagline: 'Beliebt bei Familien', img: '/images/van.webp' },
+            grossraumtaxi: { name: 'Großraumtaxi', tagline: 'Gruppen & viel Gepäck', img: '/images/grossraumtaxi.webp' },
+          };
+          return (
+          <div className="space-y-5 pb-24">
+            {/* Kopf */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-gray-200/70 bg-white text-primary-600 shadow-sm">
+                  <Settings className="h-7 w-7" aria-hidden />
+                </span>
+                <div>
+                  <h2 className="text-2xl font-bold leading-tight text-gray-900">Preise &amp; Einstellungen</h2>
+                  <p className="text-sm text-gray-500">Verwalten Sie Preisstruktur, Zuschläge, Fahrzeuge und Buchungsregeln.</p>
+                </div>
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                {pendingChanges > 0 ? (
+                  <span className="hidden sm:inline-flex whitespace-nowrap items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    {pendingChanges} {pendingChanges === 1 ? 'ungespeicherte Änderung' : 'ungespeicherte Änderungen'}
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex whitespace-nowrap items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                    Alles gespeichert
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={saveAllChanges}
+                  disabled={pendingChanges === 0 || settingsSaving}
+                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-gold-400 px-5 text-sm font-semibold text-primary-800 shadow-sm transition hover:bg-gold-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
+                >
+                  <Save className="h-[18px] w-[18px]" aria-hidden />
+                  Änderungen speichern
+                </button>
+              </div>
+            </div>
 
-            {/* Global Settings */}
-            {(() => {
-              const switches: [string, boolean][] = [
-                ['stadtfahrt_enabled', false], ['zwischenstopp_enabled', false], ['night_confirm_enabled', false],
-                ['night_cancel_enabled', true], ['flight_validation_enabled', false], ['phone_validation_enabled', false],
-                ['booking_form_restore_enabled', true], ['address_poi_enabled', true], ['social_proof_enabled', false],
-                ['auto_status_enabled', false],
-              ];
-              const activeCount = switches.filter(([k, d]) => settingOn(k, d)).length;
-              const sw = (key: string, label: string, defaultOn = false) => (
-                <Toggle on={settingOn(key, defaultOn)} disabled={settingsSaving} label={label} onClick={() => toggleSetting(key, label, defaultOn)} />
-              );
-              return (
-                <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 mb-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 text-white">
-                        <Settings2 className="h-5 w-5" aria-hidden />
-                      </span>
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-lg leading-tight">Allgemeine Einstellungen</h3>
-                        <p className="text-sm text-gray-500">Fahrten, Nachtregeln, Buchungsformular und Automatik</p>
+            <SectionNav items={[
+              { id: 'preise-allgemein', label: 'Allgemeine Einstellungen', icon: Car },
+              { id: 'preise-fahrzeuge', label: 'Fahrzeugpreise', icon: CarFront },
+              { id: 'preise-plz', label: 'PLZ-Zuschläge', icon: MapPin },
+              { id: 'preise-festpreis', label: 'Festpreisrouten', icon: CalendarDays },
+              { id: 'preise-regeln', label: 'Buchungsregeln', icon: ClipboardList },
+              { id: 'preise-weitere', label: 'Weitere Optionen', icon: Settings2 },
+            ]} />
+
+            {/* ── Allgemeine Einstellungen ── */}
+            <SectionCard id="preise-allgemein" icon={Settings} title="Allgemeine Einstellungen">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <SettingCard
+                  icon={Building2}
+                  title="Stadtfahrt erlauben"
+                  description="Nicht-Flughafen-Fahrten erlauben (Anfahrtskosten werden berechnet)."
+                  on={settingOn('stadtfahrt_enabled')}
+                  control={sw('stadtfahrt_enabled', 'Stadtfahrt')}
+                />
+                <SettingCard
+                  icon={Route}
+                  title="Anfahrtskosten pro km (€)"
+                  description="Preis pro km für die Anfahrt von Freising zum Abholort (nur bei Nicht-Flughafen-Fahrten)."
+                >
+                  <Field unit="€/km" type="number" step="0.10" min="0" aria-label="Anfahrtskosten pro km" {...sv('anfahrt_price_per_km', '1.70')} />
+                </SettingCard>
+                <SettingCard
+                  icon={Clock}
+                  title="Minimum Vorlaufzeit (Stunden)"
+                  description="Buchungen müssen mindestens so viele Stunden vor der Fahrt erfolgen. Standard: 1,5 Std."
+                >
+                  <Field unit="Std." type="number" step="0.5" min="0" aria-label="Minimum Vorlaufzeit" {...sv('min_advance_hours', '1.5')} />
+                </SettingCard>
+
+                <SettingCard
+                  icon={Moon}
+                  tone="amber"
+                  title="Nacht-Bestätigung"
+                  description="Hinweis bei Buchungen in der Nacht und früher Abfahrt am Morgen anzeigen."
+                  info={<>Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</>}
+                  on={settingOn('night_confirm_enabled')}
+                  control={sw('night_confirm_enabled', 'Nacht-Bestätigung')}
+                  indent={false}
+                >
+                  {settingOn('night_confirm_enabled') && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <HourSelect label="Von" value={settings.night_confirm_start || '22'} onChange={(v) => editSetting('night_confirm_start', v)} />
+                      <HourSelect label="bis" value={settings.night_confirm_end || '7'} onChange={(v) => editSetting('night_confirm_end', v)} />
+                      <HourSelect label="Fahrt vor" value={settings.night_confirm_ride_until || '9'} onChange={(v) => editSetting('night_confirm_ride_until', v)} />
+                    </div>
+                  )}
+                </SettingCard>
+                <SettingCard
+                  icon={Moon}
+                  tone="amber"
+                  badge={<span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 ring-2 ring-white"><Ban className="h-2.5 w-2.5 text-white" aria-hidden /></span>}
+                  title="Nacht-Stornierung"
+                  description="Online-Storno im gewählten Zeitraum sperren – Kunde muss anrufen (Münchner Zeit)."
+                  info={<>Storniert ein Kunde zwischen „Von“ und „Bis“ über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online.</>}
+                  on={settingOn('night_cancel_enabled', true)}
+                  control={sw('night_cancel_enabled', 'Nacht-Stornierung', true)}
+                  indent={false}
+                >
+                  {settingOn('night_cancel_enabled', true) && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <Field inline label="Von" type="time" widthClass="w-[7.5rem]"
+                        value={toClock(settings.night_cancel_start, '20:30')}
+                        onChange={(e) => editSetting('night_cancel_start', e.target.value)} />
+                      <Field inline label="bis" type="time" widthClass="w-[7.5rem]"
+                        value={toClock(settings.night_cancel_end, '08:30')}
+                        onChange={(e) => editSetting('night_cancel_end', e.target.value)} />
+                    </div>
+                  )}
+                </SettingCard>
+                <SettingCard
+                  icon={Plane}
+                  title="Flugnummer-Validierung"
+                  description="Prüft eingegebene Flugnummern live gegen eine Flugdaten-API."
+                  info={<>Gilt bei Flughafen-Abholungen. Der Kunde sieht eine Bestätigung oder Warnung. Blockiert die Buchung nie.</>}
+                  on={settingOn('flight_validation_enabled')}
+                  control={sw('flight_validation_enabled', 'Flugnummer-Validierung')}
+                />
+
+                <SettingCard
+                  icon={Phone}
+                  title="Telefonnummer-Prüfung"
+                  description="Prüft Handynummern auf fehlende Ziffern, Ländervorwahl und Festnetz."
+                  info={<>Die Prüfung läuft beim Tippen. Blockiert die Buchung nie — der Kunde kann immer absenden.</>}
+                  on={settingOn('phone_validation_enabled')}
+                  control={sw('phone_validation_enabled', 'Telefonnummer-Prüfung')}
+                />
+                <SettingCard
+                  icon={FileText}
+                  title="Formular merken"
+                  description="Eingegebene Kundendaten im Browser behalten (keine Kartendaten)."
+                  info={<>Geht der Kunde von „Ihre Angaben“ zurück (z. B. um ein anderes Fahrzeug anzusehen), bleiben Name, Telefon, E-Mail, Flugnummer, Extras und Rechnungsadresse ausgefüllt. Nur im Browser-Tab des Kunden gespeichert, nach der Buchung gelöscht.</>}
+                  on={settingOn('booking_form_restore_enabled', true)}
+                  control={sw('booking_form_restore_enabled', 'Formular merken', true)}
+                />
+                <SettingCard
+                  icon={MapPin}
+                  title="Hotels & Lokale an der Adresse"
+                  description="Zeigt Hotels, Gasthäuser und Restaurants in der Adresssuche (max. 3 pro Adresse)."
+                  info={<>Tippt der Kunde eine Hausadresse (z. B. „Sonnenstraße 25“), erscheint in der Vorschlagsliste, was genau dort ist. Kostet pro Adresse eine Google-Umkreissuche; Ergebnisse werden 24 h zwischengespeichert.</>}
+                  on={settingOn('address_poi_enabled', true)}
+                  control={sw('address_poi_enabled', 'Hotels & Lokale an der Adresse', true)}
+                />
+              </div>
+            </SectionCard>
+
+            {/* ── Fahrzeugpreise ── */}
+            <SectionCard id="preise-fahrzeuge" icon={CarFront} title="Fahrzeugpreise & Parameter" subtitle="Grundpreise, Kilometerpreise, Mindestgebühr und Fahrzeugkapazitäten verwalten.">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {prices.map((price) => {
+                  const vt = price.vehicle_type;
+                  const meta = vehicleMeta[vt] ?? { name: vt, tagline: '', img: '' };
+                  const dirty = vehicleDirty(price);
+                  return (
+                    <div key={vt} className={cn('flex flex-col overflow-hidden rounded-xl border bg-white transition-colors', dirty ? 'border-gold-400 ring-1 ring-gold-400' : 'border-gray-200/80')}>
+                      <div className="relative h-36 overflow-hidden bg-gray-100">
+                        {meta.img && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={meta.img} alt="" className="h-full w-full object-cover object-center" />
+                        )}
+                        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow-sm">
+                          <Users className="h-3 w-3" aria-hidden />
+                          bis {priceEdits[vt]?.max_passengers || price.max_passengers} Personen
+                        </span>
+                        {dirty && (
+                          <span className="absolute right-3 top-3 rounded-full bg-gold-400 px-2.5 py-1 text-[11px] font-semibold text-primary-800 shadow-sm">Geändert</span>
+                        )}
+                      </div>
+                      <div className="border-b border-gray-100 px-4 pb-3 pt-3.5">
+                        <h4 className="text-lg font-bold leading-tight text-gray-900">{meta.name}</h4>
+                        <p className="text-xs text-gray-500">{meta.tagline}</p>
+                      </div>
+
+                      <div className="flex flex-1 flex-col gap-4 p-4">
+                        <div className="grid grid-cols-3 gap-2.5">
+                          <BlockField label="Grundpreis (€)" type="number" step="0.01" min="0" {...pe(vt, 'base_price')} />
+                          <BlockField label="Preis pro km (€)" type="number" step="0.01" min="0" {...pe(vt, 'price_per_km')} />
+                          <BlockField label="Rückfahrt-Rabatt" unit="%" type="number" step="1" min="0" max="50" {...pe(vt, 'roundtrip_discount')} />
+                        </div>
+                        <div>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <BlockField label="Mindestpreis (€)" type="number" step="0.50" min="0" {...pe(vt, 'min_price')} />
+                            <BlockField label="Gültig bis (km)" type="number" step="1" min="0" {...pe(vt, 'min_price_km')} />
+                          </div>
+                          <p className="mt-1.5 text-[11px] text-gray-400">Mindestpreis gilt bis zu diesem km-Wert (0 = deaktiviert)</p>
+                        </div>
+                        <div className="flex min-h-10 items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <Bike className="h-5 w-5 text-gray-700" aria-hidden />
+                            <span className="text-sm font-semibold text-gray-800">Fahrrad</span>
+                            <Toggle
+                              size="sm"
+                              label={`Fahrrad für ${meta.name}`}
+                              on={!!priceEdits[vt]?.fahrrad_enabled}
+                              onClick={() => setPriceEdits(prev => ({ ...prev, [vt]: { ...prev[vt], fahrrad_enabled: !prev[vt]?.fahrrad_enabled } }))}
+                            />
+                          </div>
+                          {priceEdits[vt]?.fahrrad_enabled ? (
+                            <Field unit="€/Stk." type="number" step="0.50" min="0" widthClass="w-24" aria-label={`Fahrradpreis ${meta.name}`} {...pe(vt, 'fahrrad_price')} />
+                          ) : (
+                            <span className="text-xs text-gray-400">deaktiviert</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <BlockField label="Max. Personen" type="number" step="1" min="1" max="20" {...pe(vt, 'max_passengers')} />
+                            <BlockField label="Max. Koffer" type="number" step="1" min="0" max="30" {...pe(vt, 'max_luggage')} />
+                          </div>
+                          <p className="mt-1.5 text-[11px] text-gray-400">Keine Buchung über diesem Limit möglich</p>
+                        </div>
+                        <div className="mt-auto space-y-1.5">
+                          <button
+                            type="button"
+                            onClick={() => savePrice(vt)}
+                            className={cn(
+                              'flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+                              dirty ? 'bg-gold-400 text-primary-800 hover:bg-gold-500' : 'bg-primary-700 text-white hover:bg-primary-800'
+                            )}
+                          >
+                            <Save className="h-4 w-4" aria-hidden />
+                            {dirty ? 'Änderungen speichern' : 'Speichern'}
+                          </button>
+                          <p className="text-center text-[11px] text-gray-400">Zuletzt geändert: {new Date(price.updated_at).toLocaleDateString('de-DE')}</p>
+                        </div>
                       </div>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      {activeCount} von {switches.length} Funktionen aktiv
-                    </span>
-                  </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 grid gap-2 rounded-xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-600 md:grid-cols-3">
+                <p><strong className="text-slate-800">Einfach:</strong> Grundpreis + (Distanz in km × Preis/km)</p>
+                <p><strong className="text-slate-800">Hin- &amp; Rückfahrt:</strong> (Einfach × 2) − Rabatt %</p>
+                <p><strong className="text-slate-800">Mindestgebühr:</strong> Distanz ≤ km-Limit und Preis &lt; Mindestpreis → Mindestpreis</p>
+              </div>
+            </SectionCard>
 
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-                    {/* ── Fahrten & Preise ── */}
-                    <SettingsGroup icon={Car} title="Fahrten & Preise" subtitle="Was Kunden buchen können und ab wann">
-                      <SettingRow
-                        icon={Route}
-                        title="Stadtfahrt erlauben"
-                        summary="Nicht-Flughafen-Fahrten erlauben (Anfahrtskosten werden berechnet)."
-                        on={settingOn('stadtfahrt_enabled')}
-                        control={sw('stadtfahrt_enabled', 'Stadtfahrt')}
-                      />
-                      <SettingRow
-                        icon={Euro}
-                        title="Anfahrtskosten pro km"
-                        summary="Anfahrt von Freising zum Abholort – nur bei Nicht-Flughafen-Fahrten."
-                      >
-                        <FieldPanel>
-                          <UnitField
-                            label="Preis"
-                            unit="€/km"
-                            type="number"
-                            step="0.10"
-                            min="0"
-                            value={settings.anfahrt_price_per_km || '1.70'}
-                            onChange={(e) => setSettings(prev => ({ ...prev, anfahrt_price_per_km: e.target.value }))}
-                          />
-                          <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ anfahrt_price_per_km: settings.anfahrt_price_per_km }, 'Anfahrtskosten aktualisiert')} />
-                        </FieldPanel>
-                      </SettingRow>
-                      <SettingRow
-                        icon={Timer}
-                        title="Minimum Vorlaufzeit"
-                        summary="So viele Stunden vor der Fahrt muss spätestens gebucht werden. Standard: 1,5 Std."
-                      >
-                        <FieldPanel>
-                          <UnitField
-                            label="Vorlauf"
-                            unit="Std."
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            value={settings.min_advance_hours || '1.5'}
-                            onChange={(e) => setSettings(prev => ({ ...prev, min_advance_hours: e.target.value }))}
-                          />
-                          <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ min_advance_hours: settings.min_advance_hours }, 'Vorlaufzeit aktualisiert')} />
-                        </FieldPanel>
-                      </SettingRow>
-                      <SettingRow
-                        icon={Milestone}
-                        title="Zwischenstopp erlauben"
-                        summary="Kunden können einen Zwischenstopp zur Fahrt hinzufügen."
-                        on={settingOn('zwischenstopp_enabled')}
-                        control={sw('zwischenstopp_enabled', 'Zwischenstopp')}
-                      />
-                    </SettingsGroup>
-
-                    {/* ── Nachtregeln ── */}
-                    <SettingsGroup icon={MoonStar} title="Nachtregeln" subtitle="Zeiten in Münchner Ortszeit">
-                      <SettingRow
-                        icon={Moon}
-                        title="Nacht-Bestätigung"
-                        summary="Nachts gebuchte Frühfahrten: Kunde wird gebeten, zusätzlich telefonisch zu bestätigen."
-                        details={<>Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Er steht auf der Bestätigungsseite und in der E-Mail. Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</>}
-                        on={settingOn('night_confirm_enabled')}
-                        control={sw('night_confirm_enabled', 'Nacht-Bestätigung')}
-                      >
-                        {settingOn('night_confirm_enabled') && (
-                          <FieldPanel>
-                            <UnitField label="Buchung von" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
-                              value={settings.night_confirm_start || '22'}
-                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_start: e.target.value }))} />
-                            <UnitField label="bis" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
-                              value={settings.night_confirm_end || '7'}
-                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_end: e.target.value }))} />
-                            <UnitField label="Fahrt vor" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
-                              value={settings.night_confirm_ride_until || '9'}
-                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_ride_until: e.target.value }))} />
-                            <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end, night_confirm_ride_until: settings.night_confirm_ride_until || '9' }, 'Nachtzeitraum aktualisiert')} />
-                          </FieldPanel>
-                        )}
-                      </SettingRow>
-                      <SettingRow
-                        icon={PhoneCall}
-                        title="Nacht-Stornierung"
-                        summary="Nachts kein Online-Storno für Frühfahrten – Kunde muss anrufen, du bekommst sofort eine Warn-E-Mail."
-                        details={<>Storniert ein Kunde zwischen „Von“ und „Bis“ über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online. Standard: 20:30–08:30 Uhr.</>}
-                        on={settingOn('night_cancel_enabled', true)}
-                        control={sw('night_cancel_enabled', 'Nacht-Stornierung', true)}
-                      >
-                        {settingOn('night_cancel_enabled', true) && (
-                          <FieldPanel>
-                            <UnitField label="Von" unit="Uhr" type="time" widthClass="w-[6.5rem]"
-                              value={toClock(settings.night_cancel_start, '20:30')}
-                              onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_start: e.target.value }))} />
-                            <UnitField label="Bis" unit="Uhr" type="time" widthClass="w-[6.5rem]"
-                              value={toClock(settings.night_cancel_end, '08:30')}
-                              onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_end: e.target.value }))} />
-                            <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ night_cancel_start: toClock(settings.night_cancel_start, '20:30'), night_cancel_end: toClock(settings.night_cancel_end, '08:30') }, 'Nacht-Stornierung: Zeitraum aktualisiert')} />
-                          </FieldPanel>
-                        )}
-                      </SettingRow>
-                    </SettingsGroup>
-
-                    {/* ── Buchungsformular ── */}
-                    <SettingsGroup icon={TextCursorInput} title="Buchungsformular" subtitle="Hilfen für Kunden auf /buchen und /ergebnisse – blockieren nie">
-                      <SettingRow
-                        icon={Plane}
-                        title="Flugnummer-Validierung"
-                        summary="Prüft Flugnummern bei Flughafen-Abholungen live und zeigt Bestätigung oder Warnung."
-                        details={<>Abgleich gegen eine Flugdaten-API. Blockiert die Buchung nie.</>}
-                        on={settingOn('flight_validation_enabled')}
-                        control={sw('flight_validation_enabled', 'Flugnummer-Validierung')}
-                      />
-                      <SettingRow
-                        icon={Smartphone}
-                        title="Telefonnummer-Prüfung"
-                        summary="Weist beim Tippen auf fehlende Ziffern, falsche Ländervorwahl und Festnetznummern hin."
-                        details={<>Blockiert die Buchung nie — der Kunde kann immer absenden.</>}
-                        on={settingOn('phone_validation_enabled')}
-                        control={sw('phone_validation_enabled', 'Telefonnummer-Prüfung')}
-                      />
-                      <SettingRow
-                        icon={ClipboardCheck}
-                        title="Formular merken"
-                        summary="Geht der Kunde von „Ihre Angaben“ zurück, bleiben seine Eingaben ausgefüllt."
-                        details={<>Betrifft Name, Telefon, E-Mail, Flugnummer, Extras und Rechnungsadresse (z. B. wenn er ein anderes Fahrzeug ansehen will). Nur im Browser-Tab des Kunden gespeichert, nach der Buchung gelöscht — keine Kartendaten.</>}
-                        on={settingOn('booking_form_restore_enabled', true)}
-                        control={sw('booking_form_restore_enabled', 'Formular merken', true)}
-                      />
-                      <SettingRow
-                        icon={Hotel}
-                        title="Hotels & Lokale an der Adresse"
-                        summary="Zeigt bei Hausadressen, was genau dort ist – Hotel, Gasthaus, Restaurant (max. 3)."
-                        details={<>Beispiel: Tippt der Kunde „Sonnenstraße 25“, erscheint das Hotel an dieser Adresse in der Vorschlagsliste. Kostet pro Adresse eine Google-Umkreissuche; Ergebnisse werden 24 h zwischengespeichert.</>}
-                        on={settingOn('address_poi_enabled', true)}
-                        control={sw('address_poi_enabled', 'Hotels & Lokale an der Adresse', true)}
-                      />
-                      <SettingRow
-                        icon={Megaphone}
-                        title="Social-Proof-Toast"
-                        summary="Animierte Hinweise auf kürzliche Buchungen auf /buchen und /ergebnisse."
-                        details={<>Beispiel: „Vor 5 Std.: Max M. hat Fahrt gebucht ✓“.</>}
-                        on={settingOn('social_proof_enabled')}
-                        control={sw('social_proof_enabled', 'Social-Proof-Toast')}
-                      />
-                    </SettingsGroup>
-
-                    {/* ── Automatik & Zahlung ── */}
-                    <SettingsGroup icon={Zap} title="Automatik & Zahlung" subtitle="Status-Automatik und Rechnungskunden">
-                      <SettingRow
-                        icon={Workflow}
-                        title="Automatischer Buchungsstatus"
-                        summary="Neue Buchungen automatisch bestätigen und nach der Abholzeit abschließen."
-                        details={<>Ohne manuelles Klicken: Neue Buchungen werden nach der festgelegten Zeit bestätigt, bestätigte Buchungen abgeschlossen, sobald die Abholzeit vorbei ist. <strong>Beim Aktivieren werden bereits fällige Buchungen sofort umgestellt</strong> – vorher die Liste kurz prüfen.</>}
-                        on={settingOn('auto_status_enabled')}
-                        control={sw('auto_status_enabled', 'Automatischer Status')}
-                      >
-                        {settingOn('auto_status_enabled') && (
-                          <div className="space-y-3">
-                            <FieldPanel>
-                              <UnitField label="Neu → Bestätigt nach" unit="Std." type="number" min="0" step="0.5" widthClass="w-16"
-                                value={settings.auto_confirm_hours || '1'}
-                                onChange={(e) => setSettings(prev => ({ ...prev, auto_confirm_hours: e.target.value }))} />
-                              <UnitField label="Abgeschlossen nach Abholzeit" unit="Min." type="number" min="0" widthClass="w-16"
-                                value={settings.auto_complete_buffer_minutes || '0'}
-                                onChange={(e) => setSettings(prev => ({ ...prev, auto_complete_buffer_minutes: e.target.value }))} />
-                              <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ auto_confirm_hours: settings.auto_confirm_hours, auto_complete_buffer_minutes: settings.auto_complete_buffer_minutes }, 'Zeiten aktualisiert')} />
-                            </FieldPanel>
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1.5">Firmenkunden mit hinterlegter Karte, die bei Fahrtabschluss automatisch belastet werden („bei Abschluss zahlen“)</p>
-                              <div className="inline-flex rounded-lg bg-gray-100 p-0.5" role="radiogroup" aria-label="Firmenkunden in der Automatik">
-                                {([['0', 'Firmenkunden ausschließen', 'Firmenkunden werden von der Automatik ausgeschlossen'], ['1', 'Alle Fahrten', 'Alle Fahrten werden automatisch abgeschlossen — inkl. automatischer Kartenbelastung']] as const).map(([val, label, msg]) => {
-                                  const active = val === '1' ? settings.auto_complete_include_company_charge === '1' : settings.auto_complete_include_company_charge !== '1';
-                                  return (
-                                    <button
-                                      key={val}
-                                      type="button"
-                                      role="radio"
-                                      aria-checked={active}
-                                      onClick={() => saveSettingsPatch({ auto_complete_include_company_charge: val }, msg)}
-                                      disabled={settingsSaving}
-                                      className={cn(
-                                        'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                                        active ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                                      )}
-                                    >
-                                      {label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </SettingRow>
-                      {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
-                      <SettingRow
-                        icon={Landmark}
-                        title="Rechnungskunden (Überweisung)"
-                        summary="Freigeschaltete Kunden sehen auf /buchen zusätzlich „Überweisung“. Hier pausieren oder löschen."
-                        details={<>Freischalten im Buchungsdetail („Als Rechnungskunde freischalten“). „Überweisung“ erscheint nur, wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse.</>}
-                      >
-                        <InvoiceCustomersList />
-                      </SettingRow>
-                    </SettingsGroup>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Günlük Fahrt Hatırlatması */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-4">🔔 Günlük Fahrt Hatırlatması</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Otomatik Hatırlatma E-postası</p>
-                    <p className="text-xs text-gray-500">Ayarlanan saatte yarınki fahrtlar müşterilere gönderilir (DE/EN/TR)</p>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const newVal = !reminderEnabled;
-                      setReminderSaving(true);
-                      try {
-                        await adminApi.saveReminderSettings({ enabled: newVal });
-                        setReminderEnabled(newVal);
-                      } catch {}
-                      setReminderSaving(false);
-                    }}
-                    className={cn(
-                      'relative w-14 h-7 rounded-full transition-colors',
-                      reminderEnabled ? 'bg-green-500' : 'bg-gray-300'
-                    )}
-                    disabled={reminderSaving}
-                  >
-                    <div className={cn(
-                      'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                      reminderEnabled ? 'translate-x-7' : 'translate-x-0.5'
-                    )} />
-                  </button>
-                </div>
+            {/* ── PLZ-Zuschläge ── */}
+            <SectionCard
+              id="preise-plz"
+              icon={MapPin}
+              title="PLZ-Zuschläge"
+              subtitle="Bestimmte PLZ-Gebiete erhalten einen Aufschlag auf den Fahrpreis. Der Zuschlag wird unsichtbar zum Gesamtpreis addiert."
+              action={
                 <div className="flex items-center gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gönderim Saati</label>
-                    <input
-                      type="time"
-                      value={reminderTime}
-                      onChange={(e) => setReminderTime(e.target.value)}
-                      disabled={!reminderEnabled || reminderSaving}
-                      className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-50"
+                  <div className="flex items-center gap-2.5">
+                    <span className={cn('text-sm font-medium', settings.plz_surcharge_enabled === '1' ? 'text-emerald-700' : 'text-gray-500')}>
+                      {settings.plz_surcharge_enabled === '1' ? 'Aktiv' : 'Aus'}
+                    </span>
+                    <Toggle
+                      label="PLZ-Zuschläge"
+                      on={settings.plz_surcharge_enabled === '1'}
+                      disabled={settingsSaving}
+                      onClick={async () => {
+                        const newVal = settings.plz_surcharge_enabled === '1' ? '0' : '1';
+                        setSettingsSaving(true);
+                        try {
+                          const updated = await adminApi.updateSettings({ plz_surcharge_enabled: newVal });
+                          setSettings(updated);
+                        } catch {}
+                        setSettingsSaving(false);
+                      }}
                     />
                   </div>
                   <button
-                    onClick={async () => {
-                      setReminderSaving(true);
-                      try {
-                        await adminApi.saveReminderSettings({ time: reminderTime });
-                      } catch {}
-                      setReminderSaving(false);
-                    }}
-                    disabled={!reminderEnabled || reminderSaving}
-                    className="mt-5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    type="button"
+                    onClick={() => setShowPlzForm(v => !v)}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-gold-400 px-4 text-sm font-semibold text-primary-800 transition hover:bg-gold-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                   >
-                    {reminderSaving ? '...' : 'Kaydet'}
+                    <Plus className="h-4 w-4" aria-hidden />
+                    PLZ hinzufügen
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* PLZ-Zuschläge */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">🗺️ PLZ-Zuschläge</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Bestimmte PLZ-Gebiete erhalten einen Aufschlag auf den Fahrpreis. Der Zuschlag wird unsichtbar zum Gesamtpreis addiert.</p>
+              }
+            >
+              {showPlzForm && (
+                <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <BlockField label="PLZ" className="w-28" type="text" placeholder="85435" maxLength={5} value={newPlz} onChange={e => setNewPlz(e.target.value)} />
+                  <BlockField label="Stadt / Ort" className="w-48" type="text" placeholder="Erding" value={newPlzStadt} onChange={e => setNewPlzStadt(e.target.value)} />
+                  <BlockField label="Zuschlag" unit="€" className="w-32" type="number" placeholder="10" step="0.50" min="0" value={newPlzSurcharge} onChange={e => setNewPlzSurcharge(e.target.value)} />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!newPlz.trim() || !newPlzSurcharge) return;
+                      setPlzSaving(true);
+                      try {
+                        const rows = await plzSurchargesApi.create(newPlz.trim(), newPlzStadt.trim(), parseFloat(newPlzSurcharge));
+                        setPlzSurcharges(rows);
+                        setNewPlz('');
+                        setNewPlzStadt('');
+                        setNewPlzSurcharge('10');
+                      } catch {}
+                      setPlzSaving(false);
+                    }}
+                    disabled={plzSaving || !newPlz.trim()}
+                    className="h-10 rounded-lg bg-primary-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-800 disabled:opacity-50"
+                  >
+                    {plzSaving ? 'Speichert…' : 'Hinzufügen'}
+                  </button>
+                  <button type="button" onClick={() => setShowPlzForm(false)} className="h-10 rounded-lg px-3 text-sm text-gray-500 hover:bg-gray-100">Abbrechen</button>
                 </div>
-                <button
-                  onClick={async () => {
-                    const newVal = settings.plz_surcharge_enabled === '1' ? '0' : '1';
-                    setSettingsSaving(true);
-                    try {
-                      const updated = await adminApi.updateSettings({ plz_surcharge_enabled: newVal });
-                      setSettings(updated);
-                    } catch {}
-                    setSettingsSaving(false);
-                  }}
-                  className={cn(
-                    'relative w-14 h-7 rounded-full transition-colors shrink-0 ml-4',
-                    settings.plz_surcharge_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                  )}
-                  disabled={settingsSaving}
-                >
-                  <div className={cn(
-                    'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                    settings.plz_surcharge_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                  )} />
-                </button>
-              </div>
-              {plzSurcharges.length > 0 && (
-                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+              )}
+              {plzSurcharges.length > 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
                       <tr>
-                        <th className="text-left px-4 py-2 font-medium text-gray-600">PLZ</th>
-                        <th className="text-left px-4 py-2 font-medium text-gray-600">Stadt</th>
-                        <th className="text-right px-4 py-2 font-medium text-gray-600">Zuschlag (€)</th>
-                        <th className="w-10"></th>
+                        <th className="px-4 py-2.5">PLZ</th>
+                        <th className="px-4 py-2.5">Stadt / Ort</th>
+                        <th className="px-4 py-2.5">Zuschlag (€)</th>
+                        <th className="w-28 px-4 py-2.5 text-right">Aktionen</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {plzSurcharges.map(s => (
-                        <tr key={s.id} className="border-t border-gray-100">
-                          <td className="px-4 py-2 font-mono">{s.plz}</td>
-                          <td className="px-4 py-2">{s.stadt}</td>
-                          <td className="px-4 py-2 text-right font-semibold">{s.surcharge.toFixed(2)} €</td>
-                          <td className="px-2 py-2">
-                            <button
-                              onClick={async () => {
-                                setPlzSaving(true);
-                                try {
-                                  const rows = await plzSurchargesApi.remove(s.id);
-                                  setPlzSurcharges(rows);
-                                } catch {}
-                                setPlzSaving(false);
-                              }}
-                              disabled={plzSaving}
-                              className="text-red-400 hover:text-red-600 transition-colors"
-                              title="Löschen"
-                            >
-                              <X size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-gray-100">
+                      {plzSurcharges.map(s => {
+                        const editing = editingPlz?.id === s.id;
+                        return (
+                          <tr key={s.id} className="hover:bg-gray-50/60">
+                            <td className="px-4 py-2.5 font-medium tabular-nums text-gray-900">{s.plz}</td>
+                            <td className="px-4 py-2.5 text-gray-700">
+                              {editing ? (
+                                <input value={editingPlz.stadt} onChange={e => setEditingPlz(p => p && { ...p, stadt: e.target.value })} aria-label="Stadt / Ort"
+                                  className="h-9 w-full max-w-xs rounded-lg border border-gray-200 px-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100" />
+                              ) : s.stadt}
+                            </td>
+                            <td className="px-4 py-2.5 tabular-nums text-gray-900">
+                              {editing ? (
+                                <input type="number" step="0.50" min="0" value={editingPlz.surcharge} onChange={e => setEditingPlz(p => p && { ...p, surcharge: e.target.value })} aria-label="Zuschlag in Euro"
+                                  className="h-9 w-24 rounded-lg border border-gray-200 px-2.5 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100" />
+                              ) : `${s.surcharge.toFixed(2).replace('.', ',')} €`}
+                            </td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center justify-end gap-1">
+                                {editing ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      title="Speichern"
+                                      aria-label={`PLZ ${s.plz} speichern`}
+                                      disabled={plzSaving || !editingPlz.surcharge}
+                                      onClick={async () => {
+                                        setPlzSaving(true);
+                                        try {
+                                          const rows = await plzSurchargesApi.update(s.id, parseFloat(editingPlz.surcharge), editingPlz.stadt.trim());
+                                          setPlzSurcharges(rows);
+                                          setEditingPlz(null);
+                                        } catch {}
+                                        setPlzSaving(false);
+                                      }}
+                                      className="rounded-lg p-2 text-emerald-600 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+                                    >
+                                      <Check className="h-4 w-4" aria-hidden />
+                                    </button>
+                                    <button type="button" title="Abbrechen" aria-label="Bearbeiten abbrechen" onClick={() => setEditingPlz(null)} className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100">
+                                      <X className="h-4 w-4" aria-hidden />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      title="Bearbeiten"
+                                      aria-label={`PLZ ${s.plz} bearbeiten`}
+                                      onClick={() => setEditingPlz({ id: s.id, stadt: s.stadt || '', surcharge: String(s.surcharge) })}
+                                      className="rounded-lg p-2 text-gray-700 transition-colors hover:bg-gray-100"
+                                    >
+                                      <Pencil className="h-4 w-4" aria-hidden />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Löschen"
+                                      aria-label={`PLZ ${s.plz} löschen`}
+                                      disabled={plzSaving}
+                                      onClick={async () => {
+                                        if (!confirm(`PLZ-Zuschlag ${s.plz}${s.stadt ? ` (${s.stadt})` : ''} löschen?`)) return;
+                                        setPlzSaving(true);
+                                        try {
+                                          const rows = await plzSurchargesApi.remove(s.id);
+                                          setPlzSurcharges(rows);
+                                        } catch {}
+                                        setPlzSaving(false);
+                                      }}
+                                      className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                      <Trash2 className="h-4 w-4" aria-hidden />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">Noch keine PLZ-Zuschläge angelegt.</p>
               )}
-              <div className="flex gap-2 items-end flex-wrap">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">PLZ</label>
-                  <input
-                    type="text"
-                    value={newPlz}
-                    onChange={e => setNewPlz(e.target.value)}
-                    placeholder="85435"
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    maxLength={5}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Stadt</label>
-                  <input
-                    type="text"
-                    value={newPlzStadt}
-                    onChange={e => setNewPlzStadt(e.target.value)}
-                    placeholder="Erding"
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Zuschlag (€)</label>
-                  <input
-                    type="number"
-                    value={newPlzSurcharge}
-                    onChange={e => setNewPlzSurcharge(e.target.value)}
-                    placeholder="10"
-                    step="0.50"
-                    min="0"
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+            </SectionCard>
+
+            {/* ── Festpreisrouten ── */}
+            <SectionCard
+              id="preise-festpreis"
+              icon={CalendarDays}
+              title="Festpreisrouten"
+              subtitle="Gesetzlich vorgeschriebene Festpreise für bestimmte Strecken. Überschreibt alle anderen Preisberechnungen."
+              action={
                 <button
-                  onClick={async () => {
-                    if (!newPlz.trim() || !newPlzSurcharge) return;
-                    setPlzSaving(true);
-                    try {
-                      const rows = await plzSurchargesApi.create(newPlz.trim(), newPlzStadt.trim(), parseFloat(newPlzSurcharge));
-                      setPlzSurcharges(rows);
-                      setNewPlz('');
-                      setNewPlzStadt('');
-                      setNewPlzSurcharge('10');
-                    } catch {}
-                    setPlzSaving(false);
-                  }}
-                  disabled={plzSaving || !newPlz.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {plzSaving ? '...' : '+ Hinzufügen'}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {prices.map((price) => (
-                <div key={price.vehicle_type} className="bg-white rounded-2xl shadow-sm p-6">
-                  <div className="text-center mb-4">
-                    <div className="text-3xl mb-2">
-                      {price.vehicle_type === 'kombi' ? '🚗' : price.vehicle_type === 'van' ? '🚐' : '🚌'}
-                    </div>
-                    <h3 className="font-bold text-gray-900 capitalize text-lg">{price.vehicle_type}</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Grundpreis (€)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={priceEdits[price.vehicle_type]?.base_price || ''}
-                        onChange={(e) => setPriceEdits(prev => ({
-                          ...prev,
-                          [price.vehicle_type]: { ...prev[price.vehicle_type], base_price: e.target.value }
-                        }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Preis pro km (€)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={priceEdits[price.vehicle_type]?.price_per_km || ''}
-                        onChange={(e) => setPriceEdits(prev => ({
-                          ...prev,
-                          [price.vehicle_type]: { ...prev[price.vehicle_type], price_per_km: e.target.value }
-                        }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">⇄ Hin- & Rückfahrt Rabatt (%)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="50"
-                        value={priceEdits[price.vehicle_type]?.roundtrip_discount || ''}
-                        onChange={(e) => setPriceEdits(prev => ({
-                          ...prev,
-                          [price.vehicle_type]: { ...prev[price.vehicle_type], roundtrip_discount: e.target.value }
-                        }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Rabatt bei Hin- & Rückfahrt (z.B. 5 = 5%)</p>
-                    </div>
-                    <div className="border-t border-gray-100 pt-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">📍 Mindestgebühr</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Mindestpreis (€)</label>
-                          <input
-                            type="number"
-                            step="0.50"
-                            min="0"
-                            value={priceEdits[price.vehicle_type]?.min_price ?? ''}
-                            onChange={(e) => setPriceEdits(prev => ({
-                              ...prev,
-                              [price.vehicle_type]: { ...prev[price.vehicle_type], min_price: e.target.value }
-                            }))}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Gültig bis (km)</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={priceEdits[price.vehicle_type]?.min_price_km ?? ''}
-                            onChange={(e) => setPriceEdits(prev => ({
-                              ...prev,
-                              [price.vehicle_type]: { ...prev[price.vehicle_type], min_price_km: e.target.value }
-                            }))}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">Bis zu diesem km-Wert wird die Mindestgebühr angewendet (0 = deaktiviert)</p>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs text-gray-500 uppercase tracking-wide">🚲 Fahrrad</label>
-                        <button
-                          type="button"
-                          onClick={() => setPriceEdits(prev => ({
-                            ...prev,
-                            [price.vehicle_type]: { ...prev[price.vehicle_type], fahrrad_enabled: !prev[price.vehicle_type]?.fahrrad_enabled }
-                          }))}
-                          className={cn(
-                            'w-10 h-6 rounded-full transition-colors relative',
-                            priceEdits[price.vehicle_type]?.fahrrad_enabled ? 'bg-green-500' : 'bg-gray-300'
-                          )}
-                        >
-                          <span className={cn(
-                            'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
-                            priceEdits[price.vehicle_type]?.fahrrad_enabled ? 'translate-x-4' : 'translate-x-0.5'
-                          )} />
-                        </button>
-                      </div>
-                      {priceEdits[price.vehicle_type]?.fahrrad_enabled && (
-                        <>
-                          <input
-                            type="number"
-                            step="0.50"
-                            min="0"
-                            value={priceEdits[price.vehicle_type]?.fahrrad_price || ''}
-                            onChange={(e) => setPriceEdits(prev => ({
-                              ...prev,
-                              [price.vehicle_type]: { ...prev[price.vehicle_type], fahrrad_price: e.target.value }
-                            }))}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">Preis pro Fahrrad (€/Stk.)</p>
-                        </>
-                      )}
-                      {!priceEdits[price.vehicle_type]?.fahrrad_enabled && (
-                        <p className="text-xs text-gray-400 mt-1">Fahrrad für dieses Fahrzeug deaktiviert</p>
-                      )}
-                    </div>
-                    <div className="border-t border-gray-100 pt-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">👥 Kapazität</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Max. Personen</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="1"
-                            max="20"
-                            value={priceEdits[price.vehicle_type]?.max_passengers || ''}
-                            onChange={(e) => setPriceEdits(prev => ({
-                              ...prev,
-                              [price.vehicle_type]: { ...prev[price.vehicle_type], max_passengers: e.target.value }
-                            }))}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-500 uppercase tracking-wide mb-1">Max. Koffer</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            max="30"
-                            value={priceEdits[price.vehicle_type]?.max_luggage || ''}
-                            onChange={(e) => setPriceEdits(prev => ({
-                              ...prev,
-                              [price.vehicle_type]: { ...prev[price.vehicle_type], max_luggage: e.target.value }
-                            }))}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">System lässt keine Buchung über diesem Limit zu</p>
-                    </div>
-                    <button
-                      onClick={() => savePrice(price.vehicle_type)}
-                      className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-xl text-sm font-medium transition-colors"
-                    >
-                      Speichern
-                    </button>
-                    <p className="text-xs text-gray-400 text-center">
-                      Zuletzt geändert: {new Date(price.updated_at).toLocaleDateString('de-DE')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Festpreisrouten (Fixed-Price Routes) */}
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">🛣️ Festpreisrouten</h3>
-                <button
+                  type="button"
                   onClick={() => setEditingRoute({ name: '', pickup_keywords: '', dropoff_keywords: '', price_kombi: 0, price_van: 0, price_grossraumtaxi: 0, bidirectional: 1, enabled: 1 })}
-                  className="bg-primary-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-700"
-                >+ Neue Route</button>
-              </div>
-              <p className="text-xs text-gray-500 mb-3">Gesetzlich vorgeschriebene Festpreise für bestimmte Strecken. Überschreibt alle anderen Preisberechnungen.</p>
-
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-gold-400 px-4 text-sm font-semibold text-primary-800 transition hover:bg-gold-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Neue Route
+                </button>
+              }
+            >
               {editingRoute && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3 border border-gray-200">
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Name (z.B. Flughafen ↔ Messe)"
+                <div className="mb-4 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <BlockField label="Name" type="text" placeholder="z. B. Flughafen ↔ Messe"
                     value={editingRoute.name || ''} onChange={e => setEditingRoute(r => ({ ...r!, name: e.target.value }))} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500">Abholort-Schlüsselwörter (kommagetrennt)</label>
-                      <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="flughafen münchen,munich airport"
-                        value={editingRoute.pickup_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, pickup_keywords: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Zielort-Schlüsselwörter (kommagetrennt)</label>
-                      <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="neue messe,81829"
-                        value={editingRoute.dropoff_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, dropoff_keywords: e.target.value }))} />
-                    </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <BlockField label="Abholort-Schlüsselwörter (kommagetrennt)" type="text" placeholder="flughafen münchen,munich airport"
+                      value={editingRoute.pickup_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, pickup_keywords: e.target.value }))} />
+                    <BlockField label="Zielort-Schlüsselwörter (kommagetrennt)" type="text" placeholder="neue messe,81829"
+                      value={editingRoute.dropoff_keywords || ''} onChange={e => setEditingRoute(r => ({ ...r!, dropoff_keywords: e.target.value }))} />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500">Kombi (€)</label>
-                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={editingRoute.price_kombi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_kombi: parseFloat(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Van (€)</label>
-                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={editingRoute.price_van || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_van: parseFloat(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500">Großraumtaxi (€)</label>
-                      <input type="number" step="0.50" className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={editingRoute.price_grossraumtaxi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_grossraumtaxi: parseFloat(e.target.value) || 0 }))} />
-                    </div>
+                    <BlockField label="Kombi" unit="€" type="number" step="0.50"
+                      value={editingRoute.price_kombi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_kombi: parseFloat(e.target.value) || 0 }))} />
+                    <BlockField label="Van" unit="€" type="number" step="0.50"
+                      value={editingRoute.price_van || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_van: parseFloat(e.target.value) || 0 }))} />
+                    <BlockField label="Großraumtaxi" unit="€" type="number" step="0.50"
+                      value={editingRoute.price_grossraumtaxi || ''} onChange={e => setEditingRoute(r => ({ ...r!, price_grossraumtaxi: parseFloat(e.target.value) || 0 }))} />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={!!editingRoute.bidirectional}
+                  <div className="flex flex-wrap items-center gap-5">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={!!editingRoute.bidirectional}
                         onChange={e => setEditingRoute(r => ({ ...r!, bidirectional: e.target.checked ? 1 : 0 }))} />
                       Beide Richtungen (↔)
                     </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={editingRoute.enabled !== 0}
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={editingRoute.enabled !== 0}
                         onChange={e => setEditingRoute(r => ({ ...r!, enabled: e.target.checked ? 1 : 0 }))} />
                       Aktiv
                     </label>
                   </div>
                   <div className="flex gap-2">
-                    <button className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700"
+                    <button
+                      type="button"
+                      className="h-10 rounded-lg bg-primary-700 px-4 text-sm font-semibold text-white hover:bg-primary-800"
                       onClick={async () => {
                         try {
                           if (editingRoute.id) {
@@ -2206,42 +2053,197 @@ export default function AdminPage() {
                         }
                       }}
                     >Speichern</button>
-                    <button className="text-gray-500 px-4 py-2 rounded-lg text-sm hover:bg-gray-100" onClick={() => setEditingRoute(null)}>Abbrechen</button>
+                    <button type="button" className="h-10 rounded-lg px-4 text-sm text-gray-500 hover:bg-gray-100" onClick={() => setEditingRoute(null)}>Abbrechen</button>
                   </div>
                 </div>
               )}
 
               {fixedRoutes.length === 0 && !editingRoute && (
-                <p className="text-sm text-gray-400 text-center py-4">Keine Festpreisrouten definiert.</p>
+                <p className="rounded-xl border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">Keine Festpreisrouten definiert.</p>
               )}
-              {fixedRoutes.map(r => (
-                <div key={r.id} className={cn('flex items-center justify-between border rounded-xl px-4 py-3 mb-2', r.enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50 opacity-60')}>
-                  <div>
-                    <div className="font-medium text-sm">{r.name} {r.bidirectional ? '↔' : '→'}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      Kombi: {r.price_kombi}€ · Van: {r.price_van}€ · Großraum: {r.price_grossraumtaxi}€
+              {fixedRoutes.length > 0 && (
+                <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200">
+                  {fixedRoutes.map(r => (
+                    <div key={r.id} className={cn('flex flex-wrap items-center justify-between gap-3 px-4 py-3', !r.enabled && 'bg-gray-50')}>
+                      <div className={cn('min-w-0', !r.enabled && 'opacity-60')}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">{r.name} {r.bidirectional ? '↔' : '→'}</span>
+                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', r.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-200 text-gray-500')}>
+                            {r.enabled ? 'Aktiv' : 'Aus'}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">Kombi <strong>{r.price_kombi} €</strong></span>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">Van <strong>{r.price_van} €</strong></span>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">Großraum <strong>{r.price_grossraumtaxi} €</strong></span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" title="Bearbeiten" aria-label={`${r.name} bearbeiten`} className="rounded-lg p-2 text-gray-700 hover:bg-gray-100" onClick={() => setEditingRoute({ ...r })}>
+                          <Pencil className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button type="button" title="Löschen" aria-label={`${r.name} löschen`} className="rounded-lg p-2 text-red-500 hover:bg-red-50" onClick={async () => {
+                          if (confirm('Route löschen?')) {
+                            await fixedRoutesApi.remove(r.id);
+                            fixedRoutesApi.getAll().then(setFixedRoutes);
+                          }
+                        }}>
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="text-blue-600 hover:text-blue-800 text-sm" onClick={() => setEditingRoute({ ...r })}>Bearbeiten</button>
-                    <button className="text-red-500 hover:text-red-700 text-sm" onClick={async () => {
-                      if (confirm('Route löschen?')) {
-                        await fixedRoutesApi.remove(r.id);
-                        fixedRoutesApi.getAll().then(setFixedRoutes);
-                      }
-                    }}>Löschen</button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </SectionCard>
 
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-sm text-blue-700 space-y-1">
-              <p><strong>Preisformel (Einfach):</strong> Gesamtpreis = Grundpreis + (Distanz in km × Preis/km)</p>
-              <p><strong>Preisformel (Hin- & Rückfahrt):</strong> Gesamtpreis = (Einfach × 2) − Rabatt %</p>
-              <p><strong>Mindestgebühr:</strong> Wenn Distanz ≤ km-Limit und berechneter Preis &lt; Mindestpreis → Mindestpreis wird angewendet</p>
-            </div>
+            {/* ── Buchungsregeln ── */}
+            <SectionCard id="preise-regeln" icon={ClipboardList} title="Buchungsregeln" subtitle="Zwischenstopps, Status-Automatik und Rechnungskunden.">
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <SettingCard
+                  icon={Milestone}
+                  title="Zwischenstopp erlauben"
+                  description="Kunden können einen Zwischenstopp zur Fahrt hinzufügen."
+                  on={settingOn('zwischenstopp_enabled')}
+                  control={sw('zwischenstopp_enabled', 'Zwischenstopp')}
+                />
+                <SettingCard
+                  className="xl:col-span-2"
+                  icon={Workflow}
+                  title="Automatischer Buchungsstatus"
+                  description="Neue Buchungen automatisch bestätigen und nach der Abholzeit abschließen."
+                  info={<>Ohne manuelles Klicken: Neue Buchungen werden nach der festgelegten Zeit bestätigt, bestätigte Buchungen abgeschlossen, sobald die Abholzeit vorbei ist. <strong>Beim Aktivieren werden bereits fällige Buchungen sofort umgestellt</strong> – vorher die Liste kurz prüfen.</>}
+                  on={settingOn('auto_status_enabled')}
+                  control={sw('auto_status_enabled', 'Automatischer Status')}
+                >
+                  {settingOn('auto_status_enabled') && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                        <Field inline label="Neu → Bestätigt nach" unit="Std." type="number" min="0" step="0.5" widthClass="w-20" {...sv('auto_confirm_hours', '1')} />
+                        <Field inline label="Abgeschlossen" unit="Min. nach Abholzeit" type="number" min="0" widthClass="w-20" {...sv('auto_complete_buffer_minutes', '0')} />
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-xs text-gray-500">Firmenkunden mit hinterlegter Karte, die bei Fahrtabschluss automatisch belastet werden („bei Abschluss zahlen“)</p>
+                        <div className="inline-flex rounded-lg bg-gray-200/70 p-0.5" role="radiogroup" aria-label="Firmenkunden in der Automatik">
+                          {([['0', 'Firmenkunden ausschließen', 'Firmenkunden werden von der Automatik ausgeschlossen'], ['1', 'Alle Fahrten', 'Alle Fahrten werden automatisch abgeschlossen — inkl. automatischer Kartenbelastung']] as const).map(([val, label, msg]) => {
+                            const active = val === '1' ? settings.auto_complete_include_company_charge === '1' : settings.auto_complete_include_company_charge !== '1';
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => saveSettingsPatch({ auto_complete_include_company_charge: val }, msg)}
+                                disabled={settingsSaving}
+                                className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition-colors', active ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </SettingCard>
+                {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
+                <SettingCard
+                  className="xl:col-span-3"
+                  icon={Landmark}
+                  title="Rechnungskunden (Überweisung)"
+                  description="Freigeschaltete Kunden sehen auf /buchen zusätzlich „Überweisung“. Hier pausieren oder löschen."
+                  info={<>Freischalten im Buchungsdetail („Als Rechnungskunde freischalten“). „Überweisung“ erscheint nur, wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse.</>}
+                >
+                  <InvoiceCustomersList />
+                </SettingCard>
+              </div>
+            </SectionCard>
+
+            {/* ── Weitere Optionen ── */}
+            <SectionCard id="preise-weitere" icon={Settings2} title="Weitere Optionen">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <SettingCard
+                  icon={Megaphone}
+                  title="Social-Proof-Toast"
+                  description="Animierte Hinweise auf kürzliche Buchungen auf /buchen und /ergebnisse."
+                  info={<>Beispiel: „Vor 5 Std.: Max M. hat Fahrt gebucht ✓“.</>}
+                  on={settingOn('social_proof_enabled')}
+                  control={sw('social_proof_enabled', 'Social-Proof-Toast')}
+                />
+                <SettingCard
+                  icon={Bell}
+                  title="Tägliche Fahrt-Erinnerung"
+                  description="Kunden erhalten zur eingestellten Uhrzeit eine E-Mail zu ihrer Fahrt am nächsten Tag (DE/EN/TR)."
+                  on={reminderEnabled}
+                  control={
+                    <Toggle
+                      label="Tägliche Fahrt-Erinnerung"
+                      on={reminderEnabled}
+                      disabled={reminderSaving}
+                      onClick={async () => {
+                        const newVal = !reminderEnabled;
+                        setReminderSaving(true);
+                        try {
+                          await adminApi.saveReminderSettings({ enabled: newVal });
+                          setReminderEnabled(newVal);
+                        } catch {}
+                        setReminderSaving(false);
+                      }}
+                    />
+                  }
+                >
+                  {reminderEnabled && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Field inline label="Versand um" unit="Uhr" type="time" widthClass="w-[7.5rem]" value={reminderTime} disabled={reminderSaving} onChange={(e) => setReminderTime(e.target.value)} />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setReminderSaving(true);
+                          try {
+                            await adminApi.saveReminderSettings({ time: reminderTime });
+                            setPriceSuccess('Erinnerungszeit gespeichert');
+                            setTimeout(() => setPriceSuccess(''), 3000);
+                          } catch {}
+                          setReminderSaving(false);
+                        }}
+                        disabled={reminderSaving}
+                        className="h-10 rounded-lg bg-primary-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-800 disabled:opacity-50"
+                      >
+                        {reminderSaving ? 'Speichert…' : 'Speichern'}
+                      </button>
+                    </div>
+                  )}
+                </SettingCard>
+              </div>
+            </SectionCard>
+
+            {/* Ungespeicherte Änderungen / Erfolgsmeldung */}
+            {(pendingChanges > 0 || priceSuccess) && (
+              <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+                {pendingChanges > 0 ? (
+                  <div role="status" className="pointer-events-auto flex items-center gap-4 rounded-2xl bg-primary-700 py-2.5 pl-5 pr-2.5 text-sm text-white shadow-xl">
+                    <span>{pendingChanges} {pendingChanges === 1 ? 'ungespeicherte Änderung' : 'ungespeicherte Änderungen'}</span>
+                    <button
+                      type="button"
+                      onClick={saveAllChanges}
+                      disabled={settingsSaving}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gold-400 px-4 font-semibold text-primary-800 transition hover:bg-gold-500 disabled:opacity-60"
+                    >
+                      <Save className="h-4 w-4" aria-hidden />
+                      {settingsSaving ? 'Speichert…' : 'Jetzt speichern'}
+                    </button>
+                  </div>
+                ) : (
+                  <div role="status" className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white shadow-xl">
+                    <CheckCircle2 className="h-4 w-4" aria-hidden />
+                    {priceSuccess}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Statistik Tab */}
         {activeTab === 'statistics' && (
