@@ -864,7 +864,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
               </div>
             </div>
             <a
-              href={`${API}/admin/companies/invoices/${c.invoice.id}/pdf?token=${token}`}
+              href={`${API}/admin/companies/invoices/${c.invoice.id}/pdf?token=${token}&v=${Date.now()}`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-green-200 text-green-800 rounded-xl text-sm font-medium hover:bg-green-100"
@@ -1161,7 +1161,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                           <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtEur(d.price)}</td>
                           <td className="py-2 whitespace-nowrap">
                             {d.invoice ? (
-                              <a href={`${API}/admin/companies/invoices/${d.invoice.invoice_id}/pdf?token=${token}`} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
+                              <a href={`${API}/admin/companies/invoices/${d.invoice.invoice_id}/pdf?token=${token}&v=${Date.now()}`} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
                                 {d.invoice.invoice_number}
                               </a>
                             ) : <span className="text-amber-700">faturasız</span>}

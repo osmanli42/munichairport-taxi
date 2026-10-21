@@ -51,10 +51,10 @@ export const portalApi = {
   stats: () => request('/stats'),
   cancelBooking: (id: number) => request(`/bookings/${id}/cancel`, { method: 'POST' }),
 
-  rechnungPdfUrl: (bookingId: number) => `${API}/company/bookings/${bookingId}/rechnung.pdf?token=${getToken()}`,
+  rechnungPdfUrl: (bookingId: number) => `${API}/company/bookings/${bookingId}/rechnung.pdf?token=${getToken()}&v=${Date.now()}`,
 
   invoices: () => request('/invoices'),
-  invoicePdfUrl: (invoiceId: number) => `${API}/company/invoices/${invoiceId}/rechnung.pdf?token=${getToken()}`,
+  invoicePdfUrl: (invoiceId: number) => `${API}/company/invoices/${invoiceId}/rechnung.pdf?token=${getToken()}&v=${Date.now()}`,
 
   favorites: () => request('/favorites'),
   addFavorite: (data: any) => request('/favorites', { method: 'POST', body: JSON.stringify(data) }),

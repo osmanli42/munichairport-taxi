@@ -3730,7 +3730,7 @@ export default function AdminPage() {
                   render params, so date and number match the customer's copy). */}
               {selectedBooking.rechnung_number && (
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/rechnung.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/rechnung.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}&v=${Date.now()}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2 rounded-xl text-sm font-medium transition-colors"
@@ -3743,7 +3743,7 @@ export default function AdminPage() {
               <InvoiceStornoCard key={`storno-${selectedBooking.id}`} booking={selectedBooking} onChanged={loadBookings} />
               {selectedBooking.proforma_number && (
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/proforma.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/bookings/${selectedBooking.id}/proforma.pdf?token=${typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''}&v=${Date.now()}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 w-full flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 py-2 rounded-xl text-sm font-medium transition-colors"
