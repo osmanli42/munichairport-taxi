@@ -72,6 +72,20 @@ export async function fetchBankSettings(): Promise<Record<string, string>> {
   return s;
 }
 
+// Empfängerblock exakt wie eingegeben: jede Zeile eine eigene Zeile, nichts wird zusammengezogen
+// oder abgeschnitten — eine zu lange Zeile bricht innerhalb der Breite um. Erste Zeile fett.
+// Gibt die y-Position unter dem Block zurück.
+export function printRecipientLines(doc: any, lines: string[], x: number, y: number, width: number): number {
+  const all = lines.flatMap((l) => String(l ?? '').replace(/\r/g, '').split('\n')).map((l) => l.trim()).filter(Boolean);
+  all.forEach((line, i) => {
+    if (i === 0) doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827');
+    else doc.fontSize(9).font('WorkSans').fillColor('#374151');
+    doc.text(line, x, y, { width });
+    y += Math.ceil(doc.heightOfString(line, { width })) + (i === 0 ? 4 : 2);
+  });
+  return y;
+}
+
 // ─── PRICE HELPERS ───────────────────────────────────────────────────────────
 
 export function fmtPrice(amount: number): string {
@@ -209,17 +223,8 @@ export function generateRechnungPdf(opts: {
     doc.fontSize(8).font('WorkSans').fillColor(GRAY)
       .text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
     if (empfaenger_adresse && empfaenger_adresse.trim()) {
-      const lines = empfaenger_adresse.trim().replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
-      let addrY = custY + 12;
-      doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
-        .text(lines[0] || '—', marginL, addrY, { width: pageW, lineBreak: false });
-      addrY += 16;
-      doc.fontSize(9).font('WorkSans').fillColor('#374151');
-      for (let i = 1; i < lines.length; i++) {
-        doc.text(lines[i], marginL, addrY, { width: pageW, lineBreak: false });
-        addrY += 13;
-      }
-      doc.text('', marginL, addrY - 4);
+      const addrY = printRecipientLines(doc, [empfaenger_adresse], marginL, custY + 12, pageW);
+      doc.text('', marginL, addrY - 2);
     } else {
       let addrY = custY + 12;
       doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
@@ -692,16 +697,15 @@ export function generateSammelrechnungPdf(opts: {
     const custY = logoY + 60;
     doc.fontSize(8).font('WorkSans').fillColor(GRAY)
       .text(T.billTo, marginL, custY);
-    let addrY = custY + 12;
-    doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
-      .text(company.company_name, marginL, addrY, { width: pageW, lineBreak: false });
-    addrY += 16;
-    doc.fontSize(9).font('WorkSans').fillColor('#374151');
-    if (company.contact_name && company.contact_name.trim().toLowerCase() !== String(company.company_name || '').trim().toLowerCase()) { doc.text(company.contact_name, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    if (company.address) { doc.text(company.address, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    if (projectName) { doc.text(T.project + projectName, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    if (company.ust_idnr) { doc.text(T.custVat + company.ust_idnr, marginL, addrY, { width: pageW, lineBreak: false }); addrY += 13; }
-    doc.text('', marginL, addrY - 4);
+    const sameAsName = String(company.contact_name || '').trim().toLowerCase() === String(company.company_name || '').trim().toLowerCase();
+    const addrY = printRecipientLines(doc, [
+      company.company_name || '—',
+      sameAsName ? '' : company.contact_name || '',
+      company.address || '',
+      projectName ? T.project + projectName : '',
+      company.ust_idnr ? T.custVat + company.ust_idnr : '',
+    ], marginL, custY + 12, pageW);
+    doc.text('', marginL, addrY - 2);
 
     // ── SEPARATOR
     const sepY = doc.y + 14;
@@ -1038,15 +1042,7 @@ export function generateStornoPdf(opts: {
     // ── RECIPIENT
     const custY = logoY + 60;
     doc.fontSize(8).font('WorkSans').fillColor(GRAY).text(isEn ? 'BILL TO' : 'RECHNUNGSEMPFÄNGER', marginL, custY);
-    let addrY = custY + 12;
-    doc.fontSize(11).font('WorkSans-Bold').fillColor('#111827')
-      .text(recipient[0] || '—', marginL, addrY, { width: pageW - 260, lineBreak: false });
-    addrY += 16;
-    doc.fontSize(9).font('WorkSans').fillColor('#374151');
-    for (const l of recipient.slice(1)) {
-      doc.text(l, marginL, addrY, { width: pageW - 260, lineBreak: false });
-      addrY += 13;
-    }
+    const addrY = printRecipientLines(doc, recipient.length ? recipient : ['—'], marginL, custY + 12, pageW - 260);
 
     // ── INTRO
     let y = Math.max(addrY, ry) + 18;
