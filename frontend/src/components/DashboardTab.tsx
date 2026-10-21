@@ -10,7 +10,7 @@ import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
-  EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag,
+  EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag, Move,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -26,6 +26,20 @@ import CapacityHeatmap, { CapacityEntry } from './dashboard/CapacityHeatmap';
 import MissedCustomers from './dashboard/MissedCustomers';
 import { ForecastCard, FunnelCard, ReceivablesCard } from './dashboard/BusinessCards';
 import type { Flights, WidgetOverview } from './dashboard/types';
+import { DashGrid, useDashLayout, type LayoutEntry } from './dashboard/LayoutGrid';
+
+// Standard-Anordnung (12er-Raster); der Nutzer kann sie im Modus „Anordnen“ ändern
+const DEFAULT_LAYOUT: LayoutEntry[] = [
+  { id: 'attention', w: 12 },
+  { id: 'kpi_rides', w: 3 }, { id: 'kpi_new', w: 3 }, { id: 'kpi_week', w: 3 }, { id: 'kpi_month', w: 3 },
+  { id: 'schedule', w: 8, tall: true }, { id: 'flights', w: 4 }, { id: 'charges', w: 4 },
+  { id: 'drivers', w: 3 }, { id: 'forecast', w: 3 }, { id: 'funnel', w: 3 }, { id: 'receivables', w: 3 },
+  { id: 'quick', w: 12 }, { id: 'archive', w: 12 }, { id: 'events', w: 12 },
+  { id: 'missed', w: 12 }, { id: 'capacity', w: 12 },
+  { id: 'chart', w: 8 }, { id: 'month', w: 4 },
+  { id: 'totals', w: 12 },
+  { id: 'recent', w: 8 }, { id: 'reports', w: 4 },
+];
 
 // ---------------------------------------------------------------------------------------
 // Types
@@ -136,6 +150,7 @@ interface Props {
 
 // Sections the viewer can hide (per browser). Fahrplan, KPIs and Handlungsbedarf always show.
 const WIDGETS: Array<[string, string]> = [
+  ['kpi_rides', 'Fahrten heute'], ['kpi_new', 'Neue Buchungen heute'], ['kpi_week', 'Letzte 7 Tage'], ['kpi_month', 'Monat bis heute'],
   ['quick', 'Schnellaktionen'], ['events', 'Feiertage & Events'], ['flights', 'Flugstatus'],
   ['charges', 'Morgen abbuchen'], ['drivers', 'Fahrer-Einsatzplan'], ['missed', 'Verpasste Kunden'],
   ['forecast', 'Monatsprognose'], ['funnel', 'Website heute'], ['receivables', 'Offene Forderungen'],
@@ -1310,6 +1325,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   }, [load]);
 
   const archive = useDayArchive();
+  const lay = useDashLayout(DEFAULT_LAYOUT);
+  const [editing, setEditing] = useState(false);
 
   if (!data) {
     return error ? (
@@ -1370,6 +1387,15 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2 2xl:flex-nowrap">
           {show('archive') && <ArchiveControls a={archive} />}
           <button
+            onClick={() => { setEditing((v) => !v); setPicker(false); }}
+            aria-pressed={editing}
+            className={cn('inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-semibold ring-1 ring-inset',
+              editing ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700' : 'bg-white text-gray-800 ring-gray-200 hover:bg-gray-50')}
+            title="Bereiche verschieben und Größe ändern"
+          >
+            {editing ? <><CheckCircle2 size={16} /> Fertig</> : <><Move size={16} /> Anordnen</>}
+          </button>
+          <button
             onClick={() => setPicker((v) => !v)}
             aria-expanded={picker}
             className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-white px-3 text-[13px] font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
@@ -1400,10 +1426,24 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
       </div>
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
 
-      <AttentionPanel hideWhenEmpty a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
+      {editing && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-900 ring-1 ring-blue-200">
+          <Move size={18} className="shrink-0 text-blue-600" />
+          <span className="flex-1">Bereiche an der blauen Leiste ziehen und ablegen (oder ↑ ↓). Breite mit ¼ ⅓ ½ ⅔ 1, „Hoch“ = zwei Bereiche daneben. Wird in diesem Browser gespeichert.</span>
+          <button onClick={() => { if (confirm('Anordnung auf Standard zurücksetzen?')) lay.reset(); }} className="rounded-lg bg-white px-3 py-1.5 font-semibold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100">Standard</button>
+          <button onClick={() => setEditing(false)} className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700">Fertig</button>
+        </div>
+      )}
 
-      {/* Kennzahlen */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <DashGrid
+        lay={lay}
+        editing={editing}
+        fixed={['attention', 'schedule']}
+        onHide={toggleWidget}
+        labels={{ ...Object.fromEntries(WIDGETS), attention: 'Handlungsbedarf', schedule: 'Fahrplan', kpi_month: `${monthName} bis heute` }}
+        blocks={{
+          attention: <AttentionPanel hideWhenEmpty={!editing} a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />,
+          kpi_rides: show('kpi_rides') ? (
         <HeadKpi
           label="Fahrten heute"
           Icon={Car}
@@ -1432,6 +1472,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
             </button>
           ) : undefined}
         />
+          ) : null,
+          kpi_new: show('kpi_new') ? (
         <HeadKpi
           label="Neue Buchungen heute"
           Icon={Euro}
@@ -1442,6 +1484,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           spark={chartRev}
           sparkTitle="Buchungseingang je Tag, letzte 14 Tage"
         />
+          ) : null,
+          kpi_week: show('kpi_week') ? (
         <HeadKpi
           label="Letzte 7 Tage"
           Icon={CalendarDays}
@@ -1452,6 +1496,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           spark={chartRev.slice(-7)}
           sparkTitle="Buchungseingang je Tag, letzte 7 Tage"
         />
+          ) : null,
+          kpi_month: show('kpi_month') ? (
         <HeadKpi
           label={`${monthName} bis heute`}
           Icon={BarChart3}
@@ -1462,86 +1508,54 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           spark={monthRev}
           sparkTitle={`Buchungseingang je Tag im ${monthName} (max. 14 Tage)`}
         />
-      </div>
-
-      {/* Fahrplan + rechts Flugstatus / Morgen abbuchen */}
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
-        <div className={show('flights') || show('charges') ? 'xl:col-span-2' : 'xl:col-span-3'}>
-          <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
-        </div>
-        {(show('flights') || show('charges')) && (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-1">
-            {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
-            {show('charges') && <TomorrowCharges
-              cards={cards}
-              tomorrow={addDays(today, 1)}
-              chargingId={chargingId}
-              onCharge={(id) => { onCharge(id).finally(load); }}
-              onShowCard={onShowCard}
-              onOpen={onOpenBooking}
-            />}
-          </div>
-        )}
-      </div>
-
-      {/* Fahrer · Prognose · Website · Forderungen */}
-      {(show('drivers') || show('forecast') || show('funnel') || show('receivables')) && (
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          {show('drivers') && <DriverPlan plan={widgets?.drivers ?? null} now={now} onOpen={onOpenBooking} />}
-          {show('forecast') && <ForecastCard f={widgets?.forecast ?? null} />}
-          {show('funnel') && <FunnelCard f={widgets?.funnel ?? null} />}
-          {show('receivables') && <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} />}
-        </div>
-      )}
-
-      {/* Weitere Bereiche */}
-      {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
-      {show('archive') && <ArchiveResults a={archive} />}
-
-      {show('events') && widgets?.events && (
-        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
-      )}
-
-      {show('missed') && <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} />}
-
-      {show('capacity') && <CapacityHeatmap entries={capacity} today={today} />}
-
-      {/* Trends */}
-      {(show('chart') || show('month')) && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
-          {show('chart') && <div className={show('month') ? 'xl:col-span-2' : 'xl:col-span-3'}><IntakeChart chart={data.chart} today={today} /></div>}
-          {show('month') && <MonthOverview month={data.month} />}
-        </div>
-      )}
-
-      {show('totals') && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Kpi
-            label={`${prevMonthName} (Vormonat)`}
-            Icon={History}
-            tone="bg-amber-50 text-amber-600"
-            value={formatPrice(it.prevMonth.revenue + (data.calendarPrevMonth?.revenue ?? 0))}
-            sub={<CalSplit bookings={it.prevMonth} cal={data.calendarPrevMonth} />}
-            footer={<span className="text-xs text-gray-400">ganzer Monat</span>}
-          />
-          <Kpi
-            label="Gesamtumsatz"
-            Icon={Wallet}
-            tone="bg-gray-100 text-gray-700"
-            value={formatPrice(data.allTime.revenue + (data.calendarTotal?.revenue ?? 0))}
-            sub={<CalSplit bookings={data.allTime} cal={data.calendarTotal} />}
-            footer={<span className="text-xs text-gray-400">{data.calendarTotal ? 'seit 2023, inkl. Kalender' : 'alle Buchungen seit Start der Website'}</span>}
-          />
-        </div>
-      )}
-
-      {/* Latest + reports */}
-      {(show('recent') || show('reports')) && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
-          {show('recent') && <div className={show('reports') ? 'xl:col-span-2' : 'xl:col-span-3'}><RecentBookings recent={data.recent} now={now} onOpen={onOpenBooking} /></div>}
-          {show('reports') && <ReportsCard />}
-        </div>
-      )}
+          ) : null,
+          schedule: <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />,
+          flights: show('flights') ? <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} /> : null,
+          charges: show('charges') ? <TomorrowCharges
+            cards={cards}
+            tomorrow={addDays(today, 1)}
+            chargingId={chargingId}
+            onCharge={(id) => { onCharge(id).finally(load); }}
+            onShowCard={onShowCard}
+            onOpen={onOpenBooking}
+          /> : null,
+          drivers: show('drivers') ? <DriverPlan plan={widgets?.drivers ?? null} now={now} onOpen={onOpenBooking} /> : null,
+          forecast: show('forecast') ? <ForecastCard f={widgets?.forecast ?? null} /> : null,
+          funnel: show('funnel') ? <FunnelCard f={widgets?.funnel ?? null} /> : null,
+          receivables: show('receivables') ? <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} /> : null,
+          quick: show('quick') ? <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} /> : null,
+          archive: show('archive') ? <ArchiveResults a={archive} /> : null,
+          events: show('events') && widgets?.events
+            ? <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
+            : null,
+          missed: show('missed') ? <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} /> : null,
+          capacity: show('capacity') ? <CapacityHeatmap entries={capacity} today={today} /> : null,
+          chart: show('chart') ? <IntakeChart chart={data.chart} today={today} /> : null,
+          month: show('month') ? <MonthOverview month={data.month} /> : null,
+          totals: show('totals') ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Kpi
+                label={`${prevMonthName} (Vormonat)`}
+                Icon={History}
+                tone="bg-amber-50 text-amber-600"
+                value={formatPrice(it.prevMonth.revenue + (data.calendarPrevMonth?.revenue ?? 0))}
+                sub={<CalSplit bookings={it.prevMonth} cal={data.calendarPrevMonth} />}
+                footer={<span className="text-xs text-gray-400">ganzer Monat</span>}
+              />
+              <Kpi
+                label="Gesamtumsatz"
+                Icon={Wallet}
+                tone="bg-gray-100 text-gray-700"
+                value={formatPrice(data.allTime.revenue + (data.calendarTotal?.revenue ?? 0))}
+                sub={<CalSplit bookings={data.allTime} cal={data.calendarTotal} />}
+                footer={<span className="text-xs text-gray-400">{data.calendarTotal ? 'seit 2023, inkl. Kalender' : 'alle Buchungen seit Start der Website'}</span>}
+              />
+            </div>
+          ) : null,
+          recent: show('recent') ? <RecentBookings recent={data.recent} now={now} onOpen={onOpenBooking} /> : null,
+          reports: show('reports') ? <ReportsCard /> : null,
+        }}
+      />
 
       <p className="text-[11px] text-gray-400">
         Umsätze nach Buchungsdatum (ohne Stornos){data.calendar?.enabled && showCal ? ' — Kalender-Fahrten zählen dort an dem Tag, an dem sie eingetragen wurden' : ''}. Fahrplan: Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
