@@ -53,7 +53,7 @@ function Tile({ label, count, revenue, hint, strong }: { label: string; count: n
   );
 }
 
-export default function DayArchive() {
+export function useDayArchive() {
   const today = berlinNowWall().slice(0, 10);
   const [date, setDate] = useState(addDays(today, -1));
   // Period: from–to (inclusive); 'day' = single day from `date`
@@ -84,20 +84,6 @@ export default function DayArchive() {
   }, [from, to, mode]);
   useEffect(() => { load(); }, [load]);
 
-  const seg = (m: 'booked' | 'driven', label: string, title: string) => (
-    <button
-      onClick={() => setMode(m)} title={title}
-      className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg transition', mode === m ? 'bg-primary-900 text-white' : 'text-gray-600 hover:bg-gray-100')}
-    >{label}</button>
-  );
-  const pill = (active: boolean) => cn('px-2.5 py-1 text-xs rounded-lg ring-1', active ? 'bg-gray-900 text-white ring-gray-900' : 'text-gray-600 ring-gray-200 hover:bg-gray-50');
-  const quick = (label: string, d: string) => (
-    <button key={label} onClick={() => { setPreset('day'); setDate(d); }} className={pill(isDay && date === d)}>{label}</button>
-  );
-  // Last n days up to today (today included)
-  const period = (n: 7 | 14 | 30) => (
-    <button key={n} onClick={() => { setPreset(n); setRange({ from: addDays(today, -(n - 1)), to: today }); }} className={pill(preset === n)}>{n} Tage</button>
-  );
   // Arrows move the day — or the whole period by its length
   const shift = (dir: -1 | 1) => {
     if (isDay) { setDate(addDays(date, dir)); return; }
@@ -106,44 +92,70 @@ export default function DayArchive() {
     if (preset !== 'custom') setPreset('custom');
   };
   const atEnd = to >= today;
+  return { today, date, setDate, preset, setPreset, range, setRange, mode, setMode, data, loading, error, isDay, from, to, shift, atEnd };
+}
 
+export type DayArchiveState = ReturnType<typeof useDayArchive>;
+
+/** Datumsleiste: Tag/Zeitraum wählen (im Dashboard-Kopf) */
+export function ArchiveControls({ a }: { a: DayArchiveState }) {
+  const { today, date, setDate, preset, setPreset, range, setRange, isDay, shift, atEnd } = a;
+  const pill = (active: boolean) => cn('h-10 px-3.5 text-sm font-medium rounded-xl ring-1 ring-inset transition-colors whitespace-nowrap', active ? 'bg-primary-800 text-white ring-primary-800' : 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50');
+  const quick = (label: string, d: string) => (
+    <button key={label} onClick={() => { setPreset('day'); setDate(d); }} className={pill(isDay && date === d)}>{label}</button>
+  );
+  const period = (n: 7 | 14 | 30) => (
+    <button key={n} onClick={() => { setPreset(n); setRange({ from: addDays(today, -(n - 1)), to: today }); }} className={pill(preset === n)}>{n} Tage</button>
+  );
+  const dateCls = 'h-10 rounded-xl bg-white px-3 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500';
   return (
-    <Card title="Tagesarchiv" icon={CalendarDays} right={<span className="text-xs text-gray-400">Web + Kalender, beliebiger Tag</span>}>
-      <div className="px-5 py-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => shift(-1)} className="p-1.5 rounded-lg ring-1 ring-gray-200 hover:bg-gray-50" aria-label={isDay ? 'Vortag' : 'Vorheriger Zeitraum'}><ChevronLeft size={16} /></button>
-          {isDay ? (
-            <input
-              type="date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date" value={range.from} max={range.to} aria-label="von"
-                onChange={(e) => { const v = e.target.value; if (v) { setPreset('custom'); setRange((r) => ({ from: v, to: v > r.to ? v : r.to })); } }}
-                className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <span className="text-gray-400 text-sm">–</span>
-              <input
-                type="date" value={range.to} min={range.from} max={today} aria-label="bis"
-                onChange={(e) => { const v = e.target.value; if (v) { setPreset('custom'); setRange((r) => ({ from: v < r.from ? v : r.from, to: v })); } }}
-                className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-          )}
-          <button onClick={() => !atEnd && shift(1)} disabled={atEnd} className="p-1.5 rounded-lg ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-40" aria-label={isDay ? 'Folgetag' : 'Nächster Zeitraum'}><ChevronRight size={16} /></button>
-          <div className="flex flex-wrap gap-1.5 ml-1">
-            {quick('Heute', today)}{quick('Gestern', addDays(today, -1))}
-            <span className="w-px bg-gray-200 mx-0.5" />
-            {period(7)}{period(14)}{period(30)}
-            <button onClick={() => { if (isDay) setRange({ from: addDays(date, -6), to: date }); setPreset('custom'); }} className={pill(preset === 'custom')}>Zeitraum…</button>
-          </div>
-          <div className="ml-auto flex gap-1 rounded-xl bg-gray-100 p-1">
-            {seg('booked', 'Nach Buchungsdatum', 'Alındığı güne göre: o gün gelen rezervasyonlar ve o gün takvime eklenenler')}
-            {seg('driven', 'Nach Fahrtdatum', 'Yapıldığı güne göre: o gün yapılan fahrt’lar (Hin- und Rückfahrt: ganzer Betrag am Hinfahrt-Tag)')}
-          </div>
+    <div className="flex flex-wrap items-center gap-2" aria-label="Tagesarchiv: Tag oder Zeitraum">
+      <div className="flex items-center gap-1.5">
+        <button onClick={() => shift(-1)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-gray-200 hover:bg-gray-50" aria-label={isDay ? 'Vortag' : 'Vorheriger Zeitraum'}><ChevronLeft size={18} /></button>
+        {isDay ? (
+          <input type="date" value={date} max={today} aria-label="Tag" onChange={(e) => e.target.value && setDate(e.target.value)} className={dateCls} />
+        ) : (
+          <>
+            <input type="date" value={range.from} max={range.to} aria-label="von" className={dateCls}
+              onChange={(e) => { const v = e.target.value; if (v) { setPreset('custom'); setRange((r) => ({ from: v, to: v > r.to ? v : r.to })); } }} />
+            <span className="text-sm text-gray-400">–</span>
+            <input type="date" value={range.to} min={range.from} max={today} aria-label="bis" className={dateCls}
+              onChange={(e) => { const v = e.target.value; if (v) { setPreset('custom'); setRange((r) => ({ from: v < r.from ? v : r.from, to: v })); } }} />
+          </>
+        )}
+        <button onClick={() => !atEnd && shift(1)} disabled={atEnd} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-gray-200 hover:bg-gray-50 disabled:opacity-40" aria-label={isDay ? 'Folgetag' : 'Nächster Zeitraum'}><ChevronRight size={18} /></button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {quick('Heute', today)}{quick('Gestern', addDays(today, -1))}
+        {period(7)}{period(14)}{period(30)}
+        <button onClick={() => { if (isDay) setRange({ from: addDays(date, -6), to: date }); setPreset('custom'); }} className={pill(preset === 'custom')}>Zeitraum…</button>
+      </div>
+    </div>
+  );
+}
+
+/** Ergebnis des gewählten Tags/Zeitraums (Web / Kalender / Gesamt, Einzelfahrten) */
+export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withControls?: boolean }) {
+  const { mode, setMode, data, loading, error, setPreset, setDate } = a;
+  const seg = (m: 'booked' | 'driven', label: string, title: string) => (
+    <button
+      onClick={() => setMode(m)} title={title}
+      className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg transition', mode === m ? 'bg-primary-900 text-white' : 'text-gray-600 hover:bg-gray-100')}
+    >{label}</button>
+  );
+  return (
+    <Card
+      title="Tagesarchiv"
+      icon={CalendarDays}
+      right={(
+        <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+          {seg('booked', 'Nach Buchungsdatum', 'Alındığı güne göre: o gün gelen rezervasyonlar ve o gün takvime eklenenler')}
+          {seg('driven', 'Nach Fahrtdatum', 'Yapıldığı güne göre: o gün yapılan fahrt’lar (Hin- und Rückfahrt: ganzer Betrag am Hinfahrt-Tag)')}
         </div>
+      )}
+    >
+      <div className="px-5 py-4 space-y-4">
+        {withControls && <ArchiveControls a={a} />}
 
         {error && <div className="text-sm text-red-600">{error}</div>}
         {data && (
@@ -208,6 +220,11 @@ export default function DayArchive() {
       </div>
     </Card>
   );
+}
+
+export default function DayArchive() {
+  const a = useDayArchive();
+  return <ArchiveResults a={a} withControls />;
 }
 
 // "+12 % ggü. Vorzeitraum" in the Gesamt tile

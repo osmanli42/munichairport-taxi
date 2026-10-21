@@ -72,10 +72,10 @@ export function Card({ title, icon: Icon, right, children, className }: {
   title: string; icon: LucideIcon; right?: ReactNode; children: ReactNode; className?: string;
 }) {
   return (
-    <section className={cn('bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden', className)}>
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-          <Icon size={17} className="text-primary-500" />
+    <section className={cn('bg-white rounded-2xl shadow-sm ring-1 ring-gray-200/70 overflow-hidden', className)}>
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-gray-100">
+        <h3 className="flex items-center gap-2.5 text-[17px] font-bold text-gray-900">
+          <Icon size={20} className="text-blue-600" />
           {title}
         </h3>
         {right}

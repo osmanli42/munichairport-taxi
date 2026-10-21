@@ -5,11 +5,12 @@
 // are shown by cutting the string — never through new Date(), which would shift them by the
 // browser's time zone. "Now" is taken from the Berlin clock for the same reason.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
+  EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ import {
 import QuickActions from './dashboard/QuickActions';
 import EventsStrip from './dashboard/EventsStrip';
 import FlightBoard from './dashboard/FlightBoard';
-import DayArchive from './dashboard/DayArchive';
+import { useDayArchive, ArchiveControls, ArchiveResults } from './dashboard/DayArchive';
 import DriverPlan from './dashboard/DriverPlan';
 import CapacityHeatmap, { CapacityEntry } from './dashboard/CapacityHeatmap';
 import MissedCustomers from './dashboard/MissedCustomers';
@@ -139,7 +140,7 @@ const WIDGETS: Array<[string, string]> = [
   ['charges', 'Morgen abbuchen'], ['drivers', 'Fahrer-Einsatzplan'], ['missed', 'Verpasste Kunden'],
   ['forecast', 'Monatsprognose'], ['funnel', 'Website heute'], ['receivables', 'Offene Forderungen'],
   ['capacity', 'Auslastung 7 Tage'], ['chart', 'Buchungseingang'], ['month', 'Monat im Überblick'],
-  ['recent', 'Letzte Buchungen'], ['reports', 'Finanzamt-Bericht'], ['archive', 'Tagesarchiv'],
+  ['recent', 'Letzte Buchungen'], ['reports', 'Finanzamt-Bericht'], ['archive', 'Tagesarchiv'], ['totals', 'Vormonat & Gesamtumsatz'],
 ];
 const HIDDEN_KEY = 'dash_hidden_widgets';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -218,91 +219,175 @@ function legRoute(l: Leg) {
     : { from: l.pickup_address, to: l.dropoff_address, via: l.zwischenstopp_address || null };
 }
 
+// Spaltenraster des Fahrplans (ab lg): Zeit | Kunde / Fahrt | Details | Fahrzeug | Zahlung | Status | Preis | Menü
+const ROW_GRID = 'lg:grid lg:grid-cols-[3.5rem_minmax(0,1.1fr)_minmax(0,1.6fr)_3.5rem_6.5rem_7.5rem_5.5rem_2rem] lg:items-center lg:gap-3';
+
+const initials = (name?: string | null) => {
+  const parts = String(name || '').replace(/[^A-Za-zÀ-ÖØ-öø-žẞ\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : parts[0]?.[1] || '')).toUpperCase() || '?';
+};
+const shortAddr = (a?: string | null) => String(a || '').split(',')[0].trim();
+
+function Avatar({ name, tone = 'blue' }: { name?: string | null; tone?: 'blue' | 'teal' }) {
+  return (
+    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+      tone === 'teal' ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-700')} aria-hidden>
+      {initials(name)}
+    </span>
+  );
+}
+
+const VEHICLE_ICON: Record<string, typeof Car> = { kombi: Car, van: CarFront, grossraumtaxi: Bus };
+
+function TimeCell({ time, state, now }: { time: string; state: LegState; now: string }) {
+  const minutesTo = wallMinutes(time) - wallMinutes(now);
+  return (
+    <div className="w-12 shrink-0 lg:w-auto">
+      <div className={cn('text-[15px] font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-gray-900')}>{hhmm(time)}</div>
+      {state !== 'past' && (
+        <div className={cn('text-[11px] font-medium', state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-blue-600' : 'text-gray-400')}>
+          {state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(time.slice(0, 10), { weekday: 'short' })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** ⋮-Menü einer Fahrplan-Zeile */
+function RowMenu({ items }: { items: Array<{ label: string; Icon: typeof Clock; onClick?: () => void; href?: string }> }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Aktionen"
+        aria-expanded={open}
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      >
+        <EllipsisVertical size={17} aria-hidden />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-gray-200">
+          {items.map(({ label, Icon, onClick, href }) => {
+            const cls = 'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50';
+            return href ? (
+              <a key={label} role="menuitem" href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={cls} onClick={() => setOpen(false)}>
+                <Icon size={15} className="text-gray-400" aria-hidden /> {label}
+              </a>
+            ) : (
+              <button key={label} role="menuitem" type="button" className={cls} onClick={() => { setOpen(false); onClick?.(); }}>
+                <Icon size={15} className="text-gray-400" aria-hidden /> {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const copyText = (t: string) => { try { navigator.clipboard?.writeText(t); } catch { /* ignore */ } };
+
+function rowCls(state: LegState, extra?: string) {
+  return cn(
+    'flex items-start gap-3 px-4 py-3 lg:px-5 lg:py-2.5 text-left transition-colors cursor-pointer focus:outline-none focus-visible:bg-blue-50',
+    ROW_GRID,
+    state === 'next' && 'bg-blue-50/60 hover:bg-blue-50',
+    state === 'running' && 'bg-emerald-50/60 hover:bg-emerald-50',
+    state !== 'next' && state !== 'running' && 'hover:bg-gray-50',
+    extra,
+  );
+}
+
 function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: string; onOpen: () => void }) {
   const { from, to, via } = legRoute(l);
   const roundtrip = l.trip_type === 'roundtrip';
-  const minutesTo = wallMinutes(l.leg_time) - wallMinutes(now);
-  const AirportIcon = isAirport(from) ? PlaneLanding : isAirport(to) ? PlaneTakeoff : Car;
+  const VIcon = VEHICLE_ICON[l.vehicle_type] || Car;
+  const vLabel = VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type;
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className={cn(
-        'w-full text-left flex gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:bg-primary-50',
-        state === 'past' && 'opacity-55',
-        state === 'next' && 'bg-primary-50/60 hover:bg-primary-50',
-        state === 'running' && 'bg-emerald-50/60 hover:bg-emerald-50',
-      )}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+      className={rowCls(state)}
     >
-      {/* Time */}
-      <div className="w-12 sm:w-16 shrink-0">
-        <div className={cn('text-lg font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-primary-700')}>
-          {hhmm(l.leg_time)}
-        </div>
-        <div className={cn('text-[11px] font-medium mt-0.5',
-          state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-primary-500' : 'text-gray-400')}>
-          {state === 'past' ? 'vorbei' : state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(l.leg_time.slice(0, 10), { weekday: 'short' })}
+      <TimeCell time={l.leg_time} state={state} now={now} />
+
+      {/* Kunde */}
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:flex-none">
+        <Avatar name={l.name} />
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-gray-900" title={l.name}>{l.name}</div>
+          <div className="flex flex-wrap items-center gap-1">
+            {roundtrip && (
+              <span className={cn('inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-semibold',
+                l.leg === 'rueck' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700')}>
+                <Repeat size={10} /> {l.leg === 'rueck' ? 'Rückfahrt' : 'Hinfahrt'}
+              </span>
+            )}
+            {l.company_name && <span className="inline-flex max-w-[9rem] items-center gap-0.5 truncate rounded bg-gray-100 px-1.5 py-px text-[10px] font-medium text-gray-600"><Building2 size={10} /> {l.company_name}</span>}
+            {state === 'next' && <span className="rounded bg-blue-600 px-1.5 py-px text-[10px] font-bold uppercase text-white">Nächste</span>}
+          </div>
+          {/* Telefon/Tablet: Strecke + Preis unter dem Namen */}
+          <div className="mt-0.5 truncate text-xs text-gray-500 lg:hidden">{shortAddr(from)} → {shortAddr(to)}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 lg:hidden">
+            <span className="text-sm font-bold tabular-nums text-gray-900">{formatPrice(l.price)}</span>
+            <PaymentChip b={l} />
+            <StatusChip status={l.status} />
+          </div>
         </div>
       </div>
 
-      {/* Main */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-gray-900 truncate max-w-[16rem]">{l.name}</span>
-          {l.company_name && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-              <Building2 size={11} /> {l.company_name}
-            </span>
-          )}
-          {roundtrip && (
-            <span className={cn('inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded',
-              l.leg === 'rueck' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700')}>
-              <Repeat size={11} /> {l.leg === 'rueck' ? 'Rückfahrt' : 'Hinfahrt'}
-            </span>
-          )}
-          {state === 'next' && <span className="text-[11px] font-bold uppercase tracking-wide text-primary-500">Nächste Fahrt</span>}
+      {/* Details */}
+      <div className="hidden min-w-0 text-[13px] text-gray-600 lg:block" title={`${from} → ${to}`}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isAirport(from) ? <PlaneLanding size={13} className="shrink-0 text-gray-400" /> : <MapPin size={13} className="shrink-0 text-gray-400" />}
+          <span className="truncate">{shortAddr(from)}</span>
+          <ArrowRight size={12} className="shrink-0 text-gray-300" />
+          {via && <><span className="max-w-[6rem] truncate text-gray-400">{shortAddr(via)}</span><ArrowRight size={12} className="shrink-0 text-gray-300" /></>}
+          <span className="truncate">{shortAddr(to)}</span>
         </div>
-        <div className="mt-1 hidden sm:flex items-center gap-1.5 text-sm text-gray-600 min-w-0">
-          <AirportIcon size={14} className="shrink-0 text-gray-400" />
-          <span className="truncate">{from}</span>
-          <ArrowRight size={13} className="shrink-0 text-gray-300" />
-          {via && <><span className="truncate text-gray-400 max-w-[8rem]">{via}</span><ArrowRight size={13} className="shrink-0 text-gray-300" /></>}
-          <span className="truncate">{to}</span>
-        </div>
-        {/* Phone: one address per line instead of two truncated halves. */}
-        <div className="mt-1 sm:hidden space-y-0.5 text-sm text-gray-600">
-          <div className="flex items-center gap-1.5 min-w-0"><AirportIcon size={14} className="shrink-0 text-gray-400" /><span className="truncate">{from}</span></div>
-          {via && <div className="pl-5 truncate text-xs text-gray-400">über {via}</div>}
-          <div className="flex items-center gap-1.5 min-w-0"><ArrowRight size={14} className="shrink-0 text-gray-300" /><span className="truncate">{to}</span></div>
-        </div>
-        <div className="mt-2 flex sm:hidden items-center gap-2 flex-wrap">
-          <span className="font-bold text-gray-900 tabular-nums">{formatPrice(l.price)}</span>
-          <PaymentChip b={l} />
-          <StatusChip status={l.status} />
-        </div>
-        <div className="mt-1.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500">
-          {l.phone && (
-            <a href={`tel:${l.phone}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 hover:text-primary-600">
-              <Phone size={12} /> {l.phone}
-            </a>
-          )}
-          <span className="inline-flex items-center gap-1"><Car size={12} /> {VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type}</span>
-          <span className="inline-flex items-center gap-1"><Users size={12} /> {l.passengers}</span>
-          {!!l.luggage_count && <span className="inline-flex items-center gap-1"><Luggage size={12} /> {l.luggage_count}</span>}
-          {l.notes?.includes('🐾') && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5" title="Haustier im Käfig">🐾 Haustier</span>}
-          {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-1 font-medium text-gray-600"><PlaneLanding size={12} /> {l.flight_number}</span>}
-          {l.driver_name && <span className="inline-flex items-center gap-1 text-emerald-700"><Car size={12} /> {l.driver_name}</span>}
-          <span className="font-mono text-gray-400">{l.booking_number}</span>
+        <div className="mt-0.5 flex min-w-0 items-center gap-x-2.5 text-[11px] text-gray-400">
+          <span className="inline-flex items-center gap-0.5"><Users size={11} /> {l.passengers}</span>
+          {!!l.luggage_count && <span className="inline-flex items-center gap-0.5"><Luggage size={11} /> {l.luggage_count}</span>}
+          {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-0.5 font-medium text-gray-500"><PlaneLanding size={11} /> {l.flight_number}</span>}
+          {l.driver_name && <span className="inline-flex items-center gap-0.5 text-emerald-700"><UserRound size={11} /> {l.driver_name}</span>}
+          {l.notes?.includes('🐾') && <span title="Haustier im Käfig">🐾</span>}
+          <span className="truncate font-mono">{l.booking_number}</span>
         </div>
       </div>
 
-      {/* Money + status */}
-      <div className="shrink-0 hidden sm:flex flex-col items-end gap-1.5">
-        <div className="font-bold text-gray-900 tabular-nums">{formatPrice(l.price)}</div>
-        {roundtrip && <div className="-mt-1 text-[10px] text-gray-400">Hin + Rück gesamt</div>}
-        <PaymentChip b={l} />
-        <StatusChip status={l.status} />
+      {/* Fahrzeug */}
+      <div className="hidden justify-center lg:flex" title={vLabel}>
+        <VIcon size={20} className="text-gray-700" aria-hidden />
+        <span className="sr-only">{vLabel}</span>
       </div>
-    </button>
+      <div className="hidden lg:block"><PaymentChip b={l} /></div>
+      <div className="hidden lg:block"><StatusChip status={l.status} /></div>
+      <div className="hidden text-right lg:block">
+        <div className="text-sm font-bold tabular-nums text-gray-900">{formatPrice(l.price)}</div>
+        {roundtrip && <div className="text-[10px] text-gray-400">Hin + Rück</div>}
+      </div>
+      <div className="shrink-0">
+        <RowMenu items={[
+          { label: 'Buchung öffnen', Icon: Eye, onClick: onOpen },
+          ...(l.phone ? [{ label: `Anrufen ${l.phone}`, Icon: Phone, href: `tel:${l.phone}` }] : []),
+          { label: 'Buchungsnummer kopieren', Icon: Copy, onClick: () => copyText(l.booking_number) },
+        ]} />
+      </div>
+    </div>
   );
 }
 
@@ -310,59 +395,58 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
 const RE_FLIGHT = /^(?:[A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d{1,4}[A-Z]?$/;
 
 function CalendarRow({ c, state, now }: { c: CalLeg; state: LegState; now: string }) {
-  const minutesTo = wallMinutes(c.leg_time) - wallMinutes(now);
   const from = c.from || c.summary;
   const to = c.to;
   const flight = RE_FLIGHT.test(c.summary.trim()) ? c.summary.trim() : null;
   const title = c.guest || (flight ? `Flug ${flight}` : 'Kalender-Fahrt');
-  const AirportIcon = isAirport(from) ? PlaneLanding : isAirport(to) ? PlaneTakeoff : Car;
-  const Wrapper = c.html_link ? 'a' : 'div';
+  const open = () => { if (c.html_link) window.open(c.html_link, '_blank', 'noopener'); };
+  const statusLabel = state === 'past' ? 'Vorbei' : state === 'running' ? 'Läuft' : 'Geplant';
   return (
-    <Wrapper
-      {...(c.html_link ? { href: c.html_link, target: '_blank', rel: 'noopener noreferrer' } : {})}
+    <div
+      role={c.html_link ? 'link' : undefined}
+      tabIndex={c.html_link ? 0 : undefined}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
       title="Im Google Kalender öffnen"
-      className={cn(
-        'w-full text-left flex gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 transition-colors hover:bg-teal-50/60 border-l-[3px] border-teal-400',
-        state === 'past' && 'opacity-55',
-        state === 'next' && 'bg-primary-50/60',
-        state === 'running' && 'bg-emerald-50/60',
-      )}
+      className={rowCls(state, 'border-l-[3px] border-teal-400 pl-[13px] lg:pl-[17px]')}
     >
-      <div className="w-12 sm:w-16 shrink-0">
-        <div className={cn('text-lg font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-primary-700')}>{hhmm(c.leg_time)}</div>
-        <div className={cn('text-[11px] font-medium mt-0.5', state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-primary-500' : 'text-gray-400')}>
-          {state === 'past' ? 'vorbei' : state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(c.leg_time.slice(0, 10), { weekday: 'short' })}
-        </div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-gray-900 truncate max-w-[16rem]">{title}</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-teal-100 text-teal-700">
-            <CalendarDays size={11} /> Kalender
+      <TimeCell time={c.leg_time} state={state} now={now} />
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:flex-none">
+        <Avatar name={title} tone="teal" />
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-gray-900" title={title}>{title}</div>
+          <span className="inline-flex items-center gap-0.5 rounded bg-teal-50 px-1.5 py-px text-[10px] font-semibold text-teal-700 ring-1 ring-inset ring-teal-200">
+            <CalendarDays size={10} /> Kalender
           </span>
-          {state === 'next' && <span className="text-[11px] font-bold uppercase tracking-wide text-primary-500">Nächste Fahrt</span>}
-        </div>
-        <div className="mt-1 hidden sm:flex items-center gap-1.5 text-sm text-gray-600 min-w-0">
-          <AirportIcon size={14} className="shrink-0 text-gray-400" />
-          <span className="truncate">{from}</span>
-          {to && <><ArrowRight size={13} className="shrink-0 text-gray-300" /><span className="truncate">{to}</span></>}
-        </div>
-        <div className="mt-1 sm:hidden space-y-0.5 text-sm text-gray-600">
-          <div className="flex items-center gap-1.5 min-w-0"><AirportIcon size={14} className="shrink-0 text-gray-400" /><span className="truncate">{from}</span></div>
-          {to && <div className="flex items-center gap-1.5 min-w-0"><ArrowRight size={14} className="shrink-0 text-gray-300" /><span className="truncate">{to}</span></div>}
-          <div className="pt-1 font-bold text-gray-900 tabular-nums">{c.price ? formatPrice(c.price) : '—'}</div>
-        </div>
-        <div className="mt-1.5 flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-gray-500">
-          {flight && <span className="inline-flex items-center gap-1 font-medium text-gray-600"><PlaneLanding size={12} /> {flight}</span>}
-          {c.via.length > 0 && <span className="truncate max-w-[14rem]">über {c.via.join(', ')}</span>}
-          {c.location && <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 max-w-[18rem] truncate">{c.location}</span>}
+          <div className="mt-0.5 truncate text-xs text-gray-500 lg:hidden">{shortAddr(from)}{to ? ` → ${shortAddr(to)}` : ''}</div>
+          <div className="mt-1 text-sm font-bold tabular-nums text-gray-900 lg:hidden">{c.price ? formatPrice(c.price) : '—'}</div>
         </div>
       </div>
-      <div className="shrink-0 hidden sm:flex flex-col items-end gap-1.5">
-        <div className="font-bold text-gray-900 tabular-nums">{c.price ? formatPrice(c.price) : '—'}</div>
-        <span className="inline-flex items-center gap-1 text-[11px] text-teal-700"><ExternalLink size={11} /> Kalender</span>
+      <div className="hidden min-w-0 text-[13px] text-gray-600 lg:block" title={[from, to].filter(Boolean).join(' → ')}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isAirport(from) ? <PlaneLanding size={13} className="shrink-0 text-gray-400" /> : <MapPin size={13} className="shrink-0 text-gray-400" />}
+          <span className="truncate">{shortAddr(from)}</span>
+          {to && <><ArrowRight size={12} className="shrink-0 text-gray-300" /><span className="truncate">{shortAddr(to)}</span></>}
+        </div>
+        {(flight || c.location || c.via.length > 0) && (
+          <div className="mt-0.5 flex min-w-0 items-center gap-x-2.5 text-[11px] text-gray-400">
+            {flight && <span className="inline-flex items-center gap-0.5 font-medium text-gray-500"><PlaneLanding size={11} /> {flight}</span>}
+            {c.via.length > 0 && <span className="truncate">über {c.via.join(', ')}</span>}
+            {c.location && <span className="inline-flex min-w-0 items-center gap-0.5 truncate text-gray-600"><UserRound size={11} className="shrink-0" /> <span className="truncate">{c.location}</span></span>}
+          </div>
+        )}
       </div>
-    </Wrapper>
+      <div className="hidden justify-center lg:flex"><Car size={20} className="text-gray-300" aria-hidden /></div>
+      <div className="hidden lg:block"><span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700"><ExternalLink size={11} /> Kalender</span></div>
+      <div className="hidden lg:block">
+        <span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
+          state === 'past' ? 'bg-gray-50 text-gray-600 ring-gray-200' : 'bg-teal-50 text-teal-700 ring-teal-200')}>{statusLabel}</span>
+      </div>
+      <div className="hidden text-right text-sm font-bold tabular-nums text-gray-900 lg:block">{c.price ? formatPrice(c.price) : '—'}</div>
+      <div className="shrink-0">
+        {c.html_link ? <RowMenu items={[{ label: 'Im Kalender öffnen', Icon: ExternalLink, href: c.html_link }]} /> : <span className="block h-8 w-8" />}
+      </div>
+    </div>
   );
 }
 
@@ -404,12 +488,14 @@ function itemStates(items: Item[], now: string): LegState[] {
 }
 
 type ScheduleView = 'heute' | 'morgen' | 'woche';
+const COLLAPSED_ROWS = 8;
 
 function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
   items: Item[]; now: string; onOpen: (id: number) => void;
   calendar: DashboardData['calendar']; showCal: boolean; onToggleCal: () => void;
 }) {
   const [view, setView] = useState<ScheduleView>('heute');
+  const [expanded, setExpanded] = useState(false);
   const today = now.slice(0, 10);
   const tomorrow = addDays(today, 1);
   const byDay = useMemo(() => {
@@ -424,105 +510,130 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 
   const days = view === 'heute' ? [today] : view === 'morgen' ? [tomorrow] : Array.from(byDay.keys()).sort();
   const count = (d: string) => byDay.get(d)?.length || 0;
-
   const tabs: Array<{ id: ScheduleView; label: string; n: number }> = [
     { id: 'heute', label: 'Heute', n: count(today) },
     { id: 'morgen', label: 'Morgen', n: count(tomorrow) },
     { id: 'woche', label: '7 Tage', n: items.length },
   ];
+  const viewItems = days.flatMap((d) => byDay.get(d) || []);
+  const total = viewItems.length;
+  const sum = daySummary(viewItems);
+
+  // Eingeklappt: höchstens 8 Zeilen, beginnend kurz vor der nächsten Fahrt (heute), damit Anstehendes sichtbar bleibt
+  const todayStates = view === 'heute' ? itemStates(viewItems, now) : null;
+  const firstOpen = todayStates ? Math.max(0, todayStates.findIndex((s) => s !== 'past')) : 0;
+  const startAt = !expanded && total > COLLAPSED_ROWS ? Math.max(0, Math.min(firstOpen - 2, total - COLLAPSED_ROWS)) : 0;
+  const endAt = !expanded && total > COLLAPSED_ROWS ? startAt + COLLAPSED_ROWS : total;
+  let shown = 0;
 
   return (
     <Card
-      title="Fahrplan"
+      title={view === 'heute' ? 'Fahrplan – Heute' : view === 'morgen' ? 'Fahrplan – Morgen' : 'Fahrplan – 7 Tage'}
       icon={CalendarDays}
       right={(
-        <div className="flex w-full sm:w-auto flex-wrap items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="flex flex-1 gap-1 sm:flex-none" role="tablist" aria-label="Zeitraum">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={view === t.id}
+                onClick={() => { setView(t.id); setExpanded(false); }}
+                className={cn('inline-flex h-9 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors sm:flex-none',
+                  view === t.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100')}
+              >
+                {t.label}
+                <span className={cn('min-w-[1.5rem] rounded-full px-1.5 py-px text-center text-[11px] font-semibold tabular-nums', view === t.id ? 'bg-primary-900/90 text-white' : 'bg-gray-100 text-gray-600')}>{t.n}</span>
+              </button>
+            ))}
+          </div>
           {calendar.enabled && (
             <button
               onClick={onToggleCal}
               title={calendar.error ? `Kalender: ${calendar.error}` : 'Fahrten aus dem Google Kalender ein-/ausblenden'}
-              className={cn('inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold ring-1 ring-inset transition-colors',
+              className={cn('inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold ring-1 ring-inset transition-colors',
                 calendar.error ? 'bg-red-50 text-red-600 ring-red-200'
-                  : showCal ? 'bg-teal-50 text-teal-700 ring-teal-200' : 'bg-white text-gray-500 ring-gray-200 hover:bg-gray-50')}
+                  : showCal ? 'bg-white text-blue-700 ring-blue-200 hover:bg-blue-50' : 'bg-white text-gray-500 ring-gray-200 hover:bg-gray-50')}
             >
-              <CalendarDays size={13} />
+              <CalendarDays size={15} />
               Kalender {calendar.error ? '⚠' : showCal ? 'an' : 'aus'}
             </button>
           )}
-          <div className="flex flex-1 sm:flex-none rounded-xl bg-gray-100 p-1 text-sm">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setView(t.id)}
-                className={cn('flex-1 sm:flex-none justify-center px-3 py-1 rounded-lg font-medium transition-colors inline-flex items-center gap-1.5 whitespace-nowrap',
-                  view === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800')}
-              >
-                {t.label}
-                <span className={cn('text-[11px] tabular-nums rounded-full px-1.5', view === t.id ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600')}>{t.n}</span>
-              </button>
-            ))}
-          </div>
         </div>
       )}
     >
-      {days.length === 0 || days.every((d) => !count(d)) ? (
+      {total === 0 ? (
         <div className="px-5 py-12 text-center">
           <CalendarDays size={28} className="mx-auto text-gray-300" />
           <p className="mt-2 text-sm text-gray-500">
             {view === 'heute' ? 'Heute keine Fahrten' : view === 'morgen' ? 'Morgen keine Fahrten' : 'Keine Fahrten in den nächsten 7 Tagen'}
           </p>
         </div>
-      ) : days.map((d) => {
-        const dayItems = byDay.get(d) || [];
-        if (!dayItems.length) return null;
-        const states: LegState[] = d === today ? itemStates(dayItems, now) : dayItems.map(() => 'upcoming');
-        const sum = daySummary(dayItems);
-        const firstUpcoming = states.findIndex((s) => s !== 'past');
-        return (
-          <div key={d}>
-            {view === 'woche' && (
-              <div className="sticky top-0 z-[1] px-5 py-2 bg-gray-50/95 backdrop-blur border-y border-gray-100 flex items-center justify-between text-xs">
-                <span className="font-semibold text-gray-700">
-                  {d === today ? 'Heute' : d === tomorrow ? 'Morgen' : dayLabel(d, { weekday: 'long' })}
-                  <span className="font-normal text-gray-400"> · {dayLabel(d, { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                </span>
-                <span className="text-gray-500">
-                  {plural(sum.count, 'Fahrt', 'Fahrten')}{sum.cal > 0 && <span className="text-teal-600"> · {sum.cal} Kalender</span>}
-                </span>
-              </div>
-            )}
-            <div className="divide-y divide-gray-100">
-              {dayItems.map((it, i) => (
+      ) : (
+        <>
+          <div className={cn('hidden border-b border-gray-100 px-5 py-2 text-xs font-medium text-gray-500', ROW_GRID)} aria-hidden>
+            <span>Zeit</span><span>Kunde / Fahrt</span><span>Details</span><span className="text-center">Fahrzeug</span><span>Zahlung</span><span>Status</span><span className="text-right">Preis</span><span />
+          </div>
+          {days.map((d) => {
+            const dayItems = byDay.get(d) || [];
+            if (!dayItems.length) return null;
+            const states: LegState[] = d === today ? itemStates(dayItems, now) : dayItems.map(() => 'upcoming');
+            const firstUpcoming = states.findIndex((s) => s !== 'past');
+            const rows = dayItems.map((it, i) => {
+              const idx = shown++;
+              if (idx < startAt || idx >= endAt) return null;
+              return (
                 <div key={it.kind === 'booking' ? `${it.leg.id}-${it.leg.leg}` : `cal-${it.cal.uid}-${it.time}`}>
                   {d === today && i === firstUpcoming && firstUpcoming > 0 && (
-                    <div className="flex items-center gap-2 px-5 py-1 text-[11px] font-semibold text-red-500">
-                      <span className="h-px flex-1 bg-red-200" /> Jetzt {hhmm(now)} <span className="h-px flex-1 bg-red-200" />
+                    <div className="flex items-center gap-2 px-5 py-1 text-[11px] font-bold text-red-500">
+                      <span className="h-2 w-2 rounded-full bg-red-500" /> Jetzt {hhmm(now)} <span className="h-px flex-1 bg-red-300" />
                     </div>
                   )}
                   {it.kind === 'booking'
                     ? <LegRow l={it.leg} state={states[i]} now={now} onOpen={() => onOpen(it.leg.id)} />
                     : <CalendarRow c={it.cal} state={states[i]} now={now} />}
                 </div>
-              ))}
+              );
+            });
+            if (rows.every((r) => r === null)) return null;
+            const ds = daySummary(dayItems);
+            return (
+              <div key={d}>
+                {view === 'woche' && (
+                  <div className="flex items-center justify-between border-y border-gray-100 bg-gray-50/95 px-5 py-2 text-xs">
+                    <span className="font-semibold text-gray-700">
+                      {d === today ? 'Heute' : d === tomorrow ? 'Morgen' : dayLabel(d, { weekday: 'long' })}
+                      <span className="font-normal text-gray-400"> · {dayLabel(d, { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                    </span>
+                    <span className="text-gray-500">{plural(ds.count, 'Fahrt', 'Fahrten')}{ds.cal > 0 && <span className="text-teal-600"> · {ds.cal} Kalender</span>}</span>
+                  </div>
+                )}
+                <div className="divide-y divide-gray-100">{rows}</div>
+              </div>
+            );
+          })}
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-3.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {total > COLLAPSED_ROWS && (
+                <button onClick={() => setExpanded((v) => !v)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                  {expanded ? 'Weniger anzeigen' : `Alle ${total} Fahrten anzeigen`}
+                  <ArrowRight size={15} className={cn('transition-transform', expanded && '-rotate-90')} />
+                </button>
+              )}
+              <span className="text-xs text-gray-500">
+                {sum.rueck > 0 && <>{sum.hin} Hin · {sum.rueck} Rück · </>}
+                {Object.entries(sum.byPay).map(([k, n]) => `${n} ${k}`).join(' · ')}
+                {sum.cal > 0 && <span className="text-teal-600"> · {sum.cal} Kalender</span>}
+              </span>
             </div>
-            {view !== 'woche' && (
-              <footer className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-                <span>
-                  {plural(sum.count, 'Fahrt', 'Fahrten')}
-                  {sum.rueck > 0 && <> ({sum.hin} Hin · {sum.rueck} Rück)</>}
-                  {Object.keys(sum.byPay).length > 0 && ' · '}
-                  {Object.entries(sum.byPay).map(([k, n]) => `${n} ${k}`).join(' · ')}
-                  {sum.cal > 0 && <span className="text-teal-600"> · {sum.cal} Kalender</span>}
-                </span>
-                <span className="text-right">
-                  <span className="text-sm font-bold text-gray-900">Umsatz {formatPrice(sum.revenue)}</span>
-                  {sum.calRevenue > 0 && <span className="block text-[11px] text-teal-600">+ Kalender ca. {formatPrice(sum.calRevenue)}</span>}
-                </span>
-              </footer>
-            )}
-          </div>
-        );
-      })}
+            <div className="text-right">
+              <span className="text-sm text-gray-600">Umsatz ({view === 'heute' ? 'Heute' : view === 'morgen' ? 'Morgen' : '7 Tage'}): </span>
+              <span className="text-lg font-bold tabular-nums text-emerald-600">{formatPrice(sum.revenue)}</span>
+              {sum.calRevenue > 0 && <span className="block text-[11px] text-teal-600">+ Kalender ca. {formatPrice(sum.calRevenue)}</span>}
+            </div>
+          </footer>
+        </>
+      )}
     </Card>
   );
 }
@@ -533,6 +644,7 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
   a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void; onGoTab: (tab: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const cards = a.cardsUncharged || [];
   // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
   const cardIds = new Set(cards.map((c) => c.id));
@@ -552,19 +664,45 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
   const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
   const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
+  // Eingeklappt: nur Stichworte; dringende (rot) zuerst
+  const chips: Array<{ label: string; urgent: boolean }> = [
+    ...(cards.length ? [{ label: `Karte nicht abgebucht (${cards.length})`, urgent: true }] : []),
+    ...(monthEndCount ? [{ label: `Monatsende-Rechnungen (${monthEndCount})`, urgent: true }] : []),
+    ...(adsRep ? [{ label: 'Google-Ads-Reports', urgent: true }] : []),
+    ...(seoIdx ? [{ label: 'Google-Index fällt', urgent: true }] : []),
+    ...(seo ? [{ label: 'Backlink-CSV', urgent: true }] : []),
+    ...groups.filter((g) => a[g.key].length).map((g) => ({ label: `${g.title} (${a[g.key].length})`, urgent: g.tone.includes('red') })),
+    ...(mismatches.length ? [{ label: `Zeit weicht vom Kalender ab (${mismatches.length})`, urgent: false }] : []),
+  ];
   return (
     <Card
       title="Handlungsbedarf"
       icon={AlertTriangle}
-      right={total > 0
-        ? <span className="text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">{total}</span>
-        : undefined}
+      className={total > 0 ? 'ring-red-200' : undefined}
+      right={total > 0 ? (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">{total}</span>
+          <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 hover:bg-blue-50">
+            {open ? 'Einklappen' : 'Alle anzeigen'} <ChevronDown size={15} className={cn('transition-transform', open && 'rotate-180')} />
+          </button>
+        </div>
+      ) : undefined}
     >
       {total === 0 ? (
         <div className="px-5 py-8 text-center">
           <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
           <p className="mt-2 text-sm font-medium text-gray-700">Alles erledigt</p>
           <p className="text-xs text-gray-400">Keine offenen Zahlungen, Bestätigungen oder Rechnungen.</p>
+        </div>
+      ) : !open ? (
+        <div className="flex flex-wrap gap-2 px-5 py-3">
+          {chips.map((c) => (
+            <button key={c.label} onClick={() => setOpen(true)}
+              className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset',
+                c.urgent ? 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100' : 'bg-gray-50 text-gray-700 ring-gray-200 hover:bg-gray-100')}>
+              {c.urgent && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}{c.label}
+            </button>
+          ))}
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
@@ -1009,6 +1147,69 @@ function ReportsCard() {
 }
 
 // ---------------------------------------------------------------------------------------
+// KPI card (Kopfzeile)
+
+function Delta({ cur, prev, title }: { cur: number; prev: number; title: string }) {
+  if (!prev) return null;
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  const up = pct >= 0;
+  return (
+    <span title={title} className={cn('inline-flex items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
+      up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600')}>
+      {up ? <ArrowUp size={11} /> : <ArrowDown size={11} />}{up ? '+' : ''}{pct} %
+    </span>
+  );
+}
+
+const SPARK_TONE = {
+  blue: ['bg-blue-200', 'bg-blue-500'], amber: ['bg-amber-200', 'bg-amber-500'],
+  violet: ['bg-violet-200', 'bg-violet-500'], emerald: ['bg-emerald-200', 'bg-emerald-500'],
+} as const;
+const ICON_TONE = {
+  blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-500',
+  violet: 'bg-violet-50 text-violet-600', emerald: 'bg-emerald-50 text-emerald-600',
+} as const;
+
+function MiniBars({ values, tone, title }: { values: number[]; tone: keyof typeof SPARK_TONE; title: string }) {
+  const v = values.slice(-10);
+  if (v.length < 2 || !v.some((x) => x > 0)) return null;
+  const max = Math.max(1, ...v);
+  return (
+    <div className="flex h-8 shrink-0 items-end gap-[2px]" title={title} aria-hidden>
+      {v.map((x, i) => (
+        <span key={i} className={cn('w-[3px] rounded-sm', i === v.length - 1 ? SPARK_TONE[tone][1] : SPARK_TONE[tone][0])}
+          style={{ height: `${Math.max(10, (x / max) * 100)}%` }} />
+      ))}
+    </div>
+  );
+}
+
+function HeadKpi({ label, Icon, tone, value, delta, sub, spark, sparkTitle, footer }: {
+  label: string; Icon: typeof Clock; tone: keyof typeof ICON_TONE; value: React.ReactNode;
+  delta?: React.ReactNode; sub?: React.ReactNode; spark?: number[]; sparkTitle?: string; footer?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200/70">
+      <div className="flex items-start gap-3">
+        <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', ICON_TONE[tone])}><Icon size={22} aria-hidden /></span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <span className="truncate text-sm font-semibold text-gray-700" title={label}>{label}</span>
+            {spark && <MiniBars values={spark} tone={tone as keyof typeof SPARK_TONE} title={sparkTitle || ''} />}
+          </div>
+          <div className="-mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-2xl font-bold tabular-nums tracking-tight text-gray-900">{value}</span>
+            {delta}
+          </div>
+        </div>
+      </div>
+      {sub && <div className="mt-2 text-[13px] leading-snug text-gray-500">{sub}</div>}
+      {footer && <div className="mt-auto pt-2.5">{footer}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------
 // KPI card
 
 // "648 Buchungen + Kalender 12.345 € (310 Fahrten)"
@@ -1128,6 +1329,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
     return () => { clearInterval(refresh); clearInterval(clock); };
   }, [load]);
 
+  const archive = useDayArchive();
+
   if (!data) {
     return error ? (
       <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
@@ -1163,32 +1366,42 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   const monthName = MONTHS[+data.month.month.slice(5, 7) - 1];
   const prevMonthName = MONTHS[(+data.month.month.slice(5, 7) + 10) % 12];
 
+  // Mini-Balken: Buchungseingang je Tag (14 Tage, letzter = heute) und Fahrten je Tag (nächste 7 Tage)
+  const chartRev = data.chart.map((c) => c.revenue);
+  const monthRev = data.chart.filter((c) => c.date.slice(0, 7) === data.month.month).map((c) => c.revenue);
+  const ridesNext7 = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(today, i);
+    return items.filter((x) => x.time.slice(0, 10) === d).length;
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-5">
+      {/* Kopf: Titel links, Tagesarchiv-Datum + Widgets + Stand rechts */}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Übersicht</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Übersicht</h2>
+          <p className="mt-0.5 text-[15px] text-gray-500">
             {dayLabel(today, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
             <span className="mx-1.5 text-gray-300">·</span>
-            <span className="font-semibold text-gray-700 tabular-nums">{hhmm(now)} Uhr</span>
+            <span className="font-semibold text-gray-800 tabular-nums">{hhmm(now)} Uhr</span>
             <span className="text-gray-400"> (Berlin)</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 relative">
+        <div className="relative flex flex-wrap items-center gap-2">
+          {show('archive') && <ArchiveControls a={archive} />}
           <button
             onClick={() => setPicker((v) => !v)}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white ring-1 ring-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl"
+            aria-expanded={picker}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
           >
-            <LayoutGrid size={14} /> Widgets
+            <LayoutGrid size={16} /> Widgets
           </button>
           <button
             onClick={() => { load(); loadFlights(); }}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 bg-white ring-1 ring-gray-200 hover:bg-gray-50 px-3 py-2 rounded-xl"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
             title="Aktualisiert sich jede Minute automatisch"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             {loadedAt ? `Stand ${hhmm(loadedAt)}` : 'Aktualisieren'}
           </button>
           {picker && (
@@ -1206,18 +1419,15 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         </div>
       </div>
       {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
-      {show('events') && widgets?.events && (
-        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
-      )}
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        <Kpi
+      {/* Kennzahlen */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <HeadKpi
           label="Fahrten heute"
           Icon={Car}
-          tone="bg-primary-50 text-primary-600"
-          value={<>{todayItems.length}<span className="text-base font-medium text-gray-400"> · {done} erledigt</span></>}
+          tone="blue"
+          value={<>{todayItems.length}<span className="ml-1.5 text-sm font-medium text-gray-400">· {done} erledigt</span></>}
           sub={[
             todayLegs.some((l) => l.leg === 'rueck')
               ? plural(todayLegs.filter((l) => l.leg === 'hin').length, 'Hinfahrt', 'Hinfahrten') + ' · '
@@ -1225,74 +1435,68 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
               : `${todayItems.length - done} noch offen`,
             todayCal > 0 ? `${todayCal} aus Kalender` : '',
           ].filter(Boolean).join(' · ')}
+          spark={ridesNext7}
+          sparkTitle="Fahrten je Tag: heute + 6 Tage"
           footer={nextUpcoming ? (
-            <button onClick={() => openItem(nextUpcoming)} className="w-full flex items-center gap-2 text-left rounded-xl bg-gray-50 hover:bg-gray-100 px-3 py-2 text-xs">
-              <Clock size={13} className="text-primary-500 shrink-0" />
-              <span className="text-gray-500 shrink-0">Nächste:</span>
-              <span className="font-semibold text-gray-900 shrink-0">
+            <button onClick={() => openItem(nextUpcoming)} className="flex w-full items-center gap-2 rounded-lg bg-gray-50 px-2.5 py-1.5 text-left text-xs hover:bg-gray-100">
+              <Clock size={13} className="shrink-0 text-blue-500" />
+              <span className="shrink-0 text-gray-500">Nächste:</span>
+              <span className="shrink-0 font-semibold text-gray-900">
                 {nextUpcoming.time.slice(0, 10) === today ? '' : `${dayLabel(nextUpcoming.time.slice(0, 10), { weekday: 'short' })} `}{hhmm(nextUpcoming.time)}
               </span>
               <span className="truncate text-gray-600">{itemName(nextUpcoming)}</span>
-              <span className="ml-auto shrink-0 font-medium text-primary-600">
+              <span className="ml-auto shrink-0 font-medium text-blue-600">
                 {wallMinutes(nextUpcoming.time) <= wallMinutes(now) ? 'läuft' : `in ${fmtDuration(wallMinutes(nextUpcoming.time) - wallMinutes(now))}`}
               </span>
             </button>
-          ) : <span className="text-xs text-gray-400">Keine weiteren Fahrten in den nächsten 7 Tagen</span>}
+          ) : undefined}
         />
-        <Kpi
+        <HeadKpi
           label="Neue Buchungen heute"
-          Icon={CalendarDays}
-          tone="bg-sky-50 text-sky-600"
+          Icon={Euro}
+          tone="amber"
           value={formatPrice(it.today.revenue)}
-          sub={`${it.today.count} Buchung${it.today.count === 1 ? '' : 'en'}${data.intakeCalendar?.today.count ? ` (${data.intakeCalendar.today.count} aus Kalender)` : ''} · gestern gesamt ${it.yesterday.count}${data.intakeCalendar?.yesterday.count ? ` (${data.intakeCalendar.yesterday.count} aus Kalender)` : ''}`}
-          footer={<DeltaChip cur={it.today.revenue} prev={it.yesterdaySameTime.revenue} suffix="vs. gestern bis jetzt" />}
+          delta={<Delta cur={it.today.revenue} prev={it.yesterdaySameTime.revenue} title="vs. gestern bis zur gleichen Uhrzeit" />}
+          sub={`${plural(it.today.count, 'Buchung', 'Buchungen')}${data.intakeCalendar?.today.count ? ` (${data.intakeCalendar.today.count} aus Kalender)` : ''} · gestern ${it.yesterday.count}`}
+          spark={chartRev}
+          sparkTitle="Buchungseingang je Tag, letzte 14 Tage"
         />
-        <Kpi
+        <HeadKpi
           label="Letzte 7 Tage"
-          Icon={TrendingUp}
-          tone="bg-emerald-50 text-emerald-600"
+          Icon={CalendarDays}
+          tone="violet"
           value={formatPrice(it.week.revenue)}
-          sub={`${it.week.count} Buchungen${data.intakeCalendar?.week.count ? ` (${data.intakeCalendar.week.count} aus Kalender)` : ''}`}
-          footer={<DeltaChip cur={it.week.revenue} prev={it.prevWeek.revenue} suffix="vs. 7 Tage davor" />}
+          delta={<Delta cur={it.week.revenue} prev={it.prevWeek.revenue} title="vs. die 7 Tage davor" />}
+          sub={`${plural(it.week.count, 'Buchung', 'Buchungen')}${data.intakeCalendar?.week.count ? ` (${data.intakeCalendar.week.count} aus Kalender)` : ''}`}
+          spark={chartRev.slice(-7)}
+          sparkTitle="Buchungseingang je Tag, letzte 7 Tage"
         />
-        <Kpi
+        <HeadKpi
           label={`${monthName} bis heute`}
-          Icon={Receipt}
-          tone="bg-violet-50 text-violet-600"
+          Icon={BarChart3}
+          tone="emerald"
           value={formatPrice(it.mtd.revenue + (data.calendarMonth?.revenue ?? 0))}
+          delta={<Delta cur={it.mtd.revenue} prev={it.prevMtd.revenue} title="Buchungen vs. Vormonat bis zum gleichen Tag" />}
           sub={<CalSplit bookings={it.mtd} cal={data.calendarMonth} />}
-          footer={<DeltaChip cur={it.mtd.revenue} prev={it.prevMtd.revenue} suffix="Buchungen vs. Vormonat" />}
-        />
-        <Kpi
-          label={`${prevMonthName} (Vormonat)`}
-          Icon={History}
-          tone="bg-amber-50 text-amber-600"
-          value={formatPrice(it.prevMonth.revenue + (data.calendarPrevMonth?.revenue ?? 0))}
-          sub={<CalSplit bookings={it.prevMonth} cal={data.calendarPrevMonth} />}
-          footer={<span className="text-xs text-gray-400">ganzer Monat</span>}
-        />
-        <Kpi
-          label="Gesamtumsatz"
-          Icon={Wallet}
-          tone="bg-gray-100 text-gray-700"
-          value={formatPrice(data.allTime.revenue + (data.calendarTotal?.revenue ?? 0))}
-          sub={<CalSplit bookings={data.allTime} cal={data.calendarTotal} />}
-          footer={<span className="text-xs text-gray-400">{data.calendarTotal ? 'seit 2023, inkl. Kalender' : 'alle Buchungen seit Start der Website'}</span>}
+          spark={monthRev}
+          sparkTitle={`Buchungseingang je Tag im ${monthName} (max. 14 Tage)`}
         />
       </div>
-      <p className="-mt-3 text-[11px] text-gray-400">
-        Umsätze nach Buchungsdatum (ohne Stornos){data.calendar?.enabled && showCal ? ' — Kalender-Fahrten zählen dort an dem Tag, an dem sie eingetragen wurden' : ''}. Fahrplan: Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
-      </p>
 
-      {show('archive') && <DayArchive />}
+      {show('archive') && <ArchiveResults a={archive} />}
 
-      {/* Schedule + side column */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        <div className="xl:col-span-2">
-          <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
-        </div>
-        <div className="space-y-6">
-          <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
+      <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
+
+      {show('events') && widgets?.events && (
+        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
+      )}
+
+      {/* Fahrplan (volle Breite) */}
+      <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
+
+      {/* Flugstatus + Morgen abbuchen nebeneinander */}
+      {(show('flights') || show('charges')) && (
+        <div className={cn('grid grid-cols-1 items-start gap-5', show('flights') && show('charges') && 'lg:grid-cols-2')}>
           {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
           {show('charges') && <TomorrowCharges
             cards={cards}
@@ -1303,42 +1507,62 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
             onOpen={onOpenBooking}
           />}
         </div>
-      </div>
-
-      {/* Operations */}
-      {(show('drivers') || show('missed')) && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-          {show('drivers') && <div className={show('missed') ? 'xl:col-span-2' : 'xl:col-span-3'}><DriverPlan plan={widgets?.drivers ?? null} now={now} onOpen={onOpenBooking} /></div>}
-          {show('missed') && <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} />}
-        </div>
       )}
 
-      {/* Business */}
-      {(show('forecast') || show('funnel') || show('receivables')) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* Fahrer · Prognose · Website · Forderungen */}
+      {(show('drivers') || show('forecast') || show('funnel') || show('receivables')) && (
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          {show('drivers') && <DriverPlan plan={widgets?.drivers ?? null} now={now} onOpen={onOpenBooking} />}
           {show('forecast') && <ForecastCard f={widgets?.forecast ?? null} />}
           {show('funnel') && <FunnelCard f={widgets?.funnel ?? null} />}
           {show('receivables') && <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} />}
         </div>
       )}
 
+      {show('missed') && <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} />}
+
       {show('capacity') && <CapacityHeatmap entries={capacity} today={today} />}
 
       {/* Trends */}
       {(show('chart') || show('month')) && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
           {show('chart') && <div className={show('month') ? 'xl:col-span-2' : 'xl:col-span-3'}><IntakeChart chart={data.chart} today={today} /></div>}
           {show('month') && <MonthOverview month={data.month} />}
         </div>
       )}
 
+      {show('totals') && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Kpi
+            label={`${prevMonthName} (Vormonat)`}
+            Icon={History}
+            tone="bg-amber-50 text-amber-600"
+            value={formatPrice(it.prevMonth.revenue + (data.calendarPrevMonth?.revenue ?? 0))}
+            sub={<CalSplit bookings={it.prevMonth} cal={data.calendarPrevMonth} />}
+            footer={<span className="text-xs text-gray-400">ganzer Monat</span>}
+          />
+          <Kpi
+            label="Gesamtumsatz"
+            Icon={Wallet}
+            tone="bg-gray-100 text-gray-700"
+            value={formatPrice(data.allTime.revenue + (data.calendarTotal?.revenue ?? 0))}
+            sub={<CalSplit bookings={data.allTime} cal={data.calendarTotal} />}
+            footer={<span className="text-xs text-gray-400">{data.calendarTotal ? 'seit 2023, inkl. Kalender' : 'alle Buchungen seit Start der Website'}</span>}
+          />
+        </div>
+      )}
+
       {/* Latest + reports */}
       {(show('recent') || show('reports')) && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
           {show('recent') && <div className={show('reports') ? 'xl:col-span-2' : 'xl:col-span-3'}><RecentBookings recent={data.recent} now={now} onOpen={onOpenBooking} /></div>}
           {show('reports') && <ReportsCard />}
         </div>
       )}
+
+      <p className="text-[11px] text-gray-400">
+        Umsätze nach Buchungsdatum (ohne Stornos){data.calendar?.enabled && showCal ? ' — Kalender-Fahrten zählen dort an dem Tag, an dem sie eingetragen wurden' : ''}. Fahrplan: Fahrten nach Abholzeit, Hin- und Rückfahrt einzeln{data.calendar?.enabled && showCal ? ', inkl. Fahrten, die nur im Google Kalender stehen' : ''}.
+      </p>
     </div>
   );
 }

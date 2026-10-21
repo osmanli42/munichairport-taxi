@@ -71,7 +71,7 @@ export default function EventsStrip({ events, custom, sources, today, onSaved }:
 
   return (
     <>
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent]">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 shrink-0"><PartyPopper size={14} /> Demnächst:</span>
         {events.length === 0 && <span className="text-xs text-gray-400 shrink-0">keine Feiertage oder Events in den nächsten 45 Tagen</span>}
         {events.map((e) => {

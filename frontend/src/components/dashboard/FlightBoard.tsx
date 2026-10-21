@@ -3,9 +3,9 @@
 // Today's and tomorrow's airport pickups with live flight status (AeroDataBox). Only
 // flights between an hour ago and 8 h ahead are looked up; the rest show "geplant".
 
-import { ExternalLink, PlaneLanding } from 'lucide-react';
+import { ChevronRight, ExternalLink, PlaneLanding } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, Switch, dayLabel, hhmm } from './shared';
+import { Card, dayLabel, hhmm } from './shared';
 import type { FlightRow, Flights } from './types';
 
 function statusView(f: FlightRow): { label: string; cls: string } {
@@ -38,7 +38,18 @@ export default function FlightBoard({ data, today, onOpen, onToggle }: {
       right={(
         <div className="flex items-center gap-2">
           {problems > 0 && <span className="text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">{problems}</span>}
-          {data && <Switch on={data.enabled} onChange={() => onToggle(!data.enabled)} label="Live" />}
+          {data && (
+            <button
+              onClick={() => onToggle(!data.enabled)}
+              aria-pressed={data.enabled}
+              title={data.enabled ? 'Live-Abfrage ausschalten' : 'Live-Abfrage einschalten'}
+              className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition-colors',
+                data.enabled ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100' : 'bg-gray-50 text-gray-500 ring-gray-200 hover:bg-gray-100')}
+            >
+              <span className={cn('h-2 w-2 rounded-full', data.enabled ? 'bg-emerald-500' : 'bg-gray-400')} />
+              {data.enabled ? 'Live' : 'Live aus'}
+            </button>
+          )}
         </div>
       )}
     >
@@ -56,22 +67,23 @@ export default function FlightBoard({ data, today, onOpen, onToggle }: {
               <li key={`${f.flight}-${f.time}`}>
                 <button onClick={click} className="w-full text-left px-5 py-2.5 hover:bg-gray-50 flex items-center gap-3">
                   <div className="w-12 shrink-0">
-                    <div className="font-bold tabular-nums text-primary-700">{hhmm(f.time)}</div>
+                    <div className="text-[15px] font-bold tabular-nums text-gray-900">{hhmm(f.time)}</div>
                     {f.time.slice(0, 10) !== today && <div className="text-[10px] text-gray-400">{dayLabel(f.time.slice(0, 10), { weekday: 'short' })}</div>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900">{f.flight}</span>
+                      <span className="font-bold text-gray-900">{f.flight}</span>
                       {s?.origin && <span className="truncate text-xs text-gray-400">aus {s.origin}</span>}
                       {f.source === 'calendar' && <ExternalLink size={11} className="shrink-0 text-teal-600" />}
                     </div>
                     <div className="truncate text-xs text-gray-500">
                       {f.name || '—'}
-                      {s?.terminal && <> · T{s.terminal}</>}
                       {s?.scheduled && <> · Plan {s.scheduled}{s.expected && s.expected !== s.scheduled && !s.actual ? ` → ${s.expected}` : ''}</>}
                     </div>
                   </div>
+                  <span className="hidden w-[4.5rem] shrink-0 text-xs text-gray-500 sm:block">{s?.terminal ? `Terminal ${s.terminal}` : ''}</span>
                   <span className={cn('shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap', v.cls)}>{v.label}</span>
+                  <ChevronRight size={16} className="shrink-0 text-gray-300" aria-hidden />
                 </button>
               </li>
             );
