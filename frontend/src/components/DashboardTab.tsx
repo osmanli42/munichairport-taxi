@@ -20,7 +20,7 @@ import {
 import QuickActions from './dashboard/QuickActions';
 import EventsStrip from './dashboard/EventsStrip';
 import FlightBoard from './dashboard/FlightBoard';
-import { useDayArchive, ArchiveControls, ArchiveResults } from './dashboard/DayArchive';
+import { useDayArchive, ArchiveResults } from './dashboard/DayArchive';
 import DriverPlan from './dashboard/DriverPlan';
 import CapacityHeatmap, { CapacityEntry } from './dashboard/CapacityHeatmap';
 import MissedCustomers from './dashboard/MissedCustomers';
@@ -1373,7 +1373,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
 
   return (
     <div className="space-y-5">
-      {/* Kopf: Titel links, Tagesarchiv-Datum + Widgets + Stand rechts */}
+      {/* Kopf: Titel links, Anordnen + Widgets + Stand rechts */}
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 2xl:flex-nowrap">
         <div className="min-w-0">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">Übersicht</h2>
@@ -1385,7 +1385,6 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           </p>
         </div>
         <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2 2xl:flex-nowrap">
-          {show('archive') && <ArchiveControls a={archive} />}
           <button
             onClick={() => { setEditing((v) => !v); setPicker(false); }}
             aria-pressed={editing}
@@ -1524,7 +1523,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           funnel: show('funnel') ? <FunnelCard f={widgets?.funnel ?? null} /> : null,
           receivables: show('receivables') ? <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} /> : null,
           quick: show('quick') ? <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} /> : null,
-          archive: show('archive') ? <ArchiveResults a={archive} /> : null,
+          archive: show('archive') ? <ArchiveResults a={archive} withControls /> : null,
           events: show('events') && widgets?.events
             ? <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
             : null,
