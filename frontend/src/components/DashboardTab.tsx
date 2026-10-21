@@ -10,7 +10,7 @@ import {
   AlertTriangle, ArrowRight, Banknote, BarChart3, Building2, CalendarDays, CheckCircle2, ChevronRight,
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
-  EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown,
+  EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -219,34 +219,41 @@ function legRoute(l: Leg) {
     : { from: l.pickup_address, to: l.dropoff_address, via: l.zwischenstopp_address || null };
 }
 
-// Spaltenraster des Fahrplans (ab lg): Zeit | Kunde / Fahrt | Details | Fahrzeug | Zahlung | Status | Preis | Menü
-const ROW_GRID = 'lg:grid lg:grid-cols-[3.25rem_minmax(0,1fr)_minmax(0,1.4fr)_2.75rem_5.75rem_6.75rem_5rem_2rem] lg:items-center lg:gap-3';
-
-const initials = (name?: string | null) => {
-  const parts = String(name || '').replace(/[^A-Za-zÀ-ÖØ-öø-žẞ\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : parts[0]?.[1] || '')).toUpperCase() || '?';
-};
-const shortAddr = (a?: string | null) => String(a || '').split(',')[0].trim();
-
-function Avatar({ name, tone = 'blue' }: { name?: string | null; tone?: 'blue' | 'teal' }) {
-  return (
-    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-      tone === 'teal' ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-700')} aria-hidden>
-      {initials(name)}
-    </span>
-  );
-}
-
 const VEHICLE_ICON: Record<string, typeof Car> = { kombi: Car, van: CarFront, grossraumtaxi: Bus };
 
 function TimeCell({ time, state, now }: { time: string; state: LegState; now: string }) {
   const minutesTo = wallMinutes(time) - wallMinutes(now);
   return (
-    <div className="w-12 shrink-0 lg:w-auto">
-      <div className={cn('text-[15px] font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-gray-900')}>{hhmm(time)}</div>
-      {state !== 'past' && (
-        <div className={cn('text-[11px] font-medium', state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-blue-600' : 'text-gray-400')}>
-          {state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(time.slice(0, 10), { weekday: 'short' })}
+    <div className="w-14 shrink-0 pt-0.5">
+      <div className={cn('text-lg font-bold tabular-nums leading-tight', state === 'past' ? 'text-gray-500' : 'text-gray-900')}>{hhmm(time)}</div>
+      <div className={cn('mt-0.5 text-[11px] font-medium', state === 'running' ? 'text-emerald-600' : state === 'next' ? 'text-blue-600' : 'text-gray-400')}>
+        {state === 'past' ? 'vorbei' : state === 'running' ? 'läuft' : minutesTo < 24 * 60 ? `in ${fmtDuration(minutesTo)}` : dayLabel(time.slice(0, 10), { weekday: 'short' })}
+      </div>
+    </div>
+  );
+}
+
+/** Start und Ziel je in einer eigenen Zeile – volle Adresse, nur am Zeilenende gekürzt (Tooltip zeigt alles) */
+function Route({ from, to, via }: { from: string | null | undefined; to: string | null | undefined; via?: string | null }) {
+  const FromIcon = isAirport(from) ? PlaneLanding : MapPin;
+  const ToIcon = isAirport(to) ? PlaneTakeoff : Flag;
+  return (
+    <div className="mt-1 space-y-0.5 text-sm">
+      <div className="flex min-w-0 items-center gap-2" title={from || ''}>
+        <FromIcon size={14} className="shrink-0 text-blue-500" aria-hidden />
+        <span className="sr-only">Von:</span>
+        <span className="truncate text-gray-800">{from || '—'}</span>
+      </div>
+      {via && (
+        <div className="flex min-w-0 items-center gap-2 pl-[22px] text-xs text-gray-500" title={via}>
+          <span className="truncate">über {via}</span>
+        </div>
+      )}
+      {to && (
+        <div className="flex min-w-0 items-center gap-2" title={to}>
+          <ToIcon size={14} className="shrink-0 text-emerald-600" aria-hidden />
+          <span className="sr-only">Nach:</span>
+          <span className="truncate text-gray-800">{to}</span>
         </div>
       )}
     </div>
@@ -278,7 +285,7 @@ function RowMenu({ items }: { items: Array<{ label: string; Icon: typeof Clock; 
         <EllipsisVertical size={17} aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-gray-200">
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-gray-200">
           {items.map(({ label, Icon, onClick, href }) => {
             const cls = 'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50';
             return href ? (
@@ -301,8 +308,8 @@ const copyText = (t: string) => { try { navigator.clipboard?.writeText(t); } cat
 
 function rowCls(state: LegState, extra?: string) {
   return cn(
-    'flex items-start gap-3 px-4 py-3 lg:px-5 lg:py-2.5 text-left transition-colors cursor-pointer focus:outline-none focus-visible:bg-blue-50',
-    ROW_GRID,
+    'flex items-start gap-3 sm:gap-4 px-4 py-3.5 sm:px-5 text-left transition-colors cursor-pointer focus:outline-none focus-visible:bg-blue-50',
+    state === 'past' && 'opacity-70',
     state === 'next' && 'bg-blue-50/60 hover:bg-blue-50',
     state === 'running' && 'bg-emerald-50/60 hover:bg-emerald-50',
     state !== 'next' && state !== 'running' && 'hover:bg-gray-50',
@@ -314,7 +321,16 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
   const { from, to, via } = legRoute(l);
   const roundtrip = l.trip_type === 'roundtrip';
   const VIcon = VEHICLE_ICON[l.vehicle_type] || Car;
-  const vLabel = VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type;
+  const money = (
+    <>
+      <div className="text-base font-bold tabular-nums text-gray-900">{formatPrice(l.price)}</div>
+      {roundtrip && <div className="-mt-0.5 text-[10px] text-gray-400">Hin + Rück gesamt</div>}
+      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+        <PaymentChip b={l} />
+        <StatusChip status={l.status} />
+      </div>
+    </>
+  );
   return (
     <div
       role="button"
@@ -324,62 +340,36 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
       className={rowCls(state)}
     >
       <TimeCell time={l.leg_time} state={state} now={now} />
-
-      {/* Kunde */}
-      <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:flex-none">
-        <Avatar name={l.name} />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-gray-900" title={l.name}>{l.name}</div>
-          <div className="flex flex-wrap items-center gap-1">
-            {roundtrip && (
-              <span className={cn('inline-flex items-center gap-0.5 rounded px-1.5 py-px text-[10px] font-semibold',
-                l.leg === 'rueck' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700')}>
-                <Repeat size={10} /> {l.leg === 'rueck' ? 'Rückfahrt' : 'Hinfahrt'}
-              </span>
-            )}
-            {l.company_name && <span className="inline-flex max-w-[9rem] items-center gap-0.5 truncate rounded bg-gray-100 px-1.5 py-px text-[10px] font-medium text-gray-600"><Building2 size={10} /> {l.company_name}</span>}
-            {state === 'next' && <span className="rounded bg-blue-600 px-1.5 py-px text-[10px] font-bold uppercase text-white">Nächste</span>}
-          </div>
-          {/* Telefon/Tablet: Strecke + Preis unter dem Namen */}
-          <div className="mt-0.5 truncate text-xs text-gray-500 lg:hidden">{shortAddr(from)} → {shortAddr(to)}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 lg:hidden">
-            <span className="text-sm font-bold tabular-nums text-gray-900">{formatPrice(l.price)}</span>
-            <PaymentChip b={l} />
-            <StatusChip status={l.status} />
-          </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="max-w-full truncate text-[15px] font-semibold text-gray-900">{l.name}</span>
+          {roundtrip && (
+            <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold',
+              l.leg === 'rueck' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700')}>
+              <Repeat size={11} /> {l.leg === 'rueck' ? 'Rückfahrt' : 'Hinfahrt'}
+            </span>
+          )}
+          {l.company_name && <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600"><Building2 size={11} /> {l.company_name}</span>}
+          {state === 'next' && <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Nächste Fahrt</span>}
         </div>
-      </div>
-
-      {/* Details */}
-      <div className="hidden min-w-0 text-[13px] text-gray-600 lg:block" title={`${from} → ${to}`}>
-        <div className="flex min-w-0 items-center gap-1.5">
-          {isAirport(from) ? <PlaneLanding size={13} className="shrink-0 text-gray-400" /> : <MapPin size={13} className="shrink-0 text-gray-400" />}
-          <span className="truncate">{shortAddr(from)}</span>
-          <ArrowRight size={12} className="shrink-0 text-gray-300" />
-          {via && <><span className="max-w-[6rem] truncate text-gray-400">{shortAddr(via)}</span><ArrowRight size={12} className="shrink-0 text-gray-300" /></>}
-          <span className="truncate">{shortAddr(to)}</span>
+        <Route from={from} to={to} via={via} />
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1"><VIcon size={13} /> {VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type}</span>
+          <span className="inline-flex items-center gap-1"><Users size={12} /> {l.passengers}</span>
+          {!!l.luggage_count && <span className="inline-flex items-center gap-1"><Luggage size={12} /> {l.luggage_count}</span>}
+          {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-1 font-semibold text-gray-700"><PlaneLanding size={12} /> {l.flight_number}</span>}
+          {l.driver_name && <span className="inline-flex items-center gap-1 text-emerald-700"><UserRound size={12} /> {l.driver_name}</span>}
+          {l.phone && (
+            <a href={`tel:${l.phone}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 hover:text-blue-600">
+              <Phone size={12} /> {l.phone}
+            </a>
+          )}
+          {l.notes?.includes('🐾') && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800" title="Haustier im Käfig">🐾 Haustier</span>}
+          <span className="font-mono text-gray-400">{l.booking_number}</span>
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-x-2.5 text-[11px] text-gray-400">
-          <span className="inline-flex items-center gap-0.5"><Users size={11} /> {l.passengers}</span>
-          {!!l.luggage_count && <span className="inline-flex items-center gap-0.5"><Luggage size={11} /> {l.luggage_count}</span>}
-          {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-0.5 font-medium text-gray-500"><PlaneLanding size={11} /> {l.flight_number}</span>}
-          {l.driver_name && <span className="inline-flex items-center gap-0.5 text-emerald-700"><UserRound size={11} /> {l.driver_name}</span>}
-          {l.notes?.includes('🐾') && <span title="Haustier im Käfig">🐾</span>}
-          <span className="truncate font-mono">{l.booking_number}</span>
-        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">{money}</div>
       </div>
-
-      {/* Fahrzeug */}
-      <div className="hidden justify-center lg:flex" title={vLabel}>
-        <VIcon size={20} className="text-gray-700" aria-hidden />
-        <span className="sr-only">{vLabel}</span>
-      </div>
-      <div className="hidden lg:block"><PaymentChip b={l} /></div>
-      <div className="hidden lg:block"><StatusChip status={l.status} /></div>
-      <div className="hidden text-right lg:block">
-        <div className="text-sm font-bold tabular-nums text-gray-900">{formatPrice(l.price)}</div>
-        {roundtrip && <div className="text-[10px] text-gray-400">Hin + Rück</div>}
-      </div>
+      <div className="hidden w-36 shrink-0 flex-col items-end gap-1 text-right sm:flex">{money}</div>
       <div className="shrink-0">
         <RowMenu items={[
           { label: 'Buchung öffnen', Icon: Eye, onClick: onOpen },
@@ -400,7 +390,12 @@ function CalendarRow({ c, state, now }: { c: CalLeg; state: LegState; now: strin
   const flight = RE_FLIGHT.test(c.summary.trim()) ? c.summary.trim() : null;
   const title = c.guest || (flight ? `Flug ${flight}` : 'Kalender-Fahrt');
   const open = () => { if (c.html_link) window.open(c.html_link, '_blank', 'noopener'); };
-  const statusLabel = state === 'past' ? 'Vorbei' : state === 'running' ? 'Läuft' : 'Geplant';
+  const money = (
+    <>
+      <div className="text-base font-bold tabular-nums text-gray-900">{c.price ? formatPrice(c.price) : '—'}</div>
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700"><ExternalLink size={11} /> im Kalender</span>
+    </>
+  );
   return (
     <div
       role={c.html_link ? 'link' : undefined}
@@ -408,41 +403,27 @@ function CalendarRow({ c, state, now }: { c: CalLeg; state: LegState; now: strin
       onClick={open}
       onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
       title="Im Google Kalender öffnen"
-      className={rowCls(state, 'border-l-[3px] border-teal-400 pl-[13px] lg:pl-[17px]')}
+      className={rowCls(state, 'border-l-[3px] border-teal-400 pl-[13px] sm:pl-[17px]')}
     >
       <TimeCell time={c.leg_time} state={state} now={now} />
-      <div className="flex min-w-0 flex-1 items-center gap-2.5 lg:flex-none">
-        <Avatar name={title} tone="teal" />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-gray-900" title={title}>{title}</div>
-          <span className="inline-flex items-center gap-0.5 rounded bg-teal-50 px-1.5 py-px text-[10px] font-semibold text-teal-700 ring-1 ring-inset ring-teal-200">
-            <CalendarDays size={10} /> Kalender
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="max-w-full truncate text-[15px] font-semibold text-gray-900">{title}</span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-1.5 py-0.5 text-[11px] font-semibold text-teal-700 ring-1 ring-inset ring-teal-200">
+            <CalendarDays size={11} /> Kalender
           </span>
-          <div className="mt-0.5 truncate text-xs text-gray-500 lg:hidden">{shortAddr(from)}{to ? ` → ${shortAddr(to)}` : ''}</div>
-          <div className="mt-1 text-sm font-bold tabular-nums text-gray-900 lg:hidden">{c.price ? formatPrice(c.price) : '—'}</div>
+          {state === 'next' && <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Nächste Fahrt</span>}
         </div>
-      </div>
-      <div className="hidden min-w-0 text-[13px] text-gray-600 lg:block" title={[from, to].filter(Boolean).join(' → ')}>
-        <div className="flex min-w-0 items-center gap-1.5">
-          {isAirport(from) ? <PlaneLanding size={13} className="shrink-0 text-gray-400" /> : <MapPin size={13} className="shrink-0 text-gray-400" />}
-          <span className="truncate">{shortAddr(from)}</span>
-          {to && <><ArrowRight size={12} className="shrink-0 text-gray-300" /><span className="truncate">{shortAddr(to)}</span></>}
-        </div>
-        {(flight || c.location || c.via.length > 0) && (
-          <div className="mt-0.5 flex min-w-0 items-center gap-x-2.5 text-[11px] text-gray-400">
-            {flight && <span className="inline-flex items-center gap-0.5 font-medium text-gray-500"><PlaneLanding size={11} /> {flight}</span>}
-            {c.via.length > 0 && <span className="truncate">über {c.via.join(', ')}</span>}
-            {c.location && <span className="inline-flex min-w-0 items-center gap-0.5 truncate text-gray-600"><UserRound size={11} className="shrink-0" /> <span className="truncate">{c.location}</span></span>}
+        <Route from={from} to={to} via={c.via.length ? c.via.join(', ') : null} />
+        {(flight || c.location) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+            {flight && <span className="inline-flex items-center gap-1 font-semibold text-gray-700"><PlaneLanding size={12} /> {flight}</span>}
+            {c.location && <span className="inline-flex min-w-0 max-w-full items-center gap-1 text-gray-600"><UserRound size={12} className="shrink-0" /> <span className="truncate">{c.location}</span></span>}
           </div>
         )}
+        <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">{money}</div>
       </div>
-      <div className="hidden justify-center lg:flex"><Car size={20} className="text-gray-300" aria-hidden /></div>
-      <div className="hidden lg:block"><span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700"><ExternalLink size={11} /> Kalender</span></div>
-      <div className="hidden lg:block">
-        <span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
-          state === 'past' ? 'bg-gray-50 text-gray-600 ring-gray-200' : 'bg-teal-50 text-teal-700 ring-teal-200')}>{statusLabel}</span>
-      </div>
-      <div className="hidden text-right text-sm font-bold tabular-nums text-gray-900 lg:block">{c.price ? formatPrice(c.price) : '—'}</div>
+      <div className="hidden w-36 shrink-0 flex-col items-end gap-1 text-right sm:flex">{money}</div>
       <div className="shrink-0">
         {c.html_link ? <RowMenu items={[{ label: 'Im Kalender öffnen', Icon: ExternalLink, href: c.html_link }]} /> : <span className="block h-8 w-8" />}
       </div>
@@ -571,9 +552,6 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
         </div>
       ) : (
         <>
-          <div className={cn('hidden border-b border-gray-100 px-5 py-2 text-xs font-medium text-gray-500', ROW_GRID)} aria-hidden>
-            <span>Zeit</span><span>Kunde / Fahrt</span><span>Details</span><span className="text-center">Fahrzeug</span><span>Zahlung</span><span>Status</span><span className="text-right">Preis</span><span />
-          </div>
           {days.map((d) => {
             const dayItems = byDay.get(d) || [];
             if (!dayItems.length) return null;
@@ -1196,7 +1174,7 @@ function HeadKpi({ label, Icon, tone, value, delta, sub, spark, sparkTitle, foot
         <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', ICON_TONE[tone])}><Icon size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <span className="truncate text-sm font-semibold text-gray-700" title={label}>{label}</span>
+            <span className="text-sm font-semibold leading-tight text-gray-700">{label}</span>
             {spark && <MiniBars values={spark} tone={tone as keyof typeof SPARK_TONE} title={sparkTitle || ''} />}
           </div>
           <div className="-mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -1379,7 +1357,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   return (
     <div className="space-y-5">
       {/* Kopf: Titel links, Tagesarchiv-Datum + Widgets + Stand rechts */}
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 xl:flex-nowrap">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 2xl:flex-nowrap">
         <div className="min-w-0">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">Übersicht</h2>
           <p className="mt-0.5 text-[15px] text-gray-500">
@@ -1389,7 +1367,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
             <span className="text-gray-400"> (Berlin)</span>
           </p>
         </div>
-        <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2 xl:flex-nowrap">
+        <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2 2xl:flex-nowrap">
           {show('archive') && <ArchiveControls a={archive} />}
           <button
             onClick={() => setPicker((v) => !v)}

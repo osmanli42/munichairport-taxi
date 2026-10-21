@@ -56,19 +56,19 @@ export default function AdminShell<T extends string>({ items, active, onSelect, 
       {/* Seitenleiste */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-primary-800 text-white transition-transform duration-200 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-52 flex-col bg-primary-800 text-white transition-transform duration-200 lg:translate-x-0',
           navOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         )}
         aria-label="Admin-Navigation"
       >
-        <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-5">
+        <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <Plane size={22} className="shrink-0 -rotate-12 text-gold-400" aria-hidden />
-            <span className="truncate text-sm font-bold tracking-tight">flughafen-muenchen<span className="text-gold-400">.TAXI</span></span>
+            <span className="min-w-0 leading-tight"><span className="block truncate text-[13px] font-bold tracking-tight">flughafen-muenchen</span><span className="block text-[11px] font-bold tracking-wide text-gold-400">.TAXI · Admin</span></span>
           </div>
           <button onClick={() => setNavOpen(false)} className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 lg:hidden" aria-label="Menü schließen"><X size={20} /></button>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4 pt-2 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.2)_transparent]">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 pb-4 pt-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.2)_transparent]">
           {items.map(({ id, label, icon: Icon, badge, badgeTitle }) => {
             const on = active === id;
             return (
@@ -77,11 +77,11 @@ export default function AdminShell<T extends string>({ items, active, onSelect, 
                 onClick={() => select(id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium transition-colors',
+                  'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors',
                   on ? 'bg-gold-400 font-semibold text-primary-800 shadow-sm' : 'text-white/80 hover:bg-white/10 hover:text-white'
                 )}
               >
-                <Icon size={19} className="shrink-0" aria-hidden />
+                <Icon size={17} className="shrink-0" aria-hidden />
                 <span className="flex-1 truncate">{label}</span>
                 {!!badge && (
                   <span title={badgeTitle} className="min-w-[20px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-bold leading-5 text-white">{badge}</span>
@@ -90,18 +90,18 @@ export default function AdminShell<T extends string>({ items, active, onSelect, 
             );
           })}
         </nav>
-        <div className="shrink-0 space-y-1 border-t border-white/10 p-3">
-          <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white">
-            <ExternalLink size={18} aria-hidden /> Website öffnen
+        <div className="shrink-0 space-y-0.5 border-t border-white/10 p-2.5">
+          <a href="/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/80 hover:bg-white/10 hover:text-white">
+            <ExternalLink size={17} aria-hidden /> Website öffnen
           </a>
-          <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white">
-            <LogOut size={18} aria-hidden /> Abmelden
+          <button onClick={onLogout} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-white/80 hover:bg-white/10 hover:text-white">
+            <LogOut size={17} aria-hidden /> Abmelden
           </button>
         </div>
       </aside>
       {navOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setNavOpen(false)} aria-hidden />}
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-52">
         {/* Obere Leiste */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-primary-800 px-4 text-white shadow-sm lg:px-6">
           <button onClick={() => setNavOpen(true)} className="rounded-lg p-2 text-white/80 hover:bg-white/10 lg:hidden" aria-label="Menü öffnen"><Menu size={22} /></button>
