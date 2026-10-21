@@ -9,12 +9,15 @@ import {
   TrendingUp, Calendar, Check, X, Search, Lock, Eye, PieChart, FileText, Building2, Send,
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
+  Settings2, Route, Euro, Timer, Milestone, MoonStar, Moon, PhoneCall, TextCursorInput, Plane, Smartphone,
+  ClipboardCheck, Hotel, Megaphone, Workflow, Landmark,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 import { InvoiceCustomerBookingCard, InvoiceCustomersList } from '@/components/InvoiceCustomerAdmin';
+import { Toggle, SettingsGroup, SettingRow, FieldPanel, UnitField, SaveButton } from '@/components/admin/SettingsUI';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
@@ -911,6 +914,24 @@ export default function AdminPage() {
     }
   }
 
+  // Allgemeine Einstellungen: ein Feld/mehrere Felder speichern und Erfolgsmeldung zeigen
+  const saveSettingsPatch = async (patch: Record<string, string>, message: string) => {
+    setSettingsSaving(true);
+    try {
+      const updated = await adminApi.updateSettings(patch);
+      setSettings(updated);
+      setPriceSuccess(message);
+      setTimeout(() => setPriceSuccess(''), 3000);
+    } catch { }
+    setSettingsSaving(false);
+  };
+  // defaultOn: Schalter, die ohne gespeicherten Wert als aktiv gelten (!== '0' statt === '1')
+  const settingOn = (key: string, defaultOn = false) => (defaultOn ? settings[key] !== '0' : settings[key] === '1');
+  const toggleSetting = (key: string, label: string, defaultOn = false) => {
+    const newVal = settingOn(key, defaultOn) ? '0' : '1';
+    return saveSettingsPatch({ [key]: newVal }, `${label} ${newVal === '1' ? 'aktiviert' : 'deaktiviert'}`);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -1513,568 +1534,243 @@ export default function AdminPage() {
             )}
 
             {/* Global Settings */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
-              <h3 className="font-bold text-gray-900 text-lg mb-4">⚙️ Allgemeine Einstellungen</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Stadtfahrt toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">Stadtfahrt erlauben</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Nicht-Flughafen-Fahrten erlauben (Anfahrtskosten werden berechnet)</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.stadtfahrt_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ stadtfahrt_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Stadtfahrt aktiviert' : 'Stadtfahrt deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors',
-                        settings.stadtfahrt_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.stadtfahrt_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Anfahrt price per km */}
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Anfahrtskosten pro km (€)</label>
-                  <p className="text-xs text-gray-500 mb-2">Preis pro km für Anfahrt von Freising zum Abholort (nur bei Nicht-Flughafen-Fahrten)</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.10"
-                      min="0"
-                      value={settings.anfahrt_price_per_km || '1.70'}
-                      onChange={(e) => setSettings(prev => ({ ...prev, anfahrt_price_per_km: e.target.value }))}
-                      className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    />
-                    <span className="text-gray-500 text-sm">€/km</span>
-                    <button
-                      onClick={async () => {
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ anfahrt_price_per_km: settings.anfahrt_price_per_km });
-                          setSettings(updated);
-                          setPriceSuccess('Anfahrtskosten aktualisiert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      disabled={settingsSaving}
-                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {settingsSaving ? '...' : 'Speichern'}
-                    </button>
-                  </div>
-                </div>
-                {/* Min advance booking hours */}
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Minimum Vorlaufzeit (Stunden)</label>
-                  <p className="text-xs text-gray-500 mb-2">Buchungen müssen mindestens diese Anzahl Stunden vor der Fahrt erfolgen. Standard: 1,5 Std.</p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={settings.min_advance_hours || '1.5'}
-                      onChange={(e) => setSettings(prev => ({ ...prev, min_advance_hours: e.target.value }))}
-                      className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    />
-                    <span className="text-gray-500 text-sm">Std.</span>
-                    <button
-                      onClick={async () => {
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ min_advance_hours: settings.min_advance_hours });
-                          setSettings(updated);
-                          setPriceSuccess('Vorlaufzeit aktualisiert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      disabled={settingsSaving}
-                      className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {settingsSaving ? '...' : 'Speichern'}
-                    </button>
-                  </div>
-                </div>
-                {/* Night confirmation */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <label className="font-semibold text-gray-700">🌙 Nacht-Bestätigung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.night_confirm_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ night_confirm_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Nacht-Bestätigung aktiviert' : 'Nacht-Bestätigung deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.night_confirm_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.night_confirm_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                  {settings.night_confirm_enabled === '1' && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-gray-600">Von</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={settings.night_confirm_start || '22'}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_start: e.target.value }))}
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      />
-                      <span className="text-sm text-gray-600">Uhr bis</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={settings.night_confirm_end || '7'}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_end: e.target.value }))}
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      />
-                      <span className="text-sm text-gray-600">Uhr · Fahrt vor</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="24"
-                        value={settings.night_confirm_ride_until || '9'}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_ride_until: e.target.value }))}
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      />
-                      <span className="text-sm text-gray-600">Uhr</span>
-                      <button
-                        onClick={async () => {
-                          setSettingsSaving(true);
-                          try {
-                            const updated = await adminApi.updateSettings({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end, night_confirm_ride_until: settings.night_confirm_ride_until || '9' });
-                            setSettings(updated);
-                            setPriceSuccess('Nachtzeitraum aktualisiert');
-                            setTimeout(() => setPriceSuccess(''), 3000);
-                          } catch { }
-                          setSettingsSaving(false);
-                        }}
-                        disabled={settingsSaving}
-                        className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        {settingsSaving ? '...' : 'Speichern'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {/* Night cancellation (Buchung verwalten) */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <label className="font-semibold text-gray-700">🌙📞 Nacht-Stornierung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Storniert ein Kunde zwischen „Von“ und „Bis“ (Münchner Zeit) über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online. Standard: 20:30–08:30 Uhr.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.night_cancel_enabled === '0' ? '1' : '0';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ night_cancel_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Nacht-Stornierung aktiviert' : 'Nacht-Stornierung deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.night_cancel_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.night_cancel_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                  {settings.night_cancel_enabled !== '0' && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-gray-600">Von</span>
-                      <input
-                        type="time"
-                        value={toClock(settings.night_cancel_start, '20:30')}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_start: e.target.value }))}
-                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      />
-                      <span className="text-sm text-gray-600">Uhr bis</span>
-                      <input
-                        type="time"
-                        value={toClock(settings.night_cancel_end, '08:30')}
-                        onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_end: e.target.value }))}
-                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                      />
-                      <span className="text-sm text-gray-600">Uhr</span>
-                      <button
-                        onClick={async () => {
-                          setSettingsSaving(true);
-                          try {
-                            const updated = await adminApi.updateSettings({ night_cancel_start: toClock(settings.night_cancel_start, '20:30'), night_cancel_end: toClock(settings.night_cancel_end, '08:30') });
-                            setSettings(updated);
-                            setPriceSuccess('Nacht-Stornierung: Zeitraum aktualisiert');
-                            setTimeout(() => setPriceSuccess(''), 3000);
-                          } catch { }
-                          setSettingsSaving(false);
-                        }}
-                        disabled={settingsSaving}
-                        className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
-                      >
-                        {settingsSaving ? '...' : 'Speichern'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {/* Flight number validation toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">✈️ Flugnummer-Validierung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Prüft eingegebene Flugnummern bei Flughafen-Abholungen live gegen eine Flugdaten-API und zeigt dem Kunden eine Bestätigung oder Warnung. Blockiert die Buchung nie.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.flight_validation_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ flight_validation_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Flugnummer-Validierung aktiviert' : 'Flugnummer-Validierung deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.flight_validation_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.flight_validation_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Phone number validation toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">📱 Telefonnummer-Prüfung</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Prüft eingegebene Handynummern beim Tippen auf fehlende Ziffern und falsche Ländervorwahl und weist auf Festnetznummern hin. Blockiert die Buchung nie — der Kunde kann immer absenden.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.phone_validation_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ phone_validation_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Telefonnummer-Prüfung aktiviert' : 'Telefonnummer-Prüfung deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.phone_validation_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.phone_validation_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Booking form restore toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">💾 Formular merken</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Geht der Kunde von „Ihre Angaben“ zurück (z. B. um ein anderes Fahrzeug anzusehen), bleiben Name, Telefon, E-Mail, Flugnummer, Extras und Rechnungsadresse ausgefüllt. Nur im Browser-Tab des Kunden gespeichert, nach der Buchung gelöscht — keine Kartendaten.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.booking_form_restore_enabled === '0' ? '1' : '0';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ booking_form_restore_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Formular merken aktiviert' : 'Formular merken deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.booking_form_restore_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.booking_form_restore_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Address POI toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">🏨 Hotels & Lokale an der Adresse</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Tippt der Kunde eine Hausadresse (z. B. „Sonnenstraße 25“), erscheint in der Vorschlagsliste darüber, was genau dort ist — Hotel, Gasthaus, Restaurant usw. (max. 3 pro Adresse). Kostet pro Adresse eine Google-Umkreissuche; Ergebnisse werden 24 h zwischengespeichert.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.address_poi_enabled === '0' ? '1' : '0';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ address_poi_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Hotels & Lokale an der Adresse aktiviert' : 'Hotels & Lokale an der Adresse deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.address_poi_enabled !== '0' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.address_poi_enabled !== '0' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
-                <div>
-                  <label className="font-semibold text-gray-700">🏦 Rechnungskunden (Überweisung)</label>
-                  <p className="text-xs text-gray-500 mt-0.5">Kunden, die du im Buchungsdetail freischaltest („Als Rechnungskunde freischalten“), sehen auf /buchen zusätzlich „Überweisung“ — nur wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse. Einzelne Kunden hier pausieren oder löschen.</p>
-                  <InvoiceCustomersList />
-                </div>
-                {/* Social Proof Toast toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">🏆 Social-Proof-Toast</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Zeigt auf /buchen und /ergebnisse animierte Benachrichtigungen über kürzlich getätigte Buchungen ("Vor 5 Std.: Max M. hat Fahrt gebucht ✓").</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.social_proof_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ social_proof_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Social-Proof-Toast aktiviert' : 'Social-Proof-Toast deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.social_proof_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.social_proof_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                </div>
-                {/* Automatic booking status transitions */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <label className="font-semibold text-gray-700">Automatischer Buchungsstatus</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Neue Buchungen werden nach einer festgelegten Zeit automatisch bestätigt, und bestätigte Buchungen automatisch abgeschlossen, sobald die Abholzeit vorbei ist — ohne manuelles Klicken. Beim Aktivieren werden bereits fällige Buchungen sofort umgestellt, daher vorher die Liste kurz prüfen.</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.auto_status_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ auto_status_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Automatischer Status aktiviert' : 'Automatischer Status deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors shrink-0',
-                        settings.auto_status_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.auto_status_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
-                  </div>
-                  {settings.auto_status_enabled === '1' && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-gray-600">Neu → Bestätigt nach</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={settings.auto_confirm_hours || '1'}
-                          onChange={(e) => setSettings(prev => ({ ...prev, auto_confirm_hours: e.target.value }))}
-                          className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                        />
-                        <span className="text-sm text-gray-600">Std.</span>
-                        <span className="text-sm text-gray-600 ml-3">Bestätigt → Abgeschlossen</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={settings.auto_complete_buffer_minutes || '0'}
-                          onChange={(e) => setSettings(prev => ({ ...prev, auto_complete_buffer_minutes: e.target.value }))}
-                          className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                        />
-                        <span className="text-sm text-gray-600">Min. nach Abholzeit</span>
-                        <button
-                          onClick={async () => {
-                            setSettingsSaving(true);
-                            try {
-                              const updated = await adminApi.updateSettings({ auto_confirm_hours: settings.auto_confirm_hours, auto_complete_buffer_minutes: settings.auto_complete_buffer_minutes });
-                              setSettings(updated);
-                              setPriceSuccess('Zeiten aktualisiert');
-                              setTimeout(() => setPriceSuccess(''), 3000);
-                            } catch { }
-                            setSettingsSaving(false);
-                          }}
-                          disabled={settingsSaving}
-                          className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50"
-                        >
-                          {settingsSaving ? '...' : 'Speichern'}
-                        </button>
-                      </div>
+            {(() => {
+              const switches: [string, boolean][] = [
+                ['stadtfahrt_enabled', false], ['zwischenstopp_enabled', false], ['night_confirm_enabled', false],
+                ['night_cancel_enabled', true], ['flight_validation_enabled', false], ['phone_validation_enabled', false],
+                ['booking_form_restore_enabled', true], ['address_poi_enabled', true], ['social_proof_enabled', false],
+                ['auto_status_enabled', false],
+              ];
+              const activeCount = switches.filter(([k, d]) => settingOn(k, d)).length;
+              const sw = (key: string, label: string, defaultOn = false) => (
+                <Toggle on={settingOn(key, defaultOn)} disabled={settingsSaving} label={label} onClick={() => toggleSetting(key, label, defaultOn)} />
+              );
+              return (
+                <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 mb-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 text-white">
+                        <Settings2 className="h-5 w-5" aria-hidden />
+                      </span>
                       <div>
-                        <p className="text-xs text-gray-500 mb-1.5">Firmenkunden mit hinterlegter Karte, die bei Fahrtabschluss automatisch belastet werden ("bei Abschluss zahlen")</p>
-                        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
-                          <button
-                            onClick={async () => {
-                              setSettingsSaving(true);
-                              try {
-                                const updated = await adminApi.updateSettings({ auto_complete_include_company_charge: '0' });
-                                setSettings(updated);
-                                setPriceSuccess('Firmenkunden werden von der Automatik ausgeschlossen');
-                                setTimeout(() => setPriceSuccess(''), 3000);
-                              } catch { }
-                              setSettingsSaving(false);
-                            }}
-                            disabled={settingsSaving}
-                            className={cn(
-                              'px-3 py-2 text-sm font-medium transition-colors',
-                              settings.auto_complete_include_company_charge !== '1' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                            )}
-                          >
-                            Firmenkunden ausschließen
-                          </button>
-                          <button
-                            onClick={async () => {
-                              setSettingsSaving(true);
-                              try {
-                                const updated = await adminApi.updateSettings({ auto_complete_include_company_charge: '1' });
-                                setSettings(updated);
-                                setPriceSuccess('Alle Fahrten werden automatisch abgeschlossen — inkl. automatischer Kartenbelastung');
-                                setTimeout(() => setPriceSuccess(''), 3000);
-                              } catch { }
-                              setSettingsSaving(false);
-                            }}
-                            disabled={settingsSaving}
-                            className={cn(
-                              'px-3 py-2 text-sm font-medium transition-colors border-l border-gray-200',
-                              settings.auto_complete_include_company_charge === '1' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                            )}
-                          >
-                            Alle Fahrten
-                          </button>
-                        </div>
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight">Allgemeine Einstellungen</h3>
+                        <p className="text-sm text-gray-500">Fahrten, Nachtregeln, Buchungsformular und Automatik</p>
                       </div>
                     </div>
-                  )}
-                </div>
-                {/* Zwischenstopp toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="font-semibold text-gray-700">Zwischenstopp erlauben</label>
-                      <p className="text-xs text-gray-500 mt-0.5">Kunden können einen Zwischenstopp zur Fahrt hinzufügen</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const newVal = settings.zwischenstopp_enabled === '1' ? '0' : '1';
-                        setSettingsSaving(true);
-                        try {
-                          const updated = await adminApi.updateSettings({ zwischenstopp_enabled: newVal });
-                          setSettings(updated);
-                          setPriceSuccess(newVal === '1' ? 'Zwischenstopp aktiviert' : 'Zwischenstopp deaktiviert');
-                          setTimeout(() => setPriceSuccess(''), 3000);
-                        } catch { }
-                        setSettingsSaving(false);
-                      }}
-                      className={cn(
-                        'relative w-14 h-7 rounded-full transition-colors',
-                        settings.zwischenstopp_enabled === '1' ? 'bg-green-500' : 'bg-gray-300'
-                      )}
-                      disabled={settingsSaving}
-                    >
-                      <div className={cn(
-                        'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform',
-                        settings.zwischenstopp_enabled === '1' ? 'translate-x-7' : 'translate-x-0.5'
-                      )} />
-                    </button>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {activeCount} von {switches.length} Funktionen aktiv
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+                    {/* ── Fahrten & Preise ── */}
+                    <SettingsGroup icon={Car} title="Fahrten & Preise" subtitle="Was Kunden buchen können und ab wann">
+                      <SettingRow
+                        icon={Route}
+                        title="Stadtfahrt erlauben"
+                        summary="Nicht-Flughafen-Fahrten erlauben (Anfahrtskosten werden berechnet)."
+                        on={settingOn('stadtfahrt_enabled')}
+                        control={sw('stadtfahrt_enabled', 'Stadtfahrt')}
+                      />
+                      <SettingRow
+                        icon={Euro}
+                        title="Anfahrtskosten pro km"
+                        summary="Anfahrt von Freising zum Abholort – nur bei Nicht-Flughafen-Fahrten."
+                      >
+                        <FieldPanel>
+                          <UnitField
+                            label="Preis"
+                            unit="€/km"
+                            type="number"
+                            step="0.10"
+                            min="0"
+                            value={settings.anfahrt_price_per_km || '1.70'}
+                            onChange={(e) => setSettings(prev => ({ ...prev, anfahrt_price_per_km: e.target.value }))}
+                          />
+                          <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ anfahrt_price_per_km: settings.anfahrt_price_per_km }, 'Anfahrtskosten aktualisiert')} />
+                        </FieldPanel>
+                      </SettingRow>
+                      <SettingRow
+                        icon={Timer}
+                        title="Minimum Vorlaufzeit"
+                        summary="So viele Stunden vor der Fahrt muss spätestens gebucht werden. Standard: 1,5 Std."
+                      >
+                        <FieldPanel>
+                          <UnitField
+                            label="Vorlauf"
+                            unit="Std."
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            value={settings.min_advance_hours || '1.5'}
+                            onChange={(e) => setSettings(prev => ({ ...prev, min_advance_hours: e.target.value }))}
+                          />
+                          <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ min_advance_hours: settings.min_advance_hours }, 'Vorlaufzeit aktualisiert')} />
+                        </FieldPanel>
+                      </SettingRow>
+                      <SettingRow
+                        icon={Milestone}
+                        title="Zwischenstopp erlauben"
+                        summary="Kunden können einen Zwischenstopp zur Fahrt hinzufügen."
+                        on={settingOn('zwischenstopp_enabled')}
+                        control={sw('zwischenstopp_enabled', 'Zwischenstopp')}
+                      />
+                    </SettingsGroup>
+
+                    {/* ── Nachtregeln ── */}
+                    <SettingsGroup icon={MoonStar} title="Nachtregeln" subtitle="Zeiten in Münchner Ortszeit">
+                      <SettingRow
+                        icon={Moon}
+                        title="Nacht-Bestätigung"
+                        summary="Nachts gebuchte Frühfahrten: Kunde wird gebeten, zusätzlich telefonisch zu bestätigen."
+                        details={<>Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Er steht auf der Bestätigungsseite und in der E-Mail. Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</>}
+                        on={settingOn('night_confirm_enabled')}
+                        control={sw('night_confirm_enabled', 'Nacht-Bestätigung')}
+                      >
+                        {settingOn('night_confirm_enabled') && (
+                          <FieldPanel>
+                            <UnitField label="Buchung von" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
+                              value={settings.night_confirm_start || '22'}
+                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_start: e.target.value }))} />
+                            <UnitField label="bis" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
+                              value={settings.night_confirm_end || '7'}
+                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_end: e.target.value }))} />
+                            <UnitField label="Fahrt vor" unit="Uhr" type="number" min="0" max="24" widthClass="w-14"
+                              value={settings.night_confirm_ride_until || '9'}
+                              onChange={(e) => setSettings(prev => ({ ...prev, night_confirm_ride_until: e.target.value }))} />
+                            <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ night_confirm_start: settings.night_confirm_start, night_confirm_end: settings.night_confirm_end, night_confirm_ride_until: settings.night_confirm_ride_until || '9' }, 'Nachtzeitraum aktualisiert')} />
+                          </FieldPanel>
+                        )}
+                      </SettingRow>
+                      <SettingRow
+                        icon={PhoneCall}
+                        title="Nacht-Stornierung"
+                        summary="Nachts kein Online-Storno für Frühfahrten – Kunde muss anrufen, du bekommst sofort eine Warn-E-Mail."
+                        details={<>Storniert ein Kunde zwischen „Von“ und „Bis“ über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online. Standard: 20:30–08:30 Uhr.</>}
+                        on={settingOn('night_cancel_enabled', true)}
+                        control={sw('night_cancel_enabled', 'Nacht-Stornierung', true)}
+                      >
+                        {settingOn('night_cancel_enabled', true) && (
+                          <FieldPanel>
+                            <UnitField label="Von" unit="Uhr" type="time" widthClass="w-[6.5rem]"
+                              value={toClock(settings.night_cancel_start, '20:30')}
+                              onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_start: e.target.value }))} />
+                            <UnitField label="Bis" unit="Uhr" type="time" widthClass="w-[6.5rem]"
+                              value={toClock(settings.night_cancel_end, '08:30')}
+                              onChange={(e) => setSettings(prev => ({ ...prev, night_cancel_end: e.target.value }))} />
+                            <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ night_cancel_start: toClock(settings.night_cancel_start, '20:30'), night_cancel_end: toClock(settings.night_cancel_end, '08:30') }, 'Nacht-Stornierung: Zeitraum aktualisiert')} />
+                          </FieldPanel>
+                        )}
+                      </SettingRow>
+                    </SettingsGroup>
+
+                    {/* ── Buchungsformular ── */}
+                    <SettingsGroup icon={TextCursorInput} title="Buchungsformular" subtitle="Hilfen für Kunden auf /buchen und /ergebnisse – blockieren nie">
+                      <SettingRow
+                        icon={Plane}
+                        title="Flugnummer-Validierung"
+                        summary="Prüft Flugnummern bei Flughafen-Abholungen live und zeigt Bestätigung oder Warnung."
+                        details={<>Abgleich gegen eine Flugdaten-API. Blockiert die Buchung nie.</>}
+                        on={settingOn('flight_validation_enabled')}
+                        control={sw('flight_validation_enabled', 'Flugnummer-Validierung')}
+                      />
+                      <SettingRow
+                        icon={Smartphone}
+                        title="Telefonnummer-Prüfung"
+                        summary="Weist beim Tippen auf fehlende Ziffern, falsche Ländervorwahl und Festnetznummern hin."
+                        details={<>Blockiert die Buchung nie — der Kunde kann immer absenden.</>}
+                        on={settingOn('phone_validation_enabled')}
+                        control={sw('phone_validation_enabled', 'Telefonnummer-Prüfung')}
+                      />
+                      <SettingRow
+                        icon={ClipboardCheck}
+                        title="Formular merken"
+                        summary="Geht der Kunde von „Ihre Angaben“ zurück, bleiben seine Eingaben ausgefüllt."
+                        details={<>Betrifft Name, Telefon, E-Mail, Flugnummer, Extras und Rechnungsadresse (z. B. wenn er ein anderes Fahrzeug ansehen will). Nur im Browser-Tab des Kunden gespeichert, nach der Buchung gelöscht — keine Kartendaten.</>}
+                        on={settingOn('booking_form_restore_enabled', true)}
+                        control={sw('booking_form_restore_enabled', 'Formular merken', true)}
+                      />
+                      <SettingRow
+                        icon={Hotel}
+                        title="Hotels & Lokale an der Adresse"
+                        summary="Zeigt bei Hausadressen, was genau dort ist – Hotel, Gasthaus, Restaurant (max. 3)."
+                        details={<>Beispiel: Tippt der Kunde „Sonnenstraße 25“, erscheint das Hotel an dieser Adresse in der Vorschlagsliste. Kostet pro Adresse eine Google-Umkreissuche; Ergebnisse werden 24 h zwischengespeichert.</>}
+                        on={settingOn('address_poi_enabled', true)}
+                        control={sw('address_poi_enabled', 'Hotels & Lokale an der Adresse', true)}
+                      />
+                      <SettingRow
+                        icon={Megaphone}
+                        title="Social-Proof-Toast"
+                        summary="Animierte Hinweise auf kürzliche Buchungen auf /buchen und /ergebnisse."
+                        details={<>Beispiel: „Vor 5 Std.: Max M. hat Fahrt gebucht ✓“.</>}
+                        on={settingOn('social_proof_enabled')}
+                        control={sw('social_proof_enabled', 'Social-Proof-Toast')}
+                      />
+                    </SettingsGroup>
+
+                    {/* ── Automatik & Zahlung ── */}
+                    <SettingsGroup icon={Zap} title="Automatik & Zahlung" subtitle="Status-Automatik und Rechnungskunden">
+                      <SettingRow
+                        icon={Workflow}
+                        title="Automatischer Buchungsstatus"
+                        summary="Neue Buchungen automatisch bestätigen und nach der Abholzeit abschließen."
+                        details={<>Ohne manuelles Klicken: Neue Buchungen werden nach der festgelegten Zeit bestätigt, bestätigte Buchungen abgeschlossen, sobald die Abholzeit vorbei ist. <strong>Beim Aktivieren werden bereits fällige Buchungen sofort umgestellt</strong> – vorher die Liste kurz prüfen.</>}
+                        on={settingOn('auto_status_enabled')}
+                        control={sw('auto_status_enabled', 'Automatischer Status')}
+                      >
+                        {settingOn('auto_status_enabled') && (
+                          <div className="space-y-3">
+                            <FieldPanel>
+                              <UnitField label="Neu → Bestätigt nach" unit="Std." type="number" min="0" step="0.5" widthClass="w-16"
+                                value={settings.auto_confirm_hours || '1'}
+                                onChange={(e) => setSettings(prev => ({ ...prev, auto_confirm_hours: e.target.value }))} />
+                              <UnitField label="Abgeschlossen nach Abholzeit" unit="Min." type="number" min="0" widthClass="w-16"
+                                value={settings.auto_complete_buffer_minutes || '0'}
+                                onChange={(e) => setSettings(prev => ({ ...prev, auto_complete_buffer_minutes: e.target.value }))} />
+                              <SaveButton saving={settingsSaving} onClick={() => saveSettingsPatch({ auto_confirm_hours: settings.auto_confirm_hours, auto_complete_buffer_minutes: settings.auto_complete_buffer_minutes }, 'Zeiten aktualisiert')} />
+                            </FieldPanel>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1.5">Firmenkunden mit hinterlegter Karte, die bei Fahrtabschluss automatisch belastet werden („bei Abschluss zahlen“)</p>
+                              <div className="inline-flex rounded-lg bg-gray-100 p-0.5" role="radiogroup" aria-label="Firmenkunden in der Automatik">
+                                {([['0', 'Firmenkunden ausschließen', 'Firmenkunden werden von der Automatik ausgeschlossen'], ['1', 'Alle Fahrten', 'Alle Fahrten werden automatisch abgeschlossen — inkl. automatischer Kartenbelastung']] as const).map(([val, label, msg]) => {
+                                  const active = val === '1' ? settings.auto_complete_include_company_charge === '1' : settings.auto_complete_include_company_charge !== '1';
+                                  return (
+                                    <button
+                                      key={val}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={active}
+                                      onClick={() => saveSettingsPatch({ auto_complete_include_company_charge: val }, msg)}
+                                      disabled={settingsSaving}
+                                      className={cn(
+                                        'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                                        active ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                      )}
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </SettingRow>
+                      {/* Rechnungskunden (Überweisung) — kein globaler Schalter: die Freischaltung pro Kunde ist maßgeblich */}
+                      <SettingRow
+                        icon={Landmark}
+                        title="Rechnungskunden (Überweisung)"
+                        summary="Freigeschaltete Kunden sehen auf /buchen zusätzlich „Überweisung“. Hier pausieren oder löschen."
+                        details={<>Freischalten im Buchungsdetail („Als Rechnungskunde freischalten“). „Überweisung“ erscheint nur, wenn E-Mail und Telefon passen und höchstens die erlaubte Zahl unbezahlter Überweisungen offen ist. Die Rechnung geht nach der Fahrt automatisch an die hinterlegte Adresse.</>}
+                      >
+                        <InvoiceCustomersList />
+                      </SettingRow>
+                    </SettingsGroup>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Günlük Fahrt Hatırlatması */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
