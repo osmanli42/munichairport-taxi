@@ -100,16 +100,16 @@ export type DayArchiveState = ReturnType<typeof useDayArchive>;
 /** Datumsleiste: Tag/Zeitraum wählen (im Dashboard-Kopf) */
 export function ArchiveControls({ a }: { a: DayArchiveState }) {
   const { today, date, setDate, preset, setPreset, range, setRange, isDay, shift, atEnd } = a;
-  const pill = (active: boolean) => cn('h-10 px-3.5 text-sm font-medium rounded-xl ring-1 ring-inset transition-colors whitespace-nowrap', active ? 'bg-primary-800 text-white ring-primary-800' : 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50');
+  const pill = (active: boolean) => cn('h-10 px-3 text-[13px] font-medium rounded-xl ring-1 ring-inset transition-colors whitespace-nowrap', active ? 'bg-primary-800 text-white ring-primary-800' : 'bg-white text-gray-700 ring-gray-200 hover:bg-gray-50');
   const quick = (label: string, d: string) => (
     <button key={label} onClick={() => { setPreset('day'); setDate(d); }} className={pill(isDay && date === d)}>{label}</button>
   );
   const period = (n: 7 | 14 | 30) => (
     <button key={n} onClick={() => { setPreset(n); setRange({ from: addDays(today, -(n - 1)), to: today }); }} className={pill(preset === n)}>{n} Tage</button>
   );
-  const dateCls = 'h-10 rounded-xl bg-white px-3 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500';
+  const dateCls = 'h-10 rounded-xl bg-white px-2.5 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-200 outline-none focus:ring-2 focus:ring-blue-500';
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Tagesarchiv: Tag oder Zeitraum">
+    <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap" aria-label="Tagesarchiv: Tag oder Zeitraum">
       <div className="flex items-center gap-1.5">
         <button onClick={() => shift(-1)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-gray-200 hover:bg-gray-50" aria-label={isDay ? 'Vortag' : 'Vorheriger Zeitraum'}><ChevronLeft size={18} /></button>
         {isDay ? (
@@ -125,7 +125,7 @@ export function ArchiveControls({ a }: { a: DayArchiveState }) {
         )}
         <button onClick={() => !atEnd && shift(1)} disabled={atEnd} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-gray-200 hover:bg-gray-50 disabled:opacity-40" aria-label={isDay ? 'Folgetag' : 'Nächster Zeitraum'}><ChevronRight size={18} /></button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1 xl:flex-nowrap">
         {quick('Heute', today)}{quick('Gestern', addDays(today, -1))}
         {period(7)}{period(14)}{period(30)}
         <button onClick={() => { if (isDay) setRange({ from: addDays(date, -6), to: date }); setPreset('custom'); }} className={pill(preset === 'custom')}>Zeitraum…</button>

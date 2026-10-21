@@ -220,7 +220,7 @@ function legRoute(l: Leg) {
 }
 
 // Spaltenraster des Fahrplans (ab lg): Zeit | Kunde / Fahrt | Details | Fahrzeug | Zahlung | Status | Preis | Menü
-const ROW_GRID = 'lg:grid lg:grid-cols-[3.5rem_minmax(0,1.1fr)_minmax(0,1.6fr)_3.5rem_6.5rem_7.5rem_5.5rem_2rem] lg:items-center lg:gap-3';
+const ROW_GRID = 'lg:grid lg:grid-cols-[3.25rem_minmax(0,1fr)_minmax(0,1.4fr)_2.75rem_5.75rem_6.75rem_5rem_2rem] lg:items-center lg:gap-3';
 
 const initials = (name?: string | null) => {
   const parts = String(name || '').replace(/[^A-Za-zÀ-ÖØ-öø-žẞ\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
@@ -641,8 +641,9 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 // ---------------------------------------------------------------------------------------
 // Attention panel
 
-function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
+function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpty }: {
   a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void; onGoTab: (tab: string) => void;
+  hideWhenEmpty?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const cards = a.cardsUncharged || [];
@@ -674,6 +675,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab }: {
     ...groups.filter((g) => a[g.key].length).map((g) => ({ label: `${g.title} (${a[g.key].length})`, urgent: g.tone.includes('red') })),
     ...(mismatches.length ? [{ label: `Zeit weicht vom Kalender ab (${mismatches.length})`, urgent: false }] : []),
   ];
+  if (hideWhenEmpty && total === 0) return null;
   return (
     <Card
       title="Handlungsbedarf"
@@ -1377,8 +1379,8 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
   return (
     <div className="space-y-5">
       {/* Kopf: Titel links, Tagesarchiv-Datum + Widgets + Stand rechts */}
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 xl:flex-nowrap">
+        <div className="min-w-0">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">Übersicht</h2>
           <p className="mt-0.5 text-[15px] text-gray-500">
             {dayLabel(today, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
@@ -1387,18 +1389,18 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
             <span className="text-gray-400"> (Berlin)</span>
           </p>
         </div>
-        <div className="relative flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2 xl:flex-nowrap">
           {show('archive') && <ArchiveControls a={archive} />}
           <button
             onClick={() => setPicker((v) => !v)}
             aria-expanded={picker}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-white px-3 text-[13px] font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
           >
             <LayoutGrid size={16} /> Widgets
           </button>
           <button
             onClick={() => { load(); loadFlights(); }}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-3.5 text-sm font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-white px-3 text-[13px] font-medium text-gray-800 ring-1 ring-inset ring-gray-200 hover:bg-gray-50"
             title="Aktualisiert sich jede Minute automatisch"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -1418,8 +1420,9 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           )}
         </div>
       </div>
-      {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
       {error && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Aktualisierung fehlgeschlagen: {error}</div>}
+
+      <AttentionPanel hideWhenEmpty a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
 
       {/* Kennzahlen */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -1483,31 +1486,25 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         />
       </div>
 
-      {show('archive') && <ArchiveResults a={archive} />}
-
-      <AttentionPanel a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />
-
-      {show('events') && widgets?.events && (
-        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
-      )}
-
-      {/* Fahrplan (volle Breite) */}
-      <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
-
-      {/* Flugstatus + Morgen abbuchen nebeneinander */}
-      {(show('flights') || show('charges')) && (
-        <div className={cn('grid grid-cols-1 items-start gap-5', show('flights') && show('charges') && 'lg:grid-cols-2')}>
-          {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
-          {show('charges') && <TomorrowCharges
-            cards={cards}
-            tomorrow={addDays(today, 1)}
-            chargingId={chargingId}
-            onCharge={(id) => { onCharge(id).finally(load); }}
-            onShowCard={onShowCard}
-            onOpen={onOpenBooking}
-          />}
+      {/* Fahrplan + rechts Flugstatus / Morgen abbuchen */}
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
+        <div className={show('flights') || show('charges') ? 'xl:col-span-2' : 'xl:col-span-3'}>
+          <Schedule items={items} now={now} onOpen={onOpenBooking} calendar={data.calendar} showCal={showCal} onToggleCal={toggleCal} />
         </div>
-      )}
+        {(show('flights') || show('charges')) && (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-1">
+            {show('flights') && <FlightBoard data={flights} today={today} onOpen={onOpenBooking} onToggle={toggleFlights} />}
+            {show('charges') && <TomorrowCharges
+              cards={cards}
+              tomorrow={addDays(today, 1)}
+              chargingId={chargingId}
+              onCharge={(id) => { onCharge(id).finally(load); }}
+              onShowCard={onShowCard}
+              onOpen={onOpenBooking}
+            />}
+          </div>
+        )}
+      </div>
 
       {/* Fahrer · Prognose · Website · Forderungen */}
       {(show('drivers') || show('forecast') || show('funnel') || show('receivables')) && (
@@ -1517,6 +1514,14 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           {show('funnel') && <FunnelCard f={widgets?.funnel ?? null} />}
           {show('receivables') && <ReceivablesCard r={widgets?.receivables ?? null} onGoTab={onGoTab} />}
         </div>
+      )}
+
+      {/* Weitere Bereiche */}
+      {show('quick') && <QuickActions onNewBooking={onNewBooking} onGoTab={onGoTab} onSynced={load} />}
+      {show('archive') && <ArchiveResults a={archive} />}
+
+      {show('events') && widgets?.events && (
+        <EventsStrip events={widgets.events} custom={widgets.custom_events || []} sources={widgets.event_sources} today={today} onSaved={loadWidgets} />
       )}
 
       {show('missed') && <MissedCustomers data={widgets?.missed ?? null} onGoLive={() => onGoTab('live')} />}

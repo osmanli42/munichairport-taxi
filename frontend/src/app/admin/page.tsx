@@ -18,6 +18,7 @@ import SystemTab from '@/components/SystemTab';
 import ReplayTab from '@/components/ReplayTab';
 import { InvoiceCustomerBookingCard, InvoiceCustomersList } from '@/components/InvoiceCustomerAdmin';
 import { Toggle, SectionCard, SettingCard, Field, BlockField, HourSelect, SectionNav } from '@/components/admin/SettingsUI';
+import AdminShell from '@/components/admin/AdminShell';
 import SeoTab from '@/components/SeoTab';
 import AdsTab from '@/components/AdsTab';
 import PflichtgebietTab from '@/components/PflichtgebietTab';
@@ -918,6 +919,11 @@ export default function AdminPage() {
     }
   }
 
+  // Angemeldeter Benutzer aus dem Token (nur zur Anzeige)
+  const adminUser = (() => {
+    try { return JSON.parse(atob((token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).username || 'Admin'; } catch { return 'Admin'; }
+  })();
+
   // Allgemeine Einstellungen: ein Feld/mehrere Felder speichern und Erfolgsmeldung zeigen
   const saveSettingsPatch = async (patch: Record<string, string>, message: string): Promise<boolean> => {
     setSettingsSaving(true);
@@ -1092,85 +1098,33 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-100">
       {/* Live-tracking alerts (sound + toast); clicking one opens the booking */}
       <TrackingAlerts onOpenBooking={(id) => { adminApi.getBooking(id).then((b) => setSelectedBooking(b)).catch(() => {}); }} />
-      {/* Admin Header */}
-      <header className="bg-primary-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gold-400 rounded-full flex items-center justify-center">
-            <span className="text-primary-600 font-bold text-sm">M</span>
-          </div>
-          <span className="font-bold">Munich Airport Taxi – Admin</span>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 bg-primary-700 hover:bg-primary-800 px-3 py-2 rounded-lg text-sm transition-colors"
-        >
-          <LogOut size={16} />
-          Abmelden
-        </button>
-      </header>
-
-      <div className="max-w-7xl mx-auto p-4 lg:p-6">
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[
-            { id: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
-            { id: 'live' as Tab, icon: Activity, label: 'Live' },
-            { id: 'heatmap' as Tab, icon: Flame, label: 'Heatmap' },
-            { id: 'replay' as Tab, icon: Play, label: 'Replay' },
-            { id: 'system' as Tab, icon: Server, label: 'System' },
-            { id: 'bookings' as Tab, icon: List, label: 'Buchungen' },
-            { id: 'prices' as Tab, icon: Tag, label: 'Preise' },
-            { id: 'pflichtgebiet' as Tab, icon: MapPin, label: 'Pflichtfahrgebiet' },
-            { id: 'statistics' as Tab, icon: PieChart, label: 'Statistik' },
-            { id: 'rechnung' as Tab, icon: FileText, label: 'Rechnung' },
-            { id: 'marketing' as Tab, icon: Mail, label: 'Marketing' },
-            { id: 'promotions' as Tab, icon: BadgePercent, label: 'Aktionen' },
-            { id: 'rabatte' as Tab, icon: Percent, label: 'Rabatte' },
-            { id: 'seo' as Tab, icon: TrendingUp, label: 'SEO' },
-            { id: 'ads' as Tab, icon: MousePointerClick, label: 'Google Ads' },
-            { id: 'b2b' as Tab, icon: Building2, label: 'B2B Business' },
-            { id: 'kalender' as Tab, icon: CalendarDays, label: 'Kalender' },
-            { id: 'fahrer' as Tab, icon: Car, label: 'Fahrer' },
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              title={label}
-              className={cn(
-                'relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors',
-                activeTab === id ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
-              )}
-            >
-              <Icon size={16} />
-              <span className="hidden sm:inline">{label}</span>
-              {id === 'ads' && !!adsDueCount && (
-                <span
-                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
-                  title="Google-Ads-Reports dieser Woche fehlen"
-                >
-                  {adsDueCount}
-                </span>
-              )}
-              {id === 'seo' && !!seoDueCount && (
-                <span
-                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
-                  title="Backlink-CSV dieses Monats fehlt"
-                >
-                  {seoDueCount}
-                </span>
-              )}
-              {id === 'kalender' && !!kalenderOpenCount && (
-                <span
-                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-[18px] text-center shadow-sm"
-                  title={`${kalenderOpenCount} faturalanmamış Rechnung fahrt'ı`}
-                >
-                  {kalenderOpenCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
+      <AdminShell<Tab>
+        active={activeTab}
+        onSelect={setActiveTab}
+        user={adminUser}
+        onLogout={handleLogout}
+        onSearch={(q) => { setFilters(p => ({ ...p, search: q })); setActiveTab('bookings'); }}
+        items={[
+          { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
+          { id: 'live', icon: Activity, label: 'Live' },
+          { id: 'heatmap', icon: Flame, label: 'Heatmap' },
+          { id: 'replay', icon: Play, label: 'Replay' },
+          { id: 'bookings', icon: List, label: 'Buchungen' },
+          { id: 'prices', icon: Tag, label: 'Preise' },
+          { id: 'pflichtgebiet', icon: MapPin, label: 'Pflichtfahrgebiet' },
+          { id: 'fahrer', icon: Car, label: 'Fahrer' },
+          { id: 'marketing', icon: Mail, label: 'Marketing' },
+          { id: 'promotions', icon: BadgePercent, label: 'Aktionen' },
+          { id: 'rabatte', icon: Percent, label: 'Rabatte' },
+          { id: 'ads', icon: MousePointerClick, label: 'Google Ads', badge: adsDueCount, badgeTitle: 'Google-Ads-Reports dieser Woche fehlen' },
+          { id: 'b2b', icon: Building2, label: 'B2B Business' },
+          { id: 'seo', icon: TrendingUp, label: 'SEO', badge: seoDueCount, badgeTitle: 'Backlink-CSV dieses Monats fehlt' },
+          { id: 'statistics', icon: PieChart, label: 'Statistik' },
+          { id: 'rechnung', icon: FileText, label: 'Rechnung' },
+          { id: 'system', icon: Server, label: 'System' },
+          { id: 'kalender', icon: CalendarDays, label: 'Kalender', badge: kalenderOpenCount, badgeTitle: `${kalenderOpenCount ?? 0} Kalender-Rechnungsfahrten offen` },
+        ]}
+      >
         {/* Live Visitors */}
         {activeTab === 'live' && <LiveVisitorsTab token={token} />}
 
@@ -2977,7 +2931,7 @@ export default function AdminPage() {
             )}
           </div>
         )}
-      </div>
+      </AdminShell>
 
       {/* Legacy Card Info Popup — only for pre-Stripe-migration bookings (raw card data,
           no stripe_payment_method_id). Remove once all such bookings are processed. */}
