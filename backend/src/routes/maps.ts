@@ -1,5 +1,6 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
-import { query } from '../db';
+import { query, run } from '../db';
 
 const router = Router();
 
@@ -16,11 +17,36 @@ const _k2 = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const GOOGLE_API_KEY = _k1.length > 35 ? _k1 : _k2.length > 35 ? _k2 : '';
 if (!GOOGLE_API_KEY) console.warn('[maps] GOOGLE_MAPS_API_KEY not set — address search and routing will fail');
 
+// Gleicher Schlüssel wie services/leerfahrt.ts → beide teilen sich die Tabelle geo_cache.
+const geoNorm = (a: string) => a.trim().toLowerCase().replace(/\s+/g, ' ');
+const geoKey = (a: string) => crypto.createHash('sha1').update(geoNorm(a)).digest('hex');
+
 // Geocode a free-text address to coordinates. Used as a server-side fallback
 // (e.g. Pflichtfahrgebiet radius check) when the frontend did not send coords.
+// Treffer werden in geo_cache gemerkt (calculate-price fragt sonst dieselben Adressen
+// hunderte Male am Tag bei Google ab); Fehlschläge nicht, damit sie erneut versucht werden.
 export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  if (!address || !address.trim()) return null;
+  const key = geoKey(address);
   try {
-    if (!address) return null;
+    const [hit] = await query<{ lat: number | null; lng: number | null }>(
+      `SELECT lat, lng FROM geo_cache WHERE addr_key = ?`, [key]
+    );
+    if (hit && hit.lat != null && hit.lng != null) return { lat: Number(hit.lat), lng: Number(hit.lng) };
+  } catch { /* Cache nicht verfügbar → direkt bei Google */ }
+  const coords = await geocodeFromGoogle(address);
+  if (coords) {
+    run(
+      `INSERT INTO geo_cache (addr_key, address, lat, lng) VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE lat = VALUES(lat), lng = VALUES(lng)`,
+      [key, address.slice(0, 500), coords.lat, coords.lng]
+    ).catch(() => {});
+  }
+  return coords;
+}
+
+async function geocodeFromGoogle(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
     const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
     url.searchParams.set('address', address);
     url.searchParams.set('key', GOOGLE_API_KEY);
