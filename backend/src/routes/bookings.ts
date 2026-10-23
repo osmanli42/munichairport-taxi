@@ -388,6 +388,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         } else {
           promoDiscount = baseTotal * (parseFloat(promo.value) / 100);
         }
+        // Höchstbetrag (z. B. Marketing-Gutschein „max. 15 €“)
+        if (promo.max_amount != null && Number(promo.max_amount) > 0) promoDiscount = Math.min(promoDiscount, Number(promo.max_amount));
         promoDiscount = Math.round(promoDiscount * 100) / 100;
       }
     }

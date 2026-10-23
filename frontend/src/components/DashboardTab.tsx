@@ -11,6 +11,7 @@ import {
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
   EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag, Move,
+  Megaphone,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -84,6 +85,8 @@ interface DashboardData {
       companies: Array<{ company_id: number; company_name: string; month: string; rides: number; total: number }>;
       calendar: Array<{ month: string; rides: number }>;
     } | null;
+    /** Marketing occasion whose reminder window is open (Admin → Marketing). */
+    marketing?: Array<{ id: string; name: string; date: string; daysLeft: number; urgent: boolean }> | null;
   };
   card_deadline?: string;
   recent: Recent[];
@@ -655,8 +658,13 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
   const adsRep = a.adsReports || null;
   const monthEnd = a.monthEndInvoices || null;
   const monthEndCount = monthEnd ? monthEnd.companies.length + monthEnd.calendar.length : 0;
+  const mkt = a.marketing || [];
+  const openMarketing = (id: string) => {
+    try { sessionStorage.setItem('mt_marketing_occasion', id); } catch { /* ignore */ }
+    onGoTab('marketing');
+  };
   const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount;
+  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount + mkt.length;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   // Eingeklappt: nur Stichworte; dringende (rot) zuerst
   const chips: Array<{ label: string; urgent: boolean }> = [
@@ -666,6 +674,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
     ...(seoIdx ? [{ label: 'Google-Index fällt', urgent: true }] : []),
     ...(seo ? [{ label: 'Backlink-CSV', urgent: true }] : []),
     ...groups.filter((g) => a[g.key].length).map((g) => ({ label: `${g.title} (${a[g.key].length})`, urgent: g.tone.includes('red') })),
+    ...mkt.map((m) => ({ label: `📣 ${m.name.replace(/\s*\(.*\)$/, '')}`, urgent: m.urgent })),
     ...(mismatches.length ? [{ label: `Zeit weicht vom Kalender ab (${mismatches.length})`, urgent: false }] : []),
   ];
   if (hideWhenEmpty && total === 0) return null;
@@ -766,6 +775,33 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                         <ChevronRight size={13} className="ml-auto shrink-0 text-gray-300" />
                       </div>
                       <div className="mt-0.5 text-[11px] text-red-600/80">Noch nicht abgerechnet · Kalender</div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {mkt.length > 0 && (
+            <div className="px-5 py-3 bg-amber-50/60">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-amber-500"><Megaphone size={15} /></span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-amber-800">Marketing: E-Mail senden <span className="font-normal">({mkt.length})</span></div>
+                  <div className="text-[11px] text-amber-700/80">Anlass steht bevor — Vorlage ist fertig, nur Empfänger prüfen und senden</div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {mkt.map((m) => (
+                  <li key={m.id}>
+                    <button onClick={() => openMarketing(m.id)} className={cn('w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 hover:ring-amber-300', m.urgent ? 'ring-red-200' : 'ring-amber-100')}>
+                      <div className="flex items-center gap-2">
+                        <Megaphone size={13} className={cn('shrink-0', m.urgent ? 'text-red-500' : 'text-amber-500')} />
+                        <span className="truncate font-medium text-gray-800">{m.name}</span>
+                        <span className={cn('ml-auto shrink-0', m.urgent ? 'font-semibold text-red-600' : 'text-gray-500')}>
+                          {new Date(`${m.date}T12:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} · {m.daysLeft > 0 ? `in ${m.daysLeft} Tagen` : m.daysLeft === 0 ? 'heute' : 'läuft'}
+                        </span>
+                        <ChevronRight size={13} className="shrink-0 text-gray-300" />
+                      </div>
                     </button>
                   </li>
                 ))}

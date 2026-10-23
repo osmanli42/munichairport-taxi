@@ -308,9 +308,50 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE promotions ADD COLUMN email_subject VARCHAR(255) DEFAULT NULL`,
       `ALTER TABLE promotions ADD COLUMN email_message TEXT DEFAULT NULL`,
       `ALTER TABLE promotions ADD COLUMN sent_at DATETIME DEFAULT NULL`,
+      // Marketing-Kampagne, die den Code erzeugt hat; Höchstbetrag in € (NULL = ohne Deckel)
+      `ALTER TABLE promotions ADD COLUMN campaign_id INT DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN max_amount DECIMAL(10,2) DEFAULT NULL`,
     ]) {
       try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
+
+    // Marketing (Admin → Marketing): versendete Kampagnen und Abmeldungen (UWG §7 Abs. 3)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS marketing_campaigns (
+        id INT NOT NULL AUTO_INCREMENT,
+        occasion_id VARCHAR(60) DEFAULT NULL,
+        occasion_year INT DEFAULT NULL,
+        status ENUM('sending','sent','skipped') NOT NULL DEFAULT 'sending',
+        subject VARCHAR(255) DEFAULT NULL,
+        recipients INT NOT NULL DEFAULT 0,
+        sent INT NOT NULL DEFAULT 0,
+        failed INT NOT NULL DEFAULT 0,
+        discount_percent DECIMAL(5,2) DEFAULT NULL,
+        discount_max DECIMAL(10,2) DEFAULT NULL,
+        discount_until DATE DEFAULT NULL,
+        langs VARCHAR(60) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_occasion (occasion_id, occasion_year)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS marketing_campaign_recipients (
+        campaign_id INT NOT NULL,
+        email VARCHAR(190) NOT NULL,
+        PRIMARY KEY (campaign_id, email),
+        KEY idx_email (email)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS marketing_optout (
+        email VARCHAR(190) NOT NULL,
+        campaign_id INT DEFAULT NULL,
+        source VARCHAR(20) NOT NULL DEFAULT 'link',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (email)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS plz_surcharges (

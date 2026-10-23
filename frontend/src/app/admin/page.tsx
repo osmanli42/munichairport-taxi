@@ -27,6 +27,7 @@ import KalenderTab from '@/components/KalenderTab';
 import CancelBookingDialog, { CancelPayload } from '@/components/booking/CancelBookingDialog';
 import InvoiceStornoCard from '@/components/booking/InvoiceStornoCard';
 import StornoRegister from '@/components/booking/StornoRegister';
+import MarketingTab from '@/components/marketing/MarketingTab';
 import FinalConfirmButton from '@/components/booking/FinalConfirmButton';
 import { GutscheinButton } from '@/components/discount/PersonalLinkPanel';
 import AdminAddressField from '@/components/AdminAddressField';
@@ -38,14 +39,6 @@ import BookingTrackingPanel from '@/components/tracking/BookingTrackingPanel';
 import TrackingAlerts from '@/components/tracking/TrackingAlerts';
 
 type Tab = 'dashboard' | 'bookings' | 'prices' | 'pflichtgebiet' | 'statistics' | 'rechnung' | 'marketing' | 'promotions' | 'rabatte' | 'live' | 'heatmap' | 'replay' | 'system' | 'seo' | 'ads' | 'b2b' | 'kalender' | 'fahrer';
-
-interface MarketingCustomer {
-  email: string;
-  name: string;
-  lastBooking?: string;
-  bookingCount?: number;
-  source?: 'db' | 'ics';
-}
 
 const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-700',
@@ -141,6 +134,7 @@ export default function AdminPage() {
   }, []);
   const [kalenderOpenCount, setKalenderOpenCount] = useState<number | null>(null);
   const [seoDueCount, setSeoDueCount] = useState<number | null>(null);
+  const [marketingDueCount, setMarketingDueCount] = useState<number | null>(null);
   const [adsDueCount, setAdsDueCount] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pagination, setPagination] = useState<{ total: number; page: number; pages: number; total_price?: number }>({ total: 0, page: 1, pages: 1 });
@@ -223,29 +217,6 @@ export default function AdminPage() {
   const [vormerkenSaving, setVormerkenSaving] = useState(false);
   const [vormerkenError, setVormerkenError] = useState('');
   const [ueberweisungSaving, setUeberweisungSaving] = useState(false);
-  // Marketing
-  const [marketingCustomers, setMarketingCustomers] = useState<MarketingCustomer[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('marketing_ics_contacts');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [marketingSelected, setMarketingSelected] = useState<Set<string>>(new Set());
-  const [marketingSearch, setMarketingSearch] = useState('');
-  const [marketingSourceFilter, setMarketingSourceFilter] = useState<'all' | 'db' | 'ics'>('all');
-  const [marketingSubject, setMarketingSubject] = useState('');
-  const [marketingContent, setMarketingContent] = useState('');
-  const [marketingButtonText, setMarketingButtonText] = useState('');
-  const [marketingButtonUrl, setMarketingButtonUrl] = useState('');
-  const [marketingPreviewHtml, setMarketingPreviewHtml] = useState('');
-  const [marketingShowPreview, setMarketingShowPreview] = useState(false);
-  const [marketingSending, setMarketingSending] = useState(false);
-  const [marketingResult, setMarketingResult] = useState<{ sent: number; failed: number; errors: Array<{ email: string; error: string }> } | null>(null);
-  const [marketingLoading, setMarketingLoading] = useState(false);
-  const [marketingIcsLoading, setMarketingIcsLoading] = useState(false);
-  const [marketingShowConfirm, setMarketingShowConfirm] = useState(false);
-  const [marketingEditorMode, setMarketingEditorMode] = useState<'text' | 'html'>('text');
   const [chargingId, setChargingId] = useState<number | null>(null);
   // Bumped whenever something the dashboard shows changed elsewhere (e.g. a card charge).
   const [dashboardTick, setDashboardTick] = useState(0);
@@ -273,10 +244,6 @@ export default function AdminPage() {
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoMsg, setPromoMsg] = useState('');
 
-  useEffect(() => {
-    const icsContacts = marketingCustomers.filter(c => c.source === 'ics');
-    localStorage.setItem('marketing_ics_contacts', JSON.stringify(icsContacts));
-  }, [marketingCustomers]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('admin_token');
@@ -326,13 +293,25 @@ export default function AdminPage() {
       .catch(() => {});
   }, [token]);
 
+  // Offene Marketing-Anlässe (Ferien, Weihnachten, …) → Zahl am Marketing-Tab
+  const refreshMarketingDue = useCallback(() => {
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/admin/marketing2/reminders`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMarketingDueCount(typeof d?.count === 'number' && d.count > 0 ? d.count : null))
+      .catch(() => {});
+  }, [token]);
+
   useEffect(() => {
     if (!isLoggedIn) return;
     refreshSeoDue();
     refreshAdsDue();
-    const timer = setInterval(() => { refreshSeoDue(); refreshAdsDue(); }, 10 * 60 * 1000);
+    refreshMarketingDue();
+    const timer = setInterval(() => { refreshSeoDue(); refreshAdsDue(); refreshMarketingDue(); }, 10 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [isLoggedIn, refreshSeoDue, refreshAdsDue]);
+  }, [isLoggedIn, refreshSeoDue, refreshAdsDue, refreshMarketingDue]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -480,215 +459,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ─── Marketing ───
-  const loadMarketingCustomers = useCallback(async () => {
-    setMarketingLoading(true);
-    try {
-      const data = await adminApi.getMarketingCustomers();
-      setMarketingCustomers(prev => {
-        const icsOnly = prev.filter(c => c.source === 'ics' && !data.some(d => d.email.toLowerCase() === c.email.toLowerCase()));
-        const dbCustomers = data.map(c => ({ ...c, source: 'db' as const }));
-        return [...dbCustomers, ...icsOnly];
-      });
-    } catch (err) {
-      console.error('Failed to load marketing customers', err);
-      alert('Müşteriler yüklenemedi.');
-    } finally {
-      setMarketingLoading(false);
-    }
-  }, []);
-
-  function parseIcsLocally(text: string): Array<{ email: string; name?: string }> {
-    const unfolded = text.replace(/\r?\n[ \t]/g, '');
-    const lines = unfolded.split(/\r?\n/);
-    const emailRegex = /[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/gi;
-    const contactMap = new Map<string, { email: string; name?: string }>();
-
-    const addContact = (email: string, name?: string) => {
-      const key = email.trim().toLowerCase();
-      if (!key || !key.includes('@') || key.includes('example.')) return;
-      const existing = contactMap.get(key);
-      if (!existing || (!existing.name && name)) {
-        contactMap.set(key, { email: key, name: name?.trim() || existing?.name });
-      }
-    };
-
-    let inEvent = false;
-    let currentDescription = '';
-
-    for (const line of lines) {
-      if (line.startsWith('BEGIN:VEVENT')) {
-        inEvent = true;
-        currentDescription = '';
-      } else if (line.startsWith('END:VEVENT')) {
-        // Extract all emails from DESCRIPTION (no keyword filter — all events are taxi bookings)
-        const descMatches = currentDescription.match(emailRegex);
-        if (descMatches) for (const e of descMatches) addContact(e);
-        inEvent = false;
-      } else if (inEvent) {
-        if (line.startsWith('ATTENDEE')) {
-          const mailto = line.match(/mailto:([^\r\n;>\s]+)/i);
-          const cn = line.match(/CN=([^;:]+)/i);
-          if (mailto) addContact(mailto[1], cn ? cn[1] : undefined);
-        } else if (line.startsWith('ORGANIZER')) {
-          const mailto = line.match(/mailto:([^\r\n;>\s]+)/i);
-          const cn = line.match(/CN=([^;:]+)/i);
-          if (mailto) addContact(mailto[1], cn ? cn[1] : undefined);
-        } else if (line.startsWith('DESCRIPTION')) {
-          const idx = line.indexOf(':');
-          if (idx > -1) currentDescription = line.slice(idx + 1).replace(/\\n/g, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';');
-        }
-      }
-    }
-
-    const blocklist = new Set([
-      'info@flughafen-muenchen.taxi',
-      'info@flughafen-muenchen-taxi.de',
-      'freisingtaxi@gmail.com',
-    ]);
-    return Array.from(contactMap.values()).filter(
-      c => !c.email.startsWith('noreply') && !c.email.startsWith('no-reply') && !blocklist.has(c.email)
-    );
-  }
-
-  async function handleIcsUpload(file: File) {
-    setMarketingIcsLoading(true);
-    try {
-      const text = await file.text();
-      if (!text.includes('BEGIN:VCALENDAR') && !text.includes('BEGIN:VEVENT')) {
-        alert('Takvim dosyası işlenemedi. .ics formatında olduğundan emin olun.');
-        return;
-      }
-      const parsed = parseIcsLocally(text);
-      setMarketingCustomers(prev => {
-        const existing = new Map(prev.map(c => [c.email.toLowerCase(), c]));
-        for (const p of parsed) {
-          const key = p.email.toLowerCase();
-          if (!existing.has(key)) {
-            existing.set(key, { email: p.email, name: p.name || '', source: 'ics' });
-          } else {
-            const ex = existing.get(key)!;
-            if (!ex.name && p.name) existing.set(key, { ...ex, name: p.name });
-          }
-        }
-        return Array.from(existing.values());
-      });
-      alert(`${parsed.length} email takvimden yüklendi.`);
-    } catch (err) {
-      console.error('Failed to parse ics', err);
-      alert('Takvim dosyası işlenemedi. .ics formatında olduğundan emin olun.');
-    } finally {
-      setMarketingIcsLoading(false);
-    }
-  }
-
-  function toggleMarketingSelect(email: string) {
-    setMarketingSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(email)) next.delete(email);
-      else next.add(email);
-      return next;
-    });
-  }
-
-  // Fix MacRoman corruption: UTF-8 bytes read as MacRoman → reverse to correct UTF-8
-  // e.g. ü (C3 BC in UTF-8) pasted as MacRoman gives √º → this fixes it back to ü
-  function fixMacRomanCorruption(text: string): string {
-    if (typeof window === 'undefined') return text;
-    try {
-      const macRomanMap = new Map<string, number>();
-      const allBytes = new Uint8Array(256);
-      for (let i = 0; i < 256; i++) allBytes[i] = i;
-      const macStr = new TextDecoder('macintosh').decode(allBytes);
-      for (let i = 128; i < 256; i++) macRomanMap.set(macStr[i], i);
-      const bytes: number[] = [];
-      for (const char of Array.from(text)) {
-        const cp = char.codePointAt(0) ?? 0;
-        if (cp < 128) { bytes.push(cp); }
-        else if (macRomanMap.has(char)) { bytes.push(macRomanMap.get(char)!); }
-        else { const utf8 = new TextEncoder().encode(char); Array.from(utf8).forEach(b => bytes.push(b)); }
-      }
-      const fixed = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
-      // Only apply if: fewer MacRoman-specific chars AND no new replacement chars
-      const suspicious = /[√∂∫≈Ω∞±≤÷∑∏πƒ∆◊™®©≠µ˚¬]/g;
-      const origS = (text.match(suspicious) || []).length;
-      const fixedS = (fixed.match(suspicious) || []).length;
-      const origR = (text.match(/�/g) || []).length;
-      const fixedR = (fixed.match(/�/g) || []).length;
-      return (fixedS < origS && fixedR <= origR) ? fixed : text;
-    } catch { return text; }
-  }
-
-  function filterMarketingCustomers(): MarketingCustomer[] {
-    const q = marketingSearch.trim().toLowerCase();
-    return marketingCustomers.filter(c => {
-      if (marketingSourceFilter !== 'all' && c.source !== marketingSourceFilter) return false;
-      if (!q) return true;
-      return c.email.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q);
-    });
-  }
-
-  function toggleMarketingSelectAll() {
-    const filtered = filterMarketingCustomers();
-    if (marketingSelected.size === filtered.length && filtered.length > 0) {
-      setMarketingSelected(new Set());
-    } else {
-      setMarketingSelected(new Set(filtered.map(c => c.email)));
-    }
-  }
-
-  async function previewMarketingEmail() {
-    if (!marketingContent.trim()) {
-      alert('Lütfen önce içerik yazın.');
-      return;
-    }
-    try {
-      const { html } = await adminApi.previewMarketingEmail({
-        subject: marketingSubject || 'Vorschau',
-        content: marketingContent,
-        buttonText: marketingButtonText || undefined,
-        buttonUrl: marketingButtonUrl || undefined,
-        isHtml: marketingEditorMode === 'html',
-      });
-      setMarketingPreviewHtml(html);
-      // Open preview in a new tab — avoids all iframe encoding issues
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (err) {
-      console.error('Preview failed', err);
-      alert('Önizleme oluşturulamadı.');
-    }
-  }
-
-  async function sendMarketingEmails() {
-    if (marketingSelected.size === 0) { alert('En az bir alıcı seçin.'); return; }
-    if (!marketingSubject.trim() || !marketingContent.trim()) { alert('Konu ve içerik gerekli.'); return; }
-    const recipients = marketingCustomers
-      .filter(c => marketingSelected.has(c.email))
-      .map(c => ({ email: c.email, name: c.name || undefined }));
-    setMarketingSending(true);
-    setMarketingResult(null);
-    setMarketingShowConfirm(false);
-    try {
-      const result = await adminApi.sendMarketingEmail({
-        recipients,
-        subject: marketingSubject,
-        content: marketingContent,
-        buttonText: marketingButtonText || undefined,
-        buttonUrl: marketingButtonUrl || undefined,
-        isHtml: marketingEditorMode === 'html',
-      });
-      setMarketingResult(result);
-    } catch (err: any) {
-      console.error('Send failed', err);
-      alert('Gönderim başarısız: ' + (err?.response?.data?.error || err.message));
-    } finally {
-      setMarketingSending(false);
-    }
-  }
-
   async function handleChargeSavedCard(bookingId: number) {
     setChargingId(bookingId);
     try {
@@ -727,16 +497,13 @@ export default function AdminPage() {
         adminApi.getBankSettings().then(d => setBankSettings(d)).catch(() => {});
         settingsApi.getAll().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
       }
-      if (activeTab === 'marketing') {
-        loadMarketingCustomers();
-      }
       if (activeTab === 'promotions') {
         const promoBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
         fetch(`${promoBase}/api/promotions/admin/list`, { headers: { Authorization: `Bearer ${token}` } })
           .then(r => r.json()).then(setPromotions).catch(() => {});
       }
     }
-  }, [isLoggedIn, activeTab, token, loadBookings, loadPrices, loadDetailedStats, loadGeoStats, loadMarketingCustomers, marketingCustomers.length]);
+  }, [isLoggedIn, activeTab, token, loadBookings, loadPrices, loadDetailedStats, loadGeoStats]);
 
   // Cancelling always goes through the reason dialog (the reason shapes the customer mail).
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
@@ -1114,7 +881,7 @@ export default function AdminPage() {
           { id: 'prices', icon: Tag, label: 'Preise' },
           { id: 'pflichtgebiet', icon: MapPin, label: 'Pflichtfahrgebiet' },
           { id: 'fahrer', icon: Car, label: 'Fahrer' },
-          { id: 'marketing', icon: Mail, label: 'Marketing' },
+          { id: 'marketing', icon: Mail, label: 'Marketing', badge: marketingDueCount, badgeTitle: `${marketingDueCount ?? 0} Marketing-Anlass: E-Mail senden` },
           { id: 'promotions', icon: BadgePercent, label: 'Aktionen' },
           { id: 'rabatte', icon: Percent, label: 'Rabatte' },
           { id: 'ads', icon: MousePointerClick, label: 'Google Ads', badge: adsDueCount, badgeTitle: 'Google-Ads-Reports dieser Woche fehlen' },
@@ -1155,6 +922,9 @@ export default function AdminPage() {
 
         {/* Automatische Rabatte */}
         {activeTab === 'rabatte' && <RabatteTab token={token} />}
+
+        {/* Marketing: Kampagnenkalender, Empfänger, Versand */}
+        {activeTab === 'marketing' && <MarketingTab onRemindersChange={refreshMarketingDue} />}
 
         {/* Fahrer & Live-Tracking */}
         {activeTab === 'fahrer' && <DriversTab />}
@@ -3605,334 +3375,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Marketing */}
-      {activeTab === 'marketing' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Users size={18} /> Müşteri Listesi
-                <span className="text-xs font-normal text-gray-500">
-                  ({marketingCustomers.length} kişi, {marketingSelected.size} seçili)
-                </span>
-              </h3>
-            </div>
-            <div className="flex gap-2 mb-3 flex-wrap">
-              <button
-                onClick={loadMarketingCustomers}
-                disabled={marketingLoading}
-                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium"
-              >
-                <RefreshCw size={14} className={marketingLoading ? 'animate-spin' : ''} />
-                DB&apos;den Yükle
-              </button>
-              <label className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer">
-                <Upload size={14} />
-                {marketingIcsLoading ? 'Yükleniyor...' : '.ics Yükle'}
-                <input
-                  type="file"
-                  accept=".ics,text/calendar"
-                  className="hidden"
-                  disabled={marketingIcsLoading}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleIcsUpload(f); e.target.value = ''; }}
-                />
-              </label>
-              <label className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer">
-                <Upload size={14} />
-                CSV Yükle
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    f.text().then(text => {
-                      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-                      const emails = lines.filter(l => l.includes('@') && !l.toLowerCase().startsWith('email'));
-                      setMarketingCustomers(prev => {
-                        const existing = new Map(prev.map(c => [c.email.toLowerCase(), c]));
-                        for (const email of emails) {
-                          const key = email.toLowerCase();
-                          if (!existing.has(key)) existing.set(key, { email: key, name: '', source: 'ics' });
-                        }
-                        return Array.from(existing.values());
-                      });
-                      alert(`${emails.length} email CSV'den yüklendi.`);
-                    }).catch(() => alert('CSV dosyası okunamadı.'));
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-              <button
-                onClick={toggleMarketingSelectAll}
-                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium"
-              >
-                <Check size={14} />
-                {marketingSelected.size > 0 ? 'Seçimi Temizle' : 'Tümünü Seç'}
-              </button>
-            </div>
-            <div className="flex gap-1 mb-2">
-              {(['all', 'db', 'ics'] as const).map(f => {
-                const count = f === 'all' ? marketingCustomers.length : marketingCustomers.filter(c => c.source === f).length;
-                const label = f === 'all' ? 'Tümü' : f === 'db' ? 'DB' : 'Takvim';
-                return (
-                  <button
-                    key={f}
-                    onClick={() => { setMarketingSourceFilter(f); setMarketingSelected(new Set()); }}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-                      marketingSourceFilter === f
-                        ? f === 'ics' ? 'bg-purple-600 text-white border-purple-600' : 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    )}
-                  >
-                    {label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-            <div className="relative mb-3">
-              <Search size={16} className="absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="İsim veya email ara..."
-                value={marketingSearch}
-                onChange={(e) => setMarketingSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div className="border border-gray-100 rounded-lg max-h-[500px] overflow-y-auto">
-              {marketingCustomers.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 text-sm">
-                  Henüz müşteri yüklenmedi.<br />
-                  &quot;DB&apos;den Yükle&quot; veya &quot;.ics Yükle&quot; ile başlayın.
-                </div>
-              ) : filterMarketingCustomers().length === 0 ? (
-                <div className="p-8 text-center text-gray-500 text-sm">Aramanızla eşleşen müşteri yok.</div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="text-left py-2 px-2 w-8"></th>
-                      <th className="text-left py-2 px-2 text-gray-500 font-medium">İsim</th>
-                      <th className="text-left py-2 px-2 text-gray-500 font-medium">Email</th>
-                      <th className="text-left py-2 px-2 text-gray-500 font-medium w-16">Kaynak</th>
-                      <th className="w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filterMarketingCustomers().map((c) => (
-                      <tr key={c.email} className="border-t border-gray-50 hover:bg-gray-50 group">
-                        <td className="py-2 px-2">
-                          <input
-                            type="checkbox"
-                            checked={marketingSelected.has(c.email)}
-                            onChange={() => toggleMarketingSelect(c.email)}
-                            className="w-4 h-4 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-2 px-2 text-gray-900">{c.name || <span className="text-gray-400 italic">—</span>}</td>
-                        <td className="py-2 px-2 text-gray-600 text-xs">{c.email}</td>
-                        <td className="py-2 px-2">
-                          <span className={cn(
-                            'text-xs px-2 py-0.5 rounded-full',
-                            c.source === 'ics' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                          )}>
-                            {c.source === 'ics' ? 'Takvim' : 'DB'}
-                          </span>
-                        </td>
-                        <td className="py-2 px-1">
-                          <button
-                            onClick={() => {
-                              setMarketingCustomers(prev => prev.filter(x => x.email !== c.email));
-                              setMarketingSelected(prev => { const n = new Set(prev); n.delete(c.email); return n; });
-                            }}
-                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
-                          >
-                            <X size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Mail size={18} /> Email Oluştur
-              </h3>
-              {/* Editor mode toggle */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-                <button
-                  onClick={() => setMarketingEditorMode('text')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    marketingEditorMode === 'text'
-                      ? 'bg-white text-primary-700 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Metin
-                </button>
-                <button
-                  onClick={() => setMarketingEditorMode('html')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    marketingEditorMode === 'html'
-                      ? 'bg-white text-purple-700 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {'</> HTML'}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Konu (Subject)</label>
-              <input
-                type="text"
-                value={marketingSubject}
-                onChange={(e) => setMarketingSubject(e.target.value)}
-                placeholder="Örn: Yaz sezonu özel indirimi"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            {marketingEditorMode === 'text' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  İçerik
-                  <span className="text-xs text-gray-500 ml-2">
-                    ({'{isim}'} ile kişiselleştir · <strong>**kalın**</strong> · # başlık · - madde)
-                  </span>
-                </label>
-                <textarea
-                  value={marketingContent}
-                  onChange={(e) => setMarketingContent(e.target.value)}
-                  rows={14}
-                  placeholder={`Merhaba {isim},\n\n# Yaz sezonu indirimi başladı!\n\nHavalimanı transferinizde **%10 indirim** kazanın.\n\n- Tüm araç tipleri dahil\n- Erken rezervasyon avantajı\n- 7/24 müşteri hizmetleri\n\nGörüşmek üzere!\nFlughafen-muenchen.TAXI`}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono resize-y"
-                />
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    HTML Kaynak Kodu
-                    <span className="text-xs text-gray-500 ml-2">({'{isim}'} ile kişiselleştir)</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const fixed = fixMacRomanCorruption(marketingContent);
-                        if (fixed !== marketingContent) {
-                          setMarketingContent(fixed);
-                          alert('Kodlama düzeltildi! ✓');
-                        } else {
-                          alert('Kodlama sorunu tespit edilmedi.');
-                        }
-                      }}
-                      className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-2 py-0.5 rounded-full font-medium"
-                    >
-                      🔧 Düzelt
-                    </button>
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Raw HTML</span>
-                  </div>
-                </div>
-                <div className="relative">
-                  <textarea
-                    value={marketingContent}
-                    onChange={(e) => setMarketingContent(e.target.value)}
-                    onPaste={(e) => {
-                      const pasted = e.clipboardData?.getData('text/plain');
-                      if (pasted) {
-                        const fixed = fixMacRomanCorruption(pasted);
-                        if (fixed !== pasted) {
-                          e.preventDefault();
-                          const ta = e.currentTarget;
-                          const start = ta.selectionStart ?? 0;
-                          const end = ta.selectionEnd ?? marketingContent.length;
-                          setMarketingContent(marketingContent.slice(0, start) + fixed + marketingContent.slice(end));
-                        }
-                      }
-                    }}
-                    rows={18}
-                    spellCheck={false}
-                    placeholder={`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <style>\n    body { font-family: Arial, sans-serif; background: #f4f4f4; }\n    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 8px; }\n    h1 { color: #1a365d; }\n    .btn { display: inline-block; background: #f6c644; color: #1a365d; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class="container">\n    <h1>Merhaba {isim}!</h1>\n    <p>Email içeriğinizi buraya yazın.</p>\n    <a href="https://flughafen-muenchen.taxi" class="btn">Jetzt buchen</a>\n  </div>\n</body>\n</html>`}
-                    className="w-full border border-purple-200 bg-gray-950 text-green-400 rounded-lg px-3 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono resize-y leading-relaxed"
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  💡 Yapıştırırken encoding otomatik düzeltilir. Sorun devam ederse <strong>🔧 Düzelt</strong> butonuna basın.
-                </p>
-              </div>
-            )}
-
-            {marketingEditorMode === 'text' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Buton Metni (opsiyonel)</label>
-                  <input
-                    type="text"
-                    value={marketingButtonText}
-                    onChange={(e) => setMarketingButtonText(e.target.value)}
-                    placeholder="Hemen Rezervasyon"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Buton URL (opsiyonel)</label>
-                  <input
-                    type="url"
-                    value={marketingButtonUrl}
-                    onChange={(e) => setMarketingButtonUrl(e.target.value)}
-                    placeholder="https://flughafen-muenchen.taxi"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={previewMarketingEmail}
-                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-xl text-sm font-medium flex-1 justify-center"
-              >
-                <Eye size={16} /> Önizleme
-              </button>
-              <button
-                onClick={() => setMarketingShowConfirm(true)}
-                disabled={marketingSelected.size === 0 || !marketingSubject.trim() || !marketingContent.trim() || marketingSending}
-                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-xl text-sm font-semibold flex-1 justify-center"
-              >
-                <Send size={16} />
-                {marketingSending ? 'Gönderiliyor...' : `${marketingSelected.size} Kişiye Gönder`}
-              </button>
-            </div>
-            {marketingResult && (
-              <div className={cn(
-                'p-4 rounded-xl text-sm',
-                marketingResult.failed === 0 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-              )}>
-                <strong>Sonuç:</strong> {marketingResult.sent} başarılı, {marketingResult.failed} başarısız.
-                {marketingResult.errors.length > 0 && (
-                  <ul className="mt-2 text-xs list-disc list-inside">
-                    {marketingResult.errors.slice(0, 5).map((e, i) => (
-                      <li key={i}>{e.email}: {e.error}</li>
-                    ))}
-                    {marketingResult.errors.length > 5 && <li>...ve {marketingResult.errors.length - 5} hata daha</li>}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Promotions tab */}
       {activeTab === 'promotions' && (() => {
         const promoBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '');
@@ -4135,43 +3577,6 @@ export default function AdminPage() {
           </div>
         );
       })()}
-
-      {/* Marketing Preview Modal removed — preview opens in new tab */}
-
-      {/* Marketing Confirm Send Modal */}
-      {marketingShowConfirm && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget && !marketingSending) setMarketingShowConfirm(false); }}
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="font-bold text-gray-900 text-lg mb-2">Toplu Email Gönderimi</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              <strong>{marketingSelected.size} kişiye</strong> aynı email gönderilecek.
-              Bu işlem geri alınamaz. Emin misiniz?
-            </p>
-            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
-              <div><span className="text-gray-500">Konu:</span> <strong>{marketingSubject}</strong></div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setMarketingShowConfirm(false)}
-                disabled={marketingSending}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 py-2.5 rounded-xl font-medium"
-              >
-                İptal
-              </button>
-              <button
-                onClick={sendMarketingEmails}
-                disabled={marketingSending}
-                className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2"
-              >
-                {marketingSending ? <><RefreshCw size={16} className="animate-spin" /> Gönderiliyor...</> : <><Send size={16} /> Gönder</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit / Create Booking Modal */}
       {(editingBooking || isCreatingBooking) && (

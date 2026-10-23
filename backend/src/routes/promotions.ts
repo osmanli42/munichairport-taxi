@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { query, run } from '../db';
 import { authenticateAdmin } from '../middleware/auth';
-import crypto from 'crypto';
+import { gutscheinUrl, newGutscheinCode, addDays } from '../services/gutschein';
 import { Resend } from 'resend';
 import { berlinDateSql } from '../utils/berlinTime';
 import { customerGutscheinEmail, gutscheinDefaults, GUTSCHEIN_REASONS, GutscheinReason } from '../services/bookingEmailTemplates';
@@ -102,6 +102,7 @@ router.post('/validate', async (req: Request, res: Response): Promise<void> => {
     } else {
       discount_amount = bp * (parseFloat(promo.value) / 100);
     }
+    if (promo.max_amount != null && Number(promo.max_amount) > 0) discount_amount = Math.min(discount_amount, Number(promo.max_amount));
     discount_amount = Math.round(discount_amount * 100) / 100;
     const final_price = Math.max(0, Math.round((bp - discount_amount) * 100) / 100);
 
@@ -210,13 +211,8 @@ router.delete('/admin/:id', authenticateAdmin, async (req: Request, res: Respons
 // Auto-Rabatt gewinnt in bookings.ts der größere. kombinierbar = 1: kommt zum Hin-/Rückfahrt-Rabatt
 // dazu — so rechnen /buchen (Rabatt auf den angezeigten Preis) und der Server gleich.
 
-const SITE = 'https://www.flughafen-muenchen.taxi';
 const GS_LANGS = ['de', 'en', 'tr'];
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // ohne 0/O, 1/I
-
-const gutscheinUrl = (code: string, lang: string) => `${SITE}${lang === 'de' ? '' : `/${lang}`}/?gutschein=${encodeURIComponent(code)}`;
-const newCode = () => 'GS-' + Array.from({ length: 8 }, () => CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]).join('');
-const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const newCode = newGutscheinCode;
 
 interface PersonalInput {
   name: string; email: string; lang: string; percent: number; endDate: string;
@@ -320,7 +316,7 @@ router.get('/admin/personal', authenticateAdmin, async (_req: Request, res: Resp
       `SELECT id, code, value, active, used_count, max_uses, recipient_name, recipient_email, recipient_lang, reason,
               description AS note, email_subject, sent_at, created_at,
               DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date, (end_date < ?) AS expired
-         FROM promotions WHERE personal = 1 ORDER BY created_at DESC LIMIT 300`,
+         FROM promotions WHERE personal = 1 AND campaign_id IS NULL ORDER BY created_at DESC LIMIT 300`,
       [today]
     );
     const codes = rows.map(r => r.code);

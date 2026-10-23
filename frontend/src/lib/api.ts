@@ -437,6 +437,67 @@ export const personalGutscheinApi = {
   deactivate: async (id: number) => (await api.put(`/promotions/admin/personal/${id}/deactivate`)).data,
 };
 
+// Marketing (Admin → Marketing): Kampagnenkalender, Empfänger, Versand mit Gutschein-Link
+export type MkLang = 'de' | 'en' | 'tr';
+export type MkSegment = 'all' | 'privat' | 'business' | 'stamm' | 'business_stamm';
+export type MkMode = 'greeting' | 'discount';
+export interface MkText { subject: string; message: string; badge: string; button?: string }
+export interface MkOccasion {
+  id: string; key: string; year: number; name: string;
+  group: 'ferien' | 'fest' | 'business' | 'season' | 'custom';
+  date: string; end: string | null; remindFrom: string; remindUntil: string;
+  status: 'due' | 'upcoming' | 'sent' | 'skipped' | 'missed';
+  sentAt: string | null; campaignId: number | null; daysLeft: number;
+  enabled: boolean; leadDays: number; afterDays: number; segment: MkSegment; mode: MkMode;
+  percent: number; validDays: number; maxAmount: number | null; isDefault: boolean;
+  texts: Record<MkLang, MkText>;
+}
+export interface MkCalendar {
+  occasions: MkOccasion[]; remindersEnabled: boolean; sourceErrors: string[];
+  offer: Record<MkLang, { subject: string; message: string }>;
+}
+export interface MkCustomer {
+  email: string; name: string; lastBooking: string | null; bookingCount: number;
+  lang: MkLang; isBusiness: boolean; optedOut: boolean;
+}
+export interface MkSendText { subject: string; message: string; badge?: string; buttonText?: string; buttonUrl?: string }
+export interface MkDiscount { percent: number; validDays?: number; endDate?: string; maxAmount?: number | null }
+export interface MkSendBody {
+  occasion_id?: string | null; occasion_year?: number | null;
+  recipients?: Array<{ email: string; name?: string; lang?: MkLang }>;
+  langMode?: 'customer' | MkLang; lang?: MkLang;
+  texts: Partial<Record<MkLang, MkSendText>>;
+  isHtml?: boolean; html?: string; discount?: MkDiscount | null;
+}
+export interface MkCampaign {
+  id: number; occasion_id: string | null; occasion_year: number | null; status: string; subject: string;
+  recipients: number; sent: number; failed: number; langs: string | null; created_at: string;
+  discount: { percent: number; maxAmount: number | null; until: string } | null;
+  redeemed: { count: number; discount: number; revenue: number };
+  booked: { count: number; revenue: number };
+  unsubscribed: number;
+}
+
+export const marketingApi = {
+  calendar: async (): Promise<MkCalendar> => (await api.get('/admin/marketing2/calendar')).data,
+  reminders: async (): Promise<{ count: number }> => (await api.get('/admin/marketing2/reminders')).data,
+  saveOccasion: async (id: string, s: Partial<Pick<MkOccasion, 'enabled' | 'leadDays' | 'afterDays' | 'segment' | 'mode' | 'percent' | 'validDays' | 'maxAmount'>>) =>
+    (await api.put(`/admin/marketing2/occasions/${encodeURIComponent(id)}/settings`, s)).data,
+  resetOccasion: async (id: string) => (await api.delete(`/admin/marketing2/occasions/${encodeURIComponent(id)}/settings`)).data,
+  skip: async (id: string, year: number) => (await api.post(`/admin/marketing2/occasions/${encodeURIComponent(id)}/skip`, { year })).data,
+  unskip: async (id: string, year: number) => (await api.delete(`/admin/marketing2/occasions/${encodeURIComponent(id)}/skip`, { params: { year } })).data,
+  setReminders: async (enabled: boolean) => (await api.put('/admin/marketing2/reminders-enabled', { enabled })).data,
+  addCustom: async (c: { name: string; monthDay: string; leadDays: number; segment: MkSegment; mode: MkMode; percent: number; subject: string; message: string }) =>
+    (await api.post('/admin/marketing2/custom-occasions', c)).data,
+  deleteCustom: async (id: string) => (await api.delete(`/admin/marketing2/custom-occasions/${encodeURIComponent(id)}`)).data,
+  customers: async (): Promise<{ customers: MkCustomer[]; optouts: string[] }> => (await api.get('/admin/marketing2/customers')).data,
+  preview: async (b: MkSendBody & { name?: string }): Promise<{ subject: string; html: string }> => (await api.post('/admin/marketing2/preview', b)).data,
+  test: async (b: MkSendBody): Promise<{ to: string }> => (await api.post('/admin/marketing2/test', b)).data,
+  send: async (b: MkSendBody): Promise<{ campaignId: number; sent: number; failed: number; skippedOptout: number; codes: number; dryRun: boolean; errors: Array<{ email: string; error: string }> }> =>
+    (await api.post('/admin/marketing2/send', b, { timeout: 900000 })).data,
+  campaigns: async (): Promise<MkCampaign[]> => (await api.get('/admin/marketing2/campaigns')).data,
+};
+
 export const autoDiscountsApi = {
   searchStats: async (from: string, to: string): Promise<SearchStats> => {
     const response = await api.get('/auto-discounts/admin/search-stats', { params: { from, to } });

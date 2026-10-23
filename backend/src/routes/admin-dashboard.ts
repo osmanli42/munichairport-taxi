@@ -8,6 +8,7 @@ import { monthEndInvoices } from '../services/monthEndInvoices';
 import { Router, Response } from 'express';
 import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { marketingReminders } from '../services/marketingCalendar';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
 import { unchargedCards, cardDeadline } from '../services/cardChargeReminder';
@@ -239,6 +240,11 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       SELECT COUNT(*) AS count, COALESCE(SUM(price), 0) AS revenue FROM bookings WHERE status <> 'cancelled'`);
 
     // ---- Things that need a hand -----------------------------------------------------
+    // Marketing-Erinnerung parallel zu den übrigen Abfragen starten (max. 4 s)
+    const marketingPending = Promise.race([
+      marketingReminders(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]).catch(() => null);
     const since14 = `${berlinDateSql(-14)} 00:00:00`;
     const since60 = `${berlinDateSql(-60)} 00:00:00`;
     const in3Days = `${berlinDateSql(3)} 23:59:59`;
@@ -257,6 +263,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     // Weekly Google Ads report upload not done yet (Google Ads → Veri & Bağlantı).
     const adsReports = await adsReminder().catch(() => null);
     const monthEnd = await monthEndInvoices().catch(() => null);
+    // Marketing-Anlass mit offenem Erinnerungsfenster (Ferien, Weihnachten, …) — Admin → Marketing
+    const marketing = await marketingPending;
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
@@ -308,7 +316,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intakeCalendar,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd, marketing },
       card_deadline: await cardDeadline(),
       recent,
       calendar,

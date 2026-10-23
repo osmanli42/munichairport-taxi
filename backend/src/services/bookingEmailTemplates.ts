@@ -696,7 +696,7 @@ const GS: Record<Lang, Record<string, string>> = {
   de: {
     badge: 'Persönlicher Gutschein', hello: 'Guten Tag', off: 'auf Ihre nächste Fahrt',
     valid: 'Einmalig gültig bis {d}', book: 'Jetzt mit {p} Rabatt buchen',
-    how: 'Einfach über den Button buchen – der Rabatt wird automatisch abgezogen, ein Code ist nicht nötig. Gilt auch für Hin- und Rückfahrt und bei Zahlung per Rechnung. Nicht mit anderen Rabattaktionen kombinierbar.',
+    how: 'Einfach über den Button buchen – der Rabatt wird automatisch abgezogen, ein Code ist nicht nötig. Gilt auch für Hin- und Rückfahrt und bei Zahlung per Rechnung. Nicht mit anderen Aktionscodes kombinierbar.',
     closeSorry: 'Wir hoffen, Sie bald wieder bei uns begrüßen zu dürfen, und versprechen Ihnen eine angenehme Fahrt.',
     close: 'Wir freuen uns darauf, Sie bald wieder bei uns begrüßen zu dürfen.',
     regards: 'Mit freundlichen Grüßen', team: 'Ihr Team von Flughafen-München.TAXI',
@@ -705,7 +705,7 @@ const GS: Record<Lang, Record<string, string>> = {
   en: {
     badge: 'Personal voucher', hello: 'Hello', off: 'off your next ride',
     valid: 'Valid once until {d}', book: 'Book now with {p} off',
-    how: 'Simply book via the button – the discount is deducted automatically, no code needed. Also valid for return trips and when paying by invoice. Cannot be combined with other offers.',
+    how: 'Simply book via the button – the discount is deducted automatically, no code needed. Also valid for return trips and when paying by invoice. Cannot be combined with other promo codes.',
     closeSorry: 'We hope to welcome you on board again soon and promise you a pleasant ride.',
     close: 'We look forward to welcoming you on board again soon.',
     regards: 'Kind regards', team: 'Your Flughafen-München.TAXI team',
@@ -714,7 +714,7 @@ const GS: Record<Lang, Record<string, string>> = {
   tr: {
     badge: 'Kişisel hediye kuponu', hello: 'Merhaba', off: 'bir sonraki yolculuğunuzda',
     valid: '{d} tarihine kadar bir kez geçerli', book: '{p} indirimle hemen rezervasyon yap',
-    how: 'Butona tıklayıp rezervasyon yapmanız yeterli – indirim otomatik düşülür, kod girmenize gerek yok. Gidiş-dönüşte ve faturalı ödemede de geçerlidir. Diğer kampanyalarla birleştirilemez.',
+    how: 'Butona tıklayıp rezervasyon yapmanız yeterli – indirim otomatik düşülür, kod girmenize gerek yok. Gidiş-dönüşte ve faturalı ödemede de geçerlidir. Diğer promosyon kodlarıyla birleştirilemez.',
     closeSorry: 'Sizi yakında yeniden ağırlamayı umuyor, keyifli bir yolculuk vaat ediyoruz.',
     close: 'Sizi yakında yeniden ağırlamayı dört gözle bekliyoruz.',
     regards: 'Saygılarımızla', team: 'Flughafen-München.TAXI ekibi',
@@ -794,4 +794,157 @@ export function customerGutscheinEmail(g: GutscheinMailData): { subject: string;
 </table>
 </div>`;
   return { subject: `🎁 ${String(g.subject || '').trim() || gutscheinDefaults(g.reason, lang, g.percent).subject}`, html };
+}
+
+
+// ---- Marketing-Kampagne (Admin → Marketing) ------------------------------------------------
+// Gleiche Hülle wie Bestätigung/Gutschein. Optional ein persönlicher Gutschein-Coupon (Link,
+// kein Code). Jede Mail hat unten den Abmeldelink (UWG §7 Abs. 3).
+
+const MK: Record<Lang, Record<string, string>> = {
+  de: {
+    hello: 'Guten Tag', off: 'auf Ihre nächste Fahrt', valid: 'Einmalig gültig bis {d}', max: 'max. {m}',
+    bookCoupon: 'Jetzt mit {p} Rabatt buchen', book: 'Jetzt Fahrt buchen',
+    how: 'Einfach über den Button buchen – der Rabatt wird automatisch abgezogen, ein Code ist nicht nötig. Gilt auch für Hin- und Rückfahrt und bei Zahlung per Rechnung. Nicht mit anderen Aktionscodes kombinierbar.',
+    regards: 'Mit freundlichen Grüßen', team: 'Ihr Team von Flughafen-München.TAXI',
+    why: 'Sie erhalten diese E-Mail, weil Sie bei uns eine Fahrt gebucht haben.',
+    unsub: 'Keine E-Mails mehr erhalten? Hier abmelden', call: 'Anrufen',
+  },
+  en: {
+    hello: 'Hello', off: 'off your next ride', valid: 'Valid once until {d}', max: 'max. {m}',
+    bookCoupon: 'Book now with {p} off', book: 'Book your ride',
+    how: 'Simply book via the button – the discount is deducted automatically, no code needed. Also valid for return trips and when paying by invoice. Cannot be combined with other promo codes.',
+    regards: 'Kind regards', team: 'Your Flughafen-München.TAXI team',
+    why: 'You are receiving this e-mail because you booked a ride with us.',
+    unsub: 'No longer want these e-mails? Unsubscribe here', call: 'Call',
+  },
+  tr: {
+    hello: 'Merhaba', off: 'bir sonraki yolculuğunuzda', valid: '{d} tarihine kadar bir kez geçerli', max: 'en fazla {m}',
+    bookCoupon: '{p} indirimle hemen rezervasyon yap', book: 'Hemen rezervasyon yap',
+    how: 'Butona tıklayıp rezervasyon yapmanız yeterli – indirim otomatik düşülür, kod girmenize gerek yok. Gidiş-dönüşte ve faturalı ödemede de geçerlidir. Diğer promosyon kodlarıyla birleştirilemez.',
+    regards: 'Saygılarımızla', team: 'Flughafen-München.TAXI ekibi',
+    why: 'Bu e-postayı bizimle bir yolculuk rezervasyonu yaptığınız için alıyorsunuz.',
+    unsub: 'Artık e-posta almak istemiyor musunuz? Buradan çıkın', call: 'Ara',
+  },
+};
+
+/** Einfacher Text mit **fett**, *kursiv*, # Überschrift, - Liste, [Text](URL) → HTML im Mail-Stil. */
+export function campaignTextToHtml(text: string): string {
+  const inline = (t: string) => esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, `<a href="$2" style="color:${C.navy2};font-weight:600">$1</a>`);
+  const out: string[] = [];
+  let list: string[] = [];
+  const flush = () => {
+    if (list.length) out.push(`<ul style="margin:0 0 12px;padding-left:20px;font-size:15px;color:${C.text};line-height:1.6">${list.map(li => `<li style="margin:4px 0">${li}</li>`).join('')}</ul>`);
+    list = [];
+  };
+  let para: string[] = [];
+  const flushPara = () => {
+    if (para.length) out.push(`<p style="margin:0 0 12px;font-size:15px;color:${C.text};line-height:1.6">${para.join('<br>')}</p>`);
+    para = [];
+  };
+  for (const raw of String(text || '').replace(/\r/g, '').split('\n')) {
+    const line = raw.trim();
+    if (!line) { flushPara(); flush(); continue; }
+    if (/^#{1,3}\s+/.test(line)) {
+      flushPara(); flush();
+      out.push(`<div style="font-size:18px;font-weight:800;color:${C.navy};margin:4px 0 10px">${inline(line.replace(/^#{1,3}\s+/, ''))}</div>`);
+      continue;
+    }
+    if (/^[-*•]\s+/.test(line)) { flushPara(); list.push(inline(line.replace(/^[-*•]\s+/, ''))); continue; }
+    flush();
+    para.push(inline(line));
+  }
+  flushPara(); flush();
+  return out.join('');
+}
+
+export interface CampaignMailData {
+  lang: string;
+  name?: string | null;
+  subject: string;
+  message: string;          // Text (Markdown-light), {isim}/{name} = Vorname/Name
+  badge?: string | null;    // z. B. „🎄 Frohe Weihnachten“
+  buttonText?: string | null;
+  buttonUrl?: string | null;
+  coupon?: { percent: number; endDate: string; url: string; maxAmount?: number | null } | null;
+  unsubscribeUrl: string;
+}
+
+export function customerCampaignEmail(m: CampaignMailData): { subject: string; html: string } {
+  const lang: Lang = (['de', 'en', 'tr'].includes(m.lang) ? m.lang : 'de') as Lang;
+  const t = MK[lang];
+  const name = String(m.name || '').trim();
+  const body = campaignTextToHtml(String(m.message || '').replace(/\{isim\}|\{name\}/gi, name));
+  const siteUrl = `${SITE}${lang === 'de' ? '' : `/${lang}`}`;
+
+  let coupon = '';
+  if (m.coupon) {
+    const p = pct(m.coupon.percent, lang);
+    const [y, mo, d] = String(m.coupon.endDate).slice(0, 10).split('-');
+    const until = lang === 'en' ? `${d}/${mo}/${y}` : `${d}.${mo}.${y}`;
+    const maxTxt = m.coupon.maxAmount ? ` · ${t.max.replace('{m}', money(m.coupon.maxAmount).replace(',00', ''))}` : '';
+    coupon = `
+  <tr><td style="padding:0 20px 14px">
+    <div style="border:2px dashed ${C.gold};border-radius:16px;padding:22px 18px;background:${C.goldSoft};text-align:center">
+      <div style="font-size:54px;line-height:1;font-weight:800;color:${C.navy};letter-spacing:-.02em">−${p}</div>
+      <div style="font-size:16px;color:${C.text};font-weight:600;margin-top:6px">${t.off}</div>
+      <div style="font-size:13px;color:${C.muted};margin-top:10px">${t.valid.replace('{d}', until)}${maxTxt}</div>
+      <div style="margin-top:18px">
+        <a href="${esc(m.coupon.url)}" style="display:inline-block;padding:15px 26px;border-radius:12px;background:${C.navy};color:#fff;font-size:16px;font-weight:700;text-decoration:none">🚕 ${t.bookCoupon.replace('{p}', p)}</a>
+      </div>
+      <div style="font-size:12px;color:${C.muted};line-height:1.5;margin-top:14px">${t.how}</div>
+    </div>
+  </td></tr>`;
+  }
+  const cta = !m.coupon ? `<div style="margin-top:8px;text-align:center">
+      <a href="${esc(m.buttonUrl || siteUrl)}" style="display:inline-block;padding:14px 24px;border-radius:12px;background:${C.navy};color:#fff;font-size:15px;font-weight:700;text-decoration:none">🚕 ${esc(m.buttonText || t.book)}</a>
+    </div>` : '';
+
+  const html = `
+<div style="background:#eef1f5;padding:20px 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid ${C.line}">
+  <tr><td style="background:${C.navy};padding:22px 20px 20px">
+    <img src="${SITE}/images/logo-wide-400.webp" width="200" alt="Flughafen-München.TAXI" style="display:block;border:0;max-width:200px;height:auto">
+    ${m.badge ? `<div style="margin-top:18px"><span style="display:inline-block;background:${C.gold};color:${C.navy};font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px">${esc(m.badge)}</span></div>` : ''}
+    <div style="font-size:22px;color:#fff;font-weight:700;margin-top:${m.badge ? 10 : 18}px">${t.hello}${name ? ` ${esc(name)}` : ''},</div>
+  </td></tr>
+
+  <tr><td style="height:16px"></td></tr>
+
+  ${card(`${body}${cta}`)}
+  ${coupon}
+
+  ${card(`<div style="font-size:15px;color:${C.text};line-height:1.6">${t.regards}<br><b>${t.team}</b></div>`)}
+
+  <tr><td style="padding:6px 20px 22px">
+    <div style="background:${C.navy};border-radius:14px;padding:18px">
+      <div style="font-size:14px;color:#fff;font-weight:600">${T[lang].questions}</div>
+      <div style="margin-top:10px">
+        <a href="${PHONE_LINK}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:${C.gold};color:${C.navy};font-size:14px;font-weight:700;text-decoration:none">📞 ${t.call}</a>
+        <a href="${WHATSAPP}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:#25d366;color:#fff;font-size:14px;font-weight:700;text-decoration:none">💬 WhatsApp</a>
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;margin-top:10px">${PHONE} · <a href="mailto:${MAIL}" style="color:#cbd5e1">${MAIL}</a></div>
+    </div>
+  </td></tr>
+
+  <tr><td style="padding:0 20px 22px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6">
+    Flughafen-München.TAXI · Eisvogelweg 2 · 85356 Freising<br>
+    <a href="${siteUrl}" style="color:#9ca3af">flughafen-muenchen.taxi</a><br>
+    ${t.why}<br>
+    <a href="${esc(m.unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">${t.unsub}</a>
+  </td></tr>
+</table>
+</div>`;
+  return { subject: String(m.subject || '').trim(), html };
+}
+
+/** Pflicht-Fußzeile für eigene HTML-Mails (HTML-Modus): Grund + Abmeldelink. */
+export function campaignFooterHtml(lang: string, unsubscribeUrl: string): string {
+  const t = MK[(['de', 'en', 'tr'].includes(lang) ? lang : 'de') as Lang];
+  return `<div style="text-align:center;font-family:Arial,sans-serif;font-size:11px;color:#9ca3af;line-height:1.6;padding:16px 10px">
+    Flughafen-München.TAXI · Eisvogelweg 2 · 85356 Freising<br>${t.why}<br>
+    <a href="${esc(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">${t.unsub}</a></div>`;
 }
