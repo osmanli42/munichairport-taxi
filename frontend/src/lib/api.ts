@@ -694,6 +694,11 @@ export const adminApi = {
     return response.data as { success: boolean; sent_at: string; to: string };
   },
 
+  resendAdminNotification: async (id: number): Promise<{ success: boolean; to: string }> => {
+    const response = await api.post(`/admin/bookings/${id}/resend-admin-notification`, {});
+    return response.data;
+  },
+
   resendConfirmation: async (id: number): Promise<{ success: boolean }> => {
     const response = await api.post(`/admin/bookings/${id}/resend-confirmation`, {});
     return response.data;

@@ -11,7 +11,7 @@ import {
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
   EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag, Move,
-  Megaphone,
+  Megaphone, MailWarning,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -100,7 +100,7 @@ interface DashboardData {
 }
 
 type CalSum = { count: number; priced: number; revenue: number };
-type AttentionKey = 'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus';
+type AttentionKey = 'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus' | 'mailFailed';
 
 type UnchargedCard = {
   id: number;
@@ -647,6 +647,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
   const cardIds = new Set(cards.map((c) => c.id));
   a = { ...a, failedCharges: a.failedCharges.filter((l) => !cardIds.has(l.id)) };
   const groups: Array<{ key: AttentionKey; title: string; hint: string; Icon: typeof Clock; tone: string }> = [
+    { key: 'mailFailed', title: 'Buchungsmail nicht zugestellt', hint: 'Automatischer Versand mehrmals fehlgeschlagen — Bestätigung im Buchungsdetail erneut senden', Icon: MailWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'failedCharges', title: 'Kartenzahlung fehlgeschlagen', hint: 'Stripe-Abbuchung erneut versuchen oder Kunde kontaktieren', Icon: CreditCard, tone: 'text-red-600 bg-red-50' },
     { key: 'unconfirmed', title: 'Noch nicht bestätigt', hint: 'Neue Buchungen mit anstehender Fahrt', Icon: Clock, tone: 'text-blue-600 bg-blue-50' },
     { key: 'unpaidTransfers', title: 'Überweisung offen', hint: 'Fahrt in ≤ 3 Tagen oder vorbei, Zahlung nicht verbucht', Icon: Landmark, tone: 'text-amber-600 bg-amber-50' },
@@ -664,7 +665,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
     onGoTab('marketing');
   };
   const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const total = groups.reduce((s, g) => s + a[g.key].length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount + mkt.length;
+  const total = groups.reduce((s, g) => s + (a[g.key] || []).length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount + mkt.length;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   // Eingeklappt: nur Stichworte; dringende (rot) zuerst
   const chips: Array<{ label: string; urgent: boolean }> = [
@@ -673,7 +674,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
     ...(adsRep ? [{ label: 'Google-Ads-Reports', urgent: true }] : []),
     ...(seoIdx ? [{ label: 'Google-Index fällt', urgent: true }] : []),
     ...(seo ? [{ label: 'Backlink-CSV', urgent: true }] : []),
-    ...groups.filter((g) => a[g.key].length).map((g) => ({ label: `${g.title} (${a[g.key].length})`, urgent: g.tone.includes('red') })),
+    ...groups.filter((g) => (a[g.key] || []).length).map((g) => ({ label: `${g.title} (${(a[g.key] || []).length})`, urgent: g.tone.includes('red') })),
     ...mkt.map((m) => ({ label: `📣 ${m.name.replace(/\s*\(.*\)$/, '')}`, urgent: m.urgent })),
     ...(mismatches.length ? [{ label: `Zeit weicht vom Kalender ab (${mismatches.length})`, urgent: false }] : []),
   ];
@@ -877,12 +878,12 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </ul>
             </div>
           )}
-          {groups.filter((g) => a[g.key].length).map((g) => (
+          {groups.filter((g) => (a[g.key] || []).length).map((g) => (
             <div key={g.key} className="px-5 py-3">
               <div className="flex items-start gap-2.5">
                 <span className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', g.tone)}><g.Icon size={15} /></span>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-900">{g.title} <span className="text-gray-400 font-normal">({a[g.key].length})</span></div>
+                  <div className="text-sm font-semibold text-gray-900">{g.title} <span className="text-gray-400 font-normal">({(a[g.key] || []).length})</span></div>
                   <div className="text-[11px] text-gray-400">{g.hint}</div>
                 </div>
               </div>
@@ -897,7 +898,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                     </button>
                   </li>
                 ))}
-                {a[g.key].length > 5 && <li className="px-2 text-[11px] text-gray-400">+ {a[g.key].length - 5} weitere</li>}
+                {(a[g.key] || []).length > 5 && <li className="px-2 text-[11px] text-gray-400">+ {(a[g.key] || []).length - 5} weitere</li>}
               </ul>
             </div>
           ))}

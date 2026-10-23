@@ -8,6 +8,7 @@ import { monthEndInvoices } from '../services/monthEndInvoices';
 import { Router, Response } from 'express';
 import { query } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { MAIL_MAX_ATTEMPTS } from '../services/mailRetry';
 import { marketingReminders } from '../services/marketingCalendar';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
@@ -265,7 +266,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const monthEnd = await monthEndInvoices().catch(() => null);
     // Marketing-Anlass mit offenem Erinnerungsfenster (Ferien, Weihnachten, …) — Admin → Marketing
     const marketing = await marketingPending;
-    const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus] = await Promise.all([
+    const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
       // Stripe charge failed — money for a ride that happened or is about to.
@@ -278,6 +279,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
         AND b.rechnung_attempts >= ? AND ${wallSql('b.pickup_datetime')} >= ?`, [RECHNUNG_MAX_ATTEMPTS, since60], 'DESC'),
       // Ride over (last leg before today) but still 'confirmed' — status never closed.
       attentionQuery(`b.status = 'confirmed' AND ${wallSql(lastLegSql)} < ? AND ${wallSql(lastLegSql)} >= ?`, [todayStart, since14], 'DESC'),
+      // Kundenbestätigung trotz automatischer Wiederholungen nicht zugestellt (services/mailRetry.ts)
+      attentionQuery(`b.status <> 'cancelled' AND b.mail_attempts >= ? AND b.mail_customer_sent_at IS NULL AND b.created_at >= ?`, [MAIL_MAX_ATTEMPTS, since14], 'DESC'),
     ]);
 
     // ---- Latest bookings ---------------------------------------------------------------
@@ -316,7 +319,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intakeCalendar,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd, marketing },
+      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd, marketing },
       card_deadline: await cardDeadline(),
       recent,
       calendar,

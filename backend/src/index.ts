@@ -49,6 +49,7 @@ import { startAutoRechnungJob } from './services/autoRechnungJob';
 import { startCardChargeReminderJob } from './services/cardChargeReminder';
 import { startCalendarRideAlertJob } from './services/calendarRideAlert';
 import { startCalendarRidesJob } from './services/calendarRides';
+import { startMailRetryJob } from './services/mailRetry';
 import { startLeerfahrtJob } from './services/leerfahrt';
 import { startLiveAssistAlertJob } from './services/liveAssistAlertJob';
 import { startDriverTrackingJobs } from './services/driverTracking';
@@ -172,6 +173,7 @@ app.listen(PORT, () => {
       startSeoJobs();
       startCalendarRidesJob();
       startLeerfahrtJob();
+      startMailRetryJob();
       startCalendarRideAlertJob();
       startLiveAssistAlertJob();
       startDriverTrackingJobs();

@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { run } from '../db';
 import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
 import { customerRecipient } from '../utils/recipient';
@@ -61,6 +62,26 @@ export interface BookingNotificationData {
   rechnung_adresse?: string;   // set when the customer asked for an invoice (PDF after the ride)
 }
 
+/**
+ * Resend (SDK v6) wirft bei Fehlern nicht — auch ein Netzwerkfehler kommt als { error } zurück.
+ * Ohne diese Prüfung stand im Log „sent successfully“, obwohl Resend die Mail nie bekam
+ * (23.10.2026, MAT261023-7326). Daher: Ergebnis prüfen und zweimal kurz wiederholen.
+ */
+async function sendViaResend(payload: Parameters<Resend['emails']['send']>[0], attempts = 3): Promise<void> {
+  let last = '';
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, i === 1 ? 2000 : 6000));
+    try {
+      const { error } = await new Resend(RESEND_API_KEY).emails.send(payload);
+      if (!error) return;
+      last = `${error.name || 'error'}: ${error.message || ''}`;
+    } catch (e: any) {
+      last = e?.message || String(e);
+    }
+  }
+  throw new Error(last || 'Resend-Versand fehlgeschlagen');
+}
+
 function formatPrice(price: number): string {
   const rounded = Math.ceil(price * 2) / 2;
   return rounded.toFixed(2);
@@ -87,8 +108,7 @@ function formatDateTime(dateStr: string): string {
 // Admin notification email (always German) — layout in bookingEmailTemplates.ts
 export async function sendAdminNotification(booking: BookingNotificationData): Promise<void> {
   const { subject, html } = adminNotificationEmail(booking);
-  const resend = new Resend(RESEND_API_KEY);
-  await resend.emails.send({
+  await sendViaResend({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: ADMIN_EMAIL,
     subject,
@@ -99,8 +119,7 @@ export async function sendAdminNotification(booking: BookingNotificationData): P
 // Customer confirmation email (DE/EN/TR) — layout in bookingEmailTemplates.ts
 export async function sendCustomerConfirmation(booking: BookingNotificationData): Promise<void> {
   const { subject, html } = customerConfirmationEmail(booking);
-  const resend = new Resend(RESEND_API_KEY);
-  await resend.emails.send({
+  await sendViaResend({
     from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>',
     to: customerRecipient(booking.email),
     subject,
@@ -544,7 +563,7 @@ export async function sendReminderEmail(booking: BookingNotificationData): Promi
   });
 }
 
-export async function sendAllNotifications(booking: BookingNotificationData): Promise<void> {
+export async function sendAllNotifications(booking: BookingNotificationData, bookingId?: number): Promise<void> {
   const results = await Promise.allSettled([
     sendAdminNotification(booking),
     sendCustomerConfirmation(booking),
@@ -559,4 +578,25 @@ export async function sendAllNotifications(booking: BookingNotificationData): Pr
       console.log(`${names[index]} sent successfully`);
     }
   });
+
+  // Zustellstatus merken — services/mailRetry.ts sendet Fehlendes nach
+  if (bookingId) {
+    const [admin, customer] = results;
+    await markBookingMails(bookingId, admin.status === 'fulfilled', customer.status === 'fulfilled',
+      [admin, customer].map((r) => (r.status === 'rejected' ? String((r.reason as any)?.message || r.reason) : '')).filter(Boolean).join(' | '))
+      .catch((e) => console.error('Mail status update failed:', e));
+  }
+}
+
+/** Buchungsmails: Versandstatus in bookings (mail_admin_sent_at / mail_customer_sent_at / mail_attempts). */
+export async function markBookingMails(bookingId: number, adminOk: boolean, customerOk: boolean, error: string): Promise<void> {
+  await run(
+    `UPDATE bookings SET
+       mail_admin_sent_at = IF(?, COALESCE(mail_admin_sent_at, NOW()), mail_admin_sent_at),
+       mail_customer_sent_at = IF(?, COALESCE(mail_customer_sent_at, NOW()), mail_customer_sent_at),
+       mail_attempts = COALESCE(mail_attempts, 0) + 1,
+       mail_last_error = ?
+     WHERE id = ?`,
+    [adminOk ? 1 : 0, customerOk ? 1 : 0, error ? error.slice(0, 255) : null, bookingId]
+  );
 }

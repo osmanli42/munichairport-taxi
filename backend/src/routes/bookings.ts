@@ -786,7 +786,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       const [mo] = await query<{ setting_value: string }>("SELECT setting_value FROM settings WHERE setting_key = 'mail_open_tracking_enabled'");
       if (mo?.setting_value === '1') notificationData.open_pixel_url = mailOpenPixelUrl(booking_number);
     } catch { /* no pixel */ }
-    sendAllNotifications(notificationData).catch(err => console.error('Notification error:', err));
+    // mail_attempts = 0 markiert: Buchungsmails ausstehend (mailRetry sendet nach, falls der Versand
+    // hier verloren geht — z. B. Neustart oder Resend kurz nicht erreichbar)
+    await run('UPDATE bookings SET mail_attempts = 0 WHERE id = ?', [result.insertId]).catch(() => {});
+    sendAllNotifications(notificationData, result.insertId).catch(err => console.error('Notification error:', err));
 
     // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not
     // awaited: the customer's confirmation must not wait on an external lookup.

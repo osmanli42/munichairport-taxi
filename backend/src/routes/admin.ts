@@ -730,9 +730,35 @@ router.post('/bookings/:id/resend-confirmation', authenticateAdmin, async (req: 
 
   const { sendCustomerConfirmation } = await import('../services/notifications');
   const { buildCustomerMailData } = await import('../services/bookingConfirmed');
-  await sendCustomerConfirmation(await buildCustomerMailData(booking));
+  try {
+    await sendCustomerConfirmation(await buildCustomerMailData(booking));
+  } catch (e: any) {
+    res.status(502).json({ error: `E-Mail konnte nicht gesendet werden: ${e?.message || e}` });
+    return;
+  }
+  // Zustellstatus: manuell nachgesendet → kein Eintrag mehr unter „Handlungsbedarf“
+  await run('UPDATE bookings SET mail_customer_sent_at = COALESCE(mail_customer_sent_at, NOW()) WHERE id = ?', [booking.id]).catch(() => {});
 
   res.json({ success: true });
+});
+
+// POST /api/admin/bookings/:id/resend-admin-notification — die „Neue Buchung“-Mail noch einmal an
+// die Admin-Adresse (z. B. wenn sie beim Buchen nicht zugestellt wurde)
+router.post('/bookings/:id/resend-admin-notification', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const [booking] = await query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+  if (!booking) { res.status(404).json({ error: 'Booking not found' }); return; }
+  try {
+    const { sendAdminNotification } = await import('../services/notifications');
+    const { buildCustomerMailData } = await import('../services/bookingConfirmed');
+    const { bookingConfirmUrl } = await import('../utils/bookingConfirmToken');
+    const data = await buildCustomerMailData(booking);
+    try { data.confirm_url = bookingConfirmUrl(booking.booking_number); } catch { /* no JWT secret */ }
+    await sendAdminNotification(data);
+    await run('UPDATE bookings SET mail_admin_sent_at = COALESCE(mail_admin_sent_at, NOW()) WHERE id = ?', [booking.id]).catch(() => {});
+    res.json({ success: true, to: process.env.ADMIN_EMAIL || 'info@flughafen-muenchen.taxi' });
+  } catch (e: any) {
+    res.status(502).json({ error: `E-Mail konnte nicht gesendet werden: ${e?.message || e}` });
+  }
 });
 
 // GET /api/admin/stats - Dashboard statistics

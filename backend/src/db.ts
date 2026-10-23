@@ -315,6 +315,16 @@ export async function initializeDatabase(): Promise<void> {
       try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
 
+    // Zustellung der Buchungsmails (services/mailRetry.ts). mail_attempts NULL = Altbuchung, nie nachsenden.
+    for (const ddl of [
+      `ALTER TABLE bookings ADD COLUMN mail_admin_sent_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN mail_customer_sent_at DATETIME DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN mail_attempts INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN mail_last_error VARCHAR(255) DEFAULT NULL`,
+    ]) {
+      try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
     // Marketing (Admin → Marketing): versendete Kampagnen und Abmeldungen (UWG §7 Abs. 3)
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS marketing_campaigns (
