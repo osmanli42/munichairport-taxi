@@ -113,3 +113,14 @@ export function fixMacRoman(text: string): string {
     return (fixed.match(sus) || []).length < (text.match(sus) || []).length && (fixed.match(/�/g) || []).length <= (text.match(/�/g) || []).length ? fixed : text;
   } catch { return text; }
 }
+
+// Freemail-Anbieter → Privatperson; alles andere (eigene Domain) gilt als Firma
+const FREEMAIL = new Set([
+  'gmail.com', 'googlemail.com', 'gmx.de', 'gmx.net', 'gmx.at', 'gmx.ch', 'gmx.com', 'web.de', 't-online.de', 'yahoo.com', 'yahoo.de',
+  'yahoo.co.uk', 'yahoo.fr', 'hotmail.com', 'hotmail.de', 'hotmail.co.uk', 'outlook.com', 'outlook.de', 'live.com', 'live.de', 'msn.com',
+  'icloud.com', 'me.com', 'mac.com', 'aol.com', 'aol.de', 'freenet.de', 'mail.de', 'posteo.de', 'arcor.de', 'online.de', 'email.de',
+  'vodafone.de', 'kabelmail.de', 'yandex.com', 'yandex.ru', 'mail.ru', 'protonmail.com', 'proton.me', 'gmx.ch', 'bluewin.ch', 'a1.net',
+  'aon.at', 'chello.at', 'magenta.de', 'unitybox.de', 'icloud.de', 'hotmail.fr', 'orange.fr', 'libero.it', 'mailbox.org', 't-mobile.de',
+]);
+export const emailDomain = (email: string) => email.split('@')[1]?.toLowerCase() || '';
+export const isCompanyDomain = (email: string) => { const d = emailDomain(email); return !!d && !FREEMAIL.has(d); };

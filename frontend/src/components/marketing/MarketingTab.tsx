@@ -11,7 +11,7 @@ import { marketingApi, MkCalendar, MkCampaign, MkCustomer, MkLang, MkMode, MkOcc
 import { cn } from '@/lib/utils';
 import CampaignCalendar from './CampaignCalendar';
 import CampaignHistory from './CampaignHistory';
-import { Contact, LANG_FLAG, LANG_LABEL, SEGMENTS, SegmentKey, SEGMENT_LABEL, dmy, fixMacRoman, inSegment, loadContacts, parseCsv, parseIcs, pct, saveContacts } from './helpers';
+import { Contact, LANG_FLAG, LANG_LABEL, SEGMENTS, SegmentKey, SEGMENT_LABEL, dmy, emailDomain, fixMacRoman, inSegment, isCompanyDomain, loadContacts, parseCsv, parseIcs, pct, saveContacts } from './helpers';
 
 const LANGS: MkLang[] = ['de', 'en', 'tr'];
 const OCCASION_KEY = 'mt_marketing_occasion'; // vom Dashboard („Handlungsbedarf“) gesetzt
@@ -20,7 +20,7 @@ const errOf = (e: any, fb: string) => e?.response?.data?.error || e?.message || 
 interface TextState { subject: string; message: string; badge: string; buttonText: string; buttonUrl: string; offer: string }
 const EMPTY: TextState = { subject: '', message: '', badge: '', buttonText: '', buttonUrl: '', offer: '' };
 
-type Row = { email: string; name: string; lang: MkLang; isBusiness: boolean; bookingCount: number; lastBooking: string | null; optedOut: boolean; contact: boolean };
+type Row = { email: string; name: string; lang: MkLang; isBusiness: boolean; bookingCount: number; lastBooking: string | null; optedOut: boolean; contact: boolean; firm: boolean };
 
 export default function MarketingTab({ onRemindersChange }: { onRemindersChange?: () => void }) {
   const [cal, setCal] = useState<MkCalendar | null>(null);
@@ -38,7 +38,12 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
   const [maxAmount, setMaxAmount] = useState<number | null>(null);
   const [segment, setSegment] = useState<SegmentKey>('all');
   const [withContacts, setWithContacts] = useState(false);
+  // Web-Kunden sind vorausgewählt (abwählen = excluded); Kalender/CSV-Kontakte nur einzeln gewählt (picked)
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [srcFilter, setSrcFilter] = useState<'all' | 'web' | 'contact'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'privat' | 'firma' | 'selected'>('all');
+  const [showMax, setShowMax] = useState(300);
   const [search, setSearch] = useState('');
   const [langMode, setLangMode] = useState<'customer' | MkLang>('customer');
   const [tab, setTab] = useState<MkLang>('de');
@@ -84,7 +89,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
     const m = o?.mode || 'greeting';
     const p = o?.percent || 10;
     setMode(m); setPercent(p); setValidDays(o?.validDays || 30); setMaxAmount(o?.maxAmount ?? null);
-    if (o) { setSegment(o.segment); setWithContacts(false); setExcluded(new Set()); }
+    if (o) { setSegment(o.segment); setWithContacts(false); setExcluded(new Set()); setPicked(new Set()); setSrcFilter('all'); setTypeFilter('all'); }
     setTexts({ de: build(o, m, p, 'de', cal?.offer), en: build(o, m, p, 'en', cal?.offer), tr: build(o, m, p, 'tr', cal?.offer) });
     setDirty({ de: false, en: false, tr: false });
     setEditor('text'); setResult(null); setConfirm(false);
@@ -131,15 +136,23 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
   // ---- Empfänger ----
   const yearAgo = useMemo(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); }, []);
   const pool: Row[] = useMemo(() => {
-    const base = (customers || []).filter(c => inSegment(c, segment, yearAgo)).map(c => ({ ...c, contact: false }));
+    const base = (customers || []).filter(c => inSegment(c, segment, yearAgo)).map(c => ({ ...c, contact: false, firm: c.isBusiness || isCompanyDomain(c.email) }));
     if (!withContacts) return base;
     const known = new Set((customers || []).map(c => c.email));
     const extra = contacts.filter(c => !known.has(c.email)).map(c => ({
       email: c.email, name: c.name || '', lang: 'de' as MkLang, isBusiness: false, bookingCount: 0, lastBooking: null, optedOut: optouts.has(c.email), contact: true,
+      firm: isCompanyDomain(c.email),
     }));
     return [...base, ...extra];
   }, [customers, segment, withContacts, contacts, optouts, yearAgo]);
-  const selected = useMemo(() => pool.filter(r => !r.optedOut && !excluded.has(r.email)), [pool, excluded]);
+  const isOn = useCallback((r: Row) => !r.optedOut && (r.contact ? picked.has(r.email) : !excluded.has(r.email)), [picked, excluded]);
+  const selected = useMemo(() => pool.filter(isOn), [pool, isOn]);
+  const setOn = (rows: Row[], on: boolean) => {
+    const web = rows.filter(r => !r.contact).map(r => r.email);
+    const con = rows.filter(r => r.contact).map(r => r.email);
+    if (web.length) setExcluded(prev => { const n = new Set(prev); web.forEach(e => (on ? n.delete(e) : n.add(e))); return n; });
+    if (con.length) setPicked(prev => { const n = new Set(prev); con.forEach(e => (on ? n.add(e) : n.delete(e))); return n; });
+  };
   const langOf = (r: Row): MkLang => (langMode === 'customer' ? r.lang : langMode);
   const langCount = useMemo(() => {
     const c: Record<MkLang, number> = { de: 0, en: 0, tr: 0 };
@@ -147,10 +160,14 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
     return c;
   }, [selected, langMode]);
   const usedLangs = LANGS.filter(l => langCount[l] > 0);
+  const matchSrc = (r: Row) => srcFilter === 'all' || (srcFilter === 'contact' ? r.contact : !r.contact);
+  const matchType = (r: Row) => typeFilter === 'all' || (typeFilter === 'firma' ? r.firm : typeFilter === 'privat' ? !r.firm : isOn(r));
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q ? pool.filter(r => r.email.includes(q) || r.name.toLowerCase().includes(q)) : pool;
-  }, [pool, search]);
+    return pool.filter(r => matchSrc(r) && matchType(r) && (!q || r.email.includes(q) || r.name.toLowerCase().includes(q)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, search, srcFilter, typeFilter, isOn]);
+  const countBy = (f: (r: Row) => boolean) => pool.filter(f).length;
   const segCount = (k: SegmentKey) => (customers || []).filter(c => !c.optedOut && inSegment(c, k, yearAgo)).length;
   const contactsNew = useMemo(() => { const known = new Set((customers || []).map(c => c.email)); return contacts.filter(c => !known.has(c.email)).length; }, [customers, contacts]);
 
@@ -302,8 +319,8 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
             <div className={cn('mt-3 rounded-xl border px-3 py-2.5', withContacts ? 'border-amber-300 bg-amber-50' : 'border-gray-200')}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                  <input type="checkbox" checked={withContacts} onChange={e => setWithContacts(e.target.checked)} />
-                  Takvim / CSV kişilerini de ekle <span className="text-gray-400 font-normal">({contactsNew} yeni)</span>
+                  <input type="checkbox" checked={withContacts} onChange={e => { setWithContacts(e.target.checked); if (e.target.checked) setSrcFilter('contact'); else { setSrcFilter('all'); setPicked(new Set()); } }} />
+                  Takvim / CSV kişilerini listede göster <span className="text-gray-400 font-normal">({contactsNew} kişi · {picked.size} seçili)</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-semibold border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-white">
@@ -319,7 +336,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
               </div>
               {withContacts && (
                 <p className="mt-1.5 text-xs text-amber-800 flex gap-1.5"><AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                  Bu kişiler telefon/WhatsApp ile rezervasyon yaptı. Almanya'da (UWG §7) reklam e-postası için adres verilirken itiraz hakkı bildirilmiş olmalı — bilinçli ekle.</p>
+                  <span>Bu kişiler telefon/WhatsApp ile rezervasyon yaptı ve <b>varsayılan olarak seçili değil</b>. Aşağıdan arayıp tek tek ya da filtreyle seç. Almanya'da (UWG §7) reklam e-postası için adres verilirken itiraz hakkı bildirilmiş olmalı — bilinçli ekle.</span></p>
               )}
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -327,25 +344,43 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input className={cn(input, 'pl-8')} placeholder="Ad veya e-posta ara" value={search} onChange={e => setSearch(e.target.value)} />
               </div>
-              <button onClick={() => setExcluded(new Set())} className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">Hepsini seç</button>
-              <button onClick={() => setExcluded(new Set(pool.map(r => r.email)))} className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50">Hiçbiri</button>
+              <button onClick={() => setOn(visible, true)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap">Görünenleri seç ({visible.length})</button>
+              <button onClick={() => setOn(visible, false)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap">Kaldır</button>
             </div>
-            <div className="mt-2 max-h-72 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-100">
-              {visible.length === 0 ? <p className="px-3 py-4 text-sm text-gray-400">Bu segmentte kimse yok.</p> : visible.slice(0, 300).map(r => (
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap text-xs">
+              {withContacts && ([['all', 'Tümü', () => true], ['web', 'Web müşterileri', (r: Row) => !r.contact], ['contact', 'Takvim / CSV', (r: Row) => r.contact]] as const).map(([k, l, f]) => (
+                <button key={k} onClick={() => { setSrcFilter(k); setShowMax(300); }}
+                  className={cn('font-semibold px-2.5 py-1 rounded-full border', srcFilter === k ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  {l} <span className={srcFilter === k ? 'text-white/60' : 'text-gray-400'}>{countBy(f)}</span>
+                </button>
+              ))}
+              {withContacts && <span className="w-px h-4 bg-gray-200 mx-1" />}
+              {([['all', 'Hepsi', () => true], ['privat', 'Özel kişiler', (r: Row) => matchSrc(r) && !r.firm], ['firma', 'Firmalar', (r: Row) => matchSrc(r) && r.firm], ['selected', 'Sadece seçililer', (r: Row) => matchSrc(r) && isOn(r)]] as const).map(([k, l, f]) => (
+                <button key={k} onClick={() => { setTypeFilter(k); setShowMax(300); }}
+                  className={cn('font-semibold px-2.5 py-1 rounded-full border', typeFilter === k ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
+                  {l}{k !== 'all' && <span className={typeFilter === k ? 'text-white/70' : 'text-gray-400'}> {countBy(f)}</span>}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 max-h-96 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-100">
+              {visible.length === 0 ? <p className="px-3 py-4 text-sm text-gray-400">Bu filtrede kimse yok.</p> : visible.slice(0, showMax).map(r => (
                 <label key={r.email} className={cn('px-3 py-2 flex items-center gap-3 text-sm cursor-pointer hover:bg-gray-50', r.optedOut && 'opacity-50 cursor-not-allowed')}>
-                  <input type="checkbox" disabled={r.optedOut} checked={!r.optedOut && !excluded.has(r.email)}
-                    onChange={() => setExcluded(prev => { const n = new Set(prev); if (n.has(r.email)) n.delete(r.email); else n.add(r.email); return n; })} />
+                  <input type="checkbox" disabled={r.optedOut} checked={isOn(r)} onChange={() => setOn([r], !isOn(r))} />
                   <span className="flex-1 min-w-0 truncate"><span className="font-medium text-gray-900">{r.name || '—'}</span> <span className="text-gray-500">{r.email}</span></span>
                   <span className="shrink-0 flex items-center gap-1 text-[11px]">
                     {r.optedOut && <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 font-semibold">çıktı</span>}
                     {r.contact && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">takvim</span>}
-                    {r.isBusiness && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">Firma</span>}
+                    {r.firm && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700" title={r.isBusiness ? 'Firma hesabı / Rechnung' : 'Şirket e-posta alan adı'}>{r.isBusiness ? 'Firma' : emailDomain(r.email)}</span>}
                     {r.bookingCount >= 2 && <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700">{r.bookingCount}×</span>}
                     <span title={LANG_LABEL[r.lang]}>{LANG_FLAG[r.lang]}</span>
                   </span>
                 </label>
               ))}
-              {visible.length > 300 && <p className="px-3 py-2 text-xs text-gray-400">… ve {visible.length - 300} kişi daha (aramayla daralt)</p>}
+              {visible.length > showMax && (
+                <button onClick={() => setShowMax(n => n + 300)} className="w-full px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-gray-50 text-left">
+                  … {visible.length - showMax} kişi daha — 300 tane daha göster
+                </button>
+              )}
             </div>
           </div>
 
@@ -411,7 +446,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm space-y-2">
                 <p className="text-amber-900"><b>{selected.length.toLocaleString('de-DE')} kişiye</b> gönderilsin mi?</p>
                 <ul className="text-xs text-amber-900/80 space-y-0.5">
-                  <li>Segment: {SEGMENT_LABEL[segment]}{withContacts ? ' + takvim/CSV kişileri' : ''}</li>
+                  <li>Segment: {SEGMENT_LABEL[segment]}{picked.size ? ` + ${picked.size} seçili takvim/CSV kişisi` : ''}</li>
                   <li>Dil: {usedLangs.map(l => `${LANG_FLAG[l]} ${langCount[l]}`).join(' · ')}</li>
                   <li>{mode === 'discount' ? `Her alıcıya −%${percent} kişisel link, ${validDays} gün geçerli${maxAmount ? `, en fazla ${maxAmount} €` : ''}` : 'Sadece tebrik (kupon yok)'}</li>
                   <li>Konu (DE): {texts.de.subject || texts[usedLangs[0] || 'de'].subject}</li>
