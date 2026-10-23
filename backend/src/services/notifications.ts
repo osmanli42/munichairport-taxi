@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { randomUUID } from 'crypto';
 import { run } from '../db';
 import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
@@ -66,17 +67,29 @@ export interface BookingNotificationData {
  * Resend (SDK v6) wirft bei Fehlern nicht — auch ein Netzwerkfehler kommt als { error } zurück.
  * Ohne diese Prüfung stand im Log „sent successfully“, obwohl Resend die Mail nie bekam
  * (23.10.2026, MAT261023-7326). Daher: Ergebnis prüfen und zweimal kurz wiederholen.
+ * Jeder Versuch hat höchstens 8 s (sonst hängt ein Request ohne Antwort beliebig lange; alle
+ * drei Versuche zusammen bleiben unter dem 30-s-Timeout des Admin-Panels);
+ * derselbe Idempotency-Key für alle Versuche verhindert eine doppelte Mail, falls ein
+ * abgebrochener Versuch bei Resend doch angekommen ist.
  */
+const RESEND_TIMEOUT_MS = 8_000;
 async function sendViaResend(payload: Parameters<Resend['emails']['send']>[0], attempts = 3): Promise<void> {
+  const idempotencyKey = `mail-${randomUUID()}`;
   let last = '';
   for (let i = 0; i < attempts; i++) {
-    if (i > 0) await new Promise((r) => setTimeout(r, i === 1 ? 2000 : 6000));
+    if (i > 0) await new Promise((r) => setTimeout(r, i === 1 ? 1000 : 3000));
+    let timer: NodeJS.Timeout | undefined;
     try {
-      const { error } = await new Resend(RESEND_API_KEY).emails.send(payload);
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Resend: keine Antwort nach ${RESEND_TIMEOUT_MS / 1000} s`)), RESEND_TIMEOUT_MS);
+      });
+      const { error } = await Promise.race([new Resend(RESEND_API_KEY).emails.send(payload, { idempotencyKey }), timeout]);
       if (!error) return;
       last = `${error.name || 'error'}: ${error.message || ''}`;
     } catch (e: any) {
       last = e?.message || String(e);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
   throw new Error(last || 'Resend-Versand fehlgeschlagen');
