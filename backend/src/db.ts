@@ -297,6 +297,21 @@ export async function initializeDatabase(): Promise<void> {
       )
     `);
 
+    // Persönliche Gutschein-Links (Rabatte → „Kişisel indirim“): einmaliger Code für einen Kunden,
+    // per E-Mail verschickt; erscheint nicht in Banner, Code-Feld oder Live-Chat-Liste.
+    for (const ddl of [
+      `ALTER TABLE promotions ADD COLUMN personal TINYINT(1) NOT NULL DEFAULT 0`,
+      `ALTER TABLE promotions ADD COLUMN recipient_name VARCHAR(120) DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN recipient_email VARCHAR(190) DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN recipient_lang VARCHAR(2) DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN reason VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN email_subject VARCHAR(255) DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN email_message TEXT DEFAULT NULL`,
+      `ALTER TABLE promotions ADD COLUMN sent_at DATETIME DEFAULT NULL`,
+    ]) {
+      try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS plz_surcharges (
         id INT NOT NULL AUTO_INCREMENT,

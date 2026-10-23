@@ -192,7 +192,8 @@ export async function validCodePromos(code?: string): Promise<any[]> {
   const base = `SELECT id, code, type, value, end_date FROM promotions
      WHERE active = 1 AND start_date <= ? AND end_date >= ?
        AND (max_uses IS NULL OR used_count < max_uses)
-       AND (kombinierbar IS NULL OR kombinierbar = 0)`;
+       AND (kombinierbar IS NULL OR kombinierbar = 0)
+       AND (personal IS NULL OR personal = 0)`;
   const codeFilter = code ? ' AND code = ?' : '';
   const params = code ? [today, today, code] : [today, today];
   try {

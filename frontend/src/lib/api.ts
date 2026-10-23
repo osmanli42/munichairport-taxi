@@ -395,6 +395,48 @@ export interface SearchStats {
   upcoming: (SearchBucket & { date: string })[];
 }
 
+// Persönliche Gutschein-Links (Rabatte → „Kişisel indirim“)
+export type GutscheinReason = 'entschuldigung' | 'danke' | 'allgemein';
+export interface PersonalGutscheinInput {
+  name: string;
+  email: string;
+  lang: 'de' | 'en' | 'tr';
+  percent: number;
+  valid_days?: number;
+  end_date?: string;
+  reason: GutscheinReason;
+  subject?: string;
+  message?: string;
+  note?: string;
+}
+export interface PersonalGutschein {
+  id: number;
+  code: string;
+  percent: number;
+  name: string | null;
+  email: string | null;
+  lang: 'de' | 'en' | 'tr';
+  reason: GutscheinReason | null;
+  note: string | null;
+  subject: string | null;
+  end_date: string;
+  sent_at: string | null;
+  created_at: string;
+  status: 'open' | 'used' | 'expired' | 'inactive';
+  url: string;
+  booking: { id: number; booking_number: string; discount: number; price: number; status: string; booked_at: string; pickup: string } | null;
+}
+
+export const personalGutscheinApi = {
+  list: async (): Promise<PersonalGutschein[]> => (await api.get('/promotions/admin/personal')).data,
+  preview: async (body: PersonalGutscheinInput): Promise<{ subject: string; html: string; end_date: string; defaults: { subject: string; message: string } }> =>
+    (await api.post('/promotions/admin/personal/preview', body)).data,
+  create: async (body: PersonalGutscheinInput & { send: boolean }): Promise<{ id: number; code: string; url: string; end_date: string; sent: boolean; sendError: string | null }> =>
+    (await api.post('/promotions/admin/personal', body)).data,
+  send: async (id: number) => (await api.post(`/promotions/admin/personal/${id}/send`)).data,
+  deactivate: async (id: number) => (await api.put(`/promotions/admin/personal/${id}/deactivate`)).data,
+};
+
 export const autoDiscountsApi = {
   searchStats: async (from: string, to: string): Promise<SearchStats> => {
     const response = await api.get('/auto-discounts/admin/search-stats', { params: { from, to } });

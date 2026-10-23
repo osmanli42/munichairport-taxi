@@ -28,6 +28,7 @@ import CancelBookingDialog, { CancelPayload } from '@/components/booking/CancelB
 import InvoiceStornoCard from '@/components/booking/InvoiceStornoCard';
 import StornoRegister from '@/components/booking/StornoRegister';
 import FinalConfirmButton from '@/components/booking/FinalConfirmButton';
+import { GutscheinButton } from '@/components/discount/PersonalLinkPanel';
 import AdminAddressField from '@/components/AdminAddressField';
 import RabatteTab from '@/components/RabatteTab';
 import DriversTab from '@/components/DriversTab';
@@ -3035,6 +3036,10 @@ export default function AdminPage() {
               {/* Endgültige Bestätigung (Mail an den Kunden) */}
               <FinalConfirmButton key={`fc-${selectedBooking.id}`} booking={selectedBooking as any}
                 onSent={(at) => setBookings(prev => prev.map(b => b.id === selectedBooking.id ? ({ ...b, confirmed_email_sent_at: at, status: b.status === 'new' ? 'confirmed' : b.status } as any) : b))} />
+              {/* Persönlicher Gutschein (Entschuldigung/Dankeschön) für diesen Kunden */}
+              <div className="flex justify-end">
+                <GutscheinButton key={`gs-${selectedBooking.id}`} prefill={{ name: selectedBooking.name, email: selectedBooking.email, lang: selectedBooking.language }} />
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-xl p-3">

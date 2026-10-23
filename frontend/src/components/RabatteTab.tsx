@@ -8,6 +8,7 @@ import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/
 import DemandPanel from '@/components/discount/DemandPanel';
 import GapPanel from '@/components/discount/GapPanel';
 import LeerPanel from '@/components/discount/LeerPanel';
+import PersonalLinkPanel from '@/components/discount/PersonalLinkPanel';
 import SearchDemandPanel from '@/components/discount/SearchDemandPanel';
 
 const WEEKDAYS = [
@@ -451,6 +452,9 @@ export default function RabatteTab({ token }: { token: string }) {
           </div>
         );
       })}
+
+      {/* Kişisel kupon linki (özür / teşekkür) — tek müşteriye, e-postayla */}
+      <PersonalLinkPanel />
 
       {/* Kural listesi */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">

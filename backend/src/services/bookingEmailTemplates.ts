@@ -627,3 +627,171 @@ export function adminCancellationEmail(b: BookingNotificationData, variant: 'can
     html,
   };
 }
+
+// ---- persönlicher Gutschein (Rabatte → „Kişisel indirim“) --------------------------------
+// Gleiche Hülle wie die Buchungsbestätigung (Navy-Kopf, Karten, Kontaktblock), dazu ein
+// Gutschein-Coupon mit großem Rabatt und Buchen-Button. Text kommt vom Admin (vorbelegt).
+
+export type GutscheinReason = 'entschuldigung' | 'danke' | 'allgemein';
+export const GUTSCHEIN_REASONS: GutscheinReason[] = ['entschuldigung', 'danke', 'allgemein'];
+
+const pct = (p: number, lang: Lang) => {
+  const n = Number.isInteger(p) ? String(p) : String(p).replace('.', lang === 'en' ? '.' : ',');
+  return lang === 'tr' ? `%${n}` : lang === 'en' ? `${n}%` : `${n} %`;
+};
+
+const GS_DEFAULTS: Record<GutscheinReason, Record<Lang, { subject: string; message: string }>> = {
+  entschuldigung: {
+    de: {
+      subject: 'Wir entschuldigen uns – {p} auf Ihre nächste Fahrt',
+      message: 'wir entschuldigen uns aufrichtig für die entstandenen Unannehmlichkeiten. Ihre Zufriedenheit liegt uns sehr am Herzen, und wir möchten es wiedergutmachen. Als kleines Zeichen unseres Bedauerns schenken wir Ihnen {p} Rabatt auf Ihre nächste Fahrt mit uns.',
+    },
+    en: {
+      subject: 'Our apologies – {p} off your next ride',
+      message: 'Please accept our sincere apologies for the inconvenience caused. Your satisfaction matters a great deal to us, and we would like to make it up to you. As a small token of our apology, we are giving you {p} off your next ride with us.',
+    },
+    tr: {
+      subject: 'Özür dileriz – bir sonraki yolculuğunuzda {p} indirim',
+      message: 'Yaşadığınız aksaklık için içtenlikle özür dileriz. Memnuniyetiniz bizim için çok önemli ve bunu telafi etmek istiyoruz. Küçük bir özür jesti olarak bir sonraki yolculuğunuzda size {p} indirim hediye ediyoruz.',
+    },
+  },
+  danke: {
+    de: {
+      subject: 'Danke für Ihr Vertrauen – {p} auf Ihre nächste Fahrt',
+      message: 'vielen Dank, dass Sie mit uns fahren. Ihr Vertrauen bedeutet uns viel. Als kleines Dankeschön schenken wir Ihnen {p} Rabatt auf Ihre nächste Fahrt mit uns.',
+    },
+    en: {
+      subject: 'Thank you for your trust – {p} off your next ride',
+      message: 'Thank you for riding with us. Your trust means a lot to us. As a small thank-you, we are giving you {p} off your next ride with us.',
+    },
+    tr: {
+      subject: 'Güveniniz için teşekkürler – bir sonraki yolculuğunuzda {p} indirim',
+      message: 'Bizimle yolculuk ettiğiniz için teşekkür ederiz. Güveniniz bizim için çok değerli. Küçük bir teşekkür olarak bir sonraki yolculuğunuzda size {p} indirim hediye ediyoruz.',
+    },
+  },
+  allgemein: {
+    de: {
+      subject: 'Ihr persönlicher Gutschein: {p} auf Ihre nächste Fahrt',
+      message: 'wir haben einen persönlichen Gutschein für Sie: {p} Rabatt auf Ihre nächste Fahrt mit uns.',
+    },
+    en: {
+      subject: 'Your personal voucher: {p} off your next ride',
+      message: 'We have a personal voucher for you: {p} off your next ride with us.',
+    },
+    tr: {
+      subject: 'Size özel kupon: bir sonraki yolculuğunuzda {p} indirim',
+      message: 'Size özel bir hediye kuponumuz var: bir sonraki yolculuğunuzda {p} indirim.',
+    },
+  },
+};
+
+/** Vorbelegter Betreff + Text (Admin kann beides vor dem Senden ändern). */
+export function gutscheinDefaults(reason: GutscheinReason, lang: Lang, percent: number): { subject: string; message: string } {
+  const d = GS_DEFAULTS[reason]?.[lang] || GS_DEFAULTS.allgemein.de;
+  const p = pct(percent, lang);
+  return { subject: d.subject.replace('{p}', p), message: d.message.replace('{p}', p) };
+}
+
+const GS: Record<Lang, Record<string, string>> = {
+  de: {
+    badge: 'Persönlicher Gutschein', hello: 'Guten Tag', off: 'auf Ihre nächste Fahrt',
+    valid: 'Einmalig gültig bis {d}', book: 'Jetzt mit {p} Rabatt buchen',
+    how: 'Einfach über den Button buchen – der Rabatt wird automatisch abgezogen, ein Code ist nicht nötig. Gilt auch für Hin- und Rückfahrt und bei Zahlung per Rechnung. Nicht mit anderen Rabattaktionen kombinierbar.',
+    closeSorry: 'Wir hoffen, Sie bald wieder bei uns begrüßen zu dürfen, und versprechen Ihnen eine angenehme Fahrt.',
+    close: 'Wir freuen uns darauf, Sie bald wieder bei uns begrüßen zu dürfen.',
+    regards: 'Mit freundlichen Grüßen', team: 'Ihr Team von Flughafen-München.TAXI',
+    questions: T.de.questions, call: 'Anrufen', write: 'WhatsApp',
+  },
+  en: {
+    badge: 'Personal voucher', hello: 'Hello', off: 'off your next ride',
+    valid: 'Valid once until {d}', book: 'Book now with {p} off',
+    how: 'Simply book via the button – the discount is deducted automatically, no code needed. Also valid for return trips and when paying by invoice. Cannot be combined with other offers.',
+    closeSorry: 'We hope to welcome you on board again soon and promise you a pleasant ride.',
+    close: 'We look forward to welcoming you on board again soon.',
+    regards: 'Kind regards', team: 'Your Flughafen-München.TAXI team',
+    questions: T.en.questions, call: 'Call', write: 'WhatsApp',
+  },
+  tr: {
+    badge: 'Kişisel hediye kuponu', hello: 'Merhaba', off: 'bir sonraki yolculuğunuzda',
+    valid: '{d} tarihine kadar bir kez geçerli', book: '{p} indirimle hemen rezervasyon yap',
+    how: 'Butona tıklayıp rezervasyon yapmanız yeterli – indirim otomatik düşülür, kod girmenize gerek yok. Gidiş-dönüşte ve faturalı ödemede de geçerlidir. Diğer kampanyalarla birleştirilemez.',
+    closeSorry: 'Sizi yakında yeniden ağırlamayı umuyor, keyifli bir yolculuk vaat ediyoruz.',
+    close: 'Sizi yakında yeniden ağırlamayı dört gözle bekliyoruz.',
+    regards: 'Saygılarımızla', team: 'Flughafen-München.TAXI ekibi',
+    questions: T.tr.questions, call: 'Ara', write: 'WhatsApp',
+  },
+};
+
+export interface GutscheinMailData {
+  name?: string | null;
+  lang: string;
+  percent: number;
+  code: string;
+  url: string;
+  endDate: string; // YYYY-MM-DD
+  reason: GutscheinReason;
+  subject: string;
+  message: string;
+}
+
+export function customerGutscheinEmail(g: GutscheinMailData): { subject: string; html: string } {
+  const lang: Lang = (['de', 'en', 'tr'].includes(g.lang) ? g.lang : 'de') as Lang;
+  const t = GS[lang];
+  const p = pct(g.percent, lang);
+  const [y, m, d] = String(g.endDate).slice(0, 10).split('-');
+  const until = lang === 'en' ? `${d}/${m}/${y}` : `${d}.${m}.${y}`;
+  const name = String(g.name || '').trim();
+  const paragraphs = String(g.message || '').trim().split(/\n\s*\n/).map(s => s.trim()).filter(Boolean)
+    .map(s => `<p style="margin:0 0 10px;font-size:15px;color:${C.text};line-height:1.6">${esc(s).replace(/\n/g, '<br>')}</p>`).join('');
+
+  const html = `
+<div style="background:#eef1f5;padding:20px 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid ${C.line}">
+  <tr><td style="background:${C.navy};padding:22px 20px 20px">
+    <img src="${SITE}/images/logo-wide-400.webp" width="200" alt="Flughafen-München.TAXI" style="display:block;border:0;max-width:200px;height:auto">
+    <div style="margin-top:18px">
+      <span style="display:inline-block;background:${C.gold};color:${C.navy};font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px">🎁 ${t.badge}</span>
+    </div>
+    <div style="font-size:22px;color:#fff;font-weight:700;margin-top:10px">${t.hello}${name ? ` ${esc(name)}` : ''},</div>
+  </td></tr>
+
+  <tr><td style="height:16px"></td></tr>
+
+  ${card(paragraphs)}
+
+  <tr><td style="padding:0 20px 14px">
+    <div style="border:2px dashed ${C.gold};border-radius:16px;padding:22px 18px;background:${C.goldSoft};text-align:center">
+      <div style="font-size:54px;line-height:1;font-weight:800;color:${C.navy};letter-spacing:-.02em">−${p}</div>
+      <div style="font-size:16px;color:${C.text};font-weight:600;margin-top:6px">${t.off}</div>
+      <div style="font-size:13px;color:${C.muted};margin-top:10px">${t.valid.replace('{d}', until)}</div>
+      <div style="margin-top:18px">
+        <a href="${esc(g.url)}" style="display:inline-block;padding:15px 26px;border-radius:12px;background:${C.navy};color:#fff;font-size:16px;font-weight:700;text-decoration:none">🚕 ${t.book.replace('{p}', p)}</a>
+      </div>
+    </div>
+  </td></tr>
+
+  ${card(`
+    <div style="font-size:13px;color:${C.muted};line-height:1.55">${t.how}</div>
+    <div style="font-size:15px;color:${C.text};line-height:1.6;margin-top:14px">${g.reason === 'entschuldigung' ? t.closeSorry : t.close}</div>
+    <div style="font-size:15px;color:${C.text};line-height:1.6;margin-top:10px">${t.regards}<br><b>${t.team}</b></div>
+  `)}
+
+  <tr><td style="padding:6px 20px 22px">
+    <div style="background:${C.navy};border-radius:14px;padding:18px">
+      <div style="font-size:14px;color:#fff;font-weight:600">${t.questions}</div>
+      <div style="margin-top:10px">
+        <a href="${PHONE_LINK}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:${C.gold};color:${C.navy};font-size:14px;font-weight:700;text-decoration:none">📞 ${t.call}</a>
+        <a href="${WHATSAPP}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 14px;border-radius:10px;background:#25d366;color:#fff;font-size:14px;font-weight:700;text-decoration:none">💬 ${t.write}</a>
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;margin-top:10px">${PHONE} · <a href="mailto:${MAIL}" style="color:#cbd5e1">${MAIL}</a></div>
+    </div>
+  </td></tr>
+
+  <tr><td style="padding:0 20px 22px;text-align:center;font-size:11px;color:#9ca3af;line-height:1.6">
+    Flughafen-München.TAXI · Eisvogelweg 2 · 85356 Freising<br>
+    <a href="${SITE}${lang === 'de' ? '' : `/${lang}`}" style="color:#9ca3af">flughafen-muenchen.taxi</a>
+  </td></tr>
+</table>
+</div>`;
+  return { subject: `🎁 ${String(g.subject || '').trim() || gutscheinDefaults(g.reason, lang, g.percent).subject}`, html };
+}

@@ -8,6 +8,7 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import MobileStickyCTA from '@/components/MobileStickyCTA';
 import CookieBanner from '@/components/CookieBanner';
 import PromoBanner from '@/components/PromoBanner';
+import GutscheinCapture from '@/components/GutscheinCapture';
 import VisitorTracker from '@/components/VisitorTracker';
 import SessionRecorder from '@/components/SessionRecorder';
 import BookingFunnelTracker from '@/components/BookingFunnelTracker';
@@ -54,6 +55,7 @@ export default function SiteChrome({
     <>
       <Header />
       <PromoBanner locale={locale} />
+      <GutscheinCapture locale={locale} />
       <main className="flex-1 pb-[88px] md:pb-0">{children}</main>
       <Footer />
       <WhatsAppButton />

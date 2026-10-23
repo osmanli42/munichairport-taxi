@@ -15,6 +15,7 @@ import { assignVariant } from '@/lib/experiment';
 import Countdown from '@/components/discount/Countdown';
 import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
 import { LIVE_PROMO_KEY, LA_PROMO_EVENT } from '@/lib/liveAssist';
+import { readGutschein, clearGutschein, GUTSCHEIN_EVENT } from '@/lib/gutschein';
 import type { CountryCode } from 'libphonenumber-js/max';
 
 const caveat = Caveat({ subsets: ['latin'], weight: ['600'], display: 'swap' });
@@ -312,7 +313,7 @@ function BuchenContent() {
   const [activePromo, setActivePromo] = useState<{ code: string; type: string; value: number } | null>(null);
   const [hasAnyActivePromo, setHasAnyActivePromo] = useState(false);
   const [promoInput, setPromoInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; promoBase: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountAmount: number; promoBase: number; gutschein?: boolean } | null>(null);
   const [promoError, setPromoError] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
 
@@ -497,12 +498,16 @@ function BuchenContent() {
     // Rabatt im Chat auf dieser Seite angenommen → erneut versuchen
     const on = () => { livePromoTried.current = false; setLivePromoTick(n => n + 1); };
     window.addEventListener(LA_PROMO_EVENT, on);
-    return () => window.removeEventListener(LA_PROMO_EVENT, on);
+    window.addEventListener(GUTSCHEIN_EVENT, on);
+    return () => { window.removeEventListener(LA_PROMO_EVENT, on); window.removeEventListener(GUTSCHEIN_EVENT, on); };
   }, []);
   useEffect(() => {
     if (livePromoTried.current || appliedPromo || !price || price <= 0 || !autoDiscountReady) return;
     let code: string | null = null;
     try { code = sessionStorage.getItem(LIVE_PROMO_KEY); } catch { /* ignore */ }
+    // Persönlicher Gutschein-Link aus der E-Mail (gilt auch für Stamm- und Firmenkunden)
+    let fromGutschein = false;
+    if (!code) { const g = readGutschein(); if (g) { code = g.code; fromGutschein = true; } }
     if (!code) return;
     livePromoTried.current = true;
     fetch(`${API_URL}/promotions/validate`, {
@@ -512,11 +517,11 @@ function BuchenContent() {
     })
       .then(r => r.json())
       .then(data => {
-        if (!data?.valid) return;
+        if (!data?.valid) { if (fromGutschein) clearGutschein(code!); return; } // eingelöst/abgelaufen
         if (!data.kombinierbar && tripType === 'roundtrip' && roundtripDiscount > 0) return;
         if (autoDiscount && data.discount_amount <= autoDiscount.amount) return;
         setPromoInput(data.code);
-        setAppliedPromo({ code: data.code, discountAmount: data.discount_amount, promoBase: price });
+        setAppliedPromo({ code: data.code, discountAmount: data.discount_amount, promoBase: price, gutschein: fromGutschein });
       })
       .catch(() => {});
   }, [price, autoDiscountReady, appliedPromo, autoDiscount, tripType, roundtripDiscount, locale, livePromoTick]);
@@ -816,6 +821,7 @@ function BuchenContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookingNumber(data.booking_number);
+      if (appliedPromo?.code) clearGutschein(appliedPromo.code); // einmaliger Gutschein ist verbraucht
       setServerNightConfirm(typeof data.night_confirm === 'boolean' ? data.night_confirm : null);
       const serverPrice = data.booking?.price;
       setConfirmedPrice(serverPrice != null ? Number(serverPrice) : null);
@@ -1509,8 +1515,13 @@ function BuchenContent() {
                     <p className="mt-1 text-xs text-amber-300 font-medium flex items-center gap-1"><Car size={12} /> {L('inkl.', 'incl.', 'dahil')} {formatPrice(anfahrtCost)} {L('Anfahrtskosten', 'approach fee', 'yaklaşım ücreti')}</p>
                   )}
 
+                  {/* Gutschein-Link: nur ein Hinweis, kein Code-Feld */}
+                  {appliedPromo?.gutschein && (
+                    <p className="mt-3 text-sm text-green-300 font-medium flex items-center gap-1.5"><PartyPopper size={14} /> {L('Ihr persönlicher Gutschein', 'Your personal voucher', 'Size özel kupon')}: −{formatPrice(appliedPromo.discountAmount)}</p>
+                  )}
+
                   {/* Promo code — shown when any active promo exists (with or without banner) */}
-                  {hasAnyActivePromo && (
+                  {hasAnyActivePromo && !appliedPromo?.gutschein && (
                     <div className="mt-4 pt-4 border-t border-white/10">
                       {appliedPromo ? (
                         <div className="flex items-center justify-between gap-2 bg-green-500/15 border border-green-400/30 rounded-lg px-3 py-2 text-sm">
@@ -2280,7 +2291,7 @@ function BuchenContent() {
                     <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {L('Hin- & Rückfahrt Rabatt inklusive', 'round trip discount included', 'gidiş-dönüş indirimi dahil')}</p>
                   )}
                   {appliedPromo && (
-                    <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>
+                    <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {appliedPromo.gutschein ? L('Ihr persönlicher Gutschein', 'Your personal voucher', 'Size özel kupon') : appliedPromo.code}: −{formatPrice(appliedPromo.discountAmount)}</p>
                   )}
                   {anfahrtCost > 0 && (
                     <p className="text-xs text-amber-600 font-medium mt-2 flex items-center gap-1"><Car size={12} /> {L('inkl.', 'incl.', 'dahil')} {formatPrice(anfahrtCost)} {L('Anfahrtskosten', 'approach fee', 'yaklaşım ücreti')}</p>
