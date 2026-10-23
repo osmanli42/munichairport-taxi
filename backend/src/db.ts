@@ -353,6 +353,15 @@ export async function initializeDatabase(): Promise<void> {
         KEY idx_email (email)
       ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+    // Marketing: vom Admin ausgewählte Kontakte der alten Website (Kalender/CSV) — bleiben gespeichert
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS marketing_picked (
+        email VARCHAR(190) NOT NULL,
+        name VARCHAR(120) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (email)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS marketing_optout (
         email VARCHAR(190) NOT NULL,

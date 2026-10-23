@@ -495,6 +495,10 @@ export const marketingApi = {
     (await api.post('/admin/marketing2/custom-occasions', c)).data,
   deleteCustom: async (id: string) => (await api.delete(`/admin/marketing2/custom-occasions/${encodeURIComponent(id)}`)).data,
   customers: async (): Promise<{ customers: MkCustomer[]; optouts: string[] }> => (await api.get('/admin/marketing2/customers')).data,
+  picked: async (): Promise<Array<{ email: string; name: string | null }>> => (await api.get('/admin/marketing2/picked')).data,
+  savePicked: async (b: { add?: Array<{ email: string; name?: string }>; remove?: string[] }): Promise<{ count: number }> =>
+    (await api.put('/admin/marketing2/picked', b)).data,
+  clearPicked: async () => (await api.delete('/admin/marketing2/picked')).data,
   preview: async (b: MkSendBody & { name?: string }): Promise<{ subject: string; html: string }> => (await api.post('/admin/marketing2/preview', b)).data,
   test: async (b: MkSendBody): Promise<{ to: string }> => (await api.post('/admin/marketing2/test', b)).data,
   send: async (b: MkSendBody): Promise<{ campaignId: number; sent: number; failed: number; skippedOptout: number; codes: number; dryRun: boolean; errors: Array<{ email: string; error: string }> }> =>

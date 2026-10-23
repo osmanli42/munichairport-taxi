@@ -44,6 +44,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
   const [srcFilter, setSrcFilter] = useState<'all' | 'web' | 'contact'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'privat' | 'firma' | 'selected'>('all');
   const [showMax, setShowMax] = useState(300);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [search, setSearch] = useState('');
   const [langMode, setLangMode] = useState<'customer' | MkLang>('customer');
   const [tab, setTab] = useState<MkLang>('de');
@@ -60,8 +61,18 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
 
   const load = useCallback(async () => {
     try {
-      const [c, cu, h] = await Promise.all([marketingApi.calendar(), marketingApi.customers(), marketingApi.campaigns()]);
+      const [c, cu, h, pk] = await Promise.all([marketingApi.calendar(), marketingApi.customers(), marketingApi.campaigns(), marketingApi.picked().catch(() => [] as Array<{ email: string; name: string | null }>)]);
       setCal(c); setCustomers(cu.customers); setOptouts(new Set(cu.optouts)); setCampaigns(h); setLoadErr('');
+      // Gespeicherte Auswahl: auch Kontakte, die in diesem Browser (noch) nicht geladen sind, in die Liste übernehmen
+      setPicked(new Set(pk.map(p => p.email)));
+      setContacts(prev => {
+        const have = new Set(prev.map(x => x.email));
+        const extra = pk.filter(p => !have.has(p.email)).map(p => ({ email: p.email, name: p.name || '', source: 'ics' as const }));
+        if (!extra.length) return prev;
+        const next = [...prev, ...extra];
+        saveContacts(next);
+        return next;
+      });
     } catch (e) { setLoadErr(errOf(e, 'Marketing verileri yüklenemedi')); }
   }, []);
   const reloadCalendar = useCallback(async () => {
@@ -89,7 +100,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
     const m = o?.mode || 'greeting';
     const p = o?.percent || 10;
     setMode(m); setPercent(p); setValidDays(o?.validDays || 30); setMaxAmount(o?.maxAmount ?? null);
-    if (o) { setSegment(o.segment); setWithContacts(false); setExcluded(new Set()); setPicked(new Set()); setSrcFilter('all'); setTypeFilter('all'); }
+    if (o) { setSegment(o.segment); setWithContacts(false); setExcluded(new Set()); setSrcFilter('all'); setTypeFilter('all'); }
     setTexts({ de: build(o, m, p, 'de', cal?.offer), en: build(o, m, p, 'en', cal?.offer), tr: build(o, m, p, 'tr', cal?.offer) });
     setDirty({ de: false, en: false, tr: false });
     setEditor('text'); setResult(null); setConfirm(false);
@@ -137,21 +148,31 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
   const yearAgo = useMemo(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); }, []);
   const pool: Row[] = useMemo(() => {
     const base = (customers || []).filter(c => inSegment(c, segment, yearAgo)).map(c => ({ ...c, contact: false, firm: c.isBusiness || isCompanyDomain(c.email) }));
-    if (!withContacts) return base;
     const known = new Set((customers || []).map(c => c.email));
-    const extra = contacts.filter(c => !known.has(c.email)).map(c => ({
+    // ausgewählte „Eski site“-Kontakte gehören immer dazu; die übrigen nur, wenn eingeblendet
+    const extra = contacts.filter(c => !known.has(c.email) && (withContacts || picked.has(c.email))).map(c => ({
       email: c.email, name: c.name || '', lang: 'de' as MkLang, isBusiness: false, bookingCount: 0, lastBooking: null, optedOut: optouts.has(c.email), contact: true,
       firm: isCompanyDomain(c.email),
     }));
     return [...base, ...extra];
-  }, [customers, segment, withContacts, contacts, optouts, yearAgo]);
+  }, [customers, segment, withContacts, contacts, optouts, yearAgo, picked]);
   const isOn = useCallback((r: Row) => !r.optedOut && (r.contact ? picked.has(r.email) : !excluded.has(r.email)), [picked, excluded]);
   const selected = useMemo(() => pool.filter(isOn), [pool, isOn]);
   const setOn = (rows: Row[], on: boolean) => {
     const web = rows.filter(r => !r.contact).map(r => r.email);
     const con = rows.filter(r => r.contact).map(r => r.email);
     if (web.length) setExcluded(prev => { const n = new Set(prev); web.forEach(e => (on ? n.delete(e) : n.add(e))); return n; });
-    if (con.length) setPicked(prev => { const n = new Set(prev); con.forEach(e => (on ? n.add(e) : n.delete(e))); return n; });
+    if (con.length) {
+      setPicked(prev => { const n = new Set(prev); con.forEach(e => (on ? n.add(e) : n.delete(e))); return n; });
+      const rows = rows_(con);
+      marketingApi.savePicked(on ? { add: rows } : { remove: con })
+        .catch(e => setResult({ ok: false, text: errOf(e, 'Seçim kaydedilemedi') }));
+    }
+  };
+  const rows_ = (emails: string[]) => { const m = new Map(contacts.map(c => [c.email, c.name || ''])); return emails.map(e => ({ email: e, name: m.get(e) || '' })); };
+  const clearPicked = async () => {
+    try { await marketingApi.clearPicked(); setPicked(new Set()); setConfirmClear(false); }
+    catch (e) { setResult({ ok: false, text: errOf(e, 'Seçim temizlenemedi') }); }
   };
   const langOf = (r: Row): MkLang => (langMode === 'customer' ? r.lang : langMode);
   const langCount = useMemo(() => {
@@ -319,8 +340,8 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
             <div className={cn('mt-3 rounded-xl border px-3 py-2.5', withContacts ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200')}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                  <input type="checkbox" checked={withContacts} onChange={e => { setWithContacts(e.target.checked); if (e.target.checked) setSrcFilter('contact'); else { setSrcFilter('all'); setPicked(new Set()); } }} />
-                  Eski site müşterilerini listede göster <span className="text-gray-400 font-normal">(takvim/CSV · {contactsNew} kişi · {picked.size} seçili)</span>
+                  <input type="checkbox" checked={withContacts} onChange={e => { setWithContacts(e.target.checked); if (e.target.checked) setSrcFilter('contact'); else setSrcFilter('all'); }} />
+                  Eski site müşterilerini listede göster <span className="text-gray-400 font-normal">(takvim/CSV · {contactsNew} kişi)</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-semibold border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-white">
@@ -330,12 +351,29 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
                     <FileText size={13} /> CSV<input type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) importFile(f, 'csv'); e.target.value = ''; }} />
                   </label>
                   {contacts.length > 0 && (
-                    <button title="Takvim/CSV listesini temizle" onClick={() => { setContacts([]); saveContacts([]); setWithContacts(false); }} className="p-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-white"><Trash2 size={13} /></button>
+                    <button title="Takvim/CSV listesini temizle (seçtiklerin kalır)" onClick={() => { const keep = contacts.filter(c => picked.has(c.email)); setContacts(keep); saveContacts(keep); setWithContacts(false); }} className="p-1.5 rounded-lg border border-gray-300 text-gray-500 hover:bg-white"><Trash2 size={13} /></button>
                   )}
                 </div>
               </div>
               {withContacts && (
-                <p className="mt-1.5 text-xs text-gray-500">Eski sitenden online rezervasyon yapan müşteriler. Seçili gelmezler — aşağıdan arayıp tek tek ya da filtreyle seç.</p>
+                <p className="mt-1.5 text-xs text-gray-500">Eski sitenden online rezervasyon yapan müşteriler. Seçili gelmezler — aşağıdan arayıp tek tek ya da filtreyle seç. Seçimin kaydedilir; sayfayı kapatsan da başka bilgisayardan açsan da kalır.</p>
+              )}
+              {picked.size > 0 && (
+                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap rounded-lg bg-white border border-primary-100 px-3 py-2">
+                  <span className="text-sm text-gray-800"><b>{picked.size.toLocaleString('de-DE')}</b> eski site müşterisi seçili ve kayıtlı</span>
+                  {confirmClear ? (
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <span className="text-gray-600">Hepsi seçimden çıkarılsın mı?</span>
+                      <button onClick={clearPicked} className="font-semibold text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded-md">Evet, kaldır</button>
+                      <button onClick={() => setConfirmClear(false)} className="text-gray-500 px-1">Vazgeç</button>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <button onClick={() => { setWithContacts(true); setSrcFilter('contact'); setTypeFilter('selected'); }} className="text-xs font-semibold text-primary-700 border border-primary-200 px-2.5 py-1 rounded-md hover:bg-primary-50">Seçilenleri göster</button>
+                      <button onClick={() => setConfirmClear(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 border border-red-200 px-2.5 py-1 rounded-md hover:bg-red-50"><Trash2 size={12} /> Seçilenlerin hepsini kaldır</button>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             <div className="mt-3 flex items-center gap-2">

@@ -164,6 +164,44 @@ router.get('/customers', async (_req: AuthRequest, res: Response) => {
   }
 });
 
+// Gespeicherte Auswahl „Eski site“-Kontakte (bleibt über Sitzungen und Geräte erhalten)
+router.get('/picked', async (_req: AuthRequest, res: Response) => {
+  try {
+    res.json(await query<{ email: string; name: string | null }>('SELECT email, name FROM marketing_picked ORDER BY created_at'));
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Auswahl konnte nicht geladen werden' });
+  }
+});
+
+router.put('/picked', async (req: AuthRequest, res: Response) => {
+  const add: Array<{ email: string; name?: string }> = Array.isArray(req.body?.add) ? req.body.add : [];
+  const remove: string[] = Array.isArray(req.body?.remove) ? req.body.remove : [];
+  try {
+    const rows = add.map(r => ({ email: String(r?.email || '').trim().toLowerCase(), name: String(r?.name || '').trim().slice(0, 120) }))
+      .filter(r => EMAIL_RE.test(r.email) && r.email.length <= 190);
+    for (let i = 0; i < rows.length; i += 500) {
+      const chunk = rows.slice(i, i + 500);
+      await run(`INSERT INTO marketing_picked (email, name) VALUES ${chunk.map(() => '(?, ?)').join(',')}
+                 ON DUPLICATE KEY UPDATE name = COALESCE(NULLIF(VALUES(name), ''), name)`,
+        chunk.flatMap(r => [r.email, r.name || null]));
+    }
+    const rem = remove.map(e => String(e || '').trim().toLowerCase()).filter(Boolean);
+    for (let i = 0; i < rem.length; i += 500) {
+      const chunk = rem.slice(i, i + 500);
+      await run(`DELETE FROM marketing_picked WHERE email IN (${chunk.map(() => '?').join(',')})`, chunk);
+    }
+    const [c] = await query<{ n: number }>('SELECT COUNT(*) AS n FROM marketing_picked');
+    res.json({ success: true, count: Number(c?.n) || 0 });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Auswahl konnte nicht gespeichert werden' });
+  }
+});
+
+router.delete('/picked', async (_req: AuthRequest, res: Response) => {
+  await run('DELETE FROM marketing_picked');
+  res.json({ success: true });
+});
+
 // ---- Mail bauen ------------------------------------------------------------------------------
 
 interface LangText { subject: string; message: string; badge?: string; buttonText?: string; buttonUrl?: string }
