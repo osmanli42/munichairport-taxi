@@ -441,7 +441,7 @@ export const personalGutscheinApi = {
 export type MkLang = 'de' | 'en' | 'tr';
 export type MkSegment = 'all' | 'privat' | 'business' | 'stamm' | 'business_stamm';
 export type MkMode = 'greeting' | 'discount';
-export interface MkText { subject: string; message: string; badge: string; button?: string }
+export interface MkText { subject: string; message: string; badge: string; button?: string; url?: string }
 export interface MkOccasion {
   id: string; key: string; year: number; name: string;
   group: 'ferien' | 'fest' | 'business' | 'season' | 'custom';
@@ -452,8 +452,12 @@ export interface MkOccasion {
   percent: number; validDays: number; maxAmount: number | null; isDefault: boolean;
   texts: Record<MkLang, MkText>;
 }
+export interface MkTemplate {
+  id: string; name: string; texts: Record<MkLang, MkText>;
+  defaults: { segment: MkSegment; mode: MkMode; percent: number; validDays: number; maxAmount: number | null };
+}
 export interface MkCalendar {
-  occasions: MkOccasion[]; remindersEnabled: boolean; sourceErrors: string[];
+  occasions: MkOccasion[]; templates: MkTemplate[]; remindersEnabled: boolean; sourceErrors: string[];
   offer: Record<MkLang, { subject: string; message: string }>;
 }
 export interface MkCustomer {

@@ -14,7 +14,7 @@ export type Lang = 'de' | 'en' | 'tr';
 export type Segment = 'all' | 'privat' | 'business' | 'stamm' | 'business_stamm';
 export type Mode = 'greeting' | 'discount';
 
-export interface OccasionText { subject: string; message: string; badge: string; button?: string }
+export interface OccasionText { subject: string; message: string; badge: string; button?: string; url?: string }
 
 export interface OccasionDefaults {
   enabled: boolean;
@@ -106,6 +106,199 @@ const TXT: Record<string, Record<Lang, OccasionText>> = {
     tr: { badge: '🍁 Kasım', subject: 'Kasım ayında havalimanına rahatça', message: "Kasım, Noel telaşından önceki sakin dönem – şehir gezisi, aile ziyareti ya da bir sonraki iş seyahatiniz için ideal. Sizi Münih Havalimanı'na dakik ve sabit fiyatla götürüyoruz." },
   },
 };
+
+// ---- Vorlagen ohne Datum (Admin → Marketing → „Hazır şablonlar“) ---------------------------------
+// Nur Funktionen, die es auf der Website wirklich gibt (Stand 23.10.2026).
+
+export interface MarketingTemplate { id: string; name: string; defaults: OccasionDefaults; texts: Record<Lang, OccasionText> }
+
+export const TEMPLATES: Array<Omit<MarketingTemplate, 'defaults'> & { defaults: Partial<OccasionDefaults> }> = [
+  {
+    id: 'tpl-neue-website',
+    name: 'Yeni sitemize davet (eski müşteriler)',
+    defaults: { segment: 'all', mode: 'discount', percent: 10, validDays: 60 },
+    texts: {
+      de: {
+        badge: '🌐 Unsere neue Website',
+        subject: 'Unsere neue Website ist online – Ihr Flughafentaxi in 60 Sekunden gebucht',
+        message: `wir haben uns für Sie neu aufgestellt: Auf **flughafen-muenchen.taxi** buchen Sie Ihre Fahrt jetzt in weniger als einer Minute – rund um die Uhr, auch nachts und an Feiertagen. Mit über 20 Jahren Erfahrung, konzessioniert und vollversichert.
+
+# Online buchen in 60 Sekunden
+- **Festpreis sofort:** Adresse eingeben, Preis sehen – kein Taxameter, keine Überraschungen
+- **Sofortige Bestätigung** per E-Mail, kurz darauf die endgültige Bestätigung Ihrer Fahrt
+- **Bezahlen, wie Sie möchten:** bar beim Fahrer, mit Kreditkarte oder auf Rechnung
+- **Rechnung automatisch** als PDF direkt nach der Fahrt in Ihrem Postfach
+- **Buchung online verwalten** und bis 3 Stunden vorher kostenlos stornieren
+- **Live-Tracking:** Sie sehen, wo Ihr Fahrer gerade ist
+
+# Abholung am Flughafen
+- **Persönlicher Empfang mit Namensschild** im Ankunftsbereich
+- **Flugüberwachung und 60 Minuten kostenlose Wartezeit** – landet Ihr Flug später, warten wir
+- **Kombi, Van oder Großraumtaxi bis 8 Personen**, Kindersitz und Fahrradmitnahme auf Wunsch
+- **Mehrsprachige Fahrer** (Deutsch, Englisch, Türkisch)
+
+# Für Firmen
+- **Firmenkundenportal:** Fahrten für Mitarbeiter und Gäste in Sekunden buchen, mit mehreren Nutzern
+- **Monatliche Sammelrechnung** mit Kostenstelle und Referenz pro Fahrt, alle Rechnungen als PDF
+
+# Mehr als ein Flughafentaxi
+- **Messe-Transfer** zur Messe München und zum ICM – auch für ganze Teams
+- **Ski-Transfer** nach Kitzbühel, Ischgl, Sölden & Co. – mit Platz für die ganze Ausrüstung
+- **Fernfahrten** in ganz Bayern, nach Österreich und in die Schweiz
+- **Gruppen & Events:** Hochzeiten, Firmenfeiern, Oktoberfest, Allianz Arena
+- **Hotel- und Bahnhofstransfer, Kurierfahrten und sitzende Krankenfahrten**
+
+Natürlich erreichen Sie uns weiterhin rund um die Uhr telefonisch und per WhatsApp – ganz wie gewohnt.`,
+        button: 'Jetzt neue Website ansehen',
+      },
+      en: {
+        badge: '🌐 Our new website',
+        subject: 'Our new website is live – book your airport taxi in 60 seconds',
+        message: `We have made things easier for you: on **flughafen-muenchen.taxi** you can now book your ride in under a minute – around the clock, at night and on public holidays too. With more than 20 years of experience, fully licensed and fully insured.
+
+# Book online in 60 seconds
+- **Fixed price instantly:** enter your address, see the price – no meter, no surprises
+- **Instant confirmation** by e-mail, followed shortly by the final confirmation of your ride
+- **Pay the way you like:** cash to the driver, by credit card or on invoice
+- **Automatic invoice** as a PDF in your inbox right after the ride
+- **Manage your booking online** and cancel free of charge up to 3 hours before
+- **Live tracking:** see where your driver is right now
+
+# Airport pick-up
+- **Personal welcome with a name sign** in the arrivals hall
+- **Flight monitoring and 60 minutes of free waiting time** – if your flight is late, we wait
+- **Estate car, van or minibus for up to 8 people**, child seats and bikes on request
+- **Multilingual drivers** (German, English, Turkish)
+
+# For companies
+- **Business portal:** book rides for staff and guests in seconds, with several users
+- **Monthly invoice** with cost centre and reference per ride, every invoice as a PDF
+
+# More than an airport taxi
+- **Trade fair transfers** to Messe München and the ICM – for whole teams too
+- **Ski transfers** to Kitzbühel, Ischgl, Sölden & more – with room for all your gear
+- **Long-distance rides** across Bavaria, to Austria and Switzerland
+- **Groups & events:** weddings, company parties, Oktoberfest, Allianz Arena
+- **Hotel and station transfers, courier rides and seated patient transport**
+
+Of course you can still reach us around the clock by phone and WhatsApp – just as before.`,
+        button: 'Visit the new website',
+      },
+      tr: {
+        badge: '🌐 Yeni web sitemiz',
+        subject: 'Yeni web sitemiz yayında – havalimanı taksinizi 60 saniyede ayırtın',
+        message: `Sizin için yeniledik: **flughafen-muenchen.taxi** adresinden yolculuğunuzu artık bir dakikadan kısa sürede ayırtabilirsiniz – günün her saati, gece ve bayramlarda da. 20 yılı aşkın tecrübe, ruhsatlı ve tam sigortalı.
+
+# 60 saniyede online rezervasyon
+- **Anında sabit fiyat:** adresi girin, fiyatı görün – taksimetre yok, sürpriz yok
+- **Anında onay** e-postayla, kısa süre sonra yolculuğunuzun kesin onayı
+- **Dilediğiniz gibi ödeyin:** şoföre nakit, kredi kartıyla ya da faturayla
+- **Otomatik fatura:** yolculuktan hemen sonra PDF olarak e-postanızda
+- **Rezervasyonu online yönetin**, 3 saat öncesine kadar ücretsiz iptal edin
+- **Canlı takip:** şoförünüzün nerede olduğunu görün
+
+# Havalimanında karşılama
+- **İsim tabelasıyla kişisel karşılama** varış salonunda
+- **Uçuş takibi ve 60 dakika ücretsiz bekleme** – uçağınız gecikirse bekliyoruz
+- **Binek, van ya da 8 kişiye kadar büyük taksi**, istenirse çocuk koltuğu ve bisiklet taşıma
+- **Çok dilli şoförler** (Almanca, İngilizce, Türkçe)
+
+# Firmalar için
+- **Firma portalı:** çalışanlarınız ve misafirleriniz için saniyeler içinde rezervasyon, birden fazla kullanıcı
+- **Aylık toplu fatura**, her yolculukta masraf yeri ve referans, tüm faturalar PDF
+
+# Havalimanı taksisinden fazlası
+- **Fuar transferi** Messe München ve ICM'e – ekipler için de
+- **Kayak transferi** Kitzbühel, Ischgl, Sölden ve daha fazlasına – tüm ekipmanınıza yer var
+- **Uzun mesafe** tüm Bavyera, Avusturya ve İsviçre
+- **Gruplar ve etkinlikler:** düğün, firma partisi, Oktoberfest, Allianz Arena
+- **Otel ve tren istasyonu transferi, kurye ve oturarak hasta taşıma**
+
+Bize her zamanki gibi telefon ve WhatsApp üzerinden 7/24 ulaşabilirsiniz.`,
+        button: 'Yeni siteyi incele',
+      },
+    },
+  },
+  {
+    id: 'tpl-firmenportal',
+    name: 'Firmalara: Firmenportal & Sammelrechnung',
+    defaults: { segment: 'business', mode: 'greeting', percent: 10, validDays: 60 },
+    texts: {
+      de: {
+        badge: '🏢 Für Firmenkunden',
+        subject: 'Firmenkundenportal: Fahrten in Sekunden buchen, monatlich eine Rechnung',
+        message: `vielen Dank für die Zusammenarbeit. Für Unternehmen, Hotels und Agenturen gibt es jetzt unser **Firmenkundenportal** – Buchung, Abrechnung und Überblick an einem Ort.
+
+# Ihre Vorteile
+- **60-Sekunden-Buchung** für Mitarbeiter und Gäste
+- **Zahlung auf Rechnung:** eine monatliche Sammelrechnung statt Einzelzahlung pro Fahrt
+- **PDF-Rechnungen** für jede Fahrt und jede Sammelrechnung mit einem Klick
+- **Mehrere Nutzer:** Rezeption, Assistenz und Kollegen mit eigenem Zugang
+- **Kostenstelle & Referenz:** jede Fahrt einer Abteilung oder einem Gast zuordnen
+- **CSV-Export & Statistik** für Ihre Buchhaltung, **Favoriten-Strecken** mit einem Klick
+- **Abholung mit Namensschild**, Flugüberwachung und 60 Minuten kostenlose Wartezeit
+- **Persönlicher Ansprechpartner** rund um die Uhr
+
+# So einfach geht's
+- Firmenkonto auf flughafen-muenchen.taxi/business beantragen – dauert 2 Minuten
+- Nach der Prüfung erhalten Sie Ihre Zugangsdaten per E-Mail
+- Erste Fahrt für Ihre Gäste direkt buchen
+
+Gern erstellen wir Ihnen auch ein individuelles Angebot für regelmäßige Fahrten oder Messen.`,
+        button: 'Firmenkonto beantragen',
+        url: 'https://flughafen-muenchen.taxi/business',
+      },
+      en: {
+        badge: '🏢 For business customers',
+        subject: 'Business portal: book rides in seconds, one invoice per month',
+        message: `Thank you for working with us. For companies, hotels and agencies we now offer our **business portal** – booking, billing and overview in one place.
+
+# Your benefits
+- **60-second booking** for staff and guests
+- **Pay on invoice:** one monthly invoice instead of paying per ride
+- **PDF invoices** for every ride and every monthly invoice with one click
+- **Several users:** reception, assistants and colleagues with their own login
+- **Cost centre & reference:** assign every ride to a department or guest
+- **CSV export & statistics** for your accounting, **favourite routes** with one click
+- **Name-sign pick-up**, flight monitoring and 60 minutes of free waiting time
+- **Personal contact** around the clock
+
+# How it works
+- Apply for a business account at flughafen-muenchen.taxi/business – takes 2 minutes
+- After review you receive your login details by e-mail
+- Book the first ride for your guests right away
+
+We are also happy to prepare an individual offer for regular rides or trade fairs.`,
+        button: 'Apply for a business account',
+        url: 'https://flughafen-muenchen.taxi/en/business',
+      },
+      tr: {
+        badge: '🏢 Kurumsal müşteriler için',
+        subject: 'Firma portalı: saniyeler içinde rezervasyon, ayda tek fatura',
+        message: `İş birliğiniz için teşekkür ederiz. Firmalar, oteller ve acenteler için artık **firma portalımız** var – rezervasyon, faturalama ve genel bakış tek yerde.
+
+# Avantajlarınız
+- Çalışanlar ve misafirler için **60 saniyede rezervasyon**
+- **Faturayla ödeme:** her yolculuk için ayrı ödeme yerine aylık toplu fatura
+- Her yolculuk ve her toplu fatura için tek tıkla **PDF fatura**
+- **Birden fazla kullanıcı:** resepsiyon, asistan ve çalışma arkadaşları için ayrı giriş
+- **Masraf yeri ve referans:** her yolculuğu bir departmana ya da misafire atayın
+- Muhasebeniz için **CSV dışa aktarım ve istatistik**, tek tıkla **favori güzergâhlar**
+- **İsim tabelasıyla karşılama**, uçuş takibi ve 60 dakika ücretsiz bekleme
+- 7/24 **kişisel muhatap**
+
+# Nasıl çalışır
+- flughafen-muenchen.taxi/business adresinden firma hesabı başvurusu yapın – 2 dakika sürer
+- İnceleme sonrası giriş bilgileriniz e-postayla gelir
+- Misafirleriniz için ilk yolculuğu hemen ayırtın
+
+Düzenli yolculuklar ya da fuarlar için size özel teklif de hazırlayabiliriz.`,
+        button: 'Firma hesabı başvurusu',
+        url: 'https://flughafen-muenchen.taxi/tr/business',
+      },
+    },
+  },
+];
 
 // ---- Anlässe ---------------------------------------------------------------------------------
 
@@ -204,7 +397,7 @@ export async function remindersEnabled(): Promise<boolean> {
 
 const fill = (t: OccasionText, vars: Record<string, string>): OccasionText => {
   const r = (s?: string) => (s || '').replace(/\{(jahr|messe|datum)\}/g, (_, k) => vars[k] ?? '');
-  return { subject: r(t.subject), message: r(t.message), badge: r(t.badge), button: t.button };
+  return { subject: r(t.subject), message: r(t.message), badge: r(t.badge), button: t.button, url: t.url };
 };
 const dmy = (s: string) => `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
@@ -214,7 +407,7 @@ const shift = (s: string, n: number) => ymd(new Date(Date.parse(`${s}T12:00:00Z`
  * Anlässe der nächsten 12 Monate (plus die gerade offenen), mit Status aus marketing_campaigns.
  * Pro Anlass nur das nächste Vorkommen, dessen Fenster noch nicht vorbei ist.
  */
-export async function marketingCalendar(): Promise<{ occasions: Occasion[]; remindersEnabled: boolean; sourceErrors: string[] }> {
+export async function marketingCalendar(): Promise<{ occasions: Occasion[]; templates: MarketingTemplate[]; remindersEnabled: boolean; sourceErrors: string[] }> {
   const today = berlinDateSql(0);
   const horizon = berlinDateSql(366);
   const y = +today.slice(0, 4);
@@ -288,7 +481,8 @@ export async function marketingCalendar(): Promise<{ occasions: Occasion[]; remi
     });
   }
   const occasions = [...byId.values()].sort((a, b) => a.remindFrom.localeCompare(b.remindFrom));
-  return { occasions, remindersEnabled: reminders, sourceErrors };
+  const templates = TEMPLATES.map(t => ({ ...t, defaults: { ...d(t.defaults), ...(overrides[t.id] || {}) } }));
+  return { occasions, templates, remindersEnabled: reminders, sourceErrors };
 }
 
 /** Offene Anlässe (Fenster offen, nicht versendet/übersprungen) — Dashboard „Handlungsbedarf“. */

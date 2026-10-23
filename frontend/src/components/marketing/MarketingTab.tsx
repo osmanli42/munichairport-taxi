@@ -6,8 +6,8 @@
 // Backend: routes/admin-marketing.ts, services/marketingCalendar.ts.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Mail, Users, PenLine, Send, Gift, Heart, Upload, FileText, Search, Loader2, X, Check, AlertTriangle, Code2, Type, Trash2, ShieldCheck } from 'lucide-react';
-import { marketingApi, MkCalendar, MkCampaign, MkCustomer, MkLang, MkMode, MkOccasion, MkSendBody, MkSendText } from '@/lib/api';
+import { Mail, Users, PenLine, Send, Gift, Heart, Upload, FileText, Search, Loader2, X, Check, AlertTriangle, Code2, Type, Trash2, ShieldCheck, LayoutTemplate } from 'lucide-react';
+import { marketingApi, MkCalendar, MkCampaign, MkCustomer, MkLang, MkMode, MkOccasion, MkSendBody, MkSendText, MkTemplate } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import CampaignCalendar from './CampaignCalendar';
 import CampaignHistory from './CampaignHistory';
@@ -74,7 +74,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
       subject: (src?.subject || '') + (m === 'discount' && src?.subject && off ? off.subject.replace('{p}', pp) : ''),
       message: src?.message || '',
       badge: src?.badge || '',
-      buttonText: '', buttonUrl: '',
+      buttonText: src?.button || '', buttonUrl: src?.url || '',
       offer: off ? off.message.replace('{p}', pp) : '',
     };
   }, []);
@@ -90,6 +90,16 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
     setEditor('text'); setResult(null); setConfirm(false);
     setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }, [build, cal?.offer]);
+
+  // Vorlage ohne Datum (z. B. „Neue Website“) wie einen Anlass öffnen
+  const prepareTemplate = (t: MkTemplate) => {
+    const today = new Date().toISOString().slice(0, 10);
+    prepare({
+      id: t.id, key: `${t.id}|${today.slice(0, 4)}`, year: +today.slice(0, 4), name: t.name, group: 'custom',
+      date: today, end: null, remindFrom: today, remindUntil: today, status: 'upcoming', sentAt: null, campaignId: null, daysLeft: 0,
+      enabled: true, leadDays: 0, afterDays: 0, isDefault: true, texts: t.texts, ...t.defaults,
+    });
+  };
 
   // Anlass vom Dashboard öffnen
   useEffect(() => {
@@ -202,7 +212,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
     setBusy('');
   };
 
-  const names = useMemo(() => Object.fromEntries((cal?.occasions || []).map(o => [o.id, o.name])), [cal]);
+  const names = useMemo(() => Object.fromEntries([...(cal?.occasions || []), ...(cal?.templates || [])].map(o => [o.id, o.name])), [cal]);
   const input = 'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500';
   const label = 'block text-xs font-semibold text-gray-600 mb-1';
   const step = (n: number, title: string, Icon: typeof Mail, extra?: React.ReactNode) => (
@@ -232,6 +242,19 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
       <CampaignCalendar occasions={cal.occasions} remindersEnabled={cal.remindersEnabled} selectedId={occasion?.key || null}
         onPrepare={prepare} onChanged={reloadCalendar} sourceErrors={cal.sourceErrors} />
 
+      {cal.templates?.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl px-5 py-3.5 flex items-center gap-3 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900"><LayoutTemplate size={16} className="text-gray-400" /> Hazır şablonlar</span>
+          {cal.templates.map(t => (
+            <button key={t.id} onClick={() => prepareTemplate(t)}
+              className={cn('text-sm font-semibold px-3 py-1.5 rounded-lg border', occasion?.id === t.id ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50')}>
+              {t.texts.de.badge.split(' ')[0]} {t.name}
+            </button>
+          ))}
+          <span className="text-xs text-gray-400">Tarihten bağımsız, istediğin zaman gönderilir</span>
+        </div>
+      )}
+
       <div ref={editorRef} className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,480px)] gap-5 scroll-mt-24">
         <div className="space-y-5 min-w-0">
           {/* Kopf: Anlass + Modus */}
@@ -239,7 +262,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
             <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Kampanya</p>
-                <p className="text-lg font-bold text-gray-900">{occasion ? `${occasion.texts.de.badge.split(' ')[0]} ${occasion.name} · ${dmy(occasion.date)}` : 'Serbest e-posta'}</p>
+                <p className="text-lg font-bold text-gray-900">{occasion ? `${occasion.texts.de.badge.split(' ')[0]} ${occasion.name}${occasion.id.startsWith('tpl-') ? '' : ` · ${dmy(occasion.date)}`}` : 'Serbest e-posta'}</p>
               </div>
               {occasion && <button onClick={() => prepare(null)} className="text-xs font-semibold text-gray-500 hover:text-gray-800 inline-flex items-center gap-1"><X size={13} /> Anlası kaldır</button>}
             </div>
