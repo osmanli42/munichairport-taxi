@@ -11,14 +11,15 @@ const sections = [
   {
     num: '1',
     icon: <Building2 size={15} />,
-    title: 'Angaben gemäß § 5 TMG',
+    title: 'Angaben gemäß § 5 DDG',
     content: (
       <div style={{ borderLeft: '3px solid #c9a84c' }} className="pl-4 space-y-1">
         <p className="font-bold" style={{ color: '#0f1b2d' }}>Flughafen-München.TAXI</p>
-        <p>{CONTACT_INFO.owners}</p>
+        <p>{CONTACT_INFO.owners} GbR</p>
         <p>Eisvogelweg 2</p>
         <p>85356 Freising</p>
         <p>Deutschland</p>
+        <p className="pt-2">Vertreten durch die Gesellschafter: Osman Nar, M.Ali Nar</p>
       </div>
     ),
   },
@@ -69,21 +70,7 @@ const sections = [
     icon: <Scale size={15} />,
     title: 'Streitschlichtung',
     content: (
-      <div className="space-y-3">
-        <p>
-          Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
-          <a
-            href="https://ec.europa.eu/consumers/odr/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:opacity-80"
-            style={{ color: '#c9a84c' }}
-          >
-            https://ec.europa.eu/consumers/odr/
-          </a>
-        </p>
-        <p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
-      </div>
+      <p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
     ),
   },
   {
@@ -91,7 +78,7 @@ const sections = [
     icon: <FileText size={15} />,
     title: 'Haftung für Inhalte',
     content: (
-      <p>Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht unter der Verpflichtung, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.</p>
+      <p>Als Diensteanbieter sind wir für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Wir sind als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.</p>
     ),
   },
   {
@@ -129,7 +116,7 @@ export default function ImpressumPage() {
             Impressum
           </h1>
           <p className="text-sm" style={{ color: '#8a9bb0' }}>
-            Flughafen-München.TAXI &nbsp;·&nbsp; Stand: April 2026
+            Flughafen-München.TAXI &nbsp;·&nbsp; Stand: Oktober 2026
           </p>
         </div>
 
@@ -204,7 +191,7 @@ export default function ImpressumPage() {
             <div className="px-7 py-6 grid sm:grid-cols-2 gap-4">
               {[
                 { icon: <Building2 size={15} />, label: 'Unternehmen', value: 'Flughafen-München.TAXI' },
-                { icon: <User size={17} />, label: 'Inhaber', value: CONTACT_INFO.owners },
+                { icon: <User size={17} />, label: 'Gesellschafter', value: `${CONTACT_INFO.owners} GbR` },
                 { icon: <MapPin size={17} />, label: 'Adresse', value: 'Eisvogelweg 2, 85356 Freising' },
                 { icon: <Phone size={15} />, label: 'Telefon', value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
                 { icon: <Mail size={17} />, label: 'E-Mail', value: CONTACT_INFO.email, href: `mailto:${CONTACT_INFO.email}` },
