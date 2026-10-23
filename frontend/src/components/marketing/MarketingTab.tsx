@@ -6,7 +6,7 @@
 // Backend: routes/admin-marketing.ts, services/marketingCalendar.ts.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Mail, Users, PenLine, Send, Gift, Heart, Upload, FileText, Search, Loader2, X, Check, AlertTriangle, Code2, Type, Trash2, ShieldCheck, LayoutTemplate } from 'lucide-react';
+import { Mail, Users, PenLine, Send, Gift, Heart, Upload, FileText, Search, Loader2, X, Check, Code2, Type, Trash2, ShieldCheck, LayoutTemplate } from 'lucide-react';
 import { marketingApi, MkCalendar, MkCampaign, MkCustomer, MkLang, MkMode, MkOccasion, MkSendBody, MkSendText, MkTemplate } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import CampaignCalendar from './CampaignCalendar';
@@ -316,11 +316,11 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
                 </button>
               ))}
             </div>
-            <div className={cn('mt-3 rounded-xl border px-3 py-2.5', withContacts ? 'border-amber-300 bg-amber-50' : 'border-gray-200')}>
+            <div className={cn('mt-3 rounded-xl border px-3 py-2.5', withContacts ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200')}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
                   <input type="checkbox" checked={withContacts} onChange={e => { setWithContacts(e.target.checked); if (e.target.checked) setSrcFilter('contact'); else { setSrcFilter('all'); setPicked(new Set()); } }} />
-                  Takvim / CSV kişilerini listede göster <span className="text-gray-400 font-normal">({contactsNew} kişi · {picked.size} seçili)</span>
+                  Eski site müşterilerini listede göster <span className="text-gray-400 font-normal">(takvim/CSV · {contactsNew} kişi · {picked.size} seçili)</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <label className="cursor-pointer inline-flex items-center gap-1 text-xs font-semibold border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-white">
@@ -335,8 +335,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
                 </div>
               </div>
               {withContacts && (
-                <p className="mt-1.5 text-xs text-amber-800 flex gap-1.5"><AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                  <span>Bu kişiler telefon/WhatsApp ile rezervasyon yaptı ve <b>varsayılan olarak seçili değil</b>. Aşağıdan arayıp tek tek ya da filtreyle seç. Almanya'da (UWG §7) reklam e-postası için adres verilirken itiraz hakkı bildirilmiş olmalı — bilinçli ekle.</span></p>
+                <p className="mt-1.5 text-xs text-gray-500">Eski sitenden online rezervasyon yapan müşteriler. Seçili gelmezler — aşağıdan arayıp tek tek ya da filtreyle seç.</p>
               )}
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -348,7 +347,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
               <button onClick={() => setOn(visible, false)} className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap">Kaldır</button>
             </div>
             <div className="mt-2 flex items-center gap-1.5 flex-wrap text-xs">
-              {withContacts && ([['all', 'Tümü', () => true], ['web', 'Web müşterileri', (r: Row) => !r.contact], ['contact', 'Takvim / CSV', (r: Row) => r.contact]] as const).map(([k, l, f]) => (
+              {withContacts && ([['all', 'Tümü', () => true], ['web', 'Web müşterileri', (r: Row) => !r.contact], ['contact', 'Eski site', (r: Row) => r.contact]] as const).map(([k, l, f]) => (
                 <button key={k} onClick={() => { setSrcFilter(k); setShowMax(300); }}
                   className={cn('font-semibold px-2.5 py-1 rounded-full border', srcFilter === k ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-200 text-gray-600 hover:bg-gray-50')}>
                   {l} <span className={srcFilter === k ? 'text-white/60' : 'text-gray-400'}>{countBy(f)}</span>
@@ -369,7 +368,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
                   <span className="flex-1 min-w-0 truncate"><span className="font-medium text-gray-900">{r.name || '—'}</span> <span className="text-gray-500">{r.email}</span></span>
                   <span className="shrink-0 flex items-center gap-1 text-[11px]">
                     {r.optedOut && <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 font-semibold">çıktı</span>}
-                    {r.contact && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">takvim</span>}
+                    {r.contact && <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">eski site</span>}
                     {r.firm && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700" title={r.isBusiness ? 'Firma hesabı / Rechnung' : 'Şirket e-posta alan adı'}>{r.isBusiness ? 'Firma' : emailDomain(r.email)}</span>}
                     {r.bookingCount >= 2 && <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700">{r.bookingCount}×</span>}
                     <span title={LANG_LABEL[r.lang]}>{LANG_FLAG[r.lang]}</span>
@@ -446,7 +445,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm space-y-2">
                 <p className="text-amber-900"><b>{selected.length.toLocaleString('de-DE')} kişiye</b> gönderilsin mi?</p>
                 <ul className="text-xs text-amber-900/80 space-y-0.5">
-                  <li>Segment: {SEGMENT_LABEL[segment]}{picked.size ? ` + ${picked.size} seçili takvim/CSV kişisi` : ''}</li>
+                  <li>Segment: {SEGMENT_LABEL[segment]}{picked.size ? ` + ${picked.size} eski site müşterisi` : ''}</li>
                   <li>Dil: {usedLangs.map(l => `${LANG_FLAG[l]} ${langCount[l]}`).join(' · ')}</li>
                   <li>{mode === 'discount' ? `Her alıcıya −%${percent} kişisel link, ${validDays} gün geçerli${maxAmount ? `, en fazla ${maxAmount} €` : ''}` : 'Sadece tebrik (kupon yok)'}</li>
                   <li>Konu (DE): {texts.de.subject || texts[usedLangs[0] || 'de'].subject}</li>
