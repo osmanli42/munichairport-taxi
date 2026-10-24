@@ -7,7 +7,7 @@ export interface Contact { email: string; name?: string; source: 'ics' }
 export const LANG_LABEL: Record<MkLang, string> = { de: 'Deutsch', en: 'English', tr: 'Türkçe' };
 export const LANG_FLAG: Record<MkLang, string> = { de: '🇩🇪', en: '🇬🇧', tr: '🇹🇷' };
 
-export type SegmentKey = MkSegment | 'recent' | 'lapsed';
+export type SegmentKey = MkSegment | 'recent' | 'lapsed' | 'none';
 export const SEGMENTS: Array<{ key: SegmentKey; label: string; hint: string }> = [
   { key: 'all', label: 'Tüm web müşterileri', hint: 'Siteden rezervasyon yapmış herkes' },
   { key: 'privat', label: 'Özel müşteriler', hint: 'Firma/Rechnung olmayanlar' },
@@ -16,6 +16,8 @@ export const SEGMENTS: Array<{ key: SegmentKey; label: string; hint: string }> =
   { key: 'business_stamm', label: 'Firma + Stammkunde', hint: 'Kurumsal tebrikler için' },
   { key: 'recent', label: 'Son 12 ayda gelen', hint: 'Son yolculuğu 12 aydan yeni' },
   { key: 'lapsed', label: '12+ aydır gelmeyen', hint: 'Geri kazanım' },
+  // Kein Web-Kunde automatisch — nur, wer unten einzeln angehakt ist (z. B. nur ausgewählte „Eski site“-Kontakte)
+  { key: 'none', label: 'Sadece tek tek seçtiklerim', hint: 'Web müşterileri otomatik eklenmez — sadece aşağıda işaretlediklerin' },
 ];
 export const SEGMENT_LABEL = Object.fromEntries(SEGMENTS.map(s => [s.key, s.label])) as Record<SegmentKey, string>;
 
@@ -27,6 +29,7 @@ export function inSegment(c: MkCustomer, seg: SegmentKey, yearAgo: string): bool
     case 'business_stamm': return c.isBusiness || c.bookingCount >= 2;
     case 'recent': return !!c.lastBooking && c.lastBooking >= yearAgo;
     case 'lapsed': return !c.lastBooking || c.lastBooking < yearAgo;
+    case 'none': return false;
     default: return true;
   }
 }

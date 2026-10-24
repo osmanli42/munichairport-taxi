@@ -333,7 +333,7 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
               {SEGMENTS.map(s => (
                 <button key={s.key} title={s.hint} onClick={() => { setSegment(s.key); setExcluded(new Set()); }}
                   className={cn('text-xs font-semibold px-3 py-1.5 rounded-full border', segment === s.key ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50')}>
-                  {s.label} <span className={segment === s.key ? 'text-white/70' : 'text-gray-400'}>{segCount(s.key)}</span>
+                  {s.label}{s.key !== 'none' && <span className={segment === s.key ? 'text-white/70' : 'text-gray-400'}> {segCount(s.key)}</span>}
                 </button>
               ))}
             </div>

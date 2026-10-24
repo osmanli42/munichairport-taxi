@@ -161,7 +161,7 @@ function SettingsModal({ o, onClose, onSaved }: { o: MkOccasion; onClose: () => 
           <div>
             <label className={label}>Hedef</label>
             <select className={input} value={f.segment} onChange={e => setF({ ...f, segment: e.target.value as MkSegment })}>
-              {SEGMENTS.filter(s => s.key !== 'recent' && s.key !== 'lapsed').map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {SEGMENTS.filter(s => s.key !== 'recent' && s.key !== 'lapsed' && s.key !== 'none').map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
           </div>
         </div>
@@ -222,7 +222,7 @@ function CustomModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           <div><label className={label}>Kaç gün önce</label><input type="number" min={0} max={60} className={input} value={f.leadDays} onChange={e => setF({ ...f, leadDays: Number(e.target.value) })} /></div>
           <div><label className={label}>Hedef</label>
             <select className={input} value={f.segment} onChange={e => setF({ ...f, segment: e.target.value as MkSegment })}>
-              {SEGMENTS.filter(s => s.key !== 'recent' && s.key !== 'lapsed').map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {SEGMENTS.filter(s => s.key !== 'recent' && s.key !== 'lapsed' && s.key !== 'none').map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
           </div>
           <div><label className={label}>İçerik</label>
