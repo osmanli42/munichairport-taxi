@@ -331,12 +331,18 @@ export default function MarketingTab({ onRemindersChange }: { onRemindersChange?
             {step(1, 'Alıcılar', Users, <span className="text-sm font-bold text-primary-700">{selected.length.toLocaleString('de-DE')} kişi seçili</span>)}
             <div className="flex flex-wrap gap-1.5">
               {SEGMENTS.map(s => (
-                <button key={s.key} title={s.hint} onClick={() => { setSegment(s.key); setExcluded(new Set()); }}
+                <button key={s.key} title={segment === s.key ? 'Tekrar tıkla: kaldır' : s.hint} onClick={() => { setSegment(segment === s.key ? 'none' : s.key); setExcluded(new Set()); }}
                   className={cn('text-xs font-semibold px-3 py-1.5 rounded-full border', segment === s.key ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 text-gray-700 hover:bg-gray-50')}>
-                  {s.label}{s.key !== 'none' && <span className={segment === s.key ? 'text-white/70' : 'text-gray-400'}> {segCount(s.key)}</span>}
+                  {s.label} <span className={segment === s.key ? 'text-white/70' : 'text-gray-400'}>{segCount(s.key)}</span>
+                  {segment === s.key && <span className="ml-1 text-white/80">✕</span>}
                 </button>
               ))}
             </div>
+            <p className="mt-1.5 text-xs text-gray-500">
+              {segment === 'none'
+                ? 'Web müşterisi seçili değil — sadece aşağıda işaretlediklerin gönderilir.'
+                : 'Seçili gruba tekrar tıklarsan kaldırılır.'}
+            </p>
             <div className={cn('mt-3 rounded-xl border px-3 py-2.5', withContacts ? 'border-primary-200 bg-primary-50/40' : 'border-gray-200')}>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-800">

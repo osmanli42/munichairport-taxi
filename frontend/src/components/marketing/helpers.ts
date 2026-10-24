@@ -16,10 +16,10 @@ export const SEGMENTS: Array<{ key: SegmentKey; label: string; hint: string }> =
   { key: 'business_stamm', label: 'Firma + Stammkunde', hint: 'Kurumsal tebrikler için' },
   { key: 'recent', label: 'Son 12 ayda gelen', hint: 'Son yolculuğu 12 aydan yeni' },
   { key: 'lapsed', label: '12+ aydır gelmeyen', hint: 'Geri kazanım' },
-  // Kein Web-Kunde automatisch — nur, wer unten einzeln angehakt ist (z. B. nur ausgewählte „Eski site“-Kontakte)
-  { key: 'none', label: 'Sadece tek tek seçtiklerim', hint: 'Web müşterileri otomatik eklenmez — sadece aşağıda işaretlediklerin' },
 ];
-export const SEGMENT_LABEL = Object.fromEntries(SEGMENTS.map(s => [s.key, s.label])) as Record<SegmentKey, string>;
+// 'none' = kein Segment gewählt (aktives Segment erneut angeklickt): keine Web-Kunden automatisch,
+// nur wer unten einzeln angehakt ist (z. B. ausgewählte „Eski site“-Kontakte)
+export const SEGMENT_LABEL = { ...Object.fromEntries(SEGMENTS.map(s => [s.key, s.label])), none: 'Web müşterisi yok' } as Record<SegmentKey, string>;
 
 export function inSegment(c: MkCustomer, seg: SegmentKey, yearAgo: string): boolean {
   switch (seg) {
