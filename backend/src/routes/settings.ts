@@ -12,12 +12,32 @@ interface SettingRow {
   setting_value: string;
 }
 
+// Nur fürs Admin-Panel (E-Mail-Adressen) — nicht in der öffentlichen Liste
+const PRIVATE_KEYS = ['night_confirm_partner_email', 'night_cancel_partner_email'];
+
+// GET /api/settings/private - Admin-only settings
+router.get('/private', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const rows = await query<SettingRow>(
+      `SELECT setting_key, setting_value FROM settings WHERE setting_key IN (${PRIVATE_KEYS.map(() => '?').join(',')})`,
+      PRIVATE_KEYS
+    );
+    const settings: Record<string, string> = {};
+    for (const row of rows) settings[row.setting_key] = row.setting_value;
+    res.json(settings);
+  } catch (error) {
+    console.error('Private settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
 // GET /api/settings - Get all settings (public)
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const rows = await query<SettingRow>('SELECT setting_key, setting_value FROM settings');
     const settings: Record<string, string> = {};
     for (const row of rows) {
+      if (PRIVATE_KEYS.includes(row.setting_key)) continue;
       settings[row.setting_key] = row.setting_value;
     }
     res.json(settings);
@@ -36,7 +56,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style', 'night_confirm_partner_email', 'night_cancel_partner_email'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -99,6 +119,21 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
           res.status(400).json({ error: 'night_confirm_ride_until must be an integer between 0 and 24' });
           return;
         }
+      }
+
+      if (key === 'night_confirm_partner_email' || key === 'night_cancel_partner_email') {
+        // leer = keine Partner-Mail; mehrere Adressen mit Komma getrennt
+        const list = String(value).split(',').map(v => v.trim()).filter(Boolean);
+        if (list.some(v => !/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(v))) {
+          res.status(400).json({ error: `${key} must be a valid email address` });
+          return;
+        }
+        const stored = list.join(', ');
+        await run(
+          `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`,
+          [key, stored, stored]
+        );
+        continue;
       }
 
       if (key === 'night_cancel_start' || key === 'night_cancel_end') {

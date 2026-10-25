@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { randomUUID } from 'crypto';
-import { run } from '../db';
+import { run, query } from '../db';
 import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
 import { customerRecipient } from '../utils/recipient';
@@ -446,6 +446,28 @@ export async function sendAdminNightCancelRequestEmail(booking: BookingNotificat
     subject,
     html,
   });
+}
+
+// Partner-Adressen aus Admin → Preise (Nacht-Bestätigung / Nacht-Stornierung); leer = keine Mail
+async function nightPartnerRecipients(key: 'night_confirm_partner_email' | 'night_cancel_partner_email'): Promise<string[]> {
+  const [row] = await query<{ setting_value: string }>('SELECT setting_value FROM settings WHERE setting_key = ?', [key]);
+  return String(row?.setting_value ?? '').split(',').map(v => v.trim()).filter(Boolean);
+}
+
+// Nacht-Bestätigung: Nachtbuchung (Kunde soll zusätzlich anrufen) — Kopie der Admin-Mail an den Partner
+export async function sendNightConfirmPartnerEmail(booking: BookingNotificationData): Promise<void> {
+  const to = await nightPartnerRecipients('night_confirm_partner_email');
+  if (!to.length) return;
+  const { subject, html } = adminNotificationEmail(booking);
+  await sendViaResend({ from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>', to, subject, html });
+}
+
+// Nacht-Stornierung: Kunde möchte stornieren, ruft an — gleiche Warn-Mail an den Partner
+export async function sendNightCancelPartnerEmail(booking: BookingNotificationData): Promise<void> {
+  const to = await nightPartnerRecipients('night_cancel_partner_email');
+  if (!to.length) return;
+  const { subject, html } = adminCancellationEmail(booking, 'night_request');
+  await sendViaResend({ from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>', to, subject, html });
 }
 
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {

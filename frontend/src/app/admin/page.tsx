@@ -487,6 +487,7 @@ export default function AdminPage() {
       if (activeTab === 'prices') {
         loadPrices();
         settingsApi.getAll().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
+        settingsApi.getPrivate().then(s => setSettings(prev => ({ ...prev, ...s }))).catch(() => {});
         plzSurchargesApi.getAll().then(setPlzSurcharges).catch(() => {});
         fixedRoutesApi.getAll().then(setFixedRoutes).catch(() => {});
         adminApi.getReminderSettings().then(d => {
@@ -1389,7 +1390,7 @@ export default function AdminPage() {
                   tone="amber"
                   title="Nacht-Bestätigung"
                   description="Hinweis bei Buchungen in der Nacht und früher Abfahrt am Morgen anzeigen."
-                  info={<>Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</>}
+                  info={<>Der Hinweis erscheint, wenn die Buchung in diesem Zeitfenster (Münchner Zeit) eingeht und die Fahrt vor der angegebenen Uhrzeit am Morgen startet (z. B. Buchung 06:04 für 08:00: ja · Buchung 23:30 für 10:00: nein). Dann wird der Kunde gebeten, sicherheitshalber zusätzlich telefonisch zu bestätigen (Bestätigungsseite + E-Mail). Die Buchungs-Mail geht dann zusätzlich an die Partner-E-Mail (mehrere mit Komma trennen, leer = aus). Standard: Buchung 22–07 Uhr, Fahrt vor 09:00 Uhr.</>}
                   on={settingOn('night_confirm_enabled')}
                   control={sw('night_confirm_enabled', 'Nacht-Bestätigung')}
                   indent={false}
@@ -1399,6 +1400,11 @@ export default function AdminPage() {
                       <HourSelect label="Von" value={settings.night_confirm_start || '22'} onChange={(v) => editSetting('night_confirm_start', v)} />
                       <HourSelect label="bis" value={settings.night_confirm_end || '7'} onChange={(v) => editSetting('night_confirm_end', v)} />
                       <HourSelect label="Fahrt vor" value={settings.night_confirm_ride_until || '9'} onChange={(v) => editSetting('night_confirm_ride_until', v)} />
+                      <div className="w-full">
+                        <Field label="E-Mail auch an Partner" type="email" widthClass="w-full" placeholder="leer = keine Partner-Mail"
+                          value={settings.night_confirm_partner_email ?? ''}
+                          onChange={(e) => editSetting('night_confirm_partner_email', e.target.value)} />
+                      </div>
                     </div>
                   )}
                 </SettingCard>
@@ -1408,7 +1414,7 @@ export default function AdminPage() {
                   badge={<span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 ring-2 ring-white"><Ban className="h-2.5 w-2.5 text-white" aria-hidden /></span>}
                   title="Nacht-Stornierung"
                   description="Online-Storno im gewählten Zeitraum sperren – Kunde muss anrufen (Münchner Zeit)."
-                  info={<>Storniert ein Kunde zwischen „Von“ und „Bis“ über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online.</>}
+                  info={<>Storniert ein Kunde zwischen „Von“ und „Bis“ über „Buchung verwalten“ eine Fahrt, die vor der „Bis“-Uhrzeit beginnt, ist das Online-Storno gesperrt: der Kunde muss anrufen (kein WhatsApp – nachts evtl. ungelesen), und du bekommst sofort eine Warn-E-Mail („Kunde möchte stornieren – ruft an“) – ebenso die Partner-E-Mail (mehrere mit Komma trennen, leer = aus). Die Fahrt bleibt aktiv, bis du sie stornierst. Beispiel 20:30–08:30: Storno um 21:00 für morgen 05:00 → nur telefonisch; für morgen 10:00 oder in zwei Tagen → online.</>}
                   on={settingOn('night_cancel_enabled', true)}
                   control={sw('night_cancel_enabled', 'Nacht-Stornierung', true)}
                   indent={false}
@@ -1421,6 +1427,11 @@ export default function AdminPage() {
                       <Field inline label="bis" type="time" widthClass="w-[7.5rem]"
                         value={toClock(settings.night_cancel_end, '08:30')}
                         onChange={(e) => editSetting('night_cancel_end', e.target.value)} />
+                      <div className="w-full">
+                        <Field label="E-Mail auch an Partner" type="email" widthClass="w-full" placeholder="leer = keine Partner-Mail"
+                          value={settings.night_cancel_partner_email ?? ''}
+                          onChange={(e) => editSetting('night_cancel_partner_email', e.target.value)} />
+                      </div>
                     </div>
                   )}
                 </SettingCard>

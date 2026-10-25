@@ -187,6 +187,12 @@ export const settingsApi = {
     const response = await api.get('/settings');
     return response.data;
   },
+  // Admin-only (Partner-E-Mail-Adressen) — nicht in der öffentlichen Liste
+  getPrivate: async (): Promise<Record<string, string>> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    const response = await api.get('/settings/private', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    return response.data;
+  },
 };
 
 export interface PlzSurcharge {

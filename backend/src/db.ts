@@ -205,6 +205,9 @@ export async function initializeDatabase(): Promise<void> {
       ['night_cancel_enabled', '1'],
       ['night_cancel_start', '20:30'],
       ['night_cancel_end', '08:30'],
+      // Nacht-Bestätigung / Nacht-Stornierung: Kopie der Nacht-Mails an den Partner (leer = aus)
+      ['night_confirm_partner_email', 'mali@freising.taxi'],
+      ['night_cancel_partner_email', 'mali@freising.taxi'],
       ['portal_tracking_enabled', '1'],
       ['b2b_applications_enabled', '1'],
       // A/B rollout percentage for the /buchen checkout redesign — 'off' until Adım 3 ships.
