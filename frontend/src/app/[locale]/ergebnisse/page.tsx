@@ -693,9 +693,13 @@ function ResultsContent() {
           </div>
         )}
 
+        {/* Mobilde sıra: önce araçlar+fiyat, sonra Rückfahrt/Zwischenstopp.
+            Müşteri fiyatı görmeden ek seçeneklerle karşılaşmasın (fiyat 1,64 ekran aşağıdaydı).
+            Masaüstünde `md:order-none` ile kaynak sırası korunur — orada fiyat zaten sağda görünür. */}
+        <div className="flex flex-col">
         {/* Rückfahrt + Zwischenstopp — always same row (active banners + add buttons) */}
         {!showReturnPicker && !showZwischenstoppPicker && (
-          <div className={cn('mt-8 grid grid-cols-1 gap-4', zwischenstoppEnabled && 'sm:grid-cols-2')}>
+          <div className={cn('order-2 md:order-none mt-8 grid grid-cols-1 gap-4', zwischenstoppEnabled && 'sm:grid-cols-2')}>
             {/* Rückfahrt: active banner OR add button */}
             {isRoundtrip ? (
               <div className="flex items-center justify-between bg-white border border-gray-300 rounded-xl px-5 min-h-[56px]">
@@ -754,7 +758,7 @@ function ResultsContent() {
         )}
 
         {/* Vehicle cards */}
-        <div className="mt-6 space-y-5">
+        <div className="order-1 md:order-none mt-6 space-y-5">
           {VEHICLES.map(vehicle => {
             const priceData = apiPrices[vehicle.type];
             if (!priceData) return null;
@@ -842,10 +846,16 @@ function ResultsContent() {
                     <img src={vehicle.image} alt={getVehicleName(vehicle)} loading="lazy" width={800} height={344} className="w-full h-full object-cover object-[35%_center]" />
                   </div>
 
-                  {/* Details */}
-                  <div className="min-w-0">
+                  {/* Details — mobilde ikiye ayrılır: ad+açıklama fiyatın ÜSTÜNDE (order-2),
+                      kapasite ve etiketler fiyatın ALTINDA (order-4). Müşteri önce neyin fiyatı
+                      olduğunu görür, hemen altında fiyatı. Masaüstünde `md:block` sarmalayıcı
+                      tek ızgara hücresi olur, üç sütunlu düzen aynen korunur. */}
+                  <div className="contents md:block min-w-0">
+                  <div className="order-2 md:order-none min-w-0">
                     <h2 className="text-2xl font-extrabold text-primary-800 tracking-tight">{getVehicleName(vehicle)}</h2>
                     <p className="text-gray-500 text-[15px] mt-0.5">{getVehicleDesc(vehicle)}</p>
+                  </div>
+                  <div className="order-4 md:order-none min-w-0">
 
                     {/* Capacity row */}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -876,9 +886,12 @@ function ResultsContent() {
                       )}
                     </div>
                   </div>
+                  </div>
 
-                  {/* Price + CTA */}
-                  <div className="flex flex-col items-stretch md:items-end border-t border-gray-100 pt-4 md:border-0 md:pt-0">
+                  {/* Price + CTA — mobilde fiyat 1,64 ekran aşağıdaydı; müşterinin ilk sorusu
+                      "kaç para" olduğu için görselin hemen altına alındı (order-2).
+                      Masaüstünde 3 sütunlu ızgara aynen korunur, orada fiyat zaten sağda. */}
+                  <div className="flex flex-col items-stretch md:items-end order-3 md:order-none border-t border-gray-100 pt-4 md:border-0 md:pt-0">
                     {/* Bewertung direkt am Preis: Vertrauen genau dort, wo entschieden wird */}
                     <div className="flex items-center gap-1 md:justify-end mb-1">
                       <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md whitespace-nowrap">
@@ -966,6 +979,7 @@ function ResultsContent() {
               </div>
             );
           })}
+        </div>
         </div>
 
         {/* Telefon-Segment abfangen: wer den Preis sieht und lieber sprechen will,
