@@ -4,6 +4,10 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Blue/Green-Deploy: Der Build landet im Ordner aus NEXT_DIST_DIR (.next-blue / .next-green),
+  // damit nie in den Ordner gebaut wird, aus dem der laufende Server gerade ausliefert.
+  // Ohne die Variable bleibt alles wie bisher (.next) — lokal also unverändert.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // Kein „X-Powered-By: Next.js“ — verrät die Server-Technik (Security-Check)
   poweredByHeader: false,
   images: {

@@ -5,6 +5,9 @@ backend/node_modules/
 
 # Build outputs
 frontend/.next/
+frontend/.next-*/
+backend/dist-new/
+backend/dist-old/
 backend/dist/
 
 # Database (local only)
