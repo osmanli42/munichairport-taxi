@@ -129,7 +129,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
     eyebrow: 'Your booking', titleA: 'Choose your', titleB: 'vehicle',
     subtitle: 'All prices are fixed rates incl. tolls & luggage – no hidden costs.',
     pickup: 'Pickup', dropoff: 'Destination', person: 'Passenger', persons: 'Passengers', change: 'Change search', closeEdit: 'Close', editTitle: 'Edit search',
-    upTo: 'Up to', approx: 'approx.', journey: 'Journey time',
+    upTo: 'Up to', approx: 'approx.', journey: 'Journey',
     tags: { ac: 'Air conditioning', fixed: 'Fixed price', storno: 'Free cancellation up to 3 hrs', childseat: 'Free child seat', space: 'Lots of space', capacity: 'Max. capacity' },
     trustTop: [
       { title: 'Fixed price guarantee', text: 'No hidden costs' },
@@ -151,7 +151,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
     eyebrow: 'Rezervasyonunuz', titleA: 'Araç', titleB: 'seçin',
     subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır – gizli maliyet yok.',
     pickup: 'Alış', dropoff: 'Varış', person: 'Kişi', persons: 'Kişi', change: 'Aramayı değiştir', closeEdit: 'Kapat', editTitle: 'Aramayı düzenle',
-    upTo: 'En fazla', approx: 'yakl.', journey: 'Yolculuk süresi',
+    upTo: 'En fazla', approx: 'yakl.', journey: 'Yolculuk',
     tags: { ac: 'Klima', fixed: 'Sabit fiyat', storno: '3 saate kadar ücretsiz iptal', childseat: 'Ücretsiz çocuk koltuğu', space: 'Geniş alan', capacity: 'Maks. kapasite' },
     trustTop: [
       { title: 'Sabit fiyat garantisi', text: 'Gizli maliyet yok' },
@@ -478,8 +478,8 @@ function ResultsContent() {
     : '';
 
   const texts: Record<string, Record<string, string>> = {
-    de: { title: 'Fahrzeug wählen', subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck', book: 'Dieses Fahrzeug buchen', notSuitable: 'Nicht geeignet für', passengers_label: 'Person', duration_label: 'Min. Fahrtzeit', back: '← Suche ändern', total: 'Gesamtpreis', oneway_price: 'Einfache Fahrt', roundtrip_price: 'Hin- & Rückfahrt', discount: 'Rabatt', fixed: 'Festpreis garantiert', badge_popular: 'BELIEBT', persons: 'Passagiere', luggage: 'Gepäckstücke' },
-    en: { title: 'Choose your vehicle', subtitle: 'All prices are fixed rates incl. tolls & luggage', book: 'Book this vehicle', notSuitable: 'Not suitable for', passengers_label: 'Person', duration_label: 'min. journey', back: '← Change search', total: 'Total price', oneway_price: 'One way', roundtrip_price: 'Round trip', discount: 'Discount', fixed: 'Fixed price guaranteed', badge_popular: 'POPULAR', persons: 'Passengers', luggage: 'Pieces of luggage' },
+    de: { title: 'Fahrzeug wählen', subtitle: 'Alle Preise sind Festpreise inkl. Maut & Gepäck', book: 'Dieses Fahrzeug buchen', notSuitable: 'Nicht geeignet für', passengers_label: 'Person', duration_label: 'Min. Fahrtzeit', back: '← Suche ändern', total: 'Gesamtpreis', oneway_price: 'Einfache Fahrt', roundtrip_price: 'Hin- & Rückfahrt', discount: 'Rabatt', fixed: 'Festpreis garantiert', badge_popular: 'BELIEBT', persons: 'Passagiere', luggage: 'Gepäck' },
+    en: { title: 'Choose your vehicle', subtitle: 'All prices are fixed rates incl. tolls & luggage', book: 'Book this vehicle', notSuitable: 'Not suitable for', passengers_label: 'Person', duration_label: 'min. journey', back: '← Change search', total: 'Total price', oneway_price: 'One way', roundtrip_price: 'Round trip', discount: 'Discount', fixed: 'Fixed price guaranteed', badge_popular: 'POPULAR', persons: 'Passengers', luggage: 'Luggage' },
     tr: { title: 'Araç seçin', subtitle: 'Tüm fiyatlar otoyol ve bagaj dahil sabit fiyatlardır', book: 'Bu aracı rezerve et', notSuitable: 'Uygun değil:', passengers_label: 'Kişi', duration_label: 'dk. yolculuk', back: '← Aramayı değiştir', total: 'Toplam fiyat', oneway_price: 'Tek yön', roundtrip_price: 'Gidiş-Dönüş', discount: 'İndirim', fixed: 'Sabit fiyat garantili', badge_popular: 'POPÜLER', persons: 'Yolcu', luggage: 'Bagaj' },
   };
   const t = texts[locale] || texts.de;
@@ -858,17 +858,20 @@ function ResultsContent() {
                   <div className="order-4 md:order-none min-w-0">
 
                     {/* Capacity row */}
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    {/* Mobilde 3 eşit sütun: kutular tek satıra sığsın, uzun etiket
+                        kendi içinde sarsın (Almancada yumuşak tire ile "Gepäck-/stücke").
+                        Masaüstünde eski flex-wrap davranışı korunur. */}
+                    <div className="mt-4 grid grid-cols-3 gap-1.5 md:flex md:flex-wrap md:gap-2">
                       {[
                         { Icon: UserRound, a: `${dz.upTo} ${maxPax}`, b: t.persons },
                         { Icon: BriefcaseBusiness, a: String(maxLug), b: t.luggage },
                         { Icon: Clock, a: `${dz.approx} ${duration} Min.`, b: dz.journey },
                       ].map(({ Icon, a, b }) => (
-                        <div key={b} className="flex items-center gap-2 border border-gray-200 rounded-xl px-2.5 py-2">
-                          <Icon size={19} className="shrink-0 text-gray-900" />
-                          <div className="text-[12px] leading-tight text-gray-800 whitespace-nowrap">
-                            <div>{a}</div>
-                            <div className="text-gray-600">{b}</div>
+                        <div key={b} className="flex items-center gap-1.5 md:gap-2 border border-gray-200 rounded-xl px-2 py-2 md:px-2.5">
+                          <Icon className="shrink-0 text-gray-900 w-4 h-4 md:w-[19px] md:h-[19px]" />
+                          <div className="text-[11px] md:text-[12px] leading-tight text-gray-800 min-w-0">
+                            <div className="whitespace-nowrap">{a}</div>
+                            <div className="text-gray-600 whitespace-nowrap">{b}</div>
                           </div>
                         </div>
                       ))}
