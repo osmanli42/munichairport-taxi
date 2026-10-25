@@ -10,7 +10,7 @@ import {
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
   Settings, Settings2, Route, Milestone, Moon, Plane, Megaphone, Workflow, Landmark, Clock, Phone, Ban, CarFront,
-  ClipboardList, Bike, Save, Trash2, Bell,
+  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -189,6 +189,12 @@ export default function AdminPage() {
   const [plzSaving, setPlzSaving] = useState(false);
   // Preise-Tab: geänderte, noch nicht gespeicherte Einstellungs-Schlüssel (gesammelt gespeichert)
   const [settingsDirty, setSettingsDirty] = useState<string[]>([]);
+  // Partner-Vertretung: Restzeit-Anzeige minütlich aktualisieren
+  const [coverNow, setCoverNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setCoverNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
   const [editingPlz, setEditingPlz] = useState<{ id: number; stadt: string; surcharge: string } | null>(null);
   const [showPlzForm, setShowPlzForm] = useState(false);
   const [bankSettings, setBankSettings] = useState<Record<string, string>>({
@@ -1443,6 +1449,53 @@ export default function AdminPage() {
                   on={settingOn('flight_validation_enabled')}
                   control={sw('flight_validation_enabled', 'Flugnummer-Validierung')}
                 />
+                {(() => {
+                  // Partner-Vertretung: ab Start für X Stunden alle Buchungs-/Storno-Mails auch an den Partner
+                  const coverHours = Math.min(72, Math.max(1, parseInt(settings.partner_cover_hours || '5', 10) || 5));
+                  const coverStart = Number(settings.partner_cover_start) || 0;
+                  const coverEnd = coverStart + coverHours * 3600000;
+                  const coverActive = coverStart > 0 && coverNow < coverEnd;
+                  const restMin = Math.max(0, Math.ceil((coverEnd - coverNow) / 60000));
+                  const endLabel = new Date(coverEnd).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
+                  const setHours = (h: number) => saveSettingsPatch({ partner_cover_hours: String(h) }, `Partner-Vertretung: ${h} Std.`);
+                  const stepBtn = 'flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50 disabled:opacity-40';
+                  return (
+                    <SettingCard
+                      icon={Handshake}
+                      tone="amber"
+                      title="Partner-Vertretung"
+                      description="Ich bin nicht erreichbar: für die nächsten Stunden gehen alle Buchungs- und Storno-Mails auch an den Partner."
+                      info={<>Unabhängig von Nacht-Bestätigung und Nacht-Stornierung. Einschalten startet den Zeitraum ab jetzt; mit − / + verlängerst oder verkürzt du ihn (zählt ab Start). Danach schaltet es sich automatisch aus. Betrifft: neue Buchungen, Online-Stornos und nachts gesperrte Storno-Anfragen. Jede Adresse bekommt eine Mail nur einmal, auch wenn Nacht-Bestätigung gleichzeitig greift. Mehrere Adressen mit Komma trennen.</>}
+                      on={coverActive}
+                      control={<Toggle on={coverActive} disabled={settingsSaving} label="Partner-Vertretung"
+                        onClick={() => saveSettingsPatch({ partner_cover_start: coverActive ? '' : 'now' }, coverActive ? 'Partner-Vertretung beendet' : `Partner-Vertretung für ${coverHours} Std. gestartet`)} />}
+                      indent={false}
+                    >
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-sm text-gray-600">Für</span>
+                          <button type="button" className={stepBtn} aria-label="Eine Stunde weniger" disabled={settingsSaving || coverHours <= 1} onClick={() => setHours(coverHours - 1)}>
+                            <Minus className="h-4 w-4" aria-hidden />
+                          </button>
+                          <span className="min-w-[4.5rem] text-center text-sm font-semibold tabular-nums text-gray-900">{coverHours} Std.</span>
+                          <button type="button" className={stepBtn} aria-label="Eine Stunde mehr" disabled={settingsSaving || coverHours >= 72} onClick={() => setHours(coverHours + 1)}>
+                            <Plus className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                        <p className={cn('text-sm', coverActive ? 'font-medium text-emerald-700' : 'text-gray-500')}>
+                          {coverActive
+                            ? `Aktiv bis ${endLabel} Uhr deutscher Zeit (noch ${Math.floor(restMin / 60)} Std. ${restMin % 60} Min.)`
+                            : 'Aus'}
+                        </p>
+                        <div className="w-full">
+                          <Field label="E-Mail an Partner" type="email" widthClass="w-full" placeholder="leer = keine Partner-Mail"
+                            value={settings.partner_cover_email ?? ''}
+                            onChange={(e) => editSetting('partner_cover_email', e.target.value)} />
+                        </div>
+                      </div>
+                    </SettingCard>
+                  );
+                })()}
 
                 <SettingCard
                   icon={Phone}

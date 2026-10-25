@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { query, run } from '../db';
-import { sendAllNotifications, sendNightConfirmPartnerEmail, BookingNotificationData } from '../services/notifications';
+import { sendAllNotifications, sendPartnerBookingCopy, BookingNotificationData } from '../services/notifications';
 import { tripInZone, haversineKm, PgConfig, Coords } from '../utils/geo';
 import { geocodeAddress } from './maps';
 import { geocodeCached } from '../services/leerfahrt';
@@ -790,9 +790,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // hier verloren geht — z. B. Neustart oder Resend kurz nicht erreichbar)
     await run('UPDATE bookings SET mail_attempts = 0 WHERE id = ?', [result.insertId]).catch(() => {});
     sendAllNotifications(notificationData, result.insertId).catch(err => console.error('Notification error:', err));
-    if (nightConfirm) {
-      sendNightConfirmPartnerEmail(notificationData).catch(err => console.error('Night confirm partner email error:', err));
-    }
+    sendPartnerBookingCopy(notificationData).catch(err => console.error('Partner booking email error:', err));
 
     // No-op unless TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN are set. Deliberately not
     // awaited: the customer's confirmation must not wait on an external lookup.
@@ -1244,7 +1242,7 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const { sendCancellationEmail, sendAdminCancellationEmail, sendAdminNightCancelRequestEmail, sendNightCancelPartnerEmail } = await import('../services/notifications');
+    const { sendCancellationEmail, sendAdminCancellationEmail, sendAdminNightCancelRequestEmail, sendPartnerCancelCopy } = await import('../services/notifications');
     const notificationData = {
       booking_number: booking.booking_number,
       name: booking.name,
@@ -1270,7 +1268,7 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       if (Date.now() - last > 30 * 60_000) {
         nightCancelWarned.set(booking.id, Date.now());
         sendAdminNightCancelRequestEmail(notificationData).catch(err => console.error('Night cancel request email error:', err));
-        sendNightCancelPartnerEmail(notificationData).catch(err => console.error('Night cancel partner email error:', err));
+        sendPartnerCancelCopy(notificationData, 'night_request').catch(err => console.error('Partner night cancel email error:', err));
       }
       res.status(409).json({ error: 'night_phone_required', phone: '+4915141620000' });
       return;
@@ -1281,6 +1279,7 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       sendCancellationEmail(notificationData).catch(err => console.error('Self-service cancellation email error:', err));
     }
     sendAdminCancellationEmail(notificationData).catch(err => console.error('Admin cancellation email error:', err));
+    sendPartnerCancelCopy(notificationData).catch(err => console.error('Partner cancellation email error:', err));
 
     res.json({ success: true });
   } catch (error) {

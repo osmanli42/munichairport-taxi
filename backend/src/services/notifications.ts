@@ -448,25 +448,52 @@ export async function sendAdminNightCancelRequestEmail(booking: BookingNotificat
   });
 }
 
-// Partner-Adressen aus Admin → Preise (Nacht-Bestätigung / Nacht-Stornierung); leer = keine Mail
-async function nightPartnerRecipients(key: 'night_confirm_partner_email' | 'night_cancel_partner_email'): Promise<string[]> {
+// Partner-Adressen aus Admin → Preise; leer = keine Mail. Mehrere Adressen mit Komma.
+async function settingEmails(key: string): Promise<string[]> {
   const [row] = await query<{ setting_value: string }>('SELECT setting_value FROM settings WHERE setting_key = ?', [key]);
   return String(row?.setting_value ?? '').split(',').map(v => v.trim()).filter(Boolean);
 }
 
-// Nacht-Bestätigung: Nachtbuchung (Kunde soll zusätzlich anrufen) — Kopie der Admin-Mail an den Partner
-export async function sendNightConfirmPartnerEmail(booking: BookingNotificationData): Promise<void> {
-  const to = await nightPartnerRecipients('night_confirm_partner_email');
+// Partner-Vertretung: Admin nicht erreichbar → für die gewählten Stunden ab Start gehen alle
+// Buchungs-/Storno-Mails zusätzlich an den Partner (danach automatisch aus)
+async function partnerCoverRecipients(): Promise<string[]> {
+  const rows = await query<{ setting_key: string; setting_value: string }>(
+    "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('partner_cover_start', 'partner_cover_hours')"
+  );
+  const cfg: Record<string, string> = {};
+  for (const r of rows) cfg[r.setting_key] = r.setting_value;
+  const start = Number(cfg['partner_cover_start']);
+  const hours = Number(cfg['partner_cover_hours'] || 5);
+  if (!start || !(Date.now() < start + hours * 3600000)) return [];
+  return settingEmails('partner_cover_email');
+}
+
+function uniqueEmails(list: string[]): string[] {
+  const seen = new Set<string>();
+  return list.filter(e => { const k = e.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
+// Neue Buchung: Kopie der Admin-Mail an den Partner — bei Nachtbuchung (Nacht-Bestätigung)
+// und/oder solange die Partner-Vertretung läuft; jede Adresse nur einmal
+export async function sendPartnerBookingCopy(booking: BookingNotificationData): Promise<void> {
+  const to = uniqueEmails([
+    ...(booking.night_confirm ? await settingEmails('night_confirm_partner_email') : []),
+    ...await partnerCoverRecipients(),
+  ]);
   if (!to.length) return;
   const { subject, html } = adminNotificationEmail(booking);
   await sendViaResend({ from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>', to, subject, html });
 }
 
-// Nacht-Stornierung: Kunde möchte stornieren, ruft an — gleiche Warn-Mail an den Partner
-export async function sendNightCancelPartnerEmail(booking: BookingNotificationData): Promise<void> {
-  const to = await nightPartnerRecipients('night_cancel_partner_email');
+// Storno: nachts gesperrte Online-Storno-Anfrage (Nacht-Stornierung) bzw. normales Online-Storno
+// (nur Partner-Vertretung) — gleiche Mail wie an den Admin
+export async function sendPartnerCancelCopy(booking: BookingNotificationData, variant?: 'night_request'): Promise<void> {
+  const to = uniqueEmails([
+    ...(variant === 'night_request' ? await settingEmails('night_cancel_partner_email') : []),
+    ...await partnerCoverRecipients(),
+  ]);
   if (!to.length) return;
-  const { subject, html } = adminCancellationEmail(booking, 'night_request');
+  const { subject, html } = variant ? adminCancellationEmail(booking, variant) : adminCancellationEmail(booking);
   await sendViaResend({ from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>', to, subject, html });
 }
 

@@ -13,7 +13,7 @@ interface SettingRow {
 }
 
 // Nur fürs Admin-Panel (E-Mail-Adressen) — nicht in der öffentlichen Liste
-const PRIVATE_KEYS = ['night_confirm_partner_email', 'night_cancel_partner_email'];
+const PRIVATE_KEYS = ['night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start'];
 
 // GET /api/settings/private - Admin-only settings
 router.get('/private', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
@@ -56,7 +56,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style', 'night_confirm_partner_email', 'night_cancel_partner_email'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style', 'night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -121,7 +121,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
         }
       }
 
-      if (key === 'night_confirm_partner_email' || key === 'night_cancel_partner_email') {
+      if (key === 'night_confirm_partner_email' || key === 'night_cancel_partner_email' || key === 'partner_cover_email') {
         // leer = keine Partner-Mail; mehrere Adressen mit Komma getrennt
         const list = String(value).split(',').map(v => v.trim()).filter(Boolean);
         if (list.some(v => !/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(v))) {
@@ -129,6 +129,28 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
           return;
         }
         const stored = list.join(', ');
+        await run(
+          `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`,
+          [key, stored, stored]
+        );
+        continue;
+      }
+
+      if (key === 'partner_cover_hours') {
+        const num = parseInt(String(value), 10);
+        if (isNaN(num) || num < 1 || num > 72 || String(num) !== String(value).trim()) {
+          res.status(400).json({ error: 'partner_cover_hours must be an integer between 1 and 72' });
+          return;
+        }
+      }
+
+      // Partner-Vertretung starten ('now' → Serverzeit) oder beenden ('')
+      if (key === 'partner_cover_start') {
+        if (!['now', ''].includes(String(value))) {
+          res.status(400).json({ error: "partner_cover_start must be 'now' or ''" });
+          return;
+        }
+        const stored = String(value) === 'now' ? String(Date.now()) : '';
         await run(
           `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`,
           [key, stored, stored]
