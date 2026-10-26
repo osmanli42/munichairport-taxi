@@ -1969,6 +1969,8 @@ export default function AdminPage() {
                   <Field type="text" widthClass="w-40" aria-label="Partner" {...sv('cost_partner_drivers', 'M.Ali')} />
                 </SettingCard>
               </div>
+              <DriverListEditor value={settings.cost_own_drivers ?? 'Zeki, Saban, Muhammet, Ilker, Selahattin, Tevfik'}
+                onChange={(v) => editSetting('cost_own_drivers', v)} />
               <FixedCostsEditor value={settings.cost_fixed_monthly || '[]'} onChange={(v) => editSetting('cost_fixed_monthly', v)} />
             </SectionCard>
 
@@ -4340,6 +4342,52 @@ function FixedCostsEditor({ value, onChange }: { value: string; onChange: (v: st
           <Plus className="h-3.5 w-3.5" /> Kosten hinzufügen
         </button>
       )}
+    </div>
+  );
+}
+
+// Eigene Fahrer für „Uns bleibt“: wer regelmäßig im Kalender als Fahrer steht und hier fehlt
+// (und nicht Partner ist), gilt als Fremdfirma — die Fahrt zählt dann weder als Umsatz noch mit Diesel.
+function DriverListEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [names, setNames] = useState<{ name: string; count: number; kind: 'partner' | 'own' | 'fremd' | 'rare' }[] | null>(null);
+  useEffect(() => {
+    let token = '';
+    try { token = localStorage.getItem('admin_token') || ''; } catch { /* ignore */ }
+    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    fetch(`${base}/admin/dashboard/driver-names`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { names: [] })).then((j) => setNames(j.names || [])).catch(() => setNames([]));
+  }, []);
+  const tone: Record<string, string> = {
+    partner: 'bg-emerald-50 text-emerald-800 ring-emerald-200', own: 'bg-blue-50 text-blue-800 ring-blue-200',
+    fremd: 'bg-amber-50 text-amber-800 ring-amber-200', rare: 'bg-gray-50 text-gray-500 ring-gray-200',
+  };
+  const label: Record<string, string> = { partner: 'Partner', own: 'eigener Fahrer', fremd: 'Fremdfirma', rare: 'selten – zählt als unsere Fahrt' };
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200/70 bg-gray-50/60 p-4">
+      <div className="text-sm font-semibold text-gray-900">Eigene Fahrer</div>
+      <div className="text-xs text-gray-500">
+        Mit Komma trennen. Steht ein anderer Name regelmäßig (≥ 6× in 6 Monaten) am Ende des Kalender-„Ort“, fuhr eine
+        Fremdfirma zur Unterstützung: diese Fahrt zählt in „Uns bleibt“ weder als Umsatz noch mit Diesel. Die Umsatz-Kacheln bleiben unverändert.
+      </div>
+      <input value={value} onChange={(e) => onChange(e.target.value)} aria-label="Eigene Fahrer"
+        className="mt-2 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100" />
+      <div className="mt-3 text-xs font-medium text-gray-600">Namen im Kalender (letzte 6 Monate) – so werden sie gezählt:</div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {names == null ? <span className="text-xs text-gray-400">Lädt…</span>
+          : names.length === 0 ? <span className="text-xs text-gray-400">Keine Namen gefunden.</span>
+          : names.map((n) => (
+            <span key={n.name} title={`${label[n.kind]} · ${n.count}× im Kalender`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${tone[n.kind]}`}>
+              {n.name} <span className="opacity-60">{n.count}×</span>
+            </span>
+          ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-500">
+        {(['partner', 'own', 'fremd', 'rare'] as const).map((k) => (
+          <span key={k} className="inline-flex items-center gap-1"><span className={`h-2.5 w-2.5 rounded-full ring-1 ${tone[k]}`} />{label[k]}</span>
+        ))}
+        <span>· Änderungen an der Liste wirken nach dem Speichern (Namensliste aktualisiert sich beim nächsten Öffnen).</span>
+      </div>
     </div>
   );
 }

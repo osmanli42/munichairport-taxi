@@ -18,7 +18,7 @@ import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_C
 import { backlinkReminder } from '../services/seo/backlinks';
 import { indexReminder } from '../services/seo/indexing';
 import { adsReminder } from '../services/ads/coach';
-import { CostSettings, loadCostSettings, rideCosts, rideDrivers, resolveKm, kmFor, summarize, fixedForDays } from '../services/netEarnings';
+import { CostSettings, loadCostSettings, rideCosts, rideDrivers, resolveKm, kmFor, summarize, fixedForDays, calendarDriverCounts, driverKind } from '../services/netEarnings';
 
 const router = Router();
 
@@ -524,12 +524,28 @@ router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): P
         net: summarize(calList),
       },
       total: { count: bookings.length + rides.length, revenue: webRevenue + calRevenue, net: withFixed(summarize([...webList, ...calList]), fixedForDays(costSettings, span)) },
-      cost_settings: { driver_pct: costSettings.driverPct, l_per_100km: costSettings.lPer100, eur_per_l: costSettings.eurPerL, partners: costSettings.partners, fixed_monthly: costSettings.fixedMonthly },
+      cost_settings: { driver_pct: costSettings.driverPct, l_per_100km: costSettings.lPer100, eur_per_l: costSettings.eurPerL, partners: costSettings.partners, own_drivers: costSettings.ownDrivers, fixed_monthly: costSettings.fixedMonthly },
       days, prev,
     });
   } catch (error) {
     console.error('[admin-dashboard/day]', error);
     res.status(500).json({ error: 'Failed to load day' });
+  }
+});
+
+// GET /api/admin/dashboard/driver-names — Namen am Ende des Kalender-„Ort“ (letzte 180 Tage) und wie
+// „Uns bleibt“ sie zählt: Partner / eigener Fahrer / Fremdfirma / selten (zählt als eigene Fahrt).
+router.get('/driver-names', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const s = await loadCostSettings();
+    const names = (await calendarDriverCounts()).slice(0, 40).map((d) => {
+      const kind = driverKind(d.name, s);
+      return { name: d.name, count: d.count, kind: kind === 'unknown' ? 'rare' : kind };
+    });
+    res.json({ names });
+  } catch (error) {
+    console.error('[admin-dashboard/driver-names]', error);
+    res.status(500).json({ error: 'failed' });
   }
 });
 

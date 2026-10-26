@@ -186,6 +186,7 @@ export async function initializeDatabase(): Promise<void> {
       ['cost_fuel_l_per_100km', '8.5'],
       ['cost_fuel_eur_per_l', '2.239'],
       ['cost_partner_drivers', 'M.Ali'],
+      ['cost_own_drivers', 'Zeki, Saban, Muhammet, Ilker, Selahattin, Tevfik'], // andere regelmäßige Namen = Fremdfirma
       ['cost_fixed_monthly', '[]'], // [{ name: 'Versicherung', amount: 450 }] — €/Monat, anteilig je Tag
       ['zwischenstopp_enabled', '0'],
       ['plz_surcharge_enabled', '0'],

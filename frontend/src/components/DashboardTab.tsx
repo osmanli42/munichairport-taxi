@@ -1246,7 +1246,7 @@ function HeadKpi({ label, Icon, tone, value, delta, sub, spark, sparkTitle, foot
 // ---------------------------------------------------------------------------------------
 // KPI card
 
-type NetSum = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number };
+type NetSum = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number; fremd_rides?: number; fremd_revenue?: number };
 
 // "Uns bleibt 12.345 € (+8 %)" unter der Monatskarte (centgenau, formatPrice rundet auf 0,50 € auf)
 const eurExact = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
@@ -1255,7 +1255,7 @@ function NetLine({ net }: { net: { mtd: NetSum; prevMtd: NetSum } }) {
   const pct = prevMtd.net ? Math.round(((mtd.net - prevMtd.net) / Math.abs(prevMtd.net)) * 100) : null;
   return (
     <span className="block mt-1 font-semibold text-emerald-700"
-      title={`${eurExact(mtd.revenue)} Umsatz − ${eurExact(mtd.driver)} Fahreranteil − ${eurExact(mtd.fuel)} Diesel (${mtd.km.toLocaleString('de-DE')} km), ohne MwSt${mtd.no_driver_rides ? ` · ${mtd.no_driver_rides} ohne Fahrer` : ''}${mtd.missing_km ? ` · ${mtd.missing_km} ohne km` : ''} · Vormonat gleiche Spanne ${eurExact(prevMtd.net)}`}>
+      title={`${eurExact(mtd.revenue)} Umsatz − ${eurExact(mtd.driver)} Fahreranteil − ${eurExact(mtd.fuel)} Diesel (${mtd.km.toLocaleString('de-DE')} km), ohne MwSt${mtd.no_driver_rides ? ` · ${mtd.no_driver_rides} ohne Fahrer` : ''}${mtd.missing_km ? ` · ${mtd.missing_km} ohne km` : ''}${mtd.fremd_rides ? ` · Fremdfirma ${mtd.fremd_rides} Fahrten (${eurExact(mtd.fremd_revenue || 0)}) nicht gezählt` : ''} · Vormonat gleiche Spanne ${eurExact(prevMtd.net)}`}>
       Uns bleibt {eurExact(mtd.net)}
       {pct != null && <span className={cn('ml-1 text-xs', pct >= 0 ? 'text-emerald-600' : 'text-red-600')}>({pct >= 0 ? '+' : ''}{pct} %)</span>}
       {!!mtd.fixed && mtd.after_fixed != null && (

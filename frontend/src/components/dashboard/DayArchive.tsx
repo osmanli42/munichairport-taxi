@@ -17,8 +17,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 // „Uns bleibt“ (backend services/netEarnings.ts): Preis − Fahreranteil − Diesel, ohne MwSt.
 // Kosten centgenau (formatPrice rundet auf 0,50 € auf — das ist für Kundenpreise)
 const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
-type Costs = { km: number | null; driver: number; fuel: number; net: number; partner: boolean; no_driver: boolean };
-type Net = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number };
+type Costs = { km: number | null; driver: number; fuel: number; net: number; partner: boolean; no_driver: boolean; fremd?: boolean; fremd_names?: string[] };
+type Net = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number; fremd_rides?: number; fremd_revenue?: number; fremd_names?: string[] };
 type WebItem = {
   id: number; booking_number: string; name: string; from: string | null; to: string | null; pickup: string;
   trip_type: string | null; price: number; payment_method: string | null; company: string | null; day?: string; costs?: Costs;
@@ -321,6 +321,7 @@ function NetStrip({ data }: { data: DayData }) {
     n.partner_rides ? `${cs?.partners?.[0] || 'Partner'}: ${n.partner_rides} Fahrt${n.partner_rides === 1 ? '' : 'en'} ohne Fahreranteil` : '',
     n.no_driver_rides ? `${n.no_driver_rides} ohne Fahrer (mit ${cs?.driver_pct ?? 40} % gerechnet)` : '',
     n.missing_km ? `${n.missing_km} ohne km (Diesel fehlt)` : '',
+    n.fremd_rides ? `Fremdfirma: ${n.fremd_rides} Fahrt${n.fremd_rides === 1 ? '' : 'en'} (${eur(n.fremd_revenue || 0)}) nicht gezählt${n.fremd_names?.length ? ` – ${n.fremd_names.join(', ')}` : ''}` : '',
   ].filter(Boolean);
   return (
     <div className="mt-3 rounded-xl bg-emerald-50 ring-1 ring-emerald-100 px-4 py-3">
@@ -356,6 +357,11 @@ function NetStrip({ data }: { data: DayData }) {
 // Je Fahrt: was uns bleibt (+ Partner-Rozet)
 function ItemNet({ c, partners }: { c?: Costs; partners?: string[] }) {
   if (!c) return null;
+  if (c.fremd) {
+    return <div className="mt-0.5 text-[11px] text-gray-500" title="Von einer Fremdfirma gefahren – zählt in „Uns bleibt“ nicht">
+      <span className="font-semibold px-1 py-0.5 rounded bg-gray-100">Fremdfirma{c.fremd_names?.length ? ` · ${c.fremd_names.join(', ')}` : ''}</span>
+    </div>;
+  }
   return (
     <div className="mt-0.5 text-[11px] text-emerald-700 tabular-nums" title={`Fahreranteil ${eur(c.driver)} · Diesel ${eur(c.fuel)}${c.km ? ` (${c.km} km)` : ' (km fehlt)'}`}>
       {c.partner && <span className="mr-1 font-semibold px-1 py-0.5 rounded bg-emerald-100">{partners?.[0] || 'Partner'}</span>}
