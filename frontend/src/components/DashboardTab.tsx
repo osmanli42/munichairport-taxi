@@ -93,6 +93,8 @@ interface DashboardData {
   calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
   /** Calendar-only rides this month up to now (by ride date); null when switched off in Statistik. */
   calendarMonth: CalSum | null;
+  // „Uns bleibt“ (Umsatz − Fahreranteil − Diesel) Monat bis jetzt / gleiche Spanne Vormonat
+  monthNet?: { mtd: NetSum; prevMtd: NetSum } | null;
   calendarPrevMonth: CalSum | null;
   /** All calendar-only rides up to now; null when switched off in Statistik. */
   calendarTotal: CalSum | null;
@@ -1244,6 +1246,27 @@ function HeadKpi({ label, Icon, tone, value, delta, sub, spark, sparkTitle, foot
 // ---------------------------------------------------------------------------------------
 // KPI card
 
+type NetSum = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number };
+
+// "Uns bleibt 12.345 € (+8 %)" unter der Monatskarte (centgenau, formatPrice rundet auf 0,50 € auf)
+const eurExact = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
+function NetLine({ net }: { net: { mtd: NetSum; prevMtd: NetSum } }) {
+  const { mtd, prevMtd } = net;
+  const pct = prevMtd.net ? Math.round(((mtd.net - prevMtd.net) / Math.abs(prevMtd.net)) * 100) : null;
+  return (
+    <span className="block mt-1 font-semibold text-emerald-700"
+      title={`${eurExact(mtd.revenue)} Umsatz − ${eurExact(mtd.driver)} Fahreranteil − ${eurExact(mtd.fuel)} Diesel (${mtd.km.toLocaleString('de-DE')} km), ohne MwSt${mtd.no_driver_rides ? ` · ${mtd.no_driver_rides} ohne Fahrer` : ''}${mtd.missing_km ? ` · ${mtd.missing_km} ohne km` : ''} · Vormonat gleiche Spanne ${eurExact(prevMtd.net)}`}>
+      Uns bleibt {eurExact(mtd.net)}
+      {pct != null && <span className={cn('ml-1 text-xs', pct >= 0 ? 'text-emerald-600' : 'text-red-600')}>({pct >= 0 ? '+' : ''}{pct} %)</span>}
+      {!!mtd.fixed && mtd.after_fixed != null && (
+        <span className="block text-xs font-medium text-emerald-800" title={`− ${eurExact(mtd.fixed)} Fixkosten anteilig für die bisherigen Tage`}>
+          nach Fixkosten {eurExact(mtd.after_fixed)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // "648 Buchungen + Kalender 12.345 € (310 Fahrten)"
 function CalSplit({ bookings, cal }: { bookings: Agg; cal: CalSum | null }) {
   if (!cal || cal.count === 0) return <>{plural(bookings.count, 'Buchung', 'Buchungen')}</>;
@@ -1540,7 +1563,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
           tone="emerald"
           value={formatPrice(it.mtd.revenue + (data.calendarMonth?.revenue ?? 0))}
           delta={<Delta cur={it.mtd.revenue} prev={it.prevMtd.revenue} title="Buchungen vs. Vormonat bis zum gleichen Tag" />}
-          sub={<CalSplit bookings={it.mtd} cal={data.calendarMonth} />}
+          sub={<><CalSplit bookings={it.mtd} cal={data.calendarMonth} />{data.monthNet && <NetLine net={data.monthNet} />}</>}
           spark={monthRev}
           sparkTitle={`Buchungseingang je Tag im ${monthName} (max. 14 Tage)`}
         />

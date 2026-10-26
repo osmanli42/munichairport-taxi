@@ -14,19 +14,25 @@ import { Card, berlinNowWall, addDays, dayLabel } from './shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+// „Uns bleibt“ (backend services/netEarnings.ts): Preis − Fahreranteil − Diesel, ohne MwSt.
+// Kosten centgenau (formatPrice rundet auf 0,50 € auf — das ist für Kundenpreise)
+const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
+type Costs = { km: number | null; driver: number; fuel: number; net: number; partner: boolean; no_driver: boolean };
+type Net = { revenue: number; driver: number; fuel: number; km: number; net: number; rides: number; partner_rides: number; no_driver_rides: number; missing_km: number; fixed?: number; after_fixed?: number };
 type WebItem = {
   id: number; booking_number: string; name: string; from: string | null; to: string | null; pickup: string;
-  trip_type: string | null; price: number; payment_method: string | null; company: string | null; day?: string;
+  trip_type: string | null; price: number; payment_method: string | null; company: string | null; day?: string; costs?: Costs;
 };
-type CalItem = { ride_time: string; entered: string; summary: string; from: string | null; to: string | null; price: number | null };
+type CalItem = { ride_time: string; entered: string; summary: string; from: string | null; to: string | null; price: number | null; costs?: Costs };
 type Agg = { count: number; revenue: number };
 type DayData = {
   date: string; from: string; to: string; mode: 'booked' | 'driven'; calendar_enabled: boolean;
-  web: { count: number; revenue: number; items: WebItem[] };
-  calendar: { count: number; revenue: number; unpriced: number; items: CalItem[] };
-  total: Agg;
-  days?: { date: string; web: Agg; calendar: Agg }[];
-  prev?: { from: string; to: string; total: Agg };
+  web: { count: number; revenue: number; items: WebItem[]; net?: Net };
+  calendar: { count: number; revenue: number; unpriced: number; items: CalItem[]; net?: Net };
+  total: Agg & { net?: Net };
+  days?: { date: string; web: Agg; calendar: Agg; net?: number }[];
+  prev?: { from: string; to: string; total: Agg & { net?: number } };
+  cost_settings?: { driver_pct: number; l_per_100km: number; eur_per_l: number; partners: string[]; fixed_monthly?: { name: string; amount: number }[] };
 };
 type Preset = 'day' | 7 | 14 | 30 | 'custom';
 
@@ -175,6 +181,7 @@ export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withCo
               <Tile label="Gesamt" count={data.total.count} revenue={data.total.revenue} strong
                 hint={data.prev ? <PrevChange cur={data.total.revenue} prev={data.prev.total.revenue} /> : undefined} />
             </div>
+            {data.total.net && <NetStrip data={data} />}
             {data.days && <PeriodStats data={data} onDay={(d) => { setPreset('day'); setDate(d); }} />}
             {!data.calendar_enabled && <p className="mt-2 text-xs text-amber-600">Kalender-Fahrten sind in den Statistiken ausgeschaltet und daher nicht enthalten.</p>}
 
@@ -196,6 +203,7 @@ export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withCo
                         <div className="text-right shrink-0">
                           <div className="font-semibold tabular-nums">{formatPrice(b.price)}</div>
                           <span className={cn('inline-block mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full', p[1])}>{p[0]}</span>
+                          <ItemNet c={b.costs} partners={data.cost_settings?.partners} />
                         </div>
                       </li>
                     );
@@ -207,8 +215,11 @@ export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withCo
                         <div className="text-xs text-gray-600 truncate">{short(c.from) || '?'} → {short(c.to) || '?'}</div>
                         <div className="text-[11px] text-gray-400">Fahrt {dmy(c.ride_time)} {c.ride_time.slice(11, 16)}{data.mode === 'booked' ? ` · eingetragen ${data.days ? `${dmy(c.entered)} ` : ''}${c.entered.slice(11, 16)}` : ''}</div>
                       </div>
-                      <div className="text-right shrink-0 font-semibold tabular-nums">
-                        {c.price == null ? <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">ohne Preis</span> : formatPrice(c.price)}
+                      <div className="text-right shrink-0">
+                        <div className="font-semibold tabular-nums">
+                          {c.price == null ? <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">ohne Preis</span> : formatPrice(c.price)}
+                        </div>
+                        {c.price != null && <ItemNet c={c.costs} partners={data.cost_settings?.partners} />}
                       </div>
                     </li>
                   ))}
@@ -259,7 +270,9 @@ function PeriodStats({ data, onDay }: { data: DayData; onDay: (d: string) => voi
   return (
     <div className="mt-3 space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {stat('Ø pro Tag', formatPrice(data.total.revenue / n), `${(data.total.count / n).toFixed(1).replace('.', ',')} Fahrten/Tag`)}
+        {stat('Ø pro Tag', formatPrice(data.total.revenue / n), data.total.net
+          ? `uns bleiben Ø ${eur(data.total.net.net / n)}`
+          : `${(data.total.count / n).toFixed(1).replace('.', ',')} Fahrten/Tag`)}
         {stat('Ø pro Fahrt', formatPrice(priced ? data.total.revenue / priced : 0), data.calendar.unpriced ? 'ohne Fahrten ohne Preis' : undefined)}
         {stat('Bester Tag', best && totalOf(best) > 0 ? formatPrice(totalOf(best)) : '—', best && totalOf(best) > 0 ? dayLabel(best.date, { weekday: 'short', day: '2-digit', month: '2-digit' }) : undefined)}
         {stat('Tage mit Fahrten', `${active} von ${days.length}`)}
@@ -272,7 +285,7 @@ function PeriodStats({ data, onDay }: { data: DayData; onDay: (d: string) => voi
             return (
               <button
                 key={d.date} onClick={() => onDay(d.date)}
-                title={`${dayLabel(d.date, { weekday: 'short', day: '2-digit', month: '2-digit' })}: ${formatPrice(t)} · ${d.web.count + d.calendar.count} Fahrten${d.calendar.count ? ` (Kalender ${formatPrice(d.calendar.revenue)})` : ''}`}
+                title={`${dayLabel(d.date, { weekday: 'short', day: '2-digit', month: '2-digit' })}: ${formatPrice(t)} · ${d.web.count + d.calendar.count} Fahrten${d.calendar.count ? ` (Kalender ${formatPrice(d.calendar.revenue)})` : ''}${d.net != null ? ` · uns bleiben ${eur(d.net)}` : ''}`}
                 className="group flex-1 min-w-0 h-full flex flex-col justify-end rounded-sm hover:bg-gray-50"
               >
                 <div className="w-full bg-teal-500/80 rounded-t-sm group-hover:bg-teal-500" style={{ height: h(d.calendar.revenue) }} />
@@ -294,6 +307,59 @@ function PeriodStats({ data, onDay }: { data: DayData; onDay: (d: string) => voi
           <span className="ml-auto">Balken antippen → Tag öffnen</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// „Uns bleibt“ unter den Kacheln: Umsatz − Fahreranteil − Diesel (ohne MwSt), mit Hinweisen auf Lücken
+function NetStrip({ data }: { data: DayData }) {
+  const n = data.total.net!;
+  const cs = data.cost_settings;
+  const prevNet = data.prev?.total.net;
+  const pct = prevNet ? Math.round(((n.net - prevNet) / Math.abs(prevNet)) * 100) : null;
+  const notes = [
+    n.partner_rides ? `${cs?.partners?.[0] || 'Partner'}: ${n.partner_rides} Fahrt${n.partner_rides === 1 ? '' : 'en'} ohne Fahreranteil` : '',
+    n.no_driver_rides ? `${n.no_driver_rides} ohne Fahrer (mit ${cs?.driver_pct ?? 40} % gerechnet)` : '',
+    n.missing_km ? `${n.missing_km} ohne km (Diesel fehlt)` : '',
+  ].filter(Boolean);
+  return (
+    <div className="mt-3 rounded-xl bg-emerald-50 ring-1 ring-emerald-100 px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div>
+          <div className="text-xs font-medium text-emerald-800">Uns bleibt</div>
+          <div className="text-xl font-bold tabular-nums text-emerald-900">
+            {eur(n.net)}
+            {pct != null && <span className={cn('ml-2 text-xs font-semibold', pct >= 0 ? 'text-emerald-700' : 'text-red-600')}>{pct >= 0 ? '+' : ''}{pct} % ggü. Vorzeitraum</span>}
+          </div>
+        </div>
+        <div className="text-xs text-emerald-900/80 tabular-nums">
+          − {eur(n.driver)} Fahreranteil − {eur(n.fuel)} Diesel ({n.km.toLocaleString('de-DE')} km)
+        </div>
+      </div>
+      {!!n.fixed && n.after_fixed != null && (
+        <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-4 border-t border-emerald-100 pt-1.5">
+          <div className="text-sm font-semibold tabular-nums text-emerald-900">Nach Fixkosten: {eur(n.after_fixed)}</div>
+          <div className="text-xs text-emerald-900/70 tabular-nums"
+            title={(cs?.fixed_monthly || []).map((f) => `${f.name}: ${eur(f.amount)}/Monat`).join(' · ')}>
+            − {eur(n.fixed)} Fixkosten anteilig ({(cs?.fixed_monthly || []).map((f) => f.name).filter(Boolean).join(', ') || 'monatlich'})
+          </div>
+        </div>
+      )}
+      <div className="mt-1 text-[11px] text-emerald-900/60">
+        {cs ? `${cs.driver_pct} % Fahrer · ${String(cs.l_per_100km).replace('.', ',')} L/100 km · ${String(cs.eur_per_l).replace('.', ',')} €/L · km × 2 (Leerfahrt) · ohne MwSt` : ''}
+        {notes.length ? ` · ${notes.join(' · ')}` : ''}
+      </div>
+    </div>
+  );
+}
+
+// Je Fahrt: was uns bleibt (+ Partner-Rozet)
+function ItemNet({ c, partners }: { c?: Costs; partners?: string[] }) {
+  if (!c) return null;
+  return (
+    <div className="mt-0.5 text-[11px] text-emerald-700 tabular-nums" title={`Fahreranteil ${eur(c.driver)} · Diesel ${eur(c.fuel)}${c.km ? ` (${c.km} km)` : ' (km fehlt)'}`}>
+      {c.partner && <span className="mr-1 font-semibold px-1 py-0.5 rounded bg-emerald-100">{partners?.[0] || 'Partner'}</span>}
+      → uns {eur(c.net)}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_C
 import { backlinkReminder } from '../services/seo/backlinks';
 import { indexReminder } from '../services/seo/indexing';
 import { adsReminder } from '../services/ads/coach';
+import { CostSettings, loadCostSettings, rideCosts, rideDrivers, resolveKm, kmFor, summarize, fixedForDays } from '../services/netEarnings';
 
 const router = Router();
 
@@ -311,6 +312,44 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const calPrevMonth = includeCalendar ? await calSum(`${prevMonth}-01T00:00`, `${prevMonth}-31T23:59`) : null;
     const calTotal = includeCalendar ? await calSum('0000-01-01T00:00', wall(now)) : null;
 
+    // „Uns bleibt“ für die Monatskarte — dieselben Fahrten wie oben (Buchungen nach Eingang,
+    // Kalender nach Fahrtdatum) und dieselbe Spanne im Vormonat. Fehler hier legen das Dashboard nicht lahm.
+    let monthNet: { mtd: ReturnType<typeof withFixed>; prevMtd: ReturnType<typeof withFixed> } | null = null;
+    try {
+      const s = await loadCostSettings();
+      const budget = { left: 25 };
+      const rows = await query<any>(`
+        SELECT b.price, b.trip_type, b.distance_km, b.pickup_address, b.dropoff_address, d.name AS driver_name,
+               cr.location AS cal_location, DATE_FORMAT(b.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_utc
+          FROM bookings b ${COST_JOINS}
+         WHERE b.status <> 'cancelled' AND b.created_at >= ?`, [berlinMidnightUtcSql(-(dom - 1) - 31)]);
+      const curB: any[] = [], prevB: any[] = [];
+      for (const r of rows) {
+        const berlin = berlinNowSql(new Date(r.created_utc));
+        const date = berlin.slice(0, 10), time = berlin.slice(11), day = +date.slice(8, 10);
+        if (date.slice(0, 7) === month) curB.push(r);
+        else if (date.slice(0, 7) === prevMonth && (day < dom || (day === dom && time <= nowTime))) prevB.push(r);
+      }
+      const calRows = async (from: string, to: string) => !includeCalendar ? [] : query<any>(`
+        SELECT price, pickup_address, dropoff_address, location FROM calendar_rides
+         WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`, [from, to]);
+      const curC = await calRows(`${month}-01T00:00`, wall(now));
+      const prevC = await calRows(`${prevMonth}-01T00:00`, `${prevMonth}-${String(dom).padStart(2, '0')}T${nowTime.slice(0, 5)}`);
+      const cur = await periodCosts({ bookings: curB, rides: curC } as any, s, budget);
+      const prv = await periodCosts({ bookings: prevB, rides: prevC } as any, s, budget);
+      const list = (bs: any[], cs: any[], c: { web: any[]; cal: any[] }) => [
+        ...bs.map((b, i) => ({ price: Number(b.price) || 0, cost: c.web[i] })),
+        ...cs.map((r, i) => ({ price: r.price == null ? null : Number(r.price), cost: c.cal[i] })),
+      ];
+      // Fixkosten anteilig für die bisher vergangenen Tage des Monats (gleiche Zahl im Vormonat)
+      monthNet = {
+        mtd: withFixed(summarize(list(curB, curC, cur)), fixedForDays(s, dom)),
+        prevMtd: withFixed(summarize(list(prevB, prevC, prv)), fixedForDays(s, dom)),
+      };
+    } catch (e: any) {
+      console.error('[admin-dashboard] monthNet', e?.message || e);
+    }
+
     res.json({
       now: wall(now),
       today,
@@ -326,6 +365,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       calendarMonth: calMonth,
       calendarPrevMonth: calPrevMonth,
       calendarTotal: calTotal,
+      monthNet,
       allTime: { count: Number(allTime?.count) || 0, revenue: Number(allTime?.revenue) || 0 },
     });
   } catch (error) {
@@ -344,25 +384,32 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 const shiftDay = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
+// Für „Uns bleibt“: zugewiesener Fahrer und — falls keiner — das „Ort“-Feld der Kalenderkopie der Buchung
+const COST_JOINS = `LEFT JOIN drivers d ON d.id = b.assigned_driver_id
+          LEFT JOIN (SELECT booking_id, MAX(location) AS location FROM calendar_rides
+                      WHERE booking_id IS NOT NULL AND location IS NOT NULL AND location <> '' GROUP BY booking_id) cr ON cr.booking_id = b.id`;
+
 async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', includeCalendar: boolean) {
   const today = berlinDateSql(0);
   const bookings = mode === 'booked'
     ? await query<any>(`
         SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
-               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc
-          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc,
+               b.distance_km, d.name AS driver_name, cr.location AS cal_location
+          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id ${COST_JOINS}
          WHERE b.status <> 'cancelled' AND COALESCE(b.source, '') <> 'calendar' AND b.created_at >= ? AND b.created_at < ?
          ORDER BY b.created_at`,
         [berlinMidnightUtcSql(dayDiff(today, from)), berlinMidnightUtcSql(dayDiff(today, to) + 1)])
     : await query<any>(`
         SELECT b.id, b.booking_number, b.name, b.pickup_address, b.dropoff_address, b.pickup_datetime, b.trip_type,
-               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc
-          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id
+               b.price, b.payment_method, c.company_name, DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_utc,
+               b.distance_km, d.name AS driver_name, cr.location AS cal_location
+          FROM bookings b LEFT JOIN companies c ON c.id = b.company_id ${COST_JOINS}
          WHERE b.status <> 'cancelled' AND LEFT(b.pickup_datetime, 10) BETWEEN ? AND ?
          ORDER BY b.pickup_datetime`, [from, to]);
 
   const rides = !includeCalendar ? [] : await query<any>(`
-    SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price
+    SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price, location
       FROM calendar_rides
      WHERE kind IN (${mode === 'booked' ? "'ride', 'imported'" : "'ride'"}) AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
      ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
@@ -375,6 +422,24 @@ async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', i
   const calDay = (r: any) => String(mode === 'booked' ? r.entered : r.ride_time).slice(0, 10);
   return { bookings, rides, webDay, calDay };
 }
+
+// Kosten je Fahrt für „Uns bleibt“ (services/netEarnings.ts); km fehlender Strecken über den
+// dauerhaften Cache, Google-Abfragen über alle Aufrufe einer Anfrage gedeckelt (budget).
+async function periodCosts(p: Awaited<ReturnType<typeof loadPeriod>>, s: CostSettings, budget: { left: number }) {
+  const ownKm = (b: any) => (Number(b.distance_km) > 0 ? Number(b.distance_km) : null);
+  const kmMap = await resolveKm([
+    ...p.bookings.filter((b) => ownKm(b) == null).map((b): [string, string] => [b.pickup_address, b.dropoff_address]),
+    ...p.rides.filter((r) => r.price != null).map((r): [string, string] => [r.pickup_address, r.dropoff_address]),
+  ], budget);
+  const web = p.bookings.map((b) => rideCosts(Number(b.price) || 0, ownKm(b) ?? kmFor(kmMap, b.pickup_address, b.dropoff_address),
+    b.trip_type === 'roundtrip' ? 2 : 1, rideDrivers(b.driver_name, b.cal_location), s));
+  const cal = p.rides.map((r) => rideCosts(r.price == null ? null : Number(r.price), kmFor(kmMap, r.pickup_address, r.dropoff_address),
+    1, rideDrivers(null, r.location), s));
+  return { web, cal };
+}
+
+// „Uns bleibt“ minus anteilige monatliche Fixkosten (Versicherung, Leasing …)
+const withFixed = (n: ReturnType<typeof summarize>, fixed: number) => ({ ...n, fixed, after_fixed: Math.round((n.net - fixed) * 100) / 100 });
 
 // "Heute" für die Live-Karten (Bugün rezervasyon/gelir) — exakt dieselbe Rechnung wie das Tagesarchiv
 // "Nach Buchungsdatum" (Web + Kalender), damit beide Stellen nie auseinanderlaufen.
@@ -398,28 +463,41 @@ router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): P
     const mode = req.query.mode === 'driven' ? 'driven' : 'booked';
     const includeCalendar = await includeCalendarInStats();
 
-    const { bookings, rides, webDay, calDay } = await loadPeriod(from, to, mode, includeCalendar);
+    const period = await loadPeriod(from, to, mode, includeCalendar);
+    const { bookings, rides, webDay, calDay } = period;
     const webRevenue = bookings.reduce((s, b) => s + (Number(b.price) || 0), 0);
     const calRevenue = rides.reduce((s, r) => s + (Number(r.price) || 0), 0);
 
+    // „Uns bleibt“ je Fahrt (Fahreranteil + Diesel abgezogen)
+    const costSettings = await loadCostSettings();
+    const budget = { left: 40 };
+    const costs = await periodCosts(period, costSettings, budget);
+    const webList = bookings.map((b, i) => ({ price: Number(b.price) || 0, cost: costs.web[i] }));
+    const calList = rides.map((r, i) => ({ price: r.price == null ? null : Number(r.price), cost: costs.cal[i] }));
+
     // Per-day breakdown (every day of the period, also empty ones) — only for a period
-    let days: { date: string; web: Agg; calendar: Agg }[] | undefined;
-    let prev: { from: string; to: string; total: Agg } | undefined;
+    let days: { date: string; web: Agg; calendar: Agg; net: number }[] | undefined;
+    let prev: { from: string; to: string; total: Agg & { net: number } } | undefined;
     if (span > 1) {
-      const byDay = new Map<string, { date: string; web: Agg; calendar: Agg }>();
-      for (let i = 0; i < span; i++) { const d = shiftDay(from, i); byDay.set(d, { date: d, web: agg(), calendar: agg() }); }
-      for (const b of bookings) { const d = byDay.get(webDay(b)); if (d) add(d.web, b.price); }
-      for (const r of rides) { const d = byDay.get(calDay(r)); if (d) add(d.calendar, r.price); }
-      days = [...byDay.values()];
+      const byDay = new Map<string, { date: string; web: Agg; calendar: Agg; net: number }>();
+      for (let i = 0; i < span; i++) { const d = shiftDay(from, i); byDay.set(d, { date: d, web: agg(), calendar: agg(), net: 0 }); }
+      bookings.forEach((b, i) => { const d = byDay.get(webDay(b)); if (d) { add(d.web, b.price); d.net += costs.web[i].net; } });
+      rides.forEach((r, i) => { const d = byDay.get(calDay(r)); if (d) { add(d.calendar, r.price); d.net += costs.cal[i].net; } });
+      days = [...byDay.values()].map((d) => ({ ...d, net: Math.round(d.net * 100) / 100 }));
 
       // Same length directly before — for "+12 % zum Vorzeitraum"
       const pFrom = shiftDay(from, -span), pTo = shiftDay(from, -1);
       const p = await loadPeriod(pFrom, pTo, mode, includeCalendar);
+      const pc = await periodCosts(p, costSettings, budget);
       prev = {
         from: pFrom, to: pTo,
         total: {
           count: p.bookings.length + p.rides.length,
           revenue: p.bookings.reduce((s, b) => s + (Number(b.price) || 0), 0) + p.rides.reduce((s, r) => s + (Number(r.price) || 0), 0),
+          net: summarize([
+            ...p.bookings.map((b, i) => ({ price: Number(b.price) || 0, cost: pc.web[i] })),
+            ...p.rides.map((r, i) => ({ price: r.price == null ? null : Number(r.price), cost: pc.cal[i] })),
+          ]).net,
         },
       };
     }
@@ -428,20 +506,25 @@ router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): P
       date: from, from, to, mode, calendar_enabled: includeCalendar,
       web: {
         count: bookings.length, revenue: webRevenue,
-        items: bookings.map((b) => ({
+        items: bookings.map((b, i) => ({
           id: b.id, booking_number: b.booking_number, name: b.name, from: b.pickup_address, to: b.dropoff_address,
           pickup: wall(b.pickup_datetime), trip_type: b.trip_type, price: Number(b.price) || 0,
           payment_method: b.payment_method, company: b.company_name || null, day: webDay(b),
+          costs: costs.web[i],
         })),
+        net: summarize(webList),
       },
       calendar: {
         count: rides.length, revenue: calRevenue, unpriced: rides.filter((r) => r.price == null).length,
-        items: rides.map((r) => ({
+        items: rides.map((r, i) => ({
           ride_time: r.ride_time, entered: r.entered, summary: String(r.summary || '').slice(0, 80),
           from: r.pickup_address, to: r.dropoff_address, price: r.price == null ? null : Number(r.price),
+          costs: costs.cal[i],
         })),
+        net: summarize(calList),
       },
-      total: { count: bookings.length + rides.length, revenue: webRevenue + calRevenue },
+      total: { count: bookings.length + rides.length, revenue: webRevenue + calRevenue, net: withFixed(summarize([...webList, ...calList]), fixedForDays(costSettings, span)) },
+      cost_settings: { driver_pct: costSettings.driverPct, l_per_100km: costSettings.lPer100, eur_per_l: costSettings.eurPerL, partners: costSettings.partners, fixed_monthly: costSettings.fixedMonthly },
       days, prev,
     });
   } catch (error) {

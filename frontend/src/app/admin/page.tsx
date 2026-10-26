@@ -10,7 +10,7 @@ import {
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
   Settings, Settings2, Route, Milestone, Moon, Plane, Megaphone, Workflow, Landmark, Clock, Phone, Ban, CarFront,
-  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus,
+  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus, Fuel, Wallet,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -1363,6 +1363,7 @@ export default function AdminPage() {
               { id: 'preise-plz', label: 'PLZ-Zuschläge', icon: MapPin },
               { id: 'preise-festpreis', label: 'Festpreisrouten', icon: CalendarDays },
               { id: 'preise-regeln', label: 'Buchungsregeln', icon: ClipboardList },
+              { id: 'preise-kosten', label: 'Kosten (Statistik)', icon: Wallet },
               { id: 'preise-weitere', label: 'Weitere Optionen', icon: Settings2 },
             ]} />
 
@@ -1950,6 +1951,27 @@ export default function AdminPage() {
             </SectionCard>
 
             {/* ── Weitere Optionen ── */}
+            {/* ── Kosten: nur für „Uns bleibt“ im Dashboard/Tagesarchiv, ändert keine Preise ── */}
+            <SectionCard id="preise-kosten" icon={Wallet} title="Kosten (nur Statistik)"
+              subtitle="Für „Uns bleibt“ im Dashboard und Tagesarchiv: Umsatz − Fahreranteil − Diesel (ohne MwSt). Ändert keine Kundenpreise.">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <SettingCard icon={Percent} title="Fahreranteil" description="Anteil vom Fahrpreis, den der Fahrer bekommt.">
+                  <Field unit="%" type="number" step="1" min="0" max="100" aria-label="Fahreranteil" {...sv('cost_driver_share_pct', '40')} />
+                </SettingCard>
+                <SettingCard icon={Fuel} title="Verbrauch" description="Diesel je 100 km. Gerechnet wird Fahrtstrecke × 2 (Leerfahrt zurück).">
+                  <Field unit="L/100 km" type="number" step="0.1" min="0" aria-label="Verbrauch" {...sv('cost_fuel_l_per_100km', '8.5')} />
+                </SettingCard>
+                <SettingCard icon={Fuel} title="Dieselpreis" description="Aktueller Preis pro Liter.">
+                  <Field unit="€/L" type="number" step="0.01" min="0" aria-label="Dieselpreis" {...sv('cost_fuel_eur_per_l', '2.239')} />
+                </SettingCard>
+                <SettingCard icon={Users} title="Partner (ohne Fahreranteil)"
+                  description="Fährt er selbst, bleibt der ganze Fahrpreis bei uns. Name wie im Fahrer-Tab bzw. am Ende des Kalender-Orts; mehrere mit Komma.">
+                  <Field type="text" widthClass="w-40" aria-label="Partner" {...sv('cost_partner_drivers', 'M.Ali')} />
+                </SettingCard>
+              </div>
+              <FixedCostsEditor value={settings.cost_fixed_monthly || '[]'} onChange={(v) => editSetting('cost_fixed_monthly', v)} />
+            </SectionCard>
+
             <SectionCard id="preise-weitere" icon={Settings2} title="Weitere Optionen">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <SettingCard
@@ -4273,6 +4295,50 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Monatliche Fixkosten (Versicherung, Leasing, …) für „Uns bleibt“ — werden je Tag anteilig abgezogen,
+// nicht pro Fahrt. Gespeichert als JSON [{ name, amount }] in cost_fixed_monthly.
+function FixedCostsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  let list: { name: string; amount: string | number }[] = [];
+  try { const p = JSON.parse(value); if (Array.isArray(p)) list = p; } catch { /* leer */ }
+  // Betrag als eingegebener Text speichern (sonst ließe sich „12,5“ nicht tippen); Backend rechnet mit Number()
+  const save = (next: typeof list) => onChange(JSON.stringify(next.map((x) => ({ name: String(x.name || '').slice(0, 40), amount: String(x.amount ?? '').replace(',', '.') }))));
+  const total = list.reduce((a, x) => a + (Number(String(x.amount).replace(',', '.')) || 0), 0);
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200/70 bg-gray-50/60 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">Monatliche Fixkosten</div>
+          <div className="text-xs text-gray-500">z. B. Versicherung, Leasing, Konzession — nicht je Fahrt, sondern anteilig je Tag abgezogen (Monat × 12 / 365).</div>
+        </div>
+        <div className="text-sm font-semibold tabular-nums text-gray-900">{total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € / Monat</div>
+      </div>
+      <div className="mt-3 space-y-2">
+        {list.map((x, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input value={x.name} placeholder="Bezeichnung (z. B. Versicherung)" maxLength={40}
+              onChange={(e) => save(list.map((y, j) => (j === i ? { ...y, name: e.target.value } : y)))}
+              className="h-10 flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100" />
+            <span className="flex items-center gap-1.5">
+              <input value={x.amount} type="number" step="0.01" min="0" aria-label="Betrag pro Monat"
+                onChange={(e) => save(list.map((y, j) => (j === i ? { ...y, amount: e.target.value } : y)))}
+                className="h-10 w-28 rounded-lg border border-gray-200 bg-white px-3 text-sm tabular-nums outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100" />
+              <span className="text-xs text-gray-500 whitespace-nowrap">€/Monat</span>
+            </span>
+            <button type="button" aria-label="Entfernen" onClick={() => save(list.filter((_, j) => j !== i))}
+              className="rounded-lg p-2 text-gray-400 hover:bg-white hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+          </div>
+        ))}
+      </div>
+      {list.length < 20 && (
+        <button type="button" onClick={() => save([...list, { name: '', amount: 0 }])}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+          <Plus className="h-3.5 w-3.5" /> Kosten hinzufügen
+        </button>
       )}
     </div>
   );

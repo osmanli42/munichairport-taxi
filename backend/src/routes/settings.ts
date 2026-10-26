@@ -13,7 +13,9 @@ interface SettingRow {
 }
 
 // Nur fürs Admin-Panel (E-Mail-Adressen) — nicht in der öffentlichen Liste
-const PRIVATE_KEYS = ['night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start'];
+const PRIVATE_KEYS = ['night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start',
+  // Kosten für die Statistik „Uns bleibt“ (Fahreranteil, Diesel, Partner) — nicht öffentlich
+  'cost_driver_share_pct', 'cost_fuel_l_per_100km', 'cost_fuel_eur_per_l', 'cost_partner_drivers', 'cost_fixed_monthly'];
 
 // GET /api/settings/private - Admin-only settings
 router.get('/private', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {
@@ -56,7 +58,7 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style', 'night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start'];
+    const allowedKeys = ['stadtfahrt_enabled', 'anfahrt_price_per_km', 'zwischenstopp_enabled', 'plz_surcharge_enabled', 'min_advance_hours', 'night_confirm_enabled', 'night_confirm_start', 'night_confirm_end', 'night_confirm_ride_until', 'flight_validation_enabled', 'phone_validation_enabled', 'portal_tracking_enabled', 'b2b_applications_enabled', 'auto_status_enabled', 'auto_confirm_hours', 'auto_complete_buffer_minutes', 'auto_complete_include_company_charge', 'experiment_checkout_v2', 'social_proof_enabled', 'auto_discounts_enabled', 'auto_discount_ignore_pg_floor', 'auto_discount_show_in_email', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_banner_enabled', 'auto_discount_remaining_enabled', 'auto_discount_vpn_as_unknown', 'auto_rechnung_card_enabled', 'auto_rechnung_cash_enabled', 'stats_include_calendar', 'month_end_invoice_reminder', 'booking_form_restore_enabled', 'address_poi_enabled', 'night_cancel_enabled', 'night_cancel_start', 'night_cancel_end', 'demand_discount_enabled', 'demand_min_expected', 'demand_horizon_days', 'gap_discount_enabled', 'leer_discount_enabled', 'mail_open_tracking_enabled', 'cookie_banner_style', 'night_confirm_partner_email', 'night_cancel_partner_email', 'partner_cover_email', 'partner_cover_hours', 'partner_cover_start', 'cost_driver_share_pct', 'cost_fuel_l_per_100km', 'cost_fuel_eur_per_l', 'cost_partner_drivers', 'cost_fixed_monthly'];
 
     for (const [key, value] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
@@ -87,6 +89,29 @@ router.put('/', authenticateAdmin, async (req: AuthRequest, res: Response): Prom
           res.status(400).json({ error: `${key} must be between 1 and ${max}` });
           return;
         }
+      }
+
+      // Kosten (Statistik „Uns bleibt“): Prozent 0–100, Verbrauch 0–50 L/100 km, Diesel 0–10 €/L
+      const costRange: Record<string, [number, number]> = { cost_driver_share_pct: [0, 100], cost_fuel_l_per_100km: [0, 50], cost_fuel_eur_per_l: [0, 10] };
+      if (key in costRange) {
+        const num = parseFloat(String(value).replace(',', '.'));
+        const [lo, hi] = costRange[key];
+        if (isNaN(num) || num < lo || num > hi) {
+          res.status(400).json({ error: `${key} must be between ${lo} and ${hi}` });
+          return;
+        }
+      }
+      // Monatliche Fixkosten: JSON [{ name, amount }], max. 20 Posten
+      if (key === 'cost_fixed_monthly') {
+        let list: any;
+        try { list = JSON.parse(String(value)); } catch { list = null; }
+        const ok = Array.isArray(list) && list.length <= 20 && list.every((x: any) =>
+          x && typeof x.name === 'string' && x.name.length <= 40 && Number.isFinite(Number(x.amount)) && Number(x.amount) >= 0 && Number(x.amount) <= 100000);
+        if (!ok) { res.status(400).json({ error: 'cost_fixed_monthly: Liste [{ name, amount }] erwartet (max. 20)' }); return; }
+      }
+      if (key === 'cost_partner_drivers' && String(value).length > 200) {
+        res.status(400).json({ error: 'cost_partner_drivers too long' });
+        return;
       }
 
       if (key === 'anfahrt_price_per_km') {

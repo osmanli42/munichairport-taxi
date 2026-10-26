@@ -9,6 +9,7 @@
 
 import { Router, Response } from 'express';
 import { easter } from '../utils/holidays';
+import { driverTokens } from '../utils/calendarDriver';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berlinTime';
@@ -43,31 +44,6 @@ async function setSetting(key: string, value: string): Promise<void> {
 // The operator writes the driver at the end: "✅ Kk ödendi Abdülkadir", "✅ 2xBus16 M.ALi & Saban".
 // The last word(s) are taken as driver candidates; only names that show up regularly count,
 // so a stray hotel name or note in that spot is ignored.
-
-const DRIVER_NOISE = /^(kk|ödendi|odendi|ödedi|bende|bargeld|bar|taxi|bus\S*|\d*x\S*|sitz\S*|maxi\S*|get-?e|rechnung\S*|g[öo]n\S*|kombi|van|fs-nr|nr|stamm|kein|e-?mail|ile|ok|iptal\S*|yok|var|\d+\S*)$/i;
-
-function driverTokens(location: string): string[] {
-  // "Taxi Gitti" = handed over to another taxi.
-  if (/taxi\s+gitti/i.test(location)) return ['Fremdtaxi'];
-  const tokens = location
-    .replace(/[☀-➿️\u{1F000}-\u{1FAFF}]/gu, ' ')
-    .replace(/\*+[^*]*\*+/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-  const out: string[] = [];
-  for (let i = tokens.length - 1; i >= 0 && out.length < 3; i--) {
-    const t = tokens[i].replace(/[,;:]+$/, '');
-    if (t === '&' || /^und$/i.test(t) || t === '+') continue;
-    if (!out.length && /^\p{L}\.$/u.test(t)) continue; // "Gökhan C." → Gökhan
-    if (DRIVER_NOISE.test(t) || !/\p{L}/u.test(t) || t.length < 3) break;
-    out.unshift(t);
-    // Only keep going across an explicit "A & B".
-    const prev = tokens[i - 1];
-    if (!(prev === '&' || prev === '+' || /^und$/i.test(prev || ''))) break;
-    i--;
-  }
-  return out;
-}
 
 let driverCache: { at: number; names: Map<string, string> } | null = null;
 async function knownDrivers(): Promise<Map<string, string>> {

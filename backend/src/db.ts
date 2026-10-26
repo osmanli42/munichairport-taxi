@@ -181,6 +181,12 @@ export async function initializeDatabase(): Promise<void> {
     const defaultSettings = [
       ['stadtfahrt_enabled', '0'],
       ['anfahrt_price_per_km', '1.70'],
+      // Statistik „Uns bleibt“: Fahreranteil, Verbrauch, Dieselpreis, Partner (fährt ohne Fahreranteil)
+      ['cost_driver_share_pct', '40'],
+      ['cost_fuel_l_per_100km', '8.5'],
+      ['cost_fuel_eur_per_l', '2.239'],
+      ['cost_partner_drivers', 'M.Ali'],
+      ['cost_fixed_monthly', '[]'], // [{ name: 'Versicherung', amount: 450 }] — €/Monat, anteilig je Tag
       ['zwischenstopp_enabled', '0'],
       ['plz_surcharge_enabled', '0'],
       ['bank_name', ''],
@@ -962,6 +968,16 @@ export async function initializeDatabase(): Promise<void> {
         PRIMARY KEY (addr_key)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // Fahrstrecke je Adresspaar (Google Distance Matrix), dauerhaft — für Kraftstoffkosten der
+    // Kalender-Fahrten in der Statistik; km NULL = Google kannte die Strecke nicht.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS distance_cache (
+        pair_key CHAR(40) NOT NULL,
+        km DOUBLE DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (pair_key)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS calendar_rides (
         uid VARCHAR(255) NOT NULL,
@@ -985,6 +1001,8 @@ export async function initializeDatabase(): Promise<void> {
     try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_entered (kind, entered_at)`); } catch { /* exists */ }
     // Fahrgast aus der Terminbeschreibung (calendarInvoice extractGuest) — für den Social-Proof-Toast
     try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN guest_name VARCHAR(190) DEFAULT NULL`); } catch { /* exists */ }
+    // „Uns bleibt“: Fahrer einer Web-Buchung aus dem „Ort“ ihrer Kalenderkopie (admin-dashboard COST_JOINS)
+    try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_booking (booking_id)`); } catch { /* exists */ }
 
     // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
     await conn.execute(`
