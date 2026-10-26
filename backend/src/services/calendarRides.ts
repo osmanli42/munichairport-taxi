@@ -12,6 +12,7 @@
 import cron from 'node-cron';
 import { query, run } from '../db';
 import { berlinDateSql } from '../utils/berlinTime';
+import { salutationGuest } from '../utils/socialProofPlace';
 import { fetchEventsRange, parseInvoiceRide, parseAmount, CalEvent } from './calendarInvoice';
 import { hasServiceAccount } from './calendarImport';
 
@@ -205,7 +206,7 @@ export async function syncCalendarRides(from: string, to: string): Promise<{ eve
         chunk.flatMap((r) => [
           r.event.uid.slice(0, 255), r.event.start!, r.kind, r.booking?.id ?? null, r.price,
           r.from, r.to, r.event.summary.slice(0, 500), r.event.location.slice(0, 500), r.event.created ?? null,
-          r.guest ? r.guest.slice(0, 190) : null,
+          (r.guest || salutationGuest(r.event.description))?.slice(0, 190) ?? null,
         ]),
       );
     }

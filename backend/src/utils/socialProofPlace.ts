@@ -33,11 +33,34 @@ export function socialProofGuestName(raw: string | null | undefined): string | n
     words = parts[0].split(' ');
   }
   const hadTitle = words.some((w) => TITLES.test(w));
+  const gender = words.map((w) => w.replace(/\.$/, '').toLowerCase())
+    .map((w) => (['herr', 'hr', 'mr'].includes(w) ? 'Herr' : ['frau', 'fr', 'mrs', 'ms', 'miss'].includes(w) ? 'Frau' : null))
+    .find(Boolean) || null;
   words = words.filter((w) => !TITLES.test(w)).map((w) => w.replace(/[.]+$/, ''));
-  // "Hr. Müller": nach der Anrede steht nur der Nachname — den nicht ausschreiben
-  if (!words.length || (hadTitle && words.length === 1)) return null;
+  if (!words.length) return null;
+  // "Frau Gerold" / "Ms. Young": nur der Nachname bekannt → "Frau G." (Nachname nie ausschreiben)
+  if (hadTitle && words.length === 1) {
+    const w = titleCase(words[0]);
+    return gender && /^\p{L}[\p{L}'-]{1,30}$/u.test(w) ? `${gender} ${w.charAt(0).toUpperCase()}.` : null;
+  }
   const first = titleCase(words[0]);
   if (!/^\p{L}[\p{L}'-]{1,20}$/u.test(first)) return null;
   const last = words.length > 1 ? titleCase(words[words.length - 1]) : '';
   return last && /^\p{L}/u.test(last) ? `${first} ${last.charAt(0).toUpperCase()}.` : first;
+}
+
+// Kalender-Termine aus Buchungsbestätigungen beginnen mit der Anrede: „Sehr geehrter Herr Helmut
+// Ocker“, „Sehr geehrte Frau Gerold“, „Dear Ms. Young,“. Daraus den Namen (mit Anrede) holen —
+// nur, wenn der Termin selbst keinen Fahrgast nennt. Sammelanreden („Damen und Herren“) zählen nicht.
+const RE_SALUTATION = /^\s*(?:sehr\s+geehrte[rs]?|liebe[rs]?|hallo|guten\s+tag|dear|hello|hi)\s+(.+?)\s*[,!.:]?\s*$/i;
+export function salutationGuest(description: string | null | undefined): string | null {
+  const lines = String(description || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 3);
+  for (const l of lines) {
+    const m = l.match(RE_SALUTATION);
+    if (!m) continue;
+    const v = m[1].replace(/[,!.:]+$/, '').trim();
+    if (!v || /damen|herren|kunde|kundin|team|sir|madam|all\b|zusammen/i.test(v)) return null;
+    return v.slice(0, 120);
+  }
+  return null;
 }
