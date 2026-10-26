@@ -504,7 +504,18 @@ function splitInlineBilling(line: string): { name: string; address: string; id: 
     else rest.push(part);
   }
   if (!rest.length || (rest.length < 2 && !id) || (!id && !rest.slice(1).some((x) => /\d/.test(x)))) return null;
-  return { name: rest[0], address: rest.slice(1).join(', '), id };
+  return { name: rest[0], address: addressLines(rest.slice(1)), id };
+}
+
+// Empfängeradresse für die Rechnung: jede Angabe eine eigene Zeile (wie im Briefkopf).
+// "Postanschrift:"/"Anschrift:"-Vorsätze fallen weg, "Straße 89, 81541 München" wird an der PLZ getrennt.
+function addressLines(parts: string[]): string {
+  return parts
+    .map((p) => p.replace(/^(?:post)?anschrift\s*:\s*|^(?:postal\s+)?address\s*:\s*|^adresse\s*:\s*/i, '').trim())
+    .flatMap((p) => p.split(/\s*,\s*(?=\d{4,5}\s+\S)/))
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .join('\n');
 }
 
 function extractBilling(desc: string): BillingInfo | null {
@@ -521,7 +532,7 @@ function extractBilling(desc: string): BillingInfo | null {
     let email: string | null = null;
     const inline = cleanValue(m[1]);
     if (inline) block.push(inline);
-    for (let j = i + 1; j < ls.length && block.length < 5; j++) {
+    for (let j = i + 1; j < ls.length && block.length < 8; j++) {
       const l = cleanValue(ls[j]);
       if (!l) { if (block.length) break; continue; }
       const pm = l.match(/^projekt\s*:?\s*(.+)$/i);
@@ -534,7 +545,7 @@ function extractBilling(desc: string): BillingInfo | null {
     if (block.length) {
       const one = block.length === 1 ? splitInlineBilling(block[0]) : null;
       if (one) return { name: one.name, address: one.address, email: email || emails[0] || null, ust_idnr: ust || one.id, project };
-      return { name: block[0], address: block.slice(1).join(', '), email: email || emails[0] || null, ust_idnr: ust, project };
+      return { name: block[0], address: addressLines(block.slice(1)), email: email || emails[0] || null, ust_idnr: ust, project };
     }
   }
 
@@ -544,7 +555,7 @@ function extractBilling(desc: string): BillingInfo | null {
     // "(Rechnung an Sprachcaffe, Karl-Theodor-Str. 93, 80796 München)" — Klammern weg
     const parts = cleanValue(inline[1].replace(/\([^)]*\)/g, '').replace(/[()]/g, '')).split(/\s*,\s*/).filter(Boolean);
     if (parts.length) {
-      return { name: parts[0], address: parts.slice(1).join(', '), email: emails[0] || null, ust_idnr: ust, project: null };
+      return { name: parts[0], address: addressLines(parts.slice(1)), email: emails[0] || null, ust_idnr: ust, project: null };
     }
   }
 
@@ -559,7 +570,7 @@ function extractBilling(desc: string): BillingInfo | null {
     let email: string | null = null;
     const inline = cleanValue(trig[1] || '');
     if (inline) block.push(inline);
-    for (let j = i + 1; j < ls.length && block.length < 5; j++) {
+    for (let j = i + 1; j < ls.length && block.length < 8; j++) {
       const l = cleanValue(ls[j]);
       if (!l) { if (block.length || id) break; continue; }
       const im = l.match(RE_BILLING_ID);
@@ -572,7 +583,7 @@ function extractBilling(desc: string): BillingInfo | null {
     if (block.length) {
       const one = block.length === 1 ? splitInlineBilling(block[0]) : null;
       if (one) return { name: one.name, address: one.address, email: email || emails[0] || null, ust_idnr: ust || id || one.id, project: null };
-      return { name: block[0], address: block.slice(1).join(', '), email: email || emails[0] || null, ust_idnr: ust || id, project: null };
+      return { name: block[0], address: addressLines(block.slice(1)), email: email || emails[0] || null, ust_idnr: ust || id, project: null };
     }
   }
 
@@ -598,7 +609,7 @@ function extractBilling(desc: string): BillingInfo | null {
     const country = /^(?:germany|deutschland|österreich|austria|schweiz|switzerland|italy|italien|italia)$/i;
     const addr = block.filter((x) => !country.test(x));
     if (addr.length >= 2 && addr.slice(1).some((x) => /\b\d{4,5}\b/.test(x))) {
-      return { name: addr[0], address: addr.slice(1).join(', '), email: emails[0] || null, ust_idnr: ust, project: null };
+      return { name: addr[0], address: addressLines(addr.slice(1)), email: emails[0] || null, ust_idnr: ust, project: null };
     }
     break;
   }

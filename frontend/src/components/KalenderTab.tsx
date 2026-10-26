@@ -951,7 +951,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                   )}
                 </div>
                 {company && (company.address || company.invoice_email) && (
-                  <div className="text-xs text-gray-500 mt-1">{[company.address, company.invoice_email && `✉ ${company.invoice_email}`].filter(Boolean).join(' · ')}</div>
+                  <div className="text-xs text-gray-500 mt-1">{[company.address?.replace(/\s*\n\s*/g, ', '), company.invoice_email && `✉ ${company.invoice_email}`].filter(Boolean).join(' · ')}</div>
                 )}
                 {existing.length > 0 && (
                   <div className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 inline-flex items-start gap-1.5">
@@ -1010,7 +1010,8 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                       <input value={nf.company_name} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, company_name: e.target.value } }))} className={inputCls} />
                     </Field>
                     <Field label="Fatura adresi">
-                      <input value={nf.address} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, address: e.target.value } }))} placeholder="Sokak No, PLZ Şehir" className={inputCls} />
+                      <textarea value={nf.address} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, address: e.target.value } }))} rows={Math.min(7, Math.max(3, nf.address.split('\n').length + 1))} placeholder={'Abteilung (opsiyonel)\nSokak No\nPLZ Şehir'} className={`${inputCls} resize-y leading-snug`} />
+                      <span className="block text-[11px] text-gray-400 mt-1">Her satır faturada ayrı satır olarak görünür.</span>
                     </Field>
                     <Field label="Yetkili kişi (opsiyonel)">
                       <input value={nf.contact_name} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, contact_name: e.target.value } }))} className={inputCls} />
