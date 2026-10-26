@@ -983,6 +983,8 @@ export async function initializeDatabase(): Promise<void> {
     // daily summary and dashboard count a calendar ride on the day it was taken, not driven.
     try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN entered_at CHAR(16) DEFAULT NULL`); } catch { /* exists */ }
     try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_entered (kind, entered_at)`); } catch { /* exists */ }
+    // Fahrgast aus der Terminbeschreibung (calendarInvoice extractGuest) — für den Social-Proof-Toast
+    try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN guest_name VARCHAR(190) DEFAULT NULL`); } catch { /* exists */ }
 
     // Admin alert feed for the tracking lifecycle (sound in the open admin panel + e-mail).
     await conn.execute(`

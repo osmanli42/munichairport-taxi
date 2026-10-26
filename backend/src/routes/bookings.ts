@@ -19,7 +19,8 @@ import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
-import { socialProofPlace } from '../utils/socialProofPlace';
+import { socialProofPlace, socialProofGuestName } from '../utils/socialProofPlace';
+import { berlinNowSql } from '../utils/berlinTime';
 import { bookingConfirmUrl, mailOpenPixelUrl } from '../utils/bookingConfirmToken';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
@@ -1086,7 +1087,26 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
         minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
       };
     });
-    res.json(items);
+
+    // Fahrten aus dem Google-Kalender (telefonisch/WhatsApp), die in den letzten 48 Std. eingetragen
+    // wurden — Name aus der Terminbeschreibung; ohne erkennbare Person oder Ort nicht gezeigt.
+    try {
+      const nowWall = berlinNowSql().replace(' ', 'T').slice(0, 16);
+      const sinceWall = berlinNowSql(new Date(Date.now() - 48 * 3600_000)).replace(' ', 'T').slice(0, 16);
+      const cal = await query<{ guest_name: string | null; dropoff_address: string | null; entered_at: string }>(
+        `SELECT guest_name, dropoff_address, entered_at FROM calendar_rides
+          WHERE kind = 'ride' AND guest_name IS NOT NULL AND entered_at BETWEEN ? AND ?
+          ORDER BY entered_at DESC LIMIT 20`, [sinceWall, nowWall]);
+      const nowMs = Date.parse(`${nowWall}:00Z`);
+      for (const c of cal) {
+        const name = socialProofGuestName(c.guest_name);
+        const dest = socialProofPlace(c.dropoff_address);
+        if (!name || !dest) continue;
+        items.push({ name, dest, minsAgo: Math.max(1, Math.round((nowMs - Date.parse(`${c.entered_at.slice(0, 16)}:00Z`)) / 60000)) });
+      }
+      items.sort((a, b) => a.minsAgo - b.minsAgo);
+    } catch { /* Kalender optional */ }
+    res.json(items.slice(0, 20));
   } catch {
     res.json([]);
   }

@@ -196,14 +196,16 @@ export async function syncCalendarRides(from: string, to: string): Promise<{ eve
     for (let i = 0; i < rows.length; i += 200) {
       const chunk = rows.slice(i, i + 200);
       await run(
-        `INSERT INTO calendar_rides (uid, ride_time, kind, booking_id, price, pickup_address, dropoff_address, summary, location, entered_at, synced_at)
-         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(', ')}
+        `INSERT INTO calendar_rides (uid, ride_time, kind, booking_id, price, pickup_address, dropoff_address, summary, location, entered_at, guest_name, synced_at)
+         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(', ')}
          ON DUPLICATE KEY UPDATE kind = VALUES(kind), booking_id = VALUES(booking_id), price = VALUES(price),
            pickup_address = VALUES(pickup_address), dropoff_address = VALUES(dropoff_address),
-           summary = VALUES(summary), location = VALUES(location), entered_at = VALUES(entered_at), synced_at = NOW()`,
+           summary = VALUES(summary), location = VALUES(location), entered_at = VALUES(entered_at),
+           guest_name = VALUES(guest_name), synced_at = NOW()`,
         chunk.flatMap((r) => [
           r.event.uid.slice(0, 255), r.event.start!, r.kind, r.booking?.id ?? null, r.price,
           r.from, r.to, r.event.summary.slice(0, 500), r.event.location.slice(0, 500), r.event.created ?? null,
+          r.guest ? r.guest.slice(0, 190) : null,
         ]),
       );
     }
