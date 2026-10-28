@@ -74,6 +74,19 @@ function legacyPrice(ev: CalEvent): number | null {
   return parseAmount(total[1]);
 }
 
+// Fahrt ohne beschrifteten Preis: irgendein Betrag mit €/EUR/Euro in Titel, Ort oder Beschreibung
+// („Fr. Wild … 112,50€“). Mehrere Beträge → der größte (meist der Gesamtpreis). Nur für Termine,
+// die schon als Fahrt erkannt sind — eine Notiz wie „Werkstatt 80 €“ wird dadurch keine Fahrt.
+const AMT = String.raw`(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,5}(?:[.,]\d{1,2})?)`;
+const RE_EURO_ANY = new RegExp(String.raw`(?:€|\bEUR\b|\bEuro\b)\s*${AMT}(?![\d.,]*\d)|${AMT}\s*(?:€|\bEUR\b|\bEuro\b)`, 'gi');
+export function looseEuroPrice(ev: Pick<CalEvent, 'summary' | 'location' | 'description'>): number | null {
+  const text = [ev.summary, ev.location, ev.description].filter(Boolean).join('\n');
+  const vals = [...text.matchAll(RE_EURO_ANY)]
+    .map((m) => parseAmount(m[1] || m[2] || ''))
+    .filter((v): v is number => v != null && v >= 5 && v <= 10000);
+  return vals.length ? Math.max(...vals) : null;
+}
+
 const wall = (s: unknown) => String(s || '').replace(' ', 'T').slice(0, 16);
 
 function wallMinutes(s: string): number {
@@ -153,7 +166,7 @@ export function classifyEvents(events: CalEvent[], bookings: BookingRef[]): Clas
     if (base.price == null && ((!base.from && !base.to) || (!base.to && RE_NOT_A_RIDE.test(event.summary)))) {
       return { ...base, kind: 'other' as const, booking: null };
     }
-    return { ...base, kind: 'ride' as const, booking: null };
+    return { ...base, price: base.price ?? looseEuroPrice(event), kind: 'ride' as const, booking: null };
   });
 }
 
