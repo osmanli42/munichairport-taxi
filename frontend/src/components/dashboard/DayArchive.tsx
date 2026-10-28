@@ -23,12 +23,12 @@ type WebItem = {
   id: number; booking_number: string; name: string; from: string | null; to: string | null; pickup: string;
   trip_type: string | null; price: number; payment_method: string | null; company: string | null; day?: string; costs?: Costs;
 };
-type CalItem = { ride_time: string; entered: string; summary: string; from: string | null; to: string | null; price: number | null; costs?: Costs };
+type CalItem = { ride_time: string; entered: string; summary: string; from: string | null; to: string | null; price: number | null; estimated?: boolean; costs?: Costs };
 type Agg = { count: number; revenue: number };
 type DayData = {
   date: string; from: string; to: string; mode: 'booked' | 'driven'; calendar_enabled: boolean;
   web: { count: number; revenue: number; items: WebItem[]; net?: Net };
-  calendar: { count: number; revenue: number; unpriced: number; items: CalItem[]; net?: Net };
+  calendar: { count: number; revenue: number; unpriced: number; estimated?: number; estimated_revenue?: number; items: CalItem[]; net?: Net };
   total: Agg & { net?: Net };
   days?: { date: string; web: Agg; calendar: Agg; net?: number }[];
   prev?: { from: string; to: string; total: Agg & { net?: number } };
@@ -177,7 +177,8 @@ export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withCo
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Tile label="Web / System" count={data.web.count} revenue={data.web.revenue} />
               <Tile label="Kalender" count={data.calendar.count} revenue={data.calendar.revenue}
-                hint={data.calendar.unpriced ? `${data.calendar.unpriced} ohne Preis` : undefined} />
+                hint={[data.calendar.estimated ? `${data.calendar.estimated} geschätzt (~${formatPrice(data.calendar.estimated_revenue || 0)})` : '',
+                  data.calendar.unpriced ? `${data.calendar.unpriced} ohne Preis` : ''].filter(Boolean).join(' · ') || undefined} />
               <Tile label="Gesamt" count={data.total.count} revenue={data.total.revenue} strong
                 hint={data.prev ? <PrevChange cur={data.total.revenue} prev={data.prev.total.revenue} /> : undefined} />
             </div>
@@ -217,7 +218,9 @@ export function ArchiveResults({ a, withControls }: { a: DayArchiveState; withCo
                       </div>
                       <div className="text-right shrink-0">
                         <div className="font-semibold tabular-nums">
-                          {c.price == null ? <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">ohne Preis</span> : formatPrice(c.price)}
+                          {c.price == null ? <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">ohne Preis</span>
+                            : c.estimated ? <span title="Kein Preis im Termin – mit dem Website-Tarif geschätzt">~{formatPrice(c.price)} <span className="text-[10px] font-semibold px-1 py-0.5 rounded bg-amber-50 text-amber-700 align-middle">geschätzt</span></span>
+                            : formatPrice(c.price)}
                         </div>
                         {c.price != null && <ItemNet c={c.costs} partners={data.cost_settings?.partners} />}
                       </div>

@@ -101,7 +101,7 @@ interface DashboardData {
   allTime: Agg;
 }
 
-type CalSum = { count: number; priced: number; revenue: number };
+type CalSum = { count: number; priced: number; revenue: number; estimated?: number; estimated_revenue?: number };
 type AttentionKey = 'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus' | 'mailFailed';
 
 type UnchargedCard = {
@@ -129,6 +129,8 @@ type CalLeg = {
   via: string[];
   guest: string | null;
   price: number | null;
+  /** Preis stand nicht im Termin — mit dem Website-Tarif geschätzt */
+  price_estimated?: boolean;
   html_link: string | null;
 };
 
@@ -412,7 +414,10 @@ function CalendarRow({ c, state, now }: { c: CalLeg; state: LegState; now: strin
   const open = () => { if (c.html_link) window.open(c.html_link, '_blank', 'noopener'); };
   const money = (
     <>
-      <div className="text-base font-bold tabular-nums text-gray-900">{c.price ? formatPrice(c.price) : '—'}</div>
+      <div className="text-base font-bold tabular-nums text-gray-900" title={c.price_estimated ? 'Kein Preis im Termin – mit dem Website-Tarif geschätzt' : undefined}>
+        {c.price ? <>{c.price_estimated ? '~' : ''}{formatPrice(c.price)}</> : '—'}
+        {c.price_estimated && <span className="ml-1 align-middle text-[10px] font-semibold text-amber-700">geschätzt</span>}
+      </div>
       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700"><ExternalLink size={11} /> im Kalender</span>
     </>
   );
@@ -1273,7 +1278,9 @@ function CalSplit({ bookings, cal }: { bookings: Agg; cal: CalSum | null }) {
   return (
     <>
       {plural(bookings.count, 'Buchung', 'Buchungen')} {formatPrice(bookings.revenue)}
-      <span className="block text-teal-600">+ Kalender {formatPrice(cal.revenue)} ({plural(cal.count, 'Fahrt', 'Fahrten')})</span>
+      <span className="block text-teal-600">+ Kalender {formatPrice(cal.revenue)} ({plural(cal.count, 'Fahrt', 'Fahrten')})
+        {!!cal.estimated && <span className="text-amber-700" title="Ohne Preis im Termin – mit dem Website-Tarif geschätzt"> · davon {cal.estimated} geschätzt (~{formatPrice(cal.estimated_revenue || 0)})</span>}
+      </span>
     </>
   );
 }

@@ -65,6 +65,8 @@ export type CalendarLeg = {
   via: string[];
   guest: string | null;
   price: number | null;
+  /** Preis nicht im Termin, sondern mit dem Website-Tarif geschätzt */
+  price_estimated?: boolean;
   html_link: string | null;
 };
 
@@ -123,8 +125,21 @@ async function loadCalendar(from: string, to: string): Promise<{
       via: c.via,
       guest: c.guest,
       price: c.price,
+      price_estimated: false,
       html_link: ev.htmlLink,
     });
+  }
+  // Ohne Preis im Termin: geschätzten Preis aus calendar_rides (Sync, Website-Tarif) — als „geschätzt“
+  const open = legs.filter((l) => l.price == null);
+  if (open.length) {
+    const est = await query<{ uid: string; ride_time: string; price: number }>(
+      `SELECT uid, ride_time, price FROM calendar_rides WHERE price_estimated = 1 AND uid IN (${open.map(() => '?').join(',')})`,
+      open.map((l) => l.uid)).catch(() => []);
+    const m = new Map(est.map((e) => [`${e.uid}|${e.ride_time}`, Number(e.price)]));
+    for (const l of open) {
+      const v = m.get(`${l.uid}|${l.leg_time}`);
+      if (v) { l.price = v; l.price_estimated = true; }
+    }
   }
   return { enabled: true, error: null, legs, mismatches };
 }
@@ -304,9 +319,12 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     // Calendar-only rides this month up to now (by ride date), for the month card.
     const calSum = async (from: string, to: string) => {
       const [r] = await query<{ count: number; priced: number; revenue: number }>(`
-        SELECT COUNT(*) AS count, COUNT(price) AS priced, COALESCE(SUM(price), 0) AS revenue
+        SELECT COUNT(*) AS count, COUNT(price) AS priced, COALESCE(SUM(price), 0) AS revenue,
+               SUM(price_estimated = 1 AND price IS NOT NULL) AS estimated,
+               COALESCE(SUM(CASE WHEN price_estimated = 1 THEN price END), 0) AS estimated_revenue
           FROM calendar_rides WHERE kind = 'ride' AND ride_time BETWEEN ? AND ?`, [from, to]);
-      return { count: Number(r?.count) || 0, priced: Number(r?.priced) || 0, revenue: Number(r?.revenue) || 0 };
+      return { count: Number(r?.count) || 0, priced: Number(r?.priced) || 0, revenue: Number(r?.revenue) || 0,
+        estimated: Number((r as any)?.estimated) || 0, estimated_revenue: Number((r as any)?.estimated_revenue) || 0 };
     };
     const calMonth = includeCalendar ? await calSum(`${month}-01T00:00`, wall(now)) : null;
     const calPrevMonth = includeCalendar ? await calSum(`${prevMonth}-01T00:00`, `${prevMonth}-31T23:59`) : null;
@@ -409,7 +427,7 @@ async function loadPeriod(from: string, to: string, mode: 'booked' | 'driven', i
          ORDER BY b.pickup_datetime`, [from, to]);
 
   const rides = !includeCalendar ? [] : await query<any>(`
-    SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price, location
+    SELECT ride_time, ${ENTERED} AS entered, summary, pickup_address, dropoff_address, price, price_estimated, location
       FROM calendar_rides
      WHERE kind IN (${mode === 'booked' ? "'ride', 'imported'" : "'ride'"}) AND ${mode === 'booked' ? ENTERED : 'ride_time'} BETWEEN ? AND ?
      ORDER BY ${mode === 'booked' ? ENTERED : 'ride_time'}`,
@@ -516,9 +534,12 @@ router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): P
       },
       calendar: {
         count: rides.length, revenue: calRevenue, unpriced: rides.filter((r) => r.price == null).length,
+        estimated: rides.filter((r) => r.price != null && Number(r.price_estimated) === 1).length,
+        estimated_revenue: Math.round(rides.filter((r) => r.price != null && Number(r.price_estimated) === 1).reduce((s, r) => s + Number(r.price), 0) * 100) / 100,
         items: rides.map((r, i) => ({
           ride_time: r.ride_time, entered: r.entered, summary: String(r.summary || '').slice(0, 80),
           from: r.pickup_address, to: r.dropoff_address, price: r.price == null ? null : Number(r.price),
+          estimated: r.price != null && Number(r.price_estimated) === 1,
           costs: costs.cal[i],
         })),
         net: summarize(calList),

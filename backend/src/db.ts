@@ -1027,6 +1027,8 @@ export async function initializeDatabase(): Promise<void> {
     try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_entered (kind, entered_at)`); } catch { /* exists */ }
     // Fahrgast aus der Terminbeschreibung (calendarInvoice extractGuest) — für den Social-Proof-Toast
     try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN guest_name VARCHAR(190) DEFAULT NULL`); } catch { /* exists */ }
+    // 1 = price wurde mit dem Website-Tarif geschätzt (Termin nannte keinen Preis) — services/calendarPriceEstimate.ts
+    try { await conn.execute(`ALTER TABLE calendar_rides ADD COLUMN price_estimated TINYINT(1) NOT NULL DEFAULT 0`); } catch { /* exists */ }
     // „Uns bleibt“: Fahrer einer Web-Buchung aus dem „Ort“ ihrer Kalenderkopie (admin-dashboard COST_JOINS)
     try { await conn.execute(`ALTER TABLE calendar_rides ADD INDEX idx_calendar_rides_booking (booking_id)`); } catch { /* exists */ }
 

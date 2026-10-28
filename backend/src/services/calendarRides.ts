@@ -13,6 +13,7 @@ import cron from 'node-cron';
 import { query, run } from '../db';
 import { berlinDateSql } from '../utils/berlinTime';
 import { salutationGuest } from '../utils/socialProofPlace';
+import { estimateCalendarPrices } from './calendarPriceEstimate';
 import { fetchEventsRange, parseInvoiceRide, parseAmount, CalEvent } from './calendarInvoice';
 import { hasServiceAccount } from './calendarImport';
 
@@ -199,25 +200,33 @@ export function calendarSyncStatus() {
 }
 
 /** Re-reads [from, to] (Berlin dates, inclusive) from Google and replaces those rows. */
-export async function syncCalendarRides(from: string, to: string): Promise<{ events: number; rides: number } | null> {
+export async function syncCalendarRides(from: string, to: string, kmBudget = 40): Promise<{ events: number; rides: number } | null> {
   const id = await calendarId();
   if (!id || syncing) return null;
   syncing = true;
   try {
     const [{ events }, bookings] = await Promise.all([fetchEventsRange(id, from, to), loadBookingRefs()]);
     const rows = classifyEvents(events, bookings);
+    // Fahrten ohne Preis: mit dem Website-Tarif schätzen (calendarPriceEstimate.ts) — als „geschätzt“ markiert
+    const unpriced = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.kind === 'ride' && r.price == null);
+    const estimates = new Map<number, number>();
+    try {
+      const est = await estimateCalendarPrices(unpriced.map(({ r }) => ({ from: r.from, to: r.to, summary: r.event.summary, location: r.event.location })), { left: kmBudget });
+      est.forEach((v, k) => estimates.set(unpriced[k].i, v));
+    } catch (e: any) { console.error('[calendarRides] estimate failed:', e?.message || e); }
     await run(`DELETE FROM calendar_rides WHERE ride_time BETWEEN ? AND ?`, [`${from}T00:00`, `${to}T23:59`]);
     for (let i = 0; i < rows.length; i += 200) {
       const chunk = rows.slice(i, i + 200);
       await run(
-        `INSERT INTO calendar_rides (uid, ride_time, kind, booking_id, price, pickup_address, dropoff_address, summary, location, entered_at, guest_name, synced_at)
-         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(', ')}
-         ON DUPLICATE KEY UPDATE kind = VALUES(kind), booking_id = VALUES(booking_id), price = VALUES(price),
+        `INSERT INTO calendar_rides (uid, ride_time, kind, booking_id, price, price_estimated, pickup_address, dropoff_address, summary, location, entered_at, guest_name, synced_at)
+         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())').join(', ')}
+         ON DUPLICATE KEY UPDATE kind = VALUES(kind), booking_id = VALUES(booking_id), price = VALUES(price), price_estimated = VALUES(price_estimated),
            pickup_address = VALUES(pickup_address), dropoff_address = VALUES(dropoff_address),
            summary = VALUES(summary), location = VALUES(location), entered_at = VALUES(entered_at),
            guest_name = VALUES(guest_name), synced_at = NOW()`,
-        chunk.flatMap((r) => [
-          r.event.uid.slice(0, 255), r.event.start!, r.kind, r.booking?.id ?? null, r.price,
+        chunk.flatMap((r, j) => [
+          r.event.uid.slice(0, 255), r.event.start!, r.kind, r.booking?.id ?? null,
+          r.price ?? estimates.get(i + j) ?? null, r.price == null && estimates.has(i + j) ? 1 : 0,
           r.from, r.to, r.event.summary.slice(0, 500), r.event.location.slice(0, 500), r.event.created ?? null,
           (r.guest || salutationGuest(r.event.description))?.slice(0, 190) ?? null,
         ]),
@@ -236,7 +245,7 @@ export async function syncCalendarRides(from: string, to: string): Promise<{ eve
 }
 
 export const syncRecent = () => syncCalendarRides(berlinDateSql(-RECENT_BACK_DAYS), berlinDateSql(AHEAD_DAYS));
-export const syncAll = () => syncCalendarRides(HISTORY_START, berlinDateSql(AHEAD_DAYS));
+export const syncAll = () => syncCalendarRides(HISTORY_START, berlinDateSql(AHEAD_DAYS), 300);
 
 export function startCalendarRidesJob(): void {
   // First run: fill the whole history once, otherwise just catch up on the recent window.
