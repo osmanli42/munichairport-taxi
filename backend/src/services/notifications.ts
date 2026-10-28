@@ -4,7 +4,7 @@ import { run, query } from '../db';
 import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
 import { customerRecipient } from '../utils/recipient';
-import { customerConfirmationEmail, adminNotificationEmail, customerCancellationEmail, adminCancellationEmail } from './bookingEmailTemplates';
+import { customerConfirmationEmail, adminNotificationEmail, customerCancellationEmail, adminCancellationEmail, customerChangeEmail, adminChangeEmail, BookingChanges } from './bookingEmailTemplates';
 
 dotenv.config();
 
@@ -495,6 +495,51 @@ export async function sendPartnerCancelCopy(booking: BookingNotificationData, va
   if (!to.length) return;
   const { subject, html } = variant ? adminCancellationEmail(booking, variant) : adminCancellationEmail(booking);
   await sendViaResend({ from: 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>', to, subject, html });
+}
+
+// Buchung geändert (Kunde über „Buchung verwalten“ — routes/bookings.ts /manage/update):
+// Bestätigung an den Kunden, Info an den Admin (Mail + WhatsApp) und — solange die
+// Partner-Vertretung läuft — Kopie der Admin-Mail an den Partner. Kunde/Admin-Mail/WhatsApp
+// sind in Admin → Preise einzeln schaltbar (booking_edit_customer_mail / _admin_mail / _admin_whatsapp).
+export async function sendBookingChangeNotifications(booking: BookingNotificationData, changes: BookingChanges): Promise<void> {
+  const rows = await query<{ setting_key: string; setting_value: string }>(
+    "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('booking_edit_customer_mail', 'booking_edit_admin_mail', 'booking_edit_admin_whatsapp')"
+  );
+  const cfg: Record<string, string> = {};
+  for (const r of rows) cfg[r.setting_key] = r.setting_value;
+  const on = (key: string) => (cfg[key] ?? '1') === '1';
+  const from = 'Flughafen-muenchen.TAXI <info@flughafen-muenchen.taxi>';
+
+  const tasks: Array<[string, () => Promise<void>]> = [];
+  if (on('booking_edit_customer_mail') && booking.email) {
+    const { subject, html } = customerChangeEmail(booking, changes);
+    tasks.push(['Customer change mail', () => sendViaResend({ from, to: customerRecipient(booking.email), subject, html })]);
+  }
+  const adminMail = adminChangeEmail(booking, changes);
+  if (on('booking_edit_admin_mail')) {
+    tasks.push(['Admin change mail', () => sendViaResend({ from, to: ADMIN_EMAIL, subject: adminMail.subject, html: adminMail.html })]);
+  }
+  const partners = uniqueEmails(await partnerCoverRecipients());
+  if (partners.length) {
+    tasks.push(['Partner change mail', () => sendViaResend({ from, to: partners, subject: adminMail.subject, html: adminMail.html })]);
+  }
+  if (on('booking_edit_admin_whatsapp')) {
+    const lines = [
+      `BUCHUNG GEAENDERT ${booking.booking_number}`,
+      changes.pickup ? `Abfahrt: ${formatDateTime(changes.pickup.from)} -> ${formatDateTime(changes.pickup.to)}` : `Abfahrt: ${formatDateTime(booking.pickup_datetime)}`,
+      changes.passengers ? `Pax: ${changes.passengers.from} -> ${changes.passengers.to}` : '',
+      changes.luggage ? `Koffer: ${changes.luggage.from} -> ${changes.luggage.to}` : '',
+      `Kunde: ${booking.name}`,
+      `Tel: ${formatPhoneDisplay(booking.phone)}`,
+    ].filter(Boolean).map(encodeURIComponent).join('%0A');
+    tasks.push(['WhatsApp (CallMeBot)', () => sendAdminWhatsApp(lines)]);
+  }
+
+  const results = await Promise.allSettled(tasks.map(([, send]) => send()));
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') console.error(`Failed to send ${tasks[i][0]}:`, r.reason);
+    else console.log(`${tasks[i][0]} sent successfully`);
+  });
 }
 
 export async function sendReminderEmail(booking: BookingNotificationData): Promise<void> {

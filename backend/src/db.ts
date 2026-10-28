@@ -223,6 +223,13 @@ export async function initializeDatabase(): Promise<void> {
       ['b2b_applications_enabled', '1'],
       // A/B rollout percentage for the /buchen checkout redesign — 'off' until Adım 3 ships.
       ['experiment_checkout_v2', 'off'],
+      // Buchung verwalten: Kunde ändert Abholzeit / Personen / Gepäck selbst (routes/bookings.ts /manage/update).
+      // Frist in Stunden vor der Abholung; Benachrichtigungen je Kanal einzeln schaltbar.
+      ['booking_edit_enabled', '1'],
+      ['booking_edit_hours', '6'],
+      ['booking_edit_admin_mail', '1'],
+      ['booking_edit_admin_whatsapp', '1'],
+      ['booking_edit_customer_mail', '1'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
@@ -230,6 +237,24 @@ export async function initializeDatabase(): Promise<void> {
         [key, value]
       );
     }
+
+    // Verlauf der Kunden-Änderungen aus „Buchung verwalten“ (alt → neu)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS booking_changes (
+        id INT NOT NULL AUTO_INCREMENT,
+        booking_id INT NOT NULL,
+        booking_number VARCHAR(50) NOT NULL,
+        changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        old_pickup VARCHAR(50) DEFAULT NULL,
+        new_pickup VARCHAR(50) DEFAULT NULL,
+        old_passengers INT DEFAULT NULL,
+        new_passengers INT DEFAULT NULL,
+        old_luggage INT DEFAULT NULL,
+        new_luggage INT DEFAULT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_booking (booking_id)
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
     // Migration: add anfahrt_cost to bookings
     try {

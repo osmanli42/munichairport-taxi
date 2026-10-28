@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Search, MapPin, Calendar, Users, Car, CreditCard, Ban, CheckCircle2, AlertTriangle, Phone, Loader2, FileDown } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Car, CreditCard, Ban, CheckCircle2, AlertTriangle, Phone, Loader2, FileDown, Pencil, Minus, Plus, Luggage } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -16,6 +16,7 @@ interface ManagedBooking {
   pickup_datetime: string;
   vehicle_type: 'kombi' | 'van' | 'grossraumtaxi';
   passengers: number;
+  luggage_count?: number;
   price: number;
   payment_method: string;
   trip_type?: string;
@@ -25,7 +26,33 @@ interface ManagedBooking {
   night_phone_required?: boolean;
   rechnung_number?: string | null;
   rechnung_sent_at?: string | null;
+  /** Selbst ändern (Abholzeit, Personen, Gepäck) — null, wenn der Server es nicht liefert */
+  edit?: ManageEdit | null;
 }
+
+interface ManageEdit {
+  enabled: boolean;
+  /** Änderungen bis so viele Stunden vor der Abholung */
+  hours: number;
+  can_edit: boolean;
+  /** Datum/Uhrzeit nur telefonisch: Nachtfenster bzw. Rabatt hängt am Fahrtdatum */
+  time_phone_only: 'night' | 'discount' | null;
+  max_passengers: number;
+  max_luggage: number;
+}
+
+// Antwortcodes von POST /bookings/manage/update → Übersetzungsschlüssel
+const EDIT_ERROR_KEYS: Record<string, string> = {
+  invalid_datetime: 'editErrorDatetime',
+  pickup_too_soon: 'editErrorTooSoon',
+  pickup_too_far: 'editErrorTooFar',
+  return_before_pickup: 'editErrorReturn',
+  edit_window_closed: 'editWindowClosedText',
+  edit_disabled: 'editErrorDisabled',
+  night_phone_required: 'editTimeNightText',
+  time_locked: 'editTimeLockedText',
+  too_many_attempts: 'errorTooMany',
+};
 
 type LookupState = 'idle' | 'loading' | 'error' | 'found';
 
@@ -67,6 +94,9 @@ export default function ManageBookingClient() {
     setState('loading');
     setCancelResult('idle');
     setConfirming(false);
+    setEditing(false);
+    setEditSuccess(false);
+    setEditError(null);
     try {
       const res = await fetch(`${API_URL}/bookings/manage/lookup`, {
         method: 'POST',
@@ -166,6 +196,78 @@ export default function ManageBookingClient() {
     setCancelResult('idle');
     setConfirming(false);
     setInvoiceState('idle');
+    setEditing(false);
+    setEditSuccess(false);
+    setEditError(null);
+  }
+
+  // ── Fahrt ändern: Abholzeit, Personen, Gepäck ──
+  const [editing, setEditing] = useState(false);
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editPassengers, setEditPassengers] = useState(1);
+  const [editLuggage, setEditLuggage] = useState(0);
+  const [capHit, setCapHit] = useState<'passengers' | 'luggage' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<{ key: string; n?: number } | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
+  const [editMailSent, setEditMailSent] = useState(true);
+
+  const editStamp = (iso: string) => String(iso).replace(' ', 'T');
+
+  function startEditing() {
+    if (!booking) return;
+    const iso = editStamp(booking.pickup_datetime);
+    setEditDate(iso.slice(0, 10));
+    setEditTime(iso.slice(11, 16));
+    setEditPassengers(booking.passengers);
+    setEditLuggage(booking.luggage_count || 0);
+    setCapHit(null);
+    setEditError(null);
+    setEditSuccess(false);
+    setEditing(true);
+  }
+
+  const currentIso = booking ? editStamp(booking.pickup_datetime) : '';
+  const timeChanged = !!booking && !!editDate && !!editTime
+    && `${editDate}T${editTime}` !== currentIso.slice(0, 16);
+  const countsChanged = !!booking
+    && (editPassengers !== booking.passengers || editLuggage !== (booking.luggage_count || 0));
+  // Heutiges Datum in München (nicht Browser-Zeitzone) — Untergrenze des Datumsfelds
+  const todayMunich = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  async function handleSaveEdit() {
+    if (!booking) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const body: Record<string, unknown> = { booking_number: booking.booking_number, email: email.trim() };
+      if (timeChanged) body.pickup_datetime = `${editDate}T${editTime}`;
+      if (editPassengers !== booking.passengers) body.passengers = editPassengers;
+      if (editLuggage !== (booking.luggage_count || 0)) body.luggage_count = editLuggage;
+      const res = await fetch(`${API_URL}/bookings/manage/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data?.error === 'capacity_exceeded') {
+          setEditError({ key: data.field === 'luggage_count' ? 'editCapacityLuggageMax' : 'editCapacityPassengersMax', n: data.max });
+        } else {
+          setEditError({ key: EDIT_ERROR_KEYS[data?.error] || 'editErrorGeneric', n: data?.hours });
+        }
+        return;
+      }
+      setBooking(data.booking);
+      setEditing(false);
+      setEditMailSent(data.confirmation_mail !== false);
+      setEditSuccess(true);
+    } catch {
+      setEditError({ key: 'editErrorGeneric' });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const vehicleName = booking ? tVehicles(`${booking.vehicle_type}.name`) : '';
@@ -282,6 +384,13 @@ export default function ManageBookingClient() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Luggage size={16} className="text-primary-600 shrink-0" />
+                  <div>
+                    <p className="text-gray-400 text-xs">{t('luggageLabel')}</p>
+                    <p className="text-gray-800 font-medium">{booking.luggage_count || 0}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <CreditCard size={16} className="text-primary-600 shrink-0" />
                   <div>
                     <p className="text-gray-400 text-xs">{t('paymentLabel')}</p>
@@ -294,6 +403,147 @@ export default function ManageBookingClient() {
                 </div>
               </div>
             </div>
+
+            {/* Fahrt ändern: Abholzeit, Personen, Gepäck — bis booking.edit.hours vor der Abholung */}
+            {booking.edit?.enabled && booking.status !== 'cancelled' && booking.status !== 'completed' && cancelResult !== 'success' && (
+              <div className="mt-6 border-t border-gray-100 pt-6">
+                <h3 className="font-bold text-gray-900 mb-2">{t('editSectionTitle')}</h3>
+
+                {editSuccess && (
+                  <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700 flex items-start gap-2">
+                    <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> <span>{t(editMailSent ? 'editSuccess' : 'editSuccessShort')}</span>
+                  </div>
+                )}
+
+                {!booking.edit.can_edit ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+                    <p className="flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /> <span>{t('editWindowClosedText', { hours: booking.edit.hours })}</span></p>
+                    <a href={CONTACT_INFO.phoneHref}
+                      className="mt-3 inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold px-4 py-2.5 rounded-lg">
+                      <Phone size={15} /> {t('nightCancelCall')} · {CONTACT_INFO.phone}
+                    </a>
+                  </div>
+                ) : !editing ? (
+                  <>
+                    <p className="text-sm text-gray-500 mb-4 flex items-start gap-2">
+                      <Pencil size={14} className="text-primary-600 shrink-0 mt-0.5" /> <span>{t('editHint', { hours: booking.edit.hours })}</span>
+                    </p>
+                    <button
+                      onClick={startEditing}
+                      className="w-full border-2 border-primary-600 text-primary-700 hover:bg-primary-50 font-bold px-6 py-3 rounded-xl transition-colors inline-flex items-center justify-center gap-2"
+                    >
+                      <Pencil size={16} /> {t('editButton')}
+                    </button>
+                  </>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-5">
+                    {/* Datum & Uhrzeit — nachts / bei tagesabhängigem Rabatt nur telefonisch */}
+                    {booking.edit.time_phone_only ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+                        <p className="font-semibold flex items-center gap-2"><AlertTriangle size={16} className="shrink-0" /> {t('editTimePhoneTitle')}</p>
+                        <p className="mt-1.5 text-amber-800">{t(booking.edit.time_phone_only === 'night' ? 'editTimeNightText' : 'editTimeLockedText')}</p>
+                        <a href={CONTACT_INFO.phoneHref}
+                          className="mt-3 inline-flex items-center gap-2 bg-primary-700 hover:bg-primary-800 text-white font-semibold px-4 py-2.5 rounded-lg">
+                          <Phone size={15} /> {t('nightCancelCall')} · {CONTACT_INFO.phone}
+                        </a>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
+                          <Calendar size={15} className="text-primary-600" /> {t('datetimeLabel')}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1" htmlFor="edit-date">{t('editDateLabel')}</label>
+                            <input id="edit-date" type="date" value={editDate} min={todayMunich}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1" htmlFor="edit-time">{t('editTimeLabel')}</label>
+                            <input id="edit-time" type="time" value={editTime}
+                              onChange={(e) => setEditTime(e.target.value)}
+                              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Personen & Gepäck — nie über die Kapazität des gebuchten Fahrzeugs */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
+                          <Users size={15} className="text-primary-600" /> {t('passengersLabel')}
+                        </p>
+                        <div className="inline-flex items-stretch border border-gray-300 rounded-xl bg-white overflow-hidden">
+                          <button type="button" aria-label="−" disabled={editPassengers <= 1}
+                            onClick={() => { setCapHit(null); setEditPassengers(p => Math.max(1, p - 1)); }}
+                            className="w-10 h-10 flex items-center justify-center text-gray-800 hover:bg-gray-50 disabled:opacity-30"><Minus size={16} /></button>
+                          <span className="w-10 flex items-center justify-center font-semibold text-gray-900">{editPassengers}</span>
+                          <button type="button" aria-label="+"
+                            onClick={() => {
+                              if (editPassengers >= booking.edit!.max_passengers) { setCapHit('passengers'); return; }
+                              setCapHit(null); setEditPassengers(p => p + 1);
+                            }}
+                            className={`w-10 h-10 flex items-center justify-center text-gray-800 hover:bg-gray-50 ${editPassengers >= booking.edit.max_passengers ? 'opacity-30' : ''}`}><Plus size={16} /></button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-2">
+                          <Luggage size={15} className="text-primary-600" /> {t('luggageLabel')}
+                        </p>
+                        <div className="inline-flex items-stretch border border-gray-300 rounded-xl bg-white overflow-hidden">
+                          <button type="button" aria-label="−" disabled={editLuggage <= 0}
+                            onClick={() => { setCapHit(null); setEditLuggage(l => Math.max(0, l - 1)); }}
+                            className="w-10 h-10 flex items-center justify-center text-gray-800 hover:bg-gray-50 disabled:opacity-30"><Minus size={16} /></button>
+                          <span className="w-10 flex items-center justify-center font-semibold text-gray-900">{editLuggage}</span>
+                          <button type="button" aria-label="+"
+                            onClick={() => {
+                              if (editLuggage >= booking.edit!.max_luggage) { setCapHit('luggage'); return; }
+                              setCapHit(null); setEditLuggage(l => l + 1);
+                            }}
+                            className={`w-10 h-10 flex items-center justify-center text-gray-800 hover:bg-gray-50 ${editLuggage >= booking.edit.max_luggage ? 'opacity-30' : ''}`}><Plus size={16} /></button>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 -mt-2">
+                      {t('editCapacityInfo', { vehicle: vehicleName, passengers: booking.edit.max_passengers, luggage: booking.edit.max_luggage })}
+                    </p>
+                    {capHit && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                        <span>{t(capHit === 'passengers' ? 'editCapacityPassengersMax' : 'editCapacityLuggageMax', { n: capHit === 'passengers' ? booking.edit.max_passengers : booking.edit.max_luggage })}</span>
+                      </div>
+                    )}
+
+                    {editError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3 flex items-start gap-2">
+                        <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                        <span>{t(editError.key, { n: editError.n ?? 0, hours: editError.n ?? 0 })}</span>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saving || (!timeChanged && !countsChanged) || (!!booking.edit.time_phone_only && !countsChanged)}
+                        className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-lg text-sm inline-flex items-center justify-center gap-2"
+                      >
+                        {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {saving ? t('editSaving') : t('editSave')}
+                      </button>
+                      <button
+                        onClick={() => { setEditing(false); setEditError(null); setCapHit(null); }}
+                        disabled={saving}
+                        className="flex-1 border border-gray-300 text-gray-600 hover:bg-gray-100 font-semibold px-4 py-2.5 rounded-lg text-sm"
+                      >
+                        {t('editClose')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Cancellation */}
             {booking.status === 'cancelled' ? (

@@ -1443,6 +1443,34 @@ export default function AdminPage() {
                   )}
                 </SettingCard>
                 <SettingCard
+                  icon={Pencil}
+                  title="Buchung ändern (Kunde)"
+                  description="Kunde ändert Abholzeit, Personen und Gepäck selbst in „Buchung verwalten“ – bis zur eingestellten Frist vor der Abholung."
+                  info={<>Im Selbstservice „Buchung verwalten“ kann der Kunde bis zur Frist (Standard 6 Std. vor Abholung) Datum, Uhrzeit, Personen- und Koffer-Anzahl ändern. Personen/Koffer dürfen die Kapazität des gebuchten Fahrzeugs nicht überschreiten (Max. Personen / Max. Koffer unten je Fahrzeug) – für mehr muss er anrufen. Der Preis bleibt unverändert. Datum/Uhrzeit sind nur telefonisch änderbar, wenn jetzt das Nachtfenster der Nacht-Stornierung gilt (und die Fahrt vor dessen Ende beginnt) oder die Buchung einen vom Fahrtdatum abhängigen Rabatt hat (z. B. „Ruhiger Tag“). Jede Änderung wird gespeichert (alt → neu) und je nach Schalter gemeldet; die Mail an den Partner geht nur während der Partner-Vertretung.</>}
+                  on={settingOn('booking_edit_enabled', true)}
+                  control={sw('booking_edit_enabled', 'Buchung ändern', true)}
+                  indent={false}
+                >
+                  {settingOn('booking_edit_enabled', true) && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                      <Field inline label="Frist" unit="Std. vor Abholung" type="number" step="0.5" min="0" max="72" widthClass="w-20"
+                        aria-label="Änderungsfrist in Stunden" {...sv('booking_edit_hours', '6')} />
+                      <div className="flex w-full flex-wrap gap-x-6 gap-y-2">
+                        {([
+                          ['booking_edit_customer_mail', 'Bestätigung an Kunden (E-Mail)'],
+                          ['booking_edit_admin_mail', 'Info an Admin (E-Mail)'],
+                          ['booking_edit_admin_whatsapp', 'Info an Admin (WhatsApp)'],
+                        ] as const).map(([key, label]) => (
+                          <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
+                            <Toggle size="sm" on={settingOn(key, true)} disabled={settingsSaving} label={label} onClick={() => toggleSetting(key, label, true)} />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </SettingCard>
+                <SettingCard
                   icon={Plane}
                   title="Flugnummer-Validierung"
                   description="Prüft eingegebene Flugnummern live gegen eine Flugdaten-API."

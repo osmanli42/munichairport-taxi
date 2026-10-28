@@ -22,6 +22,7 @@ import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWi
 import { socialProofPlace, socialProofGuestName } from '../utils/socialProofPlace';
 import { berlinNowSql } from '../utils/berlinTime';
 import { bookingConfirmUrl, mailOpenPixelUrl } from '../utils/bookingConfirmToken';
+import { normalizePickup, wallMs, toWholeNumber, editHoursFrom, checkCapacity, ruleDependsOnTripTime, BOOKING_EDIT_MAX_DAYS_AHEAD } from '../utils/bookingEdit';
 
 const ENCRYPT_KEY = (process.env.CARD_ENCRYPT_KEY || 'muc-taxi-card-secret-key-32chars!').slice(0, 32);
 const IV_LENGTH = 16;
@@ -1217,6 +1218,7 @@ router.post('/manage/lookup', async (req: Request, res: Response): Promise<void>
     rateKeys.forEach(clearRateLimit);
     const out: any = sanitizeBookingForCustomer(booking);
     out.night_phone_required = out.can_cancel_free ? await nightCancelPhoneRequired(booking.pickup_datetime).catch(() => false) : false;
+    out.edit = await manageEditState(booking).catch(() => null);
     res.json(out);
   } catch (error) {
     console.error('Booking manage lookup error:', error);
@@ -1305,6 +1307,261 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
   } catch (error) {
     console.error('Booking manage cancel error:', error);
     res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+// ─── Buchung ändern: Abholzeit, Personen, Gepäck ───
+// Der Kunde ändert selbst, bis `booking_edit_hours` (Standard 6 Std.) vor der Abholung. Der
+// Preis bleibt unverändert; Personen/Gepäck müssen in die Kapazität des gebuchten Fahrzeugs
+// passen (Admin → Preise: Max. Personen / Max. Koffer). Abholzeiten sind Münchner Wanduhrzeit
+// (VARCHAR), daher Vergleich in „Wanduhr“-Millisekunden statt mit Date.now().
+
+interface ManageEditState {
+  /** Admin-Schalter an und Buchung noch offen (neu/bestätigt) */
+  enabled: boolean;
+  /** Frist: so viele Stunden vor der Abholung ist Schluss */
+  hours: number;
+  /** Frist noch nicht abgelaufen */
+  can_edit: boolean;
+  /** Datum/Uhrzeit nur telefonisch: 'night' = Nachtfenster (wie Nacht-Stornierung), 'discount' = Rabatt hängt am Fahrtdatum */
+  time_phone_only: 'night' | 'discount' | null;
+  max_passengers: number;
+  max_luggage: number;
+  /** Frühestens zulässige neue Abholzeit: Änderungsfrist bzw. Mindest-Vorlaufzeit, was größer ist */
+  min_new_pickup_hours: number;
+}
+
+async function manageEditState(booking: any): Promise<ManageEditState> {
+  const rows = await query<{ setting_key: string; setting_value: string }>(
+    "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('booking_edit_enabled', 'booking_edit_hours', 'min_advance_hours')"
+  );
+  const cfg: Record<string, string> = {};
+  for (const r of rows) cfg[r.setting_key] = r.setting_value;
+  const hours = editHoursFrom(cfg['booking_edit_hours']);
+  const minAdvance = parseFloat(String(cfg['min_advance_hours'] ?? '1.5').replace(',', '.'));
+  const [cap] = await query<{ max_passengers: number; max_luggage: number }>(
+    'SELECT max_passengers, max_luggage FROM prices WHERE vehicle_type = ?', [booking.vehicle_type]
+  );
+
+  const open = booking.status === 'new' || booking.status === 'confirmed';
+  const enabled = open && (cfg['booking_edit_enabled'] ?? '1') === '1';
+  const pickupWall = wallMs(booking.pickup_datetime);
+  const canEdit = enabled && Number.isFinite(pickupWall) && pickupWall - berlinWallNow().wall >= hours * 3600000;
+
+  let timePhoneOnly: ManageEditState['time_phone_only'] = null;
+  if (canEdit) {
+    if (await nightCancelPhoneRequired(booking.pickup_datetime).catch(() => false)) {
+      timePhoneOnly = 'night';
+    } else if (booking.auto_discount_id) {
+      const [rule] = await query<any>('SELECT * FROM auto_discounts WHERE id = ?', [booking.auto_discount_id]);
+      if (!rule || ruleDependsOnTripTime(rule)) timePhoneOnly = 'discount';
+    }
+  }
+  return {
+    enabled,
+    hours,
+    can_edit: canEdit,
+    time_phone_only: timePhoneOnly,
+    // Ohne Preiszeile (unbekanntes Fahrzeug) darf nichts über den jetzigen Wert hinaus wachsen
+    max_passengers: cap?.max_passengers ?? booking.passengers,
+    max_luggage: cap?.max_luggage ?? (booking.luggage_count || 0),
+    min_new_pickup_hours: Math.max(hours, Number.isFinite(minAdvance) ? minAdvance : 0),
+  };
+}
+
+// POST /api/bookings/manage/update - Abholzeit / Personen / Gepäck ändern (E-Mail muss passen; bis 6 Std. vor Abholung)
+router.post('/manage/update', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { booking_number, email, pickup_datetime, passengers, luggage_count } = req.body;
+    if (!booking_number || !email) {
+      res.status(400).json({ error: 'booking_number and email required' });
+      return;
+    }
+    const rateKeys = manageRateKeys(req, email);
+    if (rateKeys.some(k => isRateLimited(k, MANAGE_MAX_FAILURES))) {
+      res.status(429).json({ error: 'too_many_attempts' });
+      return;
+    }
+
+    const [booking] = await query<any>(
+      'SELECT * FROM bookings WHERE booking_number = ? AND LOWER(email) = LOWER(?)',
+      [String(booking_number).trim(), String(email).trim()]
+    );
+    if (!booking) {
+      rateKeys.forEach(k => registerFailure(k, MANAGE_WINDOW_MS));
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    rateKeys.forEach(clearRateLimit);
+    if (booking.status === 'cancelled') {
+      res.status(400).json({ error: 'already_cancelled' });
+      return;
+    }
+    if (booking.status === 'completed') {
+      res.status(400).json({ error: 'already_completed' });
+      return;
+    }
+
+    const edit = await manageEditState(booking);
+    if (!edit.enabled) {
+      res.status(403).json({ error: 'edit_disabled' });
+      return;
+    }
+    if (!edit.can_edit) {
+      res.status(400).json({ error: 'edit_window_closed', hours: edit.hours });
+      return;
+    }
+
+    // Nur tatsächlich geänderte Felder prüfen — eine schon vorher über Kapazität liegende
+    // Buchung (Admin hat das Limit später gesenkt) bleibt beim Ändern der Uhrzeit unbehelligt.
+    const changes: { pickup?: { from: string; to: string }; passengers?: { from: number; to: number }; luggage?: { from: number; to: number } } = {};
+    const nowWall = berlinWallNow().wall;
+
+    if (pickup_datetime !== undefined && pickup_datetime !== null && pickup_datetime !== '') {
+      const next = normalizePickup(pickup_datetime);
+      if (!next) {
+        res.status(400).json({ error: 'invalid_datetime' });
+        return;
+      }
+      const current = normalizePickup(booking.pickup_datetime);
+      if (next !== current) {
+        if (edit.time_phone_only === 'night') {
+          res.status(409).json({ error: 'night_phone_required', phone: '+4915141620000' });
+          return;
+        }
+        if (edit.time_phone_only === 'discount') {
+          res.status(409).json({ error: 'time_locked', phone: '+4915141620000' });
+          return;
+        }
+        const nextWall = wallMs(next);
+        if (nextWall - nowWall < edit.min_new_pickup_hours * 3600000) {
+          res.status(400).json({ error: 'pickup_too_soon', hours: edit.min_new_pickup_hours });
+          return;
+        }
+        if (nextWall - nowWall > BOOKING_EDIT_MAX_DAYS_AHEAD * 86400000) {
+          res.status(400).json({ error: 'pickup_too_far' });
+          return;
+        }
+        // Neue Zeit liegt ebenfalls im Nachtfenster, in dem wir nicht erreichbar sind → telefonisch
+        if (await nightCancelPhoneRequired(next).catch(() => false)) {
+          res.status(409).json({ error: 'night_phone_required', phone: '+4915141620000' });
+          return;
+        }
+        if (booking.trip_type === 'roundtrip' && booking.return_datetime) {
+          const returnWall = wallMs(booking.return_datetime);
+          if (Number.isFinite(returnWall) && nextWall >= returnWall) {
+            res.status(400).json({ error: 'return_before_pickup' });
+            return;
+          }
+        }
+        changes.pickup = { from: String(booking.pickup_datetime), to: next };
+      }
+    }
+
+    let nextPassengers: number | undefined;
+    if (passengers !== undefined && passengers !== null && passengers !== '') {
+      const n = toWholeNumber(passengers);
+      if (n === null || n < 1) {
+        res.status(400).json({ error: 'invalid_passengers' });
+        return;
+      }
+      if (n !== booking.passengers) {
+        nextPassengers = n;
+        changes.passengers = { from: booking.passengers, to: n };
+      }
+    }
+    let nextLuggage: number | undefined;
+    if (luggage_count !== undefined && luggage_count !== null && luggage_count !== '') {
+      const n = toWholeNumber(luggage_count);
+      if (n === null) {
+        res.status(400).json({ error: 'invalid_luggage' });
+        return;
+      }
+      if (n !== (booking.luggage_count || 0)) {
+        nextLuggage = n;
+        changes.luggage = { from: booking.luggage_count || 0, to: n };
+      }
+    }
+
+    // Eine schon über der Kapazität liegende Buchung (Admin hat das Limit später gesenkt) darf nur
+    // sinken, nie wachsen — daher gilt als Obergrenze das Maximum aus Limit und jetzigem Wert.
+    const capacity = checkCapacity(
+      { passengers: nextPassengers, luggage_count: nextLuggage },
+      { passengers: Math.max(edit.max_passengers, booking.passengers), luggage: Math.max(edit.max_luggage, booking.luggage_count || 0) },
+    );
+    if (!capacity.ok) {
+      res.status(400).json({
+        error: 'capacity_exceeded',
+        field: capacity.field,
+        max: capacity.field === 'passengers' ? edit.max_passengers : edit.max_luggage,
+      });
+      return;
+    }
+
+    if (!changes.pickup && !changes.passengers && !changes.luggage) {
+      res.status(400).json({ error: 'no_changes' });
+      return;
+    }
+
+    // Status in der WHERE-Klausel: wurde die Buchung inzwischen storniert/abgeschlossen, wird nichts überschrieben
+    const sets: string[] = [];
+    const vals: any[] = [];
+    if (changes.pickup) { sets.push('pickup_datetime = ?'); vals.push(changes.pickup.to); }
+    if (changes.passengers) { sets.push('passengers = ?'); vals.push(changes.passengers.to); }
+    if (changes.luggage) { sets.push('luggage_count = ?'); vals.push(changes.luggage.to); }
+    const result = await run(
+      `UPDATE bookings SET ${sets.join(', ')} WHERE id = ? AND status IN ('new', 'confirmed')`,
+      [...vals, booking.id]
+    );
+    if (!result.affectedRows) {
+      res.status(409).json({ error: 'not_editable' });
+      return;
+    }
+
+    await run(
+      `INSERT INTO booking_changes (booking_id, booking_number, old_pickup, new_pickup, old_passengers, new_passengers, old_luggage, new_luggage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        booking.id, booking.booking_number,
+        changes.pickup?.from ?? null, changes.pickup?.to ?? null,
+        changes.passengers?.from ?? null, changes.passengers?.to ?? null,
+        changes.luggage?.from ?? null, changes.luggage?.to ?? null,
+      ]
+    ).catch(err => console.error('Booking change log error:', err));
+
+    const [updated] = await query<any>('SELECT * FROM bookings WHERE id = ?', [booking.id]);
+    const { sendBookingChangeNotifications } = await import('../services/notifications');
+    sendBookingChangeNotifications({
+      booking_number: updated.booking_number,
+      name: updated.name,
+      email: updated.email,
+      phone: updated.phone,
+      pickup_address: updated.pickup_address,
+      dropoff_address: updated.dropoff_address,
+      pickup_datetime: updated.pickup_datetime,
+      vehicle_type: updated.vehicle_type,
+      passengers: updated.passengers,
+      price: updated.price,
+      payment_method: updated.payment_method,
+      language: updated.language || 'de',
+      child_seat: !!updated.child_seat,
+      luggage_count: updated.luggage_count || 0,
+      zwischenstopp_address: updated.zwischenstopp_address || undefined,
+      trip_type: updated.trip_type || undefined,
+      return_datetime: updated.return_datetime || undefined,
+    }, changes).catch(err => console.error('Booking change notification error:', err));
+
+    const out: any = sanitizeBookingForCustomer(updated);
+    out.night_phone_required = out.can_cancel_free ? await nightCancelPhoneRequired(updated.pickup_datetime).catch(() => false) : false;
+    out.edit = await manageEditState(updated).catch(() => null);
+    // Hinweis „Bestätigung per E-Mail“ nur, wenn der Admin diese Mail eingeschaltet hat
+    const [customerMail] = await query<{ setting_value: string }>(
+      "SELECT setting_value FROM settings WHERE setting_key = 'booking_edit_customer_mail'"
+    ).catch(() => [] as { setting_value: string }[]);
+    res.json({ success: true, confirmation_mail: (customerMail?.setting_value ?? '1') === '1' && !!updated.email, booking: out });
+  } catch (error) {
+    console.error('Booking manage update error:', error);
+    res.status(500).json({ error: 'Failed to update booking' });
   }
 });
 
