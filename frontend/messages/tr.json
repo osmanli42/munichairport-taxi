@@ -404,7 +404,7 @@
   "manageBooking": {
     "badge": "Kendin Yönet",
     "title": "Rezervasyonu yönet",
-    "subtitle": "Yolculuğunuzu görüntülemek veya ücretsiz iptal etmek için rezervasyon numaranızı ve e-posta adresinizi girin.",
+    "subtitle": "Yolculuğunuzu görüntülemek, tarih, saat, yolcu ve bagaj bilgilerini değiştirmek veya ücretsiz iptal etmek için rezervasyon numaranızı ve e-posta adresinizi girin.",
     "formBookingNumber": "Rezervasyon numarası",
     "formBookingNumberPlaceholder": "örn. MAT260716-1234",
     "formEmail": "E-posta adresi",

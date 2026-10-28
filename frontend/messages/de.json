@@ -404,7 +404,7 @@
   "manageBooking": {
     "badge": "Selbstservice",
     "title": "Buchung verwalten",
-    "subtitle": "Buchungsnummer und E-Mail-Adresse eingeben, um Ihre Fahrt anzuzeigen oder kostenlos zu stornieren.",
+    "subtitle": "Buchungsnummer und E-Mail-Adresse eingeben, um Ihre Fahrt anzuzeigen, Datum, Uhrzeit, Personen und Gepäck zu ändern oder kostenlos zu stornieren.",
     "formBookingNumber": "Buchungsnummer",
     "formBookingNumberPlaceholder": "z. B. MAT260716-1234",
     "formEmail": "E-Mail-Adresse",

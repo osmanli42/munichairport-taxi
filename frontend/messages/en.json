@@ -404,7 +404,7 @@
   "manageBooking": {
     "badge": "Self-Service",
     "title": "Manage your booking",
-    "subtitle": "Enter your booking number and email address to view your trip or cancel it free of charge.",
+    "subtitle": "Enter your booking number and email address to view your trip, change the date, time, passengers and luggage, or cancel it free of charge.",
     "formBookingNumber": "Booking number",
     "formBookingNumberPlaceholder": "e.g. MAT260716-1234",
     "formEmail": "Email address",
