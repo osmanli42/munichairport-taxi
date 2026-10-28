@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, Loader2, Plane } from 'lucide-react';
+import { newPlacesSessionToken } from '@/lib/placesSession';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -95,6 +96,8 @@ export default function AdminAddressField({
     return () => { window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); };
   }, [open, updatePos]);
 
+  const sessionTokenRef = useRef(newPlacesSessionToken());
+
   const fetchPredictions = useCallback(async (input: string) => {
     if (input.length < 3) { setPredictions([]); setOpen(false); return; }
     if (isAirportSearch(input)) {
@@ -102,7 +105,7 @@ export default function AdminAddressField({
     }
     setShowAirport(false); airportRef.current = false; setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=de`);
+      const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=de&sessiontoken=${sessionTokenRef.current}`);
       const data = await res.json();
       if (airportRef.current) return;
       const preds = (data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description));
@@ -133,7 +136,8 @@ export default function AdminAddressField({
   const handleSelect = async (placeId: string, desc: string) => {
     onChange(desc); setPredictions([]); setOpen(false); setShowAirport(false); setValidating(true);
     try {
-      const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=de`);
+      const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=de&sessiontoken=${sessionTokenRef.current}`);
+      sessionTokenRef.current = newPlacesSessionToken();
       const data = await res.json();
       if (data.is_specific) {
         const base = data.formatted_address || desc;

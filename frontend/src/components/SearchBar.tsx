@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle, UtensilsCrossed, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { newPlacesSessionToken } from '@/lib/placesSession';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -97,6 +98,7 @@ function AddressField({
   const [fieldError, setFieldError] = useState('');
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const airportRef = useRef(false);
+  const sessionTokenRef = useRef(newPlacesSessionToken());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +126,7 @@ function AddressField({
     }
     setShowAirport(false); airportRef.current = false; setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=${locale}`);
+      const res = await fetch(`${API_URL}/maps/autocomplete?input=${encodeURIComponent(input)}&language=${locale}&sessiontoken=${sessionTokenRef.current}`);
       const data = await res.json();
       if (airportRef.current) return;
       const preds: Prediction[] = (data.predictions || []).filter((p: Prediction) => !isAirportResult(p.description, p.types));
@@ -240,7 +242,8 @@ function AddressField({
     setTimeout(() => { if (selectingRef.current === placeId) selectingRef.current = ''; }, 800);
     onChange(desc); setPredictions([]); setOpen(false); setShowAirport(false); setValidating(true);
     try {
-      const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=${locale}`);
+      const res = await fetch(`${API_URL}/maps/place-details?place_id=${encodeURIComponent(placeId)}&language=${locale}&sessiontoken=${sessionTokenRef.current}`);
+      sessionTokenRef.current = newPlacesSessionToken(); // Sitzung beendet, naechste Eingabe = neue Sitzung
       const data = await res.json();
       if (data.is_specific) {
         const base = data.formatted_address || desc;

@@ -78,6 +78,13 @@ router.get('/geocode', async (req: Request, res: Response): Promise<void> => {
   res.json(coords);
 });
 
+// Google Places Session Token: alle Autocomplete-Anfragen einer Eingabe + das abschliessende
+// Place Details werden als EINE Sitzung abgerechnet (statt pro Tastendruck). Optional, vom Frontend.
+function sessionTokenParam(req: Request): string | null {
+  const t = req.query.sessiontoken;
+  return typeof t === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(t) ? t : null;
+}
+
 // GET /api/maps/autocomplete?input=...
 router.get('/autocomplete', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -92,6 +99,8 @@ router.get('/autocomplete', async (req: Request, res: Response): Promise<void> =
     url.searchParams.set('key', GOOGLE_API_KEY);
     url.searchParams.set('language', (req.query.language as string) || 'de');
     url.searchParams.set('types', 'geocode|establishment');
+    const sessionToken = sessionTokenParam(req);
+    if (sessionToken) url.searchParams.set('sessiontoken', sessionToken);
 
     const response = await fetch(url.toString());
     const data = await response.json() as { status: string; predictions: unknown[] };
@@ -355,6 +364,8 @@ router.get('/place-details', async (req: Request, res: Response): Promise<void> 
     url.searchParams.set('key', GOOGLE_API_KEY);
     url.searchParams.set('fields', 'name,address_components,types,formatted_address,geometry');
     url.searchParams.set('language', (req.query.language as string) || 'de');
+    const sessionToken = sessionTokenParam(req);
+    if (sessionToken) url.searchParams.set('sessiontoken', sessionToken);
 
     const response = await fetch(url.toString());
     const data = await response.json() as {
