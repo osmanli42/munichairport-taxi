@@ -92,7 +92,7 @@ export default function HomePage() {
           }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-16 pb-8">
           {/* Hero text - centered top */}
           <div className="text-center animate-fade-in mb-6 sm:mb-10">
             <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-4" style={{ textShadow: '0 2px 14px rgba(0,0,0,0.45)' }}>

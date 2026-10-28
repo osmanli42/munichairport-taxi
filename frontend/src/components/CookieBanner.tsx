@@ -172,29 +172,33 @@ export default function CookieBanner() {
   if (style === 'bottom') {
     // Leiste unten, ohne Abdunkeln: Seite bleibt benutzbar, bis eine Wahl getroffen ist
     return (
-      <div className={`fixed inset-x-0 bottom-0 z-[999] p-2 sm:p-4 pointer-events-none ${animateOut ? 'animate-cookie-out' : 'animate-cookie-in'}`}>
+      <div className={`fixed inset-x-0 bottom-0 z-[999] p-1.5 sm:p-4 pointer-events-none ${animateOut ? 'animate-cookie-out' : 'animate-cookie-in'}`}>
         <div className="pointer-events-auto mx-auto max-w-3xl bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] ring-1 ring-black/5 overflow-hidden">
-          <div className="px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-start gap-2.5 min-w-0 flex-1">
-              <Cookie size={20} className="text-gold-500 shrink-0 mt-0.5" />
-              <p className="text-[13px] leading-snug text-gray-600">
+          <div className="px-3 py-2 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+            <div className="flex items-start gap-2 sm:gap-2.5 min-w-0 flex-1">
+              <Cookie size={20} className="text-gold-500 shrink-0 mt-0.5 w-4 h-4 sm:w-5 sm:h-5" />
+              <p className="text-[12px] leading-[1.3] text-gray-600 sm:hidden">
+                {t('message_mobile')}{' '}
+                <Link href="/datenschutz" className="text-primary-600 underline underline-offset-2 whitespace-nowrap">{t('privacy_short')}</Link>
+              </p>
+              <p className="hidden sm:block text-[13px] leading-snug text-gray-600">
                 {t('message_short')}{' '}
                 <Link href="/datenschutz" className="text-primary-600 underline underline-offset-2 whitespace-nowrap">{t('privacy')}</Link>
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
               <button onClick={declineAll}
-                className="flex-1 sm:flex-none border-2 border-gray-200 hover:border-primary-300 text-gray-700 hover:text-primary-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors">
+                className="flex-1 sm:flex-none border-2 border-gray-200 hover:border-primary-300 text-gray-700 hover:text-primary-600 font-semibold py-1.5 px-3 sm:py-2.5 sm:px-4 rounded-xl text-[13px] sm:text-sm transition-colors">
                 {t('decline_all')}
               </button>
               <button onClick={acceptAll}
-                className="flex-1 sm:flex-none bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors">
+                className="flex-1 sm:flex-none bg-primary-600 hover:bg-primary-700 text-white font-semibold py-1.5 px-3 sm:py-2.5 sm:px-4 rounded-xl text-[13px] sm:text-sm transition-colors">
                 {t('accept_all')}
               </button>
             </div>
           </div>
           <button onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium border-t border-gray-100">
+            className="w-full flex items-center justify-center gap-1.5 py-1 sm:py-1.5 text-[11px] sm:text-xs text-primary-600 hover:text-primary-700 font-medium border-t border-gray-100">
             {t('settings')} {showDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {showDetails && <div className="px-4 pb-4 max-h-[50vh] overflow-y-auto">{categoriesPanel}</div>}
