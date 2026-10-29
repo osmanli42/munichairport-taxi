@@ -12,6 +12,7 @@ import { query, run } from '../db';
 import { berlinDateSql } from '../utils/berlinTime';
 import { haversineKm } from '../utils/geo';
 import { geocodeAddress } from '../routes/maps';
+import { returnLeg } from '../utils/returnLeg';
 
 export type Coords = { lat: number; lng: number };
 
@@ -121,8 +122,10 @@ async function legsBetween(fromDate: string, toDate: string): Promise<PlannedLeg
   const lo = `${fromDate}T00:00`;
   const hi = `${toDate}T23:59`;
   const bookings = await query<{ booking_number: string; pickup_address: string; dropoff_address: string;
-    pickup_datetime: string; return_datetime: string | null; trip_type: string; duration_minutes: number | null }>(
-    `SELECT booking_number, pickup_address, dropoff_address, pickup_datetime, return_datetime, trip_type, duration_minutes
+    pickup_datetime: string; return_datetime: string | null; trip_type: string; duration_minutes: number | null;
+    return_pickup_address: string | null; return_dropoff_address: string | null }>(
+    `SELECT booking_number, pickup_address, dropoff_address, pickup_datetime, return_datetime, trip_type, duration_minutes,
+            return_pickup_address, return_dropoff_address
        FROM bookings
       WHERE status != 'cancelled'
         AND (REPLACE(pickup_datetime, ' ', 'T') BETWEEN ? AND ?
@@ -135,7 +138,7 @@ async function legsBetween(fromDate: string, toDate: string): Promise<PlannedLeg
     if (out >= lo && out <= hi) legs.push({ start: out, from: b.pickup_address, to: b.dropoff_address, durationMin: dur, label: b.booking_number });
     if (b.trip_type === 'roundtrip' && b.return_datetime) {
       const back = wall(b.return_datetime);
-      if (back >= lo && back <= hi) legs.push({ start: back, from: b.dropoff_address, to: b.pickup_address, durationMin: dur, label: `${b.booking_number} (Rück)` });
+      if (back >= lo && back <= hi) legs.push({ start: back, from: returnLeg(b).from, to: returnLeg(b).to, durationMin: dur, label: `${b.booking_number} (Rück)` });
     }
   }
   const cal = await query<{ ride_time: string; pickup_address: string | null; dropoff_address: string | null; summary: string | null }>(

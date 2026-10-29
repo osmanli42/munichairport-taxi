@@ -596,6 +596,9 @@ interface SearchBarProps {
     hasReturn: boolean;
     returnDate?: string;
     returnTime?: string;
+    /** Rückfahrt mit anderer Adresse (leer = umgekehrte Hinfahrt) */
+    returnPickup?: string;
+    returnDropoff?: string;
   };
   onSearchComplete?: (params: URLSearchParams) => void;
   compact?: boolean;
@@ -622,6 +625,8 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     hasReturn: searchParams.get('trip_type') === 'roundtrip',
     returnDate: searchParams.get('return_date') || undefined,
     returnTime: searchParams.get('return_time') || undefined,
+    returnPickup: searchParams.get('return_pickup') || undefined,
+    returnDropoff: searchParams.get('return_dropoff') || undefined,
   } : undefined;
 
   const init = initialValues || urlInit;
@@ -641,7 +646,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
   const [searching, setSearching] = useState(false);
   const [formError, setFormError] = useState('');
   // Ursache des roten Hinweises — damit er verschwindet, sobald sie behoben ist (nicht erst beim nächsten "Suchen")
-  const errKindRef = useRef<'from' | 'to' | 'date' | 'soon' | 'airport' | 'route' | null>(null);
+  const errKindRef = useRef<'from' | 'to' | 'date' | 'soon' | 'airport' | 'route' | 'retFrom' | 'retTo' | 'retAirport' | null>(null);
   const routeErrAtRef = useRef<{ p: string; d: string } | null>(null);
   // Zähler: erhöhen = betreffendes Adressfeld öffnet seine Vorschlagsliste (AddressField.openSignal)
   const [openFrom, setOpenFrom] = useState(0);
@@ -649,11 +654,13 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
 
   // Settings (stadtfahrt toggle + min advance hours)
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
+  const [returnAddressEnabled, setReturnAddressEnabled] = useState(false);
   const [minAdvanceHours, setMinAdvanceHours] = useState(1.5);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
       if (s.min_advance_hours) setMinAdvanceHours(parseFloat(s.min_advance_hours));
+      if (s.return_address_enabled === '1') setReturnAddressEnabled(true);
     }).catch(() => {});
   }, []);
 
@@ -663,6 +670,23 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
   returnDefault.setDate(returnDefault.getDate() + 3);
   const [returnDate, setReturnDate] = useState(init?.returnDate || returnDefault.toISOString().split('T')[0]);
   const [returnTime, setReturnTime] = useState(init?.returnTime || '16:00');
+
+  // Rückfahrt mit anderer Adresse (Admin-Schalter return_address_enabled): eigene Abhol-/Zieladresse
+  const [customReturn, setCustomReturn] = useState(!!(init?.returnPickup && init?.returnDropoff));
+  const [retPickup, setRetPickup] = useState(init?.returnPickup || '');
+  const [retPickupVal, setRetPickupVal] = useState(requireSelection ? '' : init?.returnPickup || '');
+  const [retDropoff, setRetDropoff] = useState(init?.returnDropoff || '');
+  const [retDropoffVal, setRetDropoffVal] = useState(requireSelection ? '' : init?.returnDropoff || '');
+  const [openRetFrom, setOpenRetFrom] = useState(0);
+  const [openRetTo, setOpenRetTo] = useState(0);
+  const showCustomReturn = hasReturn && returnAddressEnabled && customReturn;
+
+  function openCustomReturn() {
+    // Vorbelegt mit der umgekehrten Hinfahrt — der Kunde ändert nur, was anders ist
+    setRetPickup(dropoff); setRetPickupVal(dropoffVal);
+    setRetDropoff(pickup); setRetDropoffVal(pickupVal);
+    setCustomReturn(true);
+  }
 
   // Auto-correct return date/time: must be after departure
   useEffect(() => {
@@ -686,6 +710,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     call: string;
     arrival: string; addReturn: string; returnFlight: string;
     swap: string; persons: string; person: string;
+    otherReturn: string; retFrom: string; retTo: string; retPrefix: string; retClose: string;
   }> = {
     de: {
       from: 'Abholadresse...', to: 'Zieladresse...', search: 'Suchen', searching: 'Suchen...',
@@ -695,6 +720,8 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       errAirport: 'Wir bieten nur Flughafentransfers an. Bitte wählen Sie den Flughafen München oder eine Adresse in der Nähe (Oberding, Hallbergmoos, Freising) als Abhol- oder Zielort.',
       arrival: 'Hinfahrt', addReturn: 'Rückfahrt hinzufügen', returnFlight: 'Rückfahrt',
       swap: 'Adressen tauschen', persons: 'Personen', person: 'Person',
+      otherReturn: 'Rückfahrt von einer anderen Adresse?', retFrom: 'Rückfahrt ab...', retTo: 'Rückfahrt nach...',
+      retPrefix: 'Rückfahrt', retClose: 'Gleiche Strecke zurück',
     },
     en: {
       from: 'Pickup address...', to: 'Destination...', search: 'Search', searching: 'Searching...',
@@ -704,6 +731,8 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       errAirport: 'We only offer airport transfers. Please select Munich Airport or a nearby address (Oberding, Hallbergmoos, Freising) as pickup or destination.',
       arrival: 'Flight arrival', addReturn: 'Add a return', returnFlight: 'Return flight',
       swap: 'Swap addresses', persons: 'Passengers', person: 'Passenger',
+      otherReturn: 'Return from a different address?', retFrom: 'Return pickup...', retTo: 'Return destination...',
+      retPrefix: 'Return', retClose: 'Same route back',
     },
     tr: {
       from: 'Alış adresi...', to: 'Varış adresi...', search: 'Ara', searching: 'Aranıyor...',
@@ -713,6 +742,8 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       errAirport: 'Sadece havalimanı transferi sunuyoruz. Lütfen Münih Havalimanı veya yakın bir adres (Oberding, Hallbergmoos, Freising) seçin.',
       arrival: 'Gidiş', addReturn: 'Dönüş ekle', returnFlight: 'Dönüş',
       swap: 'Adresleri değiştir', persons: 'Kişi', person: 'Kişi',
+      otherReturn: 'Dönüş başka bir adresten mi?', retFrom: 'Dönüş alış adresi...', retTo: 'Dönüş varış adresi...',
+      retPrefix: 'Dönüş', retClose: 'Aynı güzergahtan dönüş',
     },
   };
   const l = labels[locale] || labels.de;
@@ -749,10 +780,13 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       (k === 'date' && !!date) ||
       (k === 'soon' && !isTooSoon(date, time)) ||
       (k === 'airport' && (stadtfahrtEnabled || isAirportArea(pickupVal) || isAirportArea(dropoffVal))) ||
-      (k === 'route' && !!routeErrAtRef.current && (routeErrAtRef.current.p !== pickupVal || routeErrAtRef.current.d !== dropoffVal));
+      (k === 'route' && !!routeErrAtRef.current && (routeErrAtRef.current.p !== pickupVal || routeErrAtRef.current.d !== dropoffVal)) ||
+      (k === 'retFrom' && (!!retPickupVal || !showCustomReturn)) ||
+      (k === 'retTo' && (!!retDropoffVal || !showCustomReturn)) ||
+      (k === 'retAirport' && (!showCustomReturn || stadtfahrtEnabled || isAirportArea(retPickupVal) || isAirportArea(retDropoffVal)));
     if (fixed) { errKindRef.current = null; setFormError(''); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickupVal, dropoffVal, date, time, stadtfahrtEnabled, formError]);
+  }, [pickupVal, dropoffVal, date, time, stadtfahrtEnabled, formError, retPickupVal, retDropoffVal, showCustomReturn]);
 
   async function handleSearch() {
     // pickupVal/dropoffVal are only set once an address has been resolved via
@@ -769,14 +803,33 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
     if (!isAirportTrip && !stadtfahrtEnabled) {
       errKindRef.current = 'airport'; setFormError(l.errAirport); return;
     }
+    // Rückfahrt mit anderer Adresse — gleiche Regeln wie für die Hinfahrt.
+    // Unverändert (= umgekehrte Hinfahrt) zählt sie als normale Hin- & Rückfahrt.
+    const useCustomReturn = showCustomReturn && !(retPickupVal === dropoffVal && retDropoffVal === pickupVal);
+    if (useCustomReturn) {
+      if (!retPickupVal) { errKindRef.current = 'retFrom'; setFormError(`${l.retPrefix}: ${retPickup.trim() ? `${l.errFrom}: ${l.errPick}` : l.errFrom}`); setOpenRetFrom(n => n + 1); return; }
+      if (!retDropoffVal) { errKindRef.current = 'retTo'; setFormError(`${l.retPrefix}: ${retDropoff.trim() ? `${l.errTo}: ${l.errPick}` : l.errTo}`); setOpenRetTo(n => n + 1); return; }
+      if (!stadtfahrtEnabled && !isAirportArea(retPickupVal) && !isAirportArea(retDropoffVal)) {
+        errKindRef.current = 'retAirport'; setFormError(`${l.retPrefix}: ${l.errAirport}`); return;
+      }
+    }
     setFormError('');
     setSearching(true);
     try {
-      const res = await fetch(`${API_URL}/maps/distance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin: pickupVal, destination: dropoffVal, language: locale, check_anfahrt: !isAirportTrip }),
-      });
+      // Rückfahrt mit anderer Adresse: beide Strecken gleichzeitig berechnen (nicht nacheinander)
+      const retAirport = useCustomReturn && (isAirportArea(retPickupVal) || isAirportArea(retDropoffVal));
+      const [res, rRes] = await Promise.all([
+        fetch(`${API_URL}/maps/distance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ origin: pickupVal, destination: dropoffVal, language: locale, check_anfahrt: !isAirportTrip }),
+        }),
+        useCustomReturn ? fetch(`${API_URL}/maps/distance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ origin: retPickupVal, destination: retDropoffVal, language: locale, check_anfahrt: !retAirport }),
+        }) : Promise.resolve(null),
+      ]);
       const data = await res.json();
       if (!res.ok) throw new Error('Route not found');
       const params = new URLSearchParams({
@@ -793,6 +846,15 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
       if (hasReturn) {
         params.set('return_date', returnDate);
         params.set('return_time', returnTime);
+      }
+      if (useCustomReturn && rRes) {
+        const rData = await rRes.json();
+        if (!rRes.ok) throw new Error('Return route not found');
+        params.set('return_pickup', retPickupVal);
+        params.set('return_dropoff', retDropoffVal);
+        params.set('return_distance_km', String(rData.distance_km));
+        params.set('return_duration', String(rData.duration_minutes));
+        if (rData.anfahrt_distance_km) params.set('return_anfahrt_km', String(rData.anfahrt_distance_km));
       }
       if (onSearchComplete) {
         onSearchComplete(params);
@@ -929,7 +991,56 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
               {l.search}
             </button>
           </div>
+
+          {/* Rückfahrt mit anderer Adresse — zweite, schmale Zeile im selben Rahmen */}
+          {showCustomReturn && (
+            <div className="flex items-stretch overflow-visible border-t-[3px] border-gold-400 rounded-b-xl">
+              <div className="shrink-0 flex items-center px-3 bg-gold-50 rounded-bl-xl">
+                <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800 whitespace-nowrap">
+                  <ArrowLeftRight size={13} /> {l.retPrefix}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 overflow-visible border-l border-gray-200">
+                <AddressField
+                  icon={<MapPin size={18} className="text-green-500" />}
+                  placeholder={l.retFrom}
+                  value={retPickup}
+                  onChange={setRetPickup}
+                  onValidSelect={setRetPickupVal}
+                  openSignal={openRetFrom}
+                  locale={locale}
+                />
+              </div>
+              <div className="flex-1 min-w-0 overflow-visible border-l border-gray-200">
+                <AddressField
+                  icon={<MapPin size={18} className="text-red-400" />}
+                  placeholder={l.retTo}
+                  value={retDropoff}
+                  onChange={setRetDropoff}
+                  onValidSelect={setRetDropoffVal}
+                  openSignal={openRetTo}
+                  locale={locale}
+                />
+              </div>
+              <button
+                onClick={() => setCustomReturn(false)}
+                title={l.retClose}
+                aria-label={l.retClose}
+                className="shrink-0 w-12 flex items-center justify-center border-l border-gray-200 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-br-xl transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </div>
+        {hasReturn && returnAddressEnabled && !customReturn && (
+          <button
+            onClick={openCustomReturn}
+            className="mt-2 ml-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 hover:bg-white text-primary-700 text-xs font-semibold shadow transition-colors"
+          >
+            <ArrowLeftRight size={12} /> {l.otherReturn}
+          </button>
+        )}
       </div>
 
       {/* ─── MOBILE ─── */}
@@ -1019,6 +1130,53 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 )}
               </div>
             </div>
+
+            {/* Rückfahrt mit anderer Adresse */}
+            {hasReturn && returnAddressEnabled && !customReturn && (
+              <div className="px-3 py-1.5 bg-white border-t border-gray-100">
+                <button onClick={openCustomReturn} className="flex items-center gap-1.5 text-primary-700 text-xs font-semibold">
+                  <ArrowLeftRight size={12} /> {l.otherReturn}
+                </button>
+              </div>
+            )}
+            {showCustomReturn && (
+              <div className="overflow-visible border-t-[3px] border-gold-400">
+                <div className="flex items-center justify-between px-3 py-1 bg-gold-50">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                    <ArrowLeftRight size={12} /> {l.retPrefix}
+                  </span>
+                  <button
+                    onClick={() => setCustomReturn(false)}
+                    aria-label={l.retClose}
+                    className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-500"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+                <div className="overflow-visible">
+                  <AddressField
+                    icon={<MapPin size={18} className="text-green-500" />}
+                    placeholder={l.retFrom}
+                    value={retPickup}
+                    onChange={setRetPickup}
+                    onValidSelect={setRetPickupVal}
+                    openSignal={openRetFrom}
+                    locale={locale}
+                  />
+                </div>
+                <div className="overflow-visible border-t border-gray-100">
+                  <AddressField
+                    icon={<MapPin size={18} className="text-red-400" />}
+                    placeholder={l.retTo}
+                    value={retDropoff}
+                    onChange={setRetDropoff}
+                    onValidSelect={setRetDropoffVal}
+                    openSignal={openRetTo}
+                    locale={locale}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Passengers & Search */}
             <div className="flex border-t border-gray-100">

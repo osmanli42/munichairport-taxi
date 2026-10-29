@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import path from 'path';
 import { query } from '../db';
 import { formatPhoneDisplay } from '../utils/phone';
+import { returnLeg } from '../utils/returnLeg';
 
 // Standard-PDF-Fonts (Helvetica) unterstützen kein Türkisch (ı, ğ, ş, İ fehlen in WinAnsi).
 // Work Sans (SIL OFL) deckt alle Türkisch-Zeichen ab — für Rechnungen mit türkischen Namen registriert.
@@ -282,8 +283,8 @@ export function generateRechnungPdf(opts: {
           { text: `${isEn ? 'From:' : 'Von:'} ${fromAddr}` },
           { text: `${isEn ? 'To:' : 'Nach:'} ${toAddr}` },
           { text: `${isEn ? 'Return' : 'Rückfahrt'}: ${fmtDate(booking.return_datetime, lang)}`, bold: true, gap: 4 },
-          { text: `${isEn ? 'From:' : 'Von:'} ${toAddr}` },
-          { text: `${isEn ? 'To:' : 'Nach:'} ${fromAddr}` },
+          { text: `${isEn ? 'From:' : 'Von:'} ${returnLeg(booking).from}` },
+          { text: `${isEn ? 'To:' : 'Nach:'} ${returnLeg(booking).to}` },
         ]
       : [
           { text: `${isEn ? 'From:' : 'Von:'} ${fromAddr}` },
@@ -473,7 +474,7 @@ export function buildRechnungEmail(opts: {
   const isRoundtrip = isRoundtripBooking(booking);
   const routeRows = isRoundtrip
     ? `<tr><td style="padding:8px 12px 2px;color:#6b7280;font-size:12px;" colspan="2"><strong style="color:#374151;">${isEn ? 'Outbound' : 'Hinfahrt'} ${fmtDate(booking.pickup_datetime, lang)}:</strong> ${booking.pickup_address} → ${booking.dropoff_address}</td></tr>
-    <tr><td style="padding:2px 12px 8px;color:#6b7280;font-size:12px;" colspan="2"><strong style="color:#374151;">${isEn ? 'Return' : 'Rückfahrt'} ${fmtDate(booking.return_datetime, lang)}:</strong> ${booking.dropoff_address} → ${booking.pickup_address}</td></tr>`
+    <tr><td style="padding:2px 12px 8px;color:#6b7280;font-size:12px;" colspan="2"><strong style="color:#374151;">${isEn ? 'Return' : 'Rückfahrt'} ${fmtDate(booking.return_datetime, lang)}:</strong> ${returnLeg(booking).from} → ${returnLeg(booking).to}</td></tr>`
     : `<tr><td style="padding:8px 12px;color:#6b7280;font-size:12px;" colspan="2">${booking.pickup_address} → ${booking.dropoff_address}</td></tr>`;
 
   const tableRows = `

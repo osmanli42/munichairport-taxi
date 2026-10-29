@@ -10,7 +10,7 @@ import {
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
   Settings, Settings2, Route, Milestone, Moon, Plane, Megaphone, Workflow, Landmark, Clock, Phone, Ban, CarFront,
-  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus, Fuel, Wallet,
+  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus, Fuel, Wallet, ArrowLeftRight,
 } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
@@ -32,6 +32,7 @@ import MarketingTab from '@/components/marketing/MarketingTab';
 import FinalConfirmButton from '@/components/booking/FinalConfirmButton';
 import { GutscheinButton } from '@/components/discount/PersonalLinkPanel';
 import AdminAddressField from '@/components/AdminAddressField';
+import { returnLeg } from '@/lib/returnLeg';
 import RabatteTab from '@/components/RabatteTab';
 import DriversTab from '@/components/DriversTab';
 import DashboardTab from '@/components/DashboardTab';
@@ -151,6 +152,9 @@ export default function AdminPage() {
   const [editError, setEditError] = useState('');
   const [editPickupValid, setEditPickupValid] = useState('');
   const [editDropoffValid, setEditDropoffValid] = useState('');
+  // Rückfahrt mit anderer Adresse (leer = umgekehrte Hinfahrt)
+  const [editRetPickupValid, setEditRetPickupValid] = useState('');
+  const [editRetDropoffValid, setEditRetDropoffValid] = useState('');
   const [editPickupCoords, setEditPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [editDropoffCoords, setEditDropoffCoords] = useState<{lat: number, lng: number} | null>(null);
   // Confirmed (autocomplete-selected) Zwischenstopp address — null means no stopover,
@@ -552,6 +556,8 @@ export default function AdminPage() {
     setEditError('');
     setEditPickupValid(booking.pickup_address || '');
     setEditDropoffValid(booking.dropoff_address || '');
+    setEditRetPickupValid(booking.return_pickup_address || '');
+    setEditRetDropoffValid(booking.return_dropoff_address || '');
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditZwischenstoppValid(booking.zwischenstopp_address || null);
@@ -585,6 +591,8 @@ export default function AdminPage() {
     setEditError('');
     setEditPickupValid('');
     setEditDropoffValid('');
+    setEditRetPickupValid('');
+    setEditRetDropoffValid('');
     setEditPickupCoords(null);
     setEditDropoffCoords(null);
     setEditZwischenstoppValid(null);
@@ -644,8 +652,23 @@ export default function AdminPage() {
             const childSeatAddon = totalChildSeats * (priceRow?.child_seat_price ?? 0);
             // calculate-price liefert immer den Preis für die EINFACHE Fahrt. Bei Hin- & Rückfahrt
             // wie auf der Kundenseite: 2 × einfache Fahrt abzüglich Rückfahrt-Rabatt.
+            // Rückfahrt mit anderer Adresse: eigener Streckenpreis statt „× 2“
+            let returnLegPrice: number | null = null;
+            if (editForm.trip_type === 'roundtrip' && editRetPickupValid && editRetDropoffValid) {
+              const rDist = await fetch(`${apiBase}/maps/distance`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ origin: editRetPickupValid, destination: editRetDropoffValid }),
+              }).then(r => r.json()).catch(() => null);
+              if (rDist?.distance_km) {
+                const rPrice = await fetch(`${apiBase}/bookings/calculate-price`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ vehicle_type: vehicleType, distance_km: rDist.distance_km, pickup_address: editRetPickupValid, dropoff_address: editRetDropoffValid, trip_type: 'oneway' }),
+                }).then(r => r.json()).catch(() => null);
+                if (rPrice?.total_price != null) returnLegPrice = rPrice.total_price;
+              }
+            }
             const tripPrice: number = editForm.trip_type === 'roundtrip'
-              ? priceData.total_price * 2 * (1 - (priceRow?.roundtrip_discount ?? 0) / 100)
+              ? (priceData.total_price + (returnLegPrice ?? priceData.total_price)) * (1 - (priceRow?.roundtrip_discount ?? 0) / 100)
               : priceData.total_price;
             const total = parseFloat((tripPrice + fahrradAddon + childSeatAddon).toFixed(2));
             setEditBaseTripPrice(tripPrice);
@@ -656,7 +679,7 @@ export default function AdminPage() {
       .catch(() => {})
       .finally(() => setEditPriceCalcLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editPickupValid, editDropoffValid, editZwischenstoppValid, editForm.vehicle_type, editForm.trip_type, editRecalcArmed]);
+  }, [editPickupValid, editDropoffValid, editZwischenstoppValid, editForm.vehicle_type, editForm.trip_type, editRecalcArmed, editRetPickupValid, editRetDropoffValid]);
 
   // Update price when fahrrad or child seat counts change
   useEffect(() => {
@@ -1917,7 +1940,7 @@ export default function AdminPage() {
             </SectionCard>
 
             {/* ── Buchungsregeln ── */}
-            <SectionCard id="preise-regeln" icon={ClipboardList} title="Buchungsregeln" subtitle="Zwischenstopps, Status-Automatik und Rechnungskunden.">
+            <SectionCard id="preise-regeln" icon={ClipboardList} title="Buchungsregeln" subtitle="Zwischenstopps, Rückfahrt-Adresse, Status-Automatik und Rechnungskunden.">
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
                 <SettingCard
                   icon={Milestone}
@@ -1925,6 +1948,14 @@ export default function AdminPage() {
                   description="Kunden können einen Zwischenstopp zur Fahrt hinzufügen."
                   on={settingOn('zwischenstopp_enabled')}
                   control={sw('zwischenstopp_enabled', 'Zwischenstopp')}
+                />
+                <SettingCard
+                  icon={ArrowLeftRight}
+                  title="Rückfahrt mit anderer Adresse"
+                  description="Kunde kann bei Hin- & Rückfahrt eine eigene Abhol- und Zieladresse für die Rückfahrt angeben."
+                  info={<>Unter der Suchleiste erscheint „Rückfahrt von einer anderen Adresse?“. Jede Strecke bekommt ihren eigenen Preis (Festpreis, Pflichttarif, Maut, PLZ-Zuschlag, Anfahrt), der Hin- & Rückfahrt-Rabatt gilt auf beide. Ausgeschaltet: Rückfahrt ist immer die umgekehrte Hinfahrt.</>}
+                  on={settingOn('return_address_enabled')}
+                  control={sw('return_address_enabled', 'Rückfahrt mit anderer Adresse')}
                 />
                 <SettingCard
                   className="xl:col-span-2"
@@ -3029,6 +3060,9 @@ export default function AdminPage() {
                 { label: 'Fahrttyp', value: selectedBooking.trip_type === 'roundtrip' ? '⇄ Hin- & Rückfahrt' : '→ Einfache Fahrt' },
                 { label: 'Hinfahrt', value: formatDateTime(selectedBooking.pickup_datetime) },
                 { label: 'Rückfahrt', value: selectedBooking.return_datetime ? formatDateTime(selectedBooking.return_datetime) : '-' },
+                ...(selectedBooking.trip_type === 'roundtrip' && (selectedBooking.return_pickup_address || selectedBooking.return_dropoff_address)
+                  ? [{ label: 'Rückfahrt-Strecke', value: `${returnLeg(selectedBooking).from} → ${returnLeg(selectedBooking).to}${selectedBooking.return_flight_number ? ` · ✈ ${selectedBooking.return_flight_number}` : ''}` }]
+                  : []),
                 { label: 'Fahrzeug', value: selectedBooking.vehicle_type },
                 { label: 'Passagiere', value: selectedBooking.passengers.toString() },
                 { label: 'Distanz', value: selectedBooking.distance_km ? `${selectedBooking.distance_km.toFixed(1)} km` : '-' },
@@ -3853,6 +3887,29 @@ export default function AdminPage() {
                           className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
+                    </div>
+                  )}
+                  {editForm.trip_type === 'roundtrip' && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
+                      <div className="text-xs font-semibold text-amber-800">⇄ Abweichende Rückfahrt <span className="font-normal text-amber-700">(leer = umgekehrte Hinfahrt)</span></div>
+                      <AdminAddressField
+                        placeholder="Rückfahrt ab..."
+                        value={editForm.return_pickup_address || ''}
+                        onChange={(v) => { setEditForm(p => ({ ...p, return_pickup_address: v })); if (!v) setEditRetPickupValid(''); }}
+                        onValidSelect={(v) => { setEditRetPickupValid(v); setEditRecalcArmed(true); if (v) setEditForm(p => ({ ...p, return_pickup_address: v })); }}
+                      />
+                      <AdminAddressField
+                        placeholder="Rückfahrt nach..."
+                        value={editForm.return_dropoff_address || ''}
+                        onChange={(v) => { setEditForm(p => ({ ...p, return_dropoff_address: v })); if (!v) setEditRetDropoffValid(''); }}
+                        onValidSelect={(v) => { setEditRetDropoffValid(v); setEditRecalcArmed(true); if (v) setEditForm(p => ({ ...p, return_dropoff_address: v })); }}
+                      />
+                      <input
+                        value={editForm.return_flight_number || ''}
+                        onChange={(e) => setEditForm(p => ({ ...p, return_flight_number: e.target.value }))}
+                        placeholder="Flugnummer Rückfahrt (optional)"
+                        className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                      />
                     </div>
                   )}
                   <div className="grid grid-cols-3 gap-3">

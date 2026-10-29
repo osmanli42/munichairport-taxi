@@ -425,6 +425,7 @@
     "pickupLabel": "Alış noktası",
     "dropoffLabel": "Varış noktası",
     "datetimeLabel": "Tarih & saat",
+    "returnLabel": "Dönüş",
     "vehicleLabel": "Araç",
     "passengersLabel": "Yolcu",
     "priceLabel": "Fiyat",

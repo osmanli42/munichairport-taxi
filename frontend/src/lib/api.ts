@@ -46,6 +46,12 @@ export interface BookingFormData {
   language: string;
   trip_type?: string;
   return_datetime?: string;
+  return_pickup_address?: string | null;
+  return_dropoff_address?: string | null;
+  return_flight_number?: string | null;
+  return_distance_km?: number | null;
+  return_price?: number | null;
+  oneway_leg_price?: number | null;
   fahrrad_count?: number;
   stripe_customer_id?: string;
   stripe_payment_method_id?: string;
@@ -85,6 +91,12 @@ export interface Booking {
   language: string;
   trip_type?: string;
   return_datetime?: string;
+  return_pickup_address?: string | null;
+  return_dropoff_address?: string | null;
+  return_flight_number?: string | null;
+  return_distance_km?: number | null;
+  return_price?: number | null;
+  oneway_leg_price?: number | null;
   created_at: string;
   stripe_customer_id?: string | null;
   stripe_payment_method_id?: string | null;

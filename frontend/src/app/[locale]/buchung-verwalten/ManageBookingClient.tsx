@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Search, MapPin, Calendar, Users, Car, CreditCard, Ban, CheckCircle2, AlertTriangle, Phone, Loader2, FileDown, Pencil, Minus, Plus, Luggage } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, Car, CreditCard, Ban, CheckCircle2, AlertTriangle, Phone, Loader2, FileDown, Pencil, Minus, Plus, Luggage, ArrowLeftRight } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
+import { returnLeg } from '@/lib/returnLeg';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -21,6 +22,8 @@ interface ManagedBooking {
   payment_method: string;
   trip_type?: string;
   return_datetime?: string;
+  return_pickup_address?: string | null;
+  return_dropoff_address?: string | null;
   can_cancel_free: boolean;
   /** Nacht-Stornierung: Fahrt beginnt, bevor wir morgens wach sind → nur telefonisch */
   night_phone_required?: boolean;
@@ -368,6 +371,16 @@ export default function ManageBookingClient() {
                   <p className="text-gray-800 font-medium">{formatDateTime(booking.pickup_datetime)}</p>
                 </div>
               </div>
+              {booking.trip_type === 'roundtrip' && booking.return_datetime && (
+                <div className="flex items-start gap-3">
+                  <ArrowLeftRight size={16} className="text-primary-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-gray-400 text-xs">{t('returnLabel')}</p>
+                    <p className="text-gray-800 font-medium">{formatDateTime(booking.return_datetime)}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">{returnLeg(booking).from} → {returnLeg(booking).to}</p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="flex items-center gap-2">
                   <Car size={16} className="text-primary-600 shrink-0" />

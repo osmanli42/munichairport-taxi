@@ -425,6 +425,7 @@
     "pickupLabel": "Pickup",
     "dropoffLabel": "Destination",
     "datetimeLabel": "Date & time",
+    "returnLabel": "Return trip",
     "vehicleLabel": "Vehicle",
     "passengersLabel": "Passengers",
     "priceLabel": "Price",

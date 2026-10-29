@@ -28,6 +28,7 @@ import MissedCustomers from './dashboard/MissedCustomers';
 import { ForecastCard, FunnelCard, ReceivablesCard } from './dashboard/BusinessCards';
 import type { Flights, WidgetOverview } from './dashboard/types';
 import { DashGrid, useDashLayout, type LayoutEntry } from './dashboard/LayoutGrid';
+import { returnLeg } from '@/lib/returnLeg';
 
 // Standard-Anordnung (12er-Raster); der Nutzer kann sie im Modus „Anordnen“ ändern
 const DEFAULT_LAYOUT: LayoutEntry[] = [
@@ -235,9 +236,9 @@ function DeltaChip({ cur, prev, suffix }: { cur: number; prev: number; suffix: s
 type LegState = 'past' | 'running' | 'next' | 'upcoming';
 
 function legRoute(l: Leg) {
-  // A Rückfahrt goes from the destination back to the start.
+  // A Rückfahrt goes from the destination back to the start (or its own addresses).
   return l.leg === 'rueck'
-    ? { from: l.dropoff_address, to: l.pickup_address, via: null as string | null }
+    ? { ...returnLeg(l), via: null as string | null }
     : { from: l.pickup_address, to: l.dropoff_address, via: l.zwischenstopp_address || null };
 }
 
@@ -379,6 +380,7 @@ function LegRow({ l, state, now, onOpen }: { l: Leg; state: LegState; now: strin
           <span className="inline-flex items-center gap-1"><VIcon size={13} /> {VEHICLE_LABELS[l.vehicle_type] || l.vehicle_type}</span>
           <span className="inline-flex items-center gap-1"><Users size={12} /> {l.passengers}</span>
           {!!l.luggage_count && <span className="inline-flex items-center gap-1"><Luggage size={12} /> {l.luggage_count}</span>}
+          {l.leg === 'rueck' && l.return_flight_number && <span className="inline-flex items-center gap-1 font-semibold text-gray-700"><PlaneLanding size={12} /> {l.return_flight_number}</span>}
           {l.leg === 'hin' && l.flight_number && <span className="inline-flex items-center gap-1 font-semibold text-gray-700"><PlaneLanding size={12} /> {l.flight_number}</span>}
           {l.driver_name && <span className="inline-flex items-center gap-1 text-emerald-700"><UserRound size={12} /> {l.driver_name}</span>}
           {l.phone && (

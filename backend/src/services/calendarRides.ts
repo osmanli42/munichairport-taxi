@@ -16,6 +16,7 @@ import { salutationGuest } from '../utils/socialProofPlace';
 import { estimateCalendarPrices } from './calendarPriceEstimate';
 import { fetchEventsRange, parseInvoiceRide, parseAmount, CalEvent } from './calendarInvoice';
 import { hasServiceAccount } from './calendarImport';
+import { returnLeg } from '../utils/returnLeg';
 
 // 'other' = a calendar entry that is no ride at all (workshop / barber appointment, a note, a
 // settlement reminder …): counted nowhere, no mail, not on the dashboard.
@@ -43,6 +44,8 @@ export interface BookingRef {
   return_datetime: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
+  return_pickup_address: string | null;
+  return_dropoff_address: string | null;
   calendar_event_uid: string | null;
   duration_minutes: number | null;
 }
@@ -116,7 +119,7 @@ export async function calendarId(): Promise<string | null> {
 export async function loadBookingRefs(): Promise<BookingRef[]> {
   return query<BookingRef>(`
     SELECT id, booking_number, name, price, status, trip_type, pickup_datetime, return_datetime,
-           pickup_address, dropoff_address, calendar_event_uid, duration_minutes
+           pickup_address, dropoff_address, return_pickup_address, return_dropoff_address, calendar_event_uid, duration_minutes
       FROM bookings`);
 }
 
@@ -128,7 +131,7 @@ export function classifyEvents(events: CalEvent[], bookings: BookingRef[]): Clas
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
     const legs: Array<[string | null, string | null, string | null]> = [[wall(b.pickup_datetime), b.pickup_address, b.dropoff_address]];
-    if (b.trip_type === 'roundtrip' && b.return_datetime) legs.push([wall(b.return_datetime), b.dropoff_address, b.pickup_address]);
+    if (b.trip_type === 'roundtrip' && b.return_datetime) legs.push([wall(b.return_datetime), returnLeg(b).from, returnLeg(b).to]);
     for (const [t, from, to] of legs) {
       if (!t) continue;
       const keys = [streetKey(from), streetKey(to)].filter((k): k is string => !!k);

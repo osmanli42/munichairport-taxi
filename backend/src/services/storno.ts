@@ -12,6 +12,7 @@ import { customerRecipient } from '../utils/recipient';
 import { formatPhoneDisplay } from '../utils/phone';
 import { fetchBankSettings, generateStornoPdf, roundGrossPrice, fmtDate, fmtPrice, isRoundtripBooking, StornoLine } from './rechnung';
 import { berlinDateSql } from '../utils/berlinTime';
+import { hasCustomReturn, returnLeg } from '../utils/returnLeg';
 
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 
@@ -191,6 +192,8 @@ export async function stornoSingleInvoice(
     roundtrip
       ? `${isEn ? 'Outbound' : 'Hinfahrt'}: ${pickup} · ${isEn ? 'Return' : 'Rückfahrt'}: ${fmtDate(b.return_datetime, lang)}`
       : `${isEn ? 'Date:' : 'Datum:'} ${pickup}`,
+    ...(roundtrip && hasCustomReturn(b)
+      ? [`${isEn ? 'Return' : 'Rückfahrt'}: ${returnLeg(b).from} → ${returnLeg(b).to}`] : []),
   ];
   const lines: StornoLine[] = [{
     desc: roundtrip

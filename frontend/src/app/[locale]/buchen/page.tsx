@@ -119,6 +119,16 @@ function BuchenContent() {
   const dropoffLat = params.get('dropoff_lat');
   const dropoffLng = params.get('dropoff_lng');
   const tollAmount = Number(params.get('toll_amount') || 0);
+  // Rückfahrt mit anderer Adresse (von /ergebnisse): eigener Streckenpreis inkl. Maut + PLZ-Zuschlag
+  const returnPickup = params.get('return_pickup') || '';
+  const returnDropoff = params.get('return_dropoff') || '';
+  const returnDistanceKm = Number(params.get('return_distance_km') || 0);
+  const returnDuration = Number(params.get('return_duration') || 0);
+  const returnLegPrice = Number(params.get('return_price') || 0);
+  const returnTollAmount = Number(params.get('return_toll_amount') || 0);
+  const returnAnfahrtCost = Number(params.get('return_anfahrt_cost') || 0);
+  const outDiscParam = params.get('out_disc');
+  const retDiscParam = params.get('ret_disc');
 
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
@@ -293,8 +303,13 @@ function BuchenContent() {
 
   // Dynamic total price including extras and roundtrip
   const oneWayPrice = localZwischenstoppBasePrice > 0 ? localZwischenstoppBasePrice : basePrice;
-  const roundtripPrice = oneWayPrice * 2 * (1 - roundtripDiscount / 100);
-  const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice) + anfahrtCost;
+  const customReturn = tripType === 'roundtrip' && !!returnPickup && !!returnDropoff && returnLegPrice > 0;
+  const roundtripPrice = customReturn
+    ? oneWayPrice * (1 - Number(outDiscParam ?? roundtripDiscount) / 100)
+      + returnLegPrice * (1 - Number(retDiscParam ?? roundtripDiscount) / 100)
+    : oneWayPrice * 2 * (1 - roundtripDiscount / 100);
+  const price = (tripType === 'roundtrip' ? roundtripPrice : oneWayPrice) + (fahrradCount * fahrradPrice) + anfahrtCost
+    + (customReturn ? returnAnfahrtCost : 0);
   const effectiveDistanceKm = localZwischenstoppDistanceKm > 0 ? localZwischenstoppDistanceKm : distanceKm;
   const effectiveDuration = localZwischenstoppDuration > 0 ? localZwischenstoppDuration : duration;
 
@@ -617,7 +632,8 @@ function BuchenContent() {
   }, [showRechnungModal]);
 
   const isAirportPickup = pickup.includes('München-Flughafen');
-  const isAirportDropoff = dropoff.includes('München-Flughafen');
+  // Rückfahrt mit anderer Adresse: maßgeblich ist deren Abholadresse, sonst die Hinfahrt-Zieladresse
+  const isAirportDropoff = (customReturn ? returnPickup : dropoff).includes('München-Flughafen');
   // Flight number is required whenever the driver needs it to track an arrival:
   // either the outbound pickup is at the airport, or a Rückfahrt was added and the
   // outbound dropoff is the airport (so the return leg picks the customer up there).
@@ -814,6 +830,14 @@ function BuchenContent() {
         return_datetime: returnDatetime,
         anfahrt_cost: anfahrtCost > 0 ? anfahrtCost : undefined,
         toll_amount: tollAmount > 0 ? tollAmount : undefined,
+        ...(customReturn ? {
+          return_pickup_address: returnPickup,
+          return_dropoff_address: returnDropoff,
+          return_distance_km: returnDistanceKm,
+          return_duration_minutes: returnDuration || undefined,
+          return_toll_amount: returnTollAmount > 0 ? returnTollAmount : undefined,
+          return_anfahrt_cost: returnAnfahrtCost > 0 ? returnAnfahrtCost : undefined,
+        } : {}),
         zwischenstopp_address: params.get('zwischenstopp_address') || localZwischenstopp || undefined,
         promo_code: appliedPromo?.code || undefined,
         rechnung_required: rechnungRequired && rechnungAdresse.trim() ? 1 : 0,
@@ -880,7 +904,7 @@ function BuchenContent() {
         { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }
       )
     : '';
-  const strikePrice = (appliedPromo || autoDiscount) ? price : tripType === 'roundtrip' ? oneWayPrice * 2 : null;
+  const strikePrice = (appliedPromo || autoDiscount) ? price : tripType === 'roundtrip' ? (customReturn ? oneWayPrice + returnLegPrice : oneWayPrice * 2) : null;
 
   // Zurück zur Fahrzeugauswahl statt zur Startseite: dort lässt sich die Suche
   // inline bearbeiten und der Preis wird direkt neu berechnet.
@@ -897,6 +921,14 @@ function BuchenContent() {
     if (tripType === 'roundtrip') {
       if (returnDate) sp.set('return_date', returnDate);
       if (returnTime) sp.set('return_time', returnTime);
+      if (customReturn) {
+        sp.set('return_pickup', returnPickup);
+        sp.set('return_dropoff', returnDropoff);
+        sp.set('return_distance_km', String(returnDistanceKm));
+        sp.set('return_duration', String(returnDuration));
+        const rAnfahrtKm = params.get('return_anfahrt_km');
+        if (rAnfahrtKm) sp.set('return_anfahrt_km', rAnfahrtKm);
+      }
     }
     if (zwStopAddress) sp.set('zwischenstopp_address', zwStopAddress);
     const prefix = locale === 'de' ? '' : `/${locale}`;
@@ -1181,6 +1213,7 @@ function BuchenContent() {
                   {tripType === 'roundtrip' && returnDate && (
                     <p className="text-sm text-gray-800 mt-1">
                       <span className="text-gray-500">{L('Rückfahrt', 'Return', 'Dönüş')}:</span> {returnDateFmt} · {returnTime} {L('Uhr', '', '')}
+                      {customReturn && <span className="block text-xs text-gray-500 mt-0.5 break-words">{returnPickup} → {returnDropoff}</span>}
                     </p>
                   )}
                 </div>
@@ -1410,6 +1443,7 @@ function BuchenContent() {
                           <div className="text-sm">
                             <p className="font-bold text-gray-900">{L('Rückfahrt', 'Return', 'Dönüş')}</p>
                             <p className="text-gray-700">{returnDateLong} · {returnTime} {L('Uhr', '', '')}</p>
+                            {customReturn && <span className="block text-xs text-gray-500 mt-0.5 break-words">{returnPickup} → {returnDropoff}</span>}
                           </div>
                         </div>
                       )}
@@ -2236,6 +2270,7 @@ function BuchenContent() {
                       <div className="flex-1 min-w-0 text-sm">
                         <p className="text-gray-900">{L('Rückfahrt', 'Return trip', 'Dönüş')}</p>
                         <p className="text-gray-700">{returnDateLong} · {returnTime} {L('Uhr', '', '')}</p>
+                        {customReturn && <span className="block text-xs text-gray-500 mt-0.5 break-words">{returnPickup} → {returnDropoff}</span>}
                       </div>
                     </div>
                   )}

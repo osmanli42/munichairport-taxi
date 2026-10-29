@@ -7,6 +7,7 @@
 import type { BookingNotificationData } from './notifications';
 import { BOOKING_CANCEL_REASONS, isBookingCancelReason } from './cancelReasons';
 import { formatPhoneDisplay } from '../utils/phone';
+import { hasCustomReturn, returnLeg } from '../utils/returnLeg';
 
 const SITE = 'https://flughafen-muenchen.taxi';
 const PHONE = '+49 151 41620000';
@@ -164,8 +165,8 @@ function button(href: string, label: string, primary = true): string {
 }
 
 function route(b: BookingNotificationData, t: Record<string, string>, reverse = false): string {
-  const from = reverse ? b.dropoff_address : b.pickup_address;
-  const to = reverse ? b.pickup_address : b.dropoff_address;
+  const from = reverse ? returnLeg(b).from : b.pickup_address;
+  const to = reverse ? returnLeg(b).to : b.dropoff_address;
   const point = (color: string, label: string, addr: string, last = false) => `
     <tr>
       <td width="22" style="vertical-align:top;padding-top:3px">
@@ -182,6 +183,13 @@ function route(b: BookingNotificationData, t: Record<string, string>, reverse = 
     ${b.zwischenstopp_address && !reverse ? point('#2563eb', t.stop, b.zwischenstopp_address) : ''}
     ${point(C.gold, t.dropoff, to, true)}
   </table>`;
+}
+
+// Rückfahrt mit anderer Adresse: zweite Strecke unter der Hinfahrt (sonst reicht die eine Route)
+function returnRoute(b: BookingNotificationData, t: Record<string, string>): string {
+  if (b.trip_type !== 'roundtrip' || !hasCustomReturn(b)) return '';
+  return `<div style="font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px;font-weight:700">⇄ ${t.ret}</div>
+    ${route(b, t, true)}`;
 }
 
 function infoRows(rows: Array<[string, string] | null>): string {
@@ -204,7 +212,11 @@ const heading = (s: string) => `<div style="font-size:13px;font-weight:700;color
 
 function priceRows(b: BookingNotificationData, t: Record<string, string>, forAdmin: boolean): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
-  if (b.trip_type === 'roundtrip' && b.oneway_price !== undefined) {
+  if (b.trip_type === 'roundtrip' && b.oneway_price !== undefined && b.return_price != null) {
+    rows.push([t.outbound, money(b.oneway_price)]);
+    rows.push([t.ret, money(b.return_price)]);
+    rows.push([t.rtDiscount, `<span style="color:${C.green}">−${b.roundtrip_discount ?? 0} %</span>`]);
+  } else if (b.trip_type === 'roundtrip' && b.oneway_price !== undefined) {
     rows.push([t.oneway, money(b.oneway_price)]);
     rows.push([t.twice, money(b.oneway_price * 2)]);
     rows.push([t.rtDiscount, `<span style="color:${C.green}">−${b.roundtrip_discount ?? 0} %</span>`]);
@@ -232,7 +244,7 @@ export function customerConfirmationEmail(
   const out = when(b.pickup_datetime, lang);
   const back = b.return_datetime ? when(b.return_datetime, lang) : null;
   const vehicle = VEHICLE[b.vehicle_type] || VEHICLE.kombi;
-  const airportPickup = isAirport(b.pickup_address) || (!!back && isAirport(b.dropoff_address));
+  const airportPickup = isAirport(b.pickup_address) || (!!back && isAirport(returnLeg(b).from));
   const firstName = String(b.name || '').trim();
   const { pet, rest: notes } = splitPet(b.notes);
 
@@ -268,7 +280,7 @@ export function customerConfirmationEmail(
       ${dateBlock(back ? t.outbound : t.pickup, out)}
       ${back ? dateBlock(t.ret, back) : ''}
     </tr></table>
-    ${route(b, t)}
+    ${route(b, t)}${returnRoute(b, t)}
     ${b.distance_km || b.duration_minutes ? `<div style="margin-top:12px;font-size:12px;color:${C.muted}">
       ${b.distance_km ? `${Number(b.distance_km).toFixed(1).replace('.', ',')} km` : ''}${b.distance_km && b.duration_minutes ? ' · ' : ''}${b.duration_minutes ? `${t.approx} ${b.duration_minutes} ${t.min}` : ''}
     </div>` : ''}
@@ -301,10 +313,11 @@ export function customerConfirmationEmail(
     <div style="margin-top:8px;font-size:12px;color:${C.green}">✓ ${t.fixed}</div>
   `, `background:${C.goldSoft};border-color:#f1e2b8`)}
 
-  ${b.flight_number || b.pickup_sign || b.child_seat || b.notes || b.rechnung_adresse ? card(`
+  ${b.flight_number || b.return_flight_number || b.pickup_sign || b.child_seat || b.notes || b.rechnung_adresse ? card(`
     ${heading(t.details)}
     ${infoRows([
       b.flight_number ? [t.flight, esc(b.flight_number)] : null,
+      b.return_flight_number ? [`${t.flight} (${t.ret})`, esc(b.return_flight_number)] : null,
       b.pickup_sign ? [t.sign, esc(b.pickup_sign)] : null,
       b.child_seat ? [t.child, `${t.childYes}${b.child_seat_details ? ` — ${esc(b.child_seat_details)}` : ''}`] : null,
       pet ? [t.pet, t.petYes] : null,
@@ -422,7 +435,7 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
 
   ${card(`
     ${heading('Fahrt')}
-    ${route(b, t)}
+    ${route(b, t)}${returnRoute(b, t)}
     <div style="margin-top:12px;font-size:12px;color:${C.muted}">
       ${vehicle.label.de} · 👤 ${b.passengers} · 🧳 ${b.luggage_count}${b.distance_km ? ` · ${Number(b.distance_km).toFixed(1).replace('.', ',')} km` : ''}${b.duration_minutes ? ` · ca. ${b.duration_minutes} Min.` : ''}
     </div>
@@ -434,6 +447,7 @@ export function adminNotificationEmail(b: BookingNotificationData): { subject: s
       ['Name', esc(b.name)],
       ['Telefon', `<a href="tel:${esc(b.phone)}" style="color:${C.navy2}">${esc(formatPhoneDisplay(b.phone))}</a>`],
       ['E-Mail', `<a href="mailto:${esc(b.email)}" style="color:${C.navy2}">${esc(b.email)}</a>`],
+      b.return_flight_number ? ['Flug Rückfahrt', esc(b.return_flight_number)] : null,
       b.flight_number ? ['Flug', `${esc(b.flight_number)} ${b.flight_validated === '1' ? `<span style="color:${C.green}">✓ ${esc(b.flight_info || 'bestätigt')}</span>` : '<span style="color:#b45309">⚠ nicht verifiziert</span>'}`] : null,
       ['Sprache', esc(String(b.language || 'de').toUpperCase())],
     ])}
@@ -502,7 +516,7 @@ function cancelledTrip(b: BookingNotificationData, lang: Lang, c: Record<string,
       ${dateBlock(back ? c.outbound : c.when, out)}
       ${back ? dateBlock(c.ret, back) : ''}
     </tr></table>
-    ${route(b, t)}
+    ${route(b, t)}${returnRoute(b, t)}
     <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label[lang]}</div>`;
 }
 
@@ -717,7 +731,7 @@ export function customerChangeEmail(b: BookingNotificationData, ch: BookingChang
       ${dateBlock(back ? t.outbound : c.pickup, out)}
       ${back ? dateBlock(t.ret, back) : ''}
     </tr></table>
-    ${route(b, t)}
+    ${route(b, t)}${returnRoute(b, t)}
     <div style="margin-top:12px;font-size:12px;color:${C.muted}">${(VEHICLE[b.vehicle_type] || VEHICLE.kombi).label[lang]} · 👤 ${b.passengers} ${c.persons} · 🧳 ${b.luggage_count || 0} ${c.bags}</div>
   `)}
 

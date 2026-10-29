@@ -425,6 +425,7 @@
     "pickupLabel": "Abholung",
     "dropoffLabel": "Ziel",
     "datetimeLabel": "Datum & Uhrzeit",
+    "returnLabel": "Rückfahrt",
     "vehicleLabel": "Fahrzeug",
     "passengersLabel": "Personen",
     "priceLabel": "Preis",

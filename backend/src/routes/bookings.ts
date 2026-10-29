@@ -176,6 +176,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       rechnung_required,
       rechnung_adresse,
       payment_intent_id,
+      return_pickup_address,
+      return_dropoff_address,
+      return_pickup_lat,
+      return_pickup_lng,
+      return_dropoff_lat,
+      return_dropoff_lng,
+      return_distance_km,
+      return_duration_minutes,
+      return_flight_number,
+      return_toll_amount,
+      return_anfahrt_cost,
     } = req.body;
 
     // Validation
@@ -239,7 +250,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const km = parseFloat(distance_km) || 0;
     // §12 Abs. 2 Nr. 10 UStG: Personenbeförderung per Taxi ist bis 50 km ermäßigt (7%),
     // darüber regulär (19%). Bezugsgröße ist die einfache Beförderungsstrecke, nicht Hin+Rück.
-    const steuersatz = km > 0 ? (km <= 50 ? 7 : 19) : null;
+    let steuersatz = km > 0 ? (km <= 50 ? 7 : 19) : null;
     const fahrradCount = priceRow.fahrrad_enabled ? (parseInt(fahrrad_count) || 0) : 0;
     const fahrradCost = fahrradCount * (priceRow.fahrrad_price || 0);
     const calculatedPrice = priceRow.base_price + (km * priceRow.price_per_km);
@@ -358,8 +369,42 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       console.error('Pflichtgebiet pricing skipped:', e);
     }
 
-    const parsedAnfahrtCost = anfahrt_cost ? parseFloat(anfahrt_cost) : 0;
+    // --- Rückfahrt mit anderer Adresse (Admin-Schalter return_address_enabled) ---
+    // Jede Strecke bekommt ihren eigenen Einzelpreis (Festpreis/Pflichttarif über computeRoutePrice),
+    // der Hin-&-Rück-Rabatt gilt dann je Strecke statt „Einfach × 2“.
+    let customReturn: { from: string; to: string; km: number; legPrice: number; outDiscount: number; retDiscount: number } | null = null;
+    const returnFrom = typeof return_pickup_address === 'string' ? return_pickup_address.trim() : '';
+    const returnTo = typeof return_dropoff_address === 'string' ? return_dropoff_address.trim() : '';
+    const returnKm = parseFloat(return_distance_km) || 0;
+    if (isRoundtrip && returnFrom && returnTo && returnKm > 0
+      && (returnFrom !== dropoff_address || returnTo !== pickup_address)) {
+      const [raSetting] = await query<{ setting_value: string }>(
+        "SELECT setting_value FROM settings WHERE setting_key = 'return_address_enabled'"
+      );
+      if (raSetting?.setting_value === '1') {
+        const est = await computeRoutePrice(req, vehicle_type, returnKm, returnFrom, returnTo,
+          return_pickup_lat, return_pickup_lng, return_dropoff_lat, return_dropoff_lng, { skipAutoDiscount: true });
+        if (est) {
+          const [pgCfgR] = await query<PgConfig>('SELECT * FROM pflichtgebiet_config WHERE id = 1');
+          const pgDiscount = pgCfgR?.roundtrip_discount_enabled ? discount : 0;
+          const outDiscount = pgFareFloor > 0 ? pgDiscount : discount;
+          const retDiscount = est.pflichtgebiet ? pgDiscount : discount;
+          const outLeg = effectiveOneWay * (1 - outDiscount / 100);
+          const retLeg = est.total_price * (1 - retDiscount / 100);
+          tripPrice = outLeg + retLeg;
+          pgFareFloor = (pgFareFloor > 0 ? outLeg : 0) + (est.pflichtgebiet ? retLeg : 0);
+          effectiveRoundtripDiscount = Math.max(outDiscount, retDiscount);
+          // USt-Satz nach der längeren Einzelstrecke
+          if (Math.max(km, returnKm) > 50) steuersatz = 19;
+          customReturn = { from: returnFrom, to: returnTo, km: returnKm, legPrice: est.total_price, outDiscount, retDiscount };
+        }
+      }
+    }
+
+    const parsedAnfahrtCost = (anfahrt_cost ? parseFloat(anfahrt_cost) : 0)
+      + (customReturn && return_anfahrt_cost ? parseFloat(return_anfahrt_cost) || 0 : 0);
     const parsedTollAmount = toll_amount ? parseFloat(toll_amount) : 0;
+    const parsedReturnToll = customReturn && return_toll_amount ? parseFloat(return_toll_amount) || 0 : 0;
 
     let plzSurcharge = 0;
     const [plzSetting] = await query<{ setting_value: string }>(
@@ -374,12 +419,20 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         );
         if (surchargeRow) plzSurcharge = surchargeRow.surcharge;
       }
+      // Rückfahrt mit anderer Abholadresse: deren PLZ-Zuschlag kommt dazu
+      const retPlz = customReturn?.from.match(/\b(\d{5})\b/);
+      if (retPlz) {
+        const [retRow] = await query<{ surcharge: number }>('SELECT surcharge FROM plz_surcharges WHERE plz = ?', [retPlz[1]]);
+        if (retRow) plzSurcharge += retRow.surcharge;
+      }
     }
 
     // Maut bei Hin- & Rückfahrt wie auf der Webseite: (Einfach + Maut) × 2 × (1 − Rabatt).
     // tripPrice / effectiveOneWay ist genau dieser Faktor (1 bei Einzelfahrt, 2 × (1 − Rabatt) bei Hin & Rück),
     // egal ob Festpreisroute, Pflichtgebiet oder Promo den Rabatt verändert haben.
-    const tollTotal = effectiveOneWay > 0 ? parsedTollAmount * tripPrice / effectiveOneWay : parsedTollAmount;
+    const tollTotal = customReturn
+      ? parsedTollAmount * (1 - customReturn.outDiscount / 100) + parsedReturnToll * (1 - customReturn.retDiscount / 100)
+      : effectiveOneWay > 0 ? parsedTollAmount * tripPrice / effectiveOneWay : parsedTollAmount;
 
     const baseTotal = tripPrice + fahrradCost + parsedAnfahrtCost + tollTotal + plzSurcharge;
 
@@ -401,7 +454,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     if (companyData && Number(companyData.discount_percent) > 0) {
       const corpPct = Number(companyData.discount_percent);
       if (isRoundtrip && !companyData.discount_kombinierbar) {
-        tripPrice = isRoundtrip ? effectiveOneWay * 2 : effectiveOneWay;
+        tripPrice = customReturn ? effectiveOneWay + customReturn.legPrice : isRoundtrip ? effectiveOneWay * 2 : effectiveOneWay;
         effectiveRoundtripDiscount = 0;
       }
       const preTotalForDiscount = tripPrice + fahrradCost + parsedAnfahrtCost + tollTotal + plzSurcharge - promoDiscount;
@@ -612,9 +665,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
         promo_code, discount_amount, visitor_id, session_id, source, experiment_variant, flight_validated, flight_info,
         company_id, company_user_id, cost_center, steuersatz,
-        rechnung_required, rechnung_adresse, phone_e164, auto_discount_id, auto_discount_amount
+        rechnung_required, rechnung_adresse, phone_e164, auto_discount_id, auto_discount_amount,
+        return_pickup_address, return_dropoff_address, return_pickup_lat, return_pickup_lng,
+        return_dropoff_lat, return_dropoff_lng, return_distance_km, return_duration_minutes,
+        return_flight_number, oneway_leg_price, return_price
       ) VALUES (
-        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `, [
       booking_number,
@@ -665,6 +722,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       phoneE164,
       autoDiscountId,
       autoDiscountAmount > 0 ? autoDiscountAmount : null,
+      customReturn?.from || null,
+      customReturn?.to || null,
+      customReturn ? parseFloat(return_pickup_lat) || null : null,
+      customReturn ? parseFloat(return_pickup_lng) || null : null,
+      customReturn ? parseFloat(return_dropoff_lat) || null : null,
+      customReturn ? parseFloat(return_dropoff_lng) || null : null,
+      customReturn?.km || null,
+      customReturn ? parseInt(return_duration_minutes) || null : null,
+      customReturn && return_flight_number ? String(return_flight_number).trim().slice(0, 20) || null : null,
+      customReturn ? effectiveOneWay : null,
+      customReturn?.legPrice ?? null,
     ]);
 
     // Record the confirmed PaymentIntent for online payments
@@ -773,6 +841,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return_datetime: return_datetime || undefined,
       oneway_price: isRoundtrip && !validatedPromoCode ? effectiveOneWay : undefined,
       roundtrip_discount: isRoundtrip && !validatedPromoCode ? effectiveRoundtripDiscount : undefined,
+      return_pickup_address: customReturn?.from,
+      return_dropoff_address: customReturn?.to,
+      return_flight_number: customReturn && return_flight_number ? String(return_flight_number).trim() : undefined,
+      return_price: customReturn?.legPrice,
       fahrrad_count: fahrradCount || 0,
       fahrrad_price: fahrradCount > 0 ? priceRow.fahrrad_price : undefined,
       fahrrad_total: fahrradCount > 0 ? fahrradCost : undefined,
@@ -856,6 +928,8 @@ export interface RoutePriceOptions {
   phone?: string | null;
   pickupDatetime?: string | null;
   tripType?: string | null;
+  /** Nur den Streckenpreis (z. B. Rückfahrt mit anderer Adresse) — ohne Automatik-Rabatt-Vorschau */
+  skipAutoDiscount?: boolean;
 }
 
 // Shared one-way price estimate logic — used by the /calculate-price endpoint
@@ -961,7 +1035,7 @@ export async function computeRoutePrice(
   // Automatische Rabatte — Vorschau (calculate-price). Identisch mit POST /
   // Nur Anwendungsfall unterscheidet: Kundenzahl fehlt evtl. (visitorId/email optional übergeben).
   let autoDiscount: PublicAutoDiscount | null = null;
-  try {
+  if (!options?.skipAutoDiscount) try {
     const customerCount = (options?.visitorId || options?.email)
       ? await countCustomerBookings({ visitorId: options?.visitorId, email: options?.email })
       : null;
@@ -1037,12 +1111,25 @@ export async function computeRoutePrice(
   };
 }
 
+// Rückfahrt mit anderer Adresse: eigener Streckenpreis (ohne Rabatt) — nur bei eingeschaltetem return_address_enabled
+async function returnLegEstimate(req: Request, vehicleType: string, tripType: unknown, leg: any) {
+  const km = parseFloat(leg?.distance_km);
+  if (tripType !== 'roundtrip' || !leg?.pickup_address || !leg?.dropoff_address || !(km > 0)) return null;
+  const [flag] = await query<{ setting_value: string }>(
+    "SELECT setting_value FROM settings WHERE setting_key = 'return_address_enabled'"
+  );
+  if (flag?.setting_value !== '1') return null;
+  const est = await computeRoutePrice(req, vehicleType, km, String(leg.pickup_address), String(leg.dropoff_address),
+    leg.pickup_lat, leg.pickup_lng, leg.dropoff_lat, leg.dropoff_lng, { skipAutoDiscount: true });
+  return est ? { total_price: est.total_price, pflichtgebiet: est.pflichtgebiet, fixed_route: est.fixed_route } : null;
+}
+
 // POST /api/bookings/calculate-price - Calculate price
 router.post('/calculate-price', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
-      pickup_address, dropoff_address, visitor_id, email, pickup_datetime, trip_type, session_id,
+      pickup_address, dropoff_address, visitor_id, email, pickup_datetime, trip_type, session_id, return_leg, price_only,
     } = req.body;
 
     if (!vehicle_type || distance_km === undefined) {
@@ -1051,14 +1138,19 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     }
 
     const km = parseFloat(distance_km);
-    const estimate = await computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, {
-      visitorId: visitor_id || null,
-      sessionId: session_id || null,
-      autopilot: true,
-      email: email || null,
-      pickupDatetime: pickup_datetime || null,
-      tripType: trip_type || null,
-    });
+    // price_only: nur der Streckenpreis ohne Rabatt-Vorschau (schnell) — z. B. Rückfahrt mit anderer Adresse
+    const [estimate, returnLegPrice] = await Promise.all([
+      computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, {
+        visitorId: visitor_id || null,
+        sessionId: session_id || null,
+        autopilot: !price_only,
+        email: email || null,
+        pickupDatetime: pickup_datetime || null,
+        tripType: trip_type || null,
+        skipAutoDiscount: !!price_only,
+      }),
+      returnLegEstimate(req, vehicle_type, trip_type, return_leg),
+    ]);
     if (!estimate) {
       res.status(404).json({ error: 'Vehicle type not found' });
       return;
@@ -1073,6 +1165,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
       pflichtgebiet: estimate.pflichtgebiet,
       fixed_route: estimate.fixed_route,
       auto_discount: estimate.auto_discount || null,
+      return_leg: returnLegPrice,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to calculate price' });
@@ -1299,6 +1392,9 @@ router.post('/manage/cancel', async (req: Request, res: Response): Promise<void>
       luggage_count: booking.luggage_count || 0,
       trip_type: booking.trip_type || undefined,
       return_datetime: booking.return_datetime || undefined,
+      return_pickup_address: booking.return_pickup_address || undefined,
+      return_dropoff_address: booking.return_dropoff_address || undefined,
+      return_flight_number: booking.return_flight_number || undefined,
     };
 
     // Nachts: nicht stornieren, Admin warnen, Kunde muss anrufen
@@ -1566,6 +1662,9 @@ router.post('/manage/update', async (req: Request, res: Response): Promise<void>
       zwischenstopp_address: updated.zwischenstopp_address || undefined,
       trip_type: updated.trip_type || undefined,
       return_datetime: updated.return_datetime || undefined,
+      return_pickup_address: updated.return_pickup_address || undefined,
+      return_dropoff_address: updated.return_dropoff_address || undefined,
+      return_flight_number: updated.return_flight_number || undefined,
     }, changes).catch(err => console.error('Booking change notification error:', err));
 
     const out: any = sanitizeBookingForCustomer(updated);

@@ -29,7 +29,8 @@ const RIDE_COLS = `b.id, b.booking_number, b.status, b.name, b.phone, b.email,
   b.trip_type, b.vehicle_type, b.passengers, b.luggage_count, b.child_seat, b.fahrrad_count,
   b.flight_number, b.notes, b.price, b.payment_method, b.ueberweisung_paid_at, b.charge_status,
   b.charge_error, b.company_id, c.company_name, b.assigned_driver_id, d.name AS driver_name,
-  b.driver_status, b.rechnung_number, b.rechnung_error, b.duration_minutes, b.source`;
+  b.driver_status, b.rechnung_number, b.rechnung_error, b.duration_minutes, b.source,
+  b.return_pickup_address, b.return_dropoff_address, b.return_flight_number`;
 const RIDE_FROM = `FROM bookings b
   LEFT JOIN companies c ON c.id = b.company_id
   LEFT JOIN drivers d ON d.id = b.assigned_driver_id`;

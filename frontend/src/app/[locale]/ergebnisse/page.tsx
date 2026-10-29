@@ -22,6 +22,7 @@ interface PgConfig {
   enabled: number; mode: string; radius_km: number;
   airport_enabled: number; airport_lat: number; airport_lng: number;
   betriebssitz_enabled: number; betriebssitz_lat: number; betriebssitz_lng: number;
+  roundtrip_discount_enabled?: number;
 }
 interface PgTarif { vehicle_type: string; grundgebuehr: number; min_per_km: number; }
 
@@ -197,14 +198,24 @@ function ResultsContent() {
   const returnDate = params.get('return_date') || '';
   const returnTime = params.get('return_time') || '';
   const isRoundtrip = tripType === 'roundtrip';
+  // Rückfahrt mit anderer Adresse (SearchBar) — eigener Streckenpreis vom Server (calculate-price.return_leg)
+  const returnPickup = isRoundtrip ? params.get('return_pickup') || '' : '';
+  const returnDropoff = isRoundtrip ? params.get('return_dropoff') || '' : '';
+  const returnDistanceKm = Number(params.get('return_distance_km') || 0);
+  const returnDuration = Number(params.get('return_duration') || 0);
+  const returnAnfahrtKm = Number(params.get('return_anfahrt_km') || 0);
+  const wantsCustomReturn = !!(returnPickup && returnDropoff && returnDistanceKm > 0);
+  const returnToll = wantsCustomReturn ? calculateTripToll(returnPickup, returnDropoff) : 0;
 
   // Anfahrtskosten
   const anfahrtKm = Number(params.get('anfahrt_km') || 0);
   const [anfahrtPricePerKm, setAnfahrtPricePerKm] = useState(1.70);
   const anfahrtCost = anfahrtKm > 0 ? anfahrtKm * anfahrtPricePerKm : 0;
+  const returnAnfahrtCost = wantsCustomReturn && returnAnfahrtKm > 0 ? returnAnfahrtKm * anfahrtPricePerKm : 0;
 
   // PLZ surcharge
   const [plzSurcharge, setPlzSurcharge] = useState(0);
+  const [returnPlzSurcharge, setReturnPlzSurcharge] = useState(0);
 
   // Maut — component seviyesinde, tüm araçlar için ortak (alış + varış ülkesine bağlı)
   const onewayToll = calculateTripToll(pickup, dropoff);
@@ -216,19 +227,24 @@ function ResultsContent() {
   };
   const [stadtfahrtEnabled, setStadtfahrtEnabled] = useState(false);
   const [zwischenstoppEnabled, setZwischenstoppEnabled] = useState(false);
+  const [returnAddressEnabled, setReturnAddressEnabled] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   useEffect(() => {
     fetch(`${API_URL}/settings`).then(r => r.json()).then(s => {
       if (s.stadtfahrt_enabled === '1') setStadtfahrtEnabled(true);
       if (s.anfahrt_price_per_km) setAnfahrtPricePerKm(parseFloat(s.anfahrt_price_per_km));
       if (s.zwischenstopp_enabled === '1') setZwischenstoppEnabled(true);
+      if (s.return_address_enabled === '1') setReturnAddressEnabled(true);
 
       if (s.plz_surcharge_enabled === '1') {
         const plzMatch = pickup?.match(/\b(\d{5})\b/);
-        if (plzMatch) {
+        const retPlzMatch = wantsCustomReturn ? returnPickup.match(/\b(\d{5})\b/) : null;
+        if (plzMatch || retPlzMatch) {
           fetch(`${API_URL}/plz-surcharges`).then(r => r.json()).then((rows: { plz: string; surcharge: number }[]) => {
-            const match = rows.find(r => r.plz === plzMatch[1]);
+            const match = plzMatch && rows.find(r => r.plz === plzMatch[1]);
             if (match) setPlzSurcharge(match.surcharge);
+            const retMatch = retPlzMatch && rows.find(r => r.plz === retPlzMatch[1]);
+            if (retMatch) setReturnPlzSurcharge(retMatch.surcharge);
           }).catch(() => {});
         }
       }
@@ -265,6 +281,7 @@ function ResultsContent() {
     sp.set('trip_type', 'oneway');
     sp.delete('return_date');
     sp.delete('return_time');
+    ['return_pickup', 'return_dropoff', 'return_distance_km', 'return_duration', 'return_anfahrt_km'].forEach(k => sp.delete(k));
     router.replace(`?${sp.toString()}`);
   }
 
@@ -338,6 +355,7 @@ function ResultsContent() {
   // Automatische Rabatte (Rabatte-Tab) — Vorschau vom Server je Fahrzeug (Regeln können auf Fahrzeuge beschränkt sein)
   const [autoDiscounts, setAutoDiscounts] = useState<Record<string, PublicAutoDiscount | null>>({});
   const [discountRefresh, setDiscountRefresh] = useState(0); // Countdown abgelaufen → neu laden
+  const [returnLegs, setReturnLegs] = useState<Record<string, { total_price: number; pflichtgebiet: boolean } | null>>({});
   useEffect(() => {
     if (!distanceKm || distanceKm <= 0) { setAutoDiscounts({}); return; }
     const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
@@ -360,6 +378,32 @@ function ResultsContent() {
         .catch(() => [v.type, null] as const)
     )).then(entries => setAutoDiscounts(Object.fromEntries(entries)));
   }, [distanceKm, pickup, dropoff, date, time, tripType, discountRefresh]);
+
+  // Rückfahrt-Streckenpreis je Fahrzeug — eigene, schnelle Anfrage (price_only: ohne Rabatt-Vorschau),
+  // parallel zur Rabatt-Vorschau, damit der Preis nicht auf diese warten muss
+  const [returnLegsLoaded, setReturnLegsLoaded] = useState(false);
+  useEffect(() => {
+    if (!wantsCustomReturn || !returnAddressEnabled) { setReturnLegs({}); setReturnLegsLoaded(false); return; }
+    setReturnLegsLoaded(false);
+    Promise.all(VEHICLES.map(v =>
+      fetch(`${API_URL}/bookings/calculate-price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vehicle_type: v.type, distance_km: returnDistanceKm,
+          pickup_address: returnPickup, dropoff_address: returnDropoff,
+          trip_type: 'oneway', price_only: true,
+        }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => [v.type, d?.total_price != null ? { total_price: Number(d.total_price), pflichtgebiet: !!d.pflichtgebiet } : null] as const)
+        .catch(() => [v.type, null] as const)
+    )).then(entries => { setReturnLegs(Object.fromEntries(entries)); setReturnLegsLoaded(true); });
+  }, [wantsCustomReturn, returnAddressEnabled, returnPickup, returnDropoff, returnDistanceKm]);
+  // Rückfahrt mit anderer Adresse aktiv (Admin-Schalter an + Preis da) — sonst normale Hin- & Rückfahrt
+  const customReturnActive = wantsCustomReturn && returnAddressEnabled && Object.values(returnLegs).some(Boolean);
+  // Noch nicht klar, ob/zu welchem Preis — Preis kurz als Platzhalter statt erst falsch, dann richtig
+  const returnPricePending = wantsCustomReturn && (!settingsLoaded || (returnAddressEnabled && !returnLegsLoaded));
 
   const [apiPrices, setApiPrices] = useState<Record<string, PriceData> | null>(null);
   useEffect(() => {
@@ -492,7 +536,8 @@ function ResultsContent() {
     return locale === 'en' ? v.descEN : locale === 'tr' ? v.descTR : v.descDE;
   }
 
-  function handleBook(vehicleType: string, finalPrice: number) {
+  function handleBook(vehicleType: string, finalPrice: number, returnLeg?: { price: number; outDisc: number; retDisc: number }) {
+    if (returnPricePending) return; // Rückfahrt-Preis lädt noch — sonst würde mit „× 2“ gebucht
     const bp = new URLSearchParams({
       pickup, dropoff, date, time,
       passengers: String(passengers),
@@ -517,6 +562,20 @@ function ResultsContent() {
     }
     if (zwischenstoppAddress) {
       bp.set('zwischenstopp_address', zwischenstoppAddress);
+    }
+    if (customReturnActive && returnLeg) {
+      bp.set('return_pickup', returnPickup);
+      bp.set('return_dropoff', returnDropoff);
+      bp.set('return_distance_km', String(returnDistanceKm));
+      bp.set('return_duration', String(returnDuration));
+      // Rückfahrt-Einzelpreis inkl. Maut + PLZ-Zuschlag (wie price für die Hinfahrt)
+      bp.set('return_price', returnLeg.price.toFixed(2));
+      // Rabatt je Strecke (Pflichtfahrgebiet ohne Hin-&-Rück-Rabatt → 0)
+      bp.set('out_disc', String(returnLeg.outDisc));
+      bp.set('ret_disc', String(returnLeg.retDisc));
+      if (returnAnfahrtKm > 0) bp.set('return_anfahrt_km', String(returnAnfahrtKm));
+      if (returnToll > 0) bp.set('return_toll_amount', returnToll.toFixed(2));
+      if (returnAnfahrtCost > 0) bp.set('return_anfahrt_cost', returnAnfahrtCost.toFixed(2));
     }
     const prefix = locale === 'de' ? '' : `/${locale}`;
     router.push(`${prefix}/buchen?${bp.toString()}`);
@@ -606,6 +665,8 @@ function ResultsContent() {
                 hasReturn: isRoundtrip,
                 returnDate: returnDate || undefined,
                 returnTime: returnTime || undefined,
+                returnPickup: returnPickup || undefined,
+                returnDropoff: returnDropoff || undefined,
               }}
               onSearchComplete={sp => {
                 const zw = params.get('zwischenstopp_address');
@@ -712,6 +773,9 @@ function ResultsContent() {
                       locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
                       { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }
                     )} · {returnTime}
+                    {customReturnActive && (
+                      <span className="block text-xs font-medium text-gray-600 truncate">{returnPickup} → {returnDropoff}</span>
+                    )}
                   </span>
                 </div>
                 <button onClick={removeReturnTrip} className="text-xs text-red-500 hover:text-red-700 font-semibold ml-2 shrink-0">
@@ -779,9 +843,11 @@ function ResultsContent() {
             }
 
             // Pflichtfahrgebiet: inside the zone the fare may not fall below the mandatory tariff
+            let outPflicht = false;
             if (!fixedRouteMatch && pgInZone && pgConfig) {
               const tar = pgTarife.find(x => x.vehicle_type === vehicle.type);
               if (tar) {
+                outPflicht = true;
                 let mandatory = Number(tar.grundgebuehr) + distanceKm * Number(tar.min_per_km);
                 if (priceData.min_price > 0 && distanceKm <= (priceData.min_price_km || 15)) {
                   mandatory = Math.max(mandatory, priceData.min_price);
@@ -792,10 +858,20 @@ function ResultsContent() {
 
             const discount = priceData.roundtrip_discount || 0;
             const oneWayWithToll = oneWayPrice + onewayToll;
-            const fullRoundtripPrice = oneWayWithToll * 2;
-            const discountedRoundtripPrice = fullRoundtripPrice * (1 - discount / 100);
+            // Rückfahrt mit anderer Adresse: jede Strecke zum eigenen Preis, Rabatt je Strecke
+            // (im Pflichtfahrgebiet nur, wenn dort erlaubt) — wie POST /api/bookings
+            const retLeg = customReturnActive ? returnLegs[vehicle.type] : null;
+            const pgNoDiscount = pgConfig?.roundtrip_discount_enabled === 0;
+            const outDisc = retLeg && outPflicht && pgNoDiscount ? 0 : discount;
+            const retDisc = retLeg && retLeg.pflichtgebiet && pgNoDiscount ? 0 : discount;
+            const returnWithToll = retLeg ? retLeg.total_price + returnToll : 0;
+            const fullRoundtripPrice = retLeg ? oneWayWithToll + returnWithToll : oneWayWithToll * 2;
+            const discountedRoundtripPrice = retLeg
+              ? oneWayWithToll * (1 - outDisc / 100) + returnWithToll * (1 - retDisc / 100)
+              : fullRoundtripPrice * (1 - discount / 100);
             const tripPrice = isRoundtrip ? discountedRoundtripPrice : oneWayWithToll;
-            const preAutoDiscountPrice = tripPrice + anfahrtCost + plzSurcharge;
+            const legExtras = anfahrtCost + plzSurcharge + (retLeg ? returnAnfahrtCost + returnPlzSurcharge : 0);
+            const preAutoDiscountPrice = tripPrice + legExtras;
             const autoDiscount = autoDiscounts[vehicle.type] || null;
             const redBadge = !!autoDiscount && autoDiscount.badge !== 'classic';
             const discountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
@@ -905,12 +981,14 @@ function ResultsContent() {
                     <div className="flex items-baseline justify-between md:justify-end gap-3 w-full">
                       <span className="text-sm text-gray-500">{isRoundtrip ? t.roundtrip_price : t.total}</span>
                       {isRoundtrip ? (
-                        <span className={cn('text-sm line-through', redBadge ? 'text-red-600' : 'text-gray-400')}>{formatPrice(fullRoundtripPrice + anfahrtCost + plzSurcharge)}</span>
+                        <span className={cn('text-sm line-through', redBadge ? 'text-red-600' : 'text-gray-400')}>{returnPricePending ? '' : formatPrice(fullRoundtripPrice + legExtras)}</span>
                       ) : autoDiscount ? (
                         <span className={cn('text-sm line-through', redBadge ? 'text-red-600' : 'text-gray-400')}>{formatPrice(preAutoDiscountPrice)}</span>
                       ) : null}
                     </div>
-                    <div className="text-[32px] leading-tight font-extrabold text-primary-800 mt-0.5 md:text-right">{formatPrice(finalPrice)}</div>
+                    <div className="text-[32px] leading-tight font-extrabold text-primary-800 mt-0.5 md:text-right">
+                      {returnPricePending ? <span className="inline-block h-9 w-28 rounded-lg bg-gray-100 animate-pulse align-middle" /> : formatPrice(finalPrice)}
+                    </div>
 
                     {/* Gruppenfahrzeuge: Preis pro Person ist hier das starke Argument
                         (ein Fahrzeug statt zwei Taxis) — nur wenn die Kapazität > 4 ist. */}
@@ -966,7 +1044,7 @@ function ResultsContent() {
                         <p className="text-sm text-red-500 font-semibold md:text-right">{t.notSuitable} {passengers} {t.passengers_label}</p>
                       ) : (
                         <button
-                          onClick={() => handleBook(vehicle.type, oneWayWithToll + plzSurcharge)}
+                          onClick={() => handleBook(vehicle.type, oneWayWithToll + plzSurcharge, retLeg ? { price: returnWithToll + returnPlzSurcharge, outDisc, retDisc } : undefined)}
                           className="w-full flex items-center justify-center gap-2 bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 text-primary-800 font-bold px-3 py-3.5 rounded-xl transition-colors text-sm shadow-sm whitespace-nowrap"
                         >
                           {t.book} <ArrowRight size={16} />

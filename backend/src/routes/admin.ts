@@ -515,6 +515,9 @@ router.patch('/bookings/:id/status', authenticateAdmin, async (req: AuthRequest,
       luggage_count: booking.luggage_count || 0,
       trip_type: booking.trip_type || undefined,
       return_datetime: booking.return_datetime || undefined,
+      return_pickup_address: booking.return_pickup_address || undefined,
+      return_dropoff_address: booking.return_dropoff_address || undefined,
+      return_flight_number: booking.return_flight_number || undefined,
       cancel_reason: cancelReason || undefined,
       cancel_note: cancelNote || undefined,
       open_pixel_url: openPixelUrl,
@@ -577,6 +580,7 @@ router.put('/bookings/:id', authenticateAdmin, async (req: AuthRequest, res: Res
     'payment_method', 'language', 'trip_type', 'fahrrad_count',
     'anfahrt_cost', 'zwischenstopp_address', 'promo_code', 'discount_amount',
     'rechnung_adresse',
+    'return_pickup_address', 'return_dropoff_address', 'return_flight_number',
   ];
 
   if (Object.prototype.hasOwnProperty.call(req.body, 'payment_method')
@@ -625,6 +629,7 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
     luggage_count, notes, distance_km, duration_minutes, price,
     payment_method, language, trip_type, fahrrad_count,
     anfahrt_cost, zwischenstopp_address, promo_code, discount_amount,
+    return_pickup_address, return_dropoff_address, return_flight_number,
   } = req.body;
 
   if (!pickup_address || !dropoff_address || !pickup_datetime || !name || !phone || !email || !price) {
@@ -653,9 +658,10 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
       vehicle_type, passengers, name, phone, email, flight_number, pickup_sign, child_seat,
       child_seat_details, luggage_count, notes, distance_km, duration_minutes, price, payment_method,
       language, trip_type, return_datetime, fahrrad_count, anfahrt_cost, zwischenstopp_address,
-      promo_code, discount_amount, steuersatz, source
+      promo_code, discount_amount, steuersatz, source,
+      return_pickup_address, return_dropoff_address, return_flight_number
     ) VALUES (
-      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin'
+      ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', ?, ?, ?
     )
   `, [
     booking_number,
@@ -686,6 +692,9 @@ router.post('/bookings', authenticateAdmin, async (req: AuthRequest, res: Respon
     promo_code || null,
     discount_amount || null,
     steuersatz,
+    trip_type === 'roundtrip' ? return_pickup_address || null : null,
+    trip_type === 'roundtrip' ? return_dropoff_address || null : null,
+    trip_type === 'roundtrip' ? return_flight_number || null : null,
   ]);
 
   const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);

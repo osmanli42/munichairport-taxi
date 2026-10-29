@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { formatPhoneDisplay } from '../utils/phone';
 import { customerRecipient } from '../utils/recipient';
 import { customerConfirmationEmail, adminNotificationEmail, customerCancellationEmail, adminCancellationEmail, customerChangeEmail, adminChangeEmail, BookingChanges } from './bookingEmailTemplates';
+import { hasCustomReturn, returnLeg } from '../utils/returnLeg';
 
 dotenv.config();
 
@@ -39,6 +40,11 @@ export interface BookingNotificationData {
   return_datetime?: string;
   oneway_price?: number;
   roundtrip_discount?: number;
+  /** Rückfahrt mit anderer Adresse (sonst umgekehrte Hinfahrt) und deren Einzelpreis vor Rabatt */
+  return_pickup_address?: string;
+  return_dropoff_address?: string;
+  return_flight_number?: string;
+  return_price?: number;
   fahrrad_count?: number;
   fahrrad_price?: number;
   fahrrad_total?: number;
@@ -150,6 +156,8 @@ async function sendWhatsAppNotification(booking: BookingNotificationData): Promi
     `Abfahrt: ${formattedDate}`,
     `${booking.passengers} Pax - ${booking.vehicle_type}`,
     booking.flight_number ? `Flug: ${booking.flight_number}` : '',
+    booking.trip_type === 'roundtrip' && hasCustomReturn(booking)
+      ? `Rueckfahrt: ${returnLeg(booking).from} -> ${returnLeg(booking).to}${booking.return_flight_number ? ` (Flug ${booking.return_flight_number})` : ''}` : '',
     `Kunde: ${booking.name}`,
     `Tel: ${formatPhoneDisplay(booking.phone)}`,
   ].filter(Boolean).join('%0A');

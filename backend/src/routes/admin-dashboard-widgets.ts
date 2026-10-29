@@ -17,6 +17,7 @@ import { calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED
 import { classifyEvent } from '../services/calendarInvoice';
 import { getFlightStatus, normalizeFlightNumber, FlightStatus } from '../services/flightStatus';
 import { sourcedEvents, DEFAULT_SOURCES, SourceSwitches, SourceKind } from '../services/eventSources';
+import { returnLeg } from '../utils/returnLeg';
 
 const router = Router();
 
@@ -121,7 +122,7 @@ async function driverPlan(now: string) {
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
     const legs: Array<[string, string | null, string | null]> = [[wall(b.pickup_datetime), b.pickup_address, b.dropoff_address]];
-    if (b.trip_type === 'roundtrip' && b.return_datetime) legs.push([wall(b.return_datetime), b.dropoff_address, b.pickup_address]);
+    if (b.trip_type === 'roundtrip' && b.return_datetime) legs.push([wall(b.return_datetime), returnLeg(b).from, returnLeg(b).to]);
     for (const [t, from, to] of legs) {
       const d = t.slice(0, 10);
       if (d !== today && d !== tomorrow) continue;

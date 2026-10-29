@@ -230,6 +230,8 @@ export async function initializeDatabase(): Promise<void> {
       ['booking_edit_admin_mail', '1'],
       ['booking_edit_admin_whatsapp', '1'],
       ['booking_edit_customer_mail', '1'],
+      // Hin- & Rückfahrt: Rückfahrt mit anderer Abhol-/Zieladresse (SearchBar-Link, eigener Preis je Strecke)
+      ['return_address_enabled', '0'],
     ];
     for (const [key, value] of defaultSettings) {
       await conn.execute(
@@ -360,6 +362,24 @@ export async function initializeDatabase(): Promise<void> {
       `ALTER TABLE bookings ADD COLUMN mail_customer_sent_at DATETIME DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN mail_attempts INT DEFAULT NULL`,
       `ALTER TABLE bookings ADD COLUMN mail_last_error VARCHAR(255) DEFAULT NULL`,
+    ]) {
+      try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
+    }
+
+    // Rückfahrt mit anderer Adresse. Alle NULL = Rückfahrt ist die umgekehrte Hinfahrt (utils/returnLeg.ts).
+    // oneway_leg_price / return_price: Einzelpreis je Strecke vor Hin-&-Rück-Rabatt (Mail/Rechnung).
+    for (const ddl of [
+      `ALTER TABLE bookings ADD COLUMN return_pickup_address TEXT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_dropoff_address TEXT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_pickup_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_pickup_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_dropoff_lat DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_dropoff_lng DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_distance_km DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_duration_minutes INT DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_flight_number VARCHAR(20) DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN oneway_leg_price DOUBLE DEFAULT NULL`,
+      `ALTER TABLE bookings ADD COLUMN return_price DOUBLE DEFAULT NULL`,
     ]) {
       try { await conn.execute(ddl); } catch (e: any) { if (!e.message?.includes('Duplicate column')) throw e; }
     }
