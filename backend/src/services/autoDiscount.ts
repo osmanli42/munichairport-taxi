@@ -396,6 +396,10 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     let r = r0;
     if (r.dynamic_mode === 'autopilot') {
       if (!input.autopilot?.visitorId) continue;
+      // Hin & Rück: Rückfahrt-Rabatt steckt schon im Preis — Autopilot gibt dort nur
+      // roundtrip_value % dazu (Admin „Hin & Rück: zusätzlich %", NULL/0 = kein zweiter Rabatt)
+      const rtMax = r.roundtrip_value != null ? Number(r.roundtrip_value) : 0;
+      if (input.isRoundtrip && !(rtMax > 0)) continue;
       const maxPercent = Number(r.discount_value) || 0;
       const ctx = { ...input.autopilot, tripDate: tripDateStr, tripMinutes: trip?.minutes ?? null, km: input.km, maxPercent };
       const offer = input.autopilot.mode === 'preview'
@@ -403,8 +407,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
         : await findOfferForBooking(ctx).catch(() => null);
       if (!offer || offer.percent <= 0) continue;
       const pct = Math.min(offer.percent, maxPercent);
-      // Hin & Rück: wie bei den übrigen Regeln höchstens 2 % (Rückfahrt-Rabatt steckt schon im Preis)
-      r = { ...r, discount_type: 'percent', discount_value: pct, roundtrip_value: Math.min(2, pct) };
+      r = { ...r, discount_type: 'percent', discount_value: pct, roundtrip_value: Math.min(rtMax, pct) };
     }
     if (r.demand_pace_max != null) {
       const pace = await paceForTrip(tripDateStr);

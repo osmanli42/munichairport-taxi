@@ -405,6 +405,7 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
         excludeStamm: rule.booking_index_max != null,
         excludeBusiness: Number(rule.exclude_business) === 1,
         ignorePgFloor: rule.ip_bypass_mode === 'alle',
+        roundtripPercent: rule.roundtrip_value != null ? Number(rule.roundtrip_value) : 0,
         holdoutPct: Number(await apSetting('autopilot_holdout_pct', '15')),
         weeklyBudget: Number(await apSetting('autopilot_weekly_budget', '150')),
         minScore,
@@ -436,10 +437,11 @@ router.put('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
     const num = (v: any, min: number, max: number, def: number) => { const n = Number(v); return Number.isFinite(n) && n >= min && n <= max ? n : def; };
     const maxPercent = num(b.maxPercent, 1, 15, Number(rule.discount_value));
     const minKm = num(b.minKm, 0, 500, rule.min_km != null ? Number(rule.min_km) : 25);
+    const rtPercent = num(b.roundtripPercent, 0, maxPercent, rule.roundtrip_value != null ? Number(rule.roundtrip_value) : 0);
     await run(
-      `UPDATE auto_discounts SET active = ?, discount_value = ?, min_km = ?, booking_index_max = ?, exclude_business = ?, ip_bypass_mode = ? WHERE id = ?`,
+      `UPDATE auto_discounts SET active = ?, discount_value = ?, min_km = ?, booking_index_max = ?, exclude_business = ?, ip_bypass_mode = ?, roundtrip_value = ? WHERE id = ?`,
       [b.enabled ? 1 : 0, maxPercent, minKm > 0 ? minKm : null, b.excludeStamm === false ? null : 2,
-        b.excludeBusiness === false ? 0 : 1, b.ignorePgFloor === false ? null : 'alle', rule.id]);
+        b.excludeBusiness === false ? 0 : 1, b.ignorePgFloor === false ? null : 'alle', rtPercent > 0 ? rtPercent : null, rule.id]);
     const upsert = (k: string, v: string) => run(
       `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`, [k, v, v]);
     if (b.holdoutPct != null) await upsert('autopilot_holdout_pct', String(num(b.holdoutPct, 0, 50, 15)));

@@ -527,7 +527,7 @@ export const marketingApi = {
 
 export interface AutopilotSettings {
   enabled: boolean; maxPercent: number; minKm: number; excludeStamm: boolean; excludeBusiness: boolean;
-  ignorePgFloor: boolean; holdoutPct: number; weeklyBudget: number; minScore: number;
+  ignorePgFloor: boolean; roundtripPercent: number; holdoutPct: number; weeklyBudget: number; minScore: number;
 }
 export interface AutopilotReport {
   days: number; offers: number;

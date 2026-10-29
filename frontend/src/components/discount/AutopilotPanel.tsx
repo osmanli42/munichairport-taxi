@@ -74,11 +74,13 @@ export default function AutopilotPanel({ onChanged }: { onChanged?: () => void }
       {err && <div className="mx-5 mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{err}</div>}
 
       <div className="border-t border-gray-100 px-5 py-4 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div><label className={label}>En fazla indirim %</label>
             <input type="number" min={1} max={15} className={input} value={form.maxPercent} onChange={e => setForm({ ...form, maxPercent: Number(e.target.value) })} /></div>
           <div><label className={label}>En az fahrt km</label>
             <input type="number" min={0} className={input} value={form.minKm} onChange={e => setForm({ ...form, minKm: Number(e.target.value) })} /></div>
+          <div><label className={label}>Gidiş-dönüşte ek % (0 = çift indirim yok)</label>
+            <input type="number" min={0} max={form.maxPercent} className={input} value={form.roundtripPercent} onChange={e => setForm({ ...form, roundtripPercent: Number(e.target.value) })} /></div>
           <div><label className={label}>Haftalık bütçe € (0 = sınırsız)</label>
             <input type="number" min={0} className={input} value={form.weeklyBudget} onChange={e => setForm({ ...form, weeklyBudget: Number(e.target.value) })} /></div>
           <div><label className={label}>Kontrol grubu % (indirim görmez)</label>
