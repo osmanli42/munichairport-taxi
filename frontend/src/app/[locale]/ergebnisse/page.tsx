@@ -350,6 +350,7 @@ function ResultsContent() {
           distance_km: distanceKm,
           pickup_address: pickup, dropoff_address: dropoff,
           visitor_id: visitorId,
+          session_id: (() => { try { return sessionStorage.getItem('mt_session_id'); } catch { return null; } })(),
           pickup_datetime: date && time ? `${date}T${time}` : undefined,
           trip_type: tripType,
         }),

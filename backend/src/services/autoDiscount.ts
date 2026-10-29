@@ -1,5 +1,6 @@
 // Automatische Rabatte (Rabatte-Tab): kural bazlı, kod gerektirmeyen indirim motoru.
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
+import { autopilotOffer, findOfferForBooking } from './rabattAutopilot';
 import { query } from '../db';
 import { paceForTrip, ruleUsesOnTripDate, ridesNear, demandSettings } from './demandPace';
 import { leerMatch, Coords, parsePlzList } from './leerfahrt';
@@ -91,6 +92,8 @@ export interface AutoDiscountRule {
   leer_end_km: number | null;
   /** München-Modus: PLZ, deren Fahrtziel nicht zählt (NULL = Standardliste, '' = keine). */
   leer_exclude_plz: string | null;
+  /** 'autopilot' = Wert je Besucher aus services/rabattAutopilot.ts (discount_value = Höchstwert) */
+  dynamic_mode?: string | null;
 }
 
 /** Tage von heute (Berlin) bis zum Fahrtdatum 'YYYY-MM-DD' — 0 = heute. */
@@ -146,6 +149,12 @@ export interface AutoDiscountInput {
   pickupAddress?: string | null;
   /** Firmen-/Rechnungskunde? null = unbekannt (Vorschau ohne Kundendaten) → Regel greift. */
   isBusinessCustomer: boolean | null;
+  /**
+   * Rabatt-Autopilot: Besucher + Strecke. 'preview' entscheidet (und friert ein),
+   * 'booking' liest nur das eingefrorene Angebot — so zahlt der Kunde, was er gesehen hat.
+   * Ohne Angabe (z. B. Kalender-Schätzpreis, Startseiten-Routen) greift der Autopilot nie.
+   */
+  autopilot?: { mode: 'preview' | 'booking'; visitorId: string | null; sessionId: string | null; pickup: string | null; dropoff: string | null };
 }
 
 export interface AutoDiscountResult {
@@ -315,7 +324,13 @@ async function getDailyUsageCounts(ruleIds: number[]): Promise<Record<number, nu
 }
 
 export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<AutoDiscountResult | null> {
-  const { rules, enabled } = await loadRules();
+  const loaded = await loadRules();
+  const enabled = loaded.enabled;
+  // Autopilot aktiv → er ersetzt die Ruhiger-Tag- und Boş-Saat-Regeln (deren Signale nutzt er selbst)
+  const autopilotOn = loaded.rules.some(r => r.dynamic_mode === 'autopilot');
+  const rules = autopilotOn
+    ? loaded.rules.filter(r => r.dynamic_mode === 'autopilot' || (r.demand_pace_max == null && r.gap_window_minutes == null))
+    : loaded.rules;
   if (!enabled || rules.length === 0 || input.baseTotal <= 0) return null;
 
   // Standard: kein Rabatt auf den IP-Besucherpreis — dort wurde der Pflichttarif schon
@@ -377,7 +392,20 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
   // Ruhiger Tag / Kontingent je Fahrtdatum: brauchen DB-Abfragen, daher erst nach den
   // billigen Bedingungen und nur für Regeln, die bis hierher passen.
   const matching: AutoDiscountRule[] = [];
-  for (const r of candidates) {
+  for (const r0 of candidates) {
+    let r = r0;
+    if (r.dynamic_mode === 'autopilot') {
+      if (!input.autopilot?.visitorId) continue;
+      const maxPercent = Number(r.discount_value) || 0;
+      const ctx = { ...input.autopilot, tripDate: tripDateStr, tripMinutes: trip?.minutes ?? null, km: input.km, maxPercent };
+      const offer = input.autopilot.mode === 'preview'
+        ? await autopilotOffer(ctx, r.id).catch((e) => { console.error('autopilot offer failed:', e); return null; })
+        : await findOfferForBooking(ctx).catch(() => null);
+      if (!offer || offer.percent <= 0) continue;
+      const pct = Math.min(offer.percent, maxPercent);
+      // Hin & Rück: wie bei den übrigen Regeln höchstens 2 % (Rückfahrt-Rabatt steckt schon im Preis)
+      r = { ...r, discount_type: 'percent', discount_value: pct, roundtrip_value: Math.min(2, pct) };
+    }
     if (r.demand_pace_max != null) {
       const pace = await paceForTrip(tripDateStr);
       if (pace == null || pace >= Number(r.demand_pace_max)) continue;

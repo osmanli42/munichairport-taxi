@@ -446,6 +446,7 @@ function BuchenContent() {
   // Automatische Rabatte (Rabatte-Tab, kein Code nötig) — Vorschau vom Server,
   // damit Anzeige und tatsächliche Abrechnung immer übereinstimmen.
   const [autoDiscount, setAutoDiscount] = useState<PublicAutoDiscount | null>(null);
+  const [autoDiscountBase, setAutoDiscountBase] = useState(0); // total_price der Vorschau (einfache Fahrt)
   const [discountRefresh, setDiscountRefresh] = useState(0); // Countdown abgelaufen → neu prüfen
   // Solange die erste Prüfung für diese Route noch läuft, wird der Preis nicht gezeigt —
   // sonst blitzt kurz der (falsche) Preis ohne Rabatt auf, bevor der Rabatt nachträglich
@@ -468,13 +469,14 @@ function BuchenContent() {
           dropoff_lat: dropoffLat, dropoff_lng: dropoffLng,
           pickup_address: pickup, dropoff_address: dropoff,
           visitor_id: visitorId,
+          session_id: (() => { try { return sessionStorage.getItem('mt_session_id'); } catch { return null; } })(),
           email: email || undefined,
           pickup_datetime: date && time ? `${date}T${time}` : undefined,
           trip_type: tripType,
         }),
       })
         .then(r => r.ok ? r.json() : null)
-        .then(d => setAutoDiscount(d?.auto_discount || null))
+        .then(d => { setAutoDiscount(d?.auto_discount || null); setAutoDiscountBase(Number(d?.total_price) || 0); })
         .catch(() => {})
         .finally(() => setAutoDiscountReady(true));
     }, 0);
@@ -483,7 +485,16 @@ function BuchenContent() {
 
   // Backend wendet serverseitig nur den größeren von Promo-Code und Auto-Rabatt an —
   // Anzeige spiegelt das, indem der Auto-Rabatt nur ohne aktiven Promo-Code gezeigt wird.
-  const autoDiscountAmount = (autoDiscount && !appliedPromo) ? autoDiscount.amount : 0;
+  // Server rechnet die Vorschau auf den einfachen Fahrpreis (total_price); die Buchung rechnet auf den
+  // Gesamtpreis (Hin & Rück, Anfahrt …). Daher hier auf den angezeigten Preis hochrechnen — sonst
+  // zeigt /buchen bei Hin & Rück weniger Rabatt, als bei der Buchung abgezogen wird.
+  const autoDiscountAmount = (() => {
+    if (!autoDiscount || appliedPromo) return 0;
+    if (autoDiscount.type !== 'percent' || !(autoDiscountBase > 0) || !(price > 0)) return autoDiscount.amount;
+    let a = Math.min(price * (autoDiscount.value / 100), autoDiscount.amount * (price / autoDiscountBase));
+    if (autoDiscount.max_amount != null) a = Math.min(a, autoDiscount.max_amount);
+    return Math.round(a * 100) / 100;
+  })();
   const finalPriceWithAutoDiscount = Math.max(0, finalPrice - autoDiscountAmount);
   const autoDiscountLabel = autoDiscount ? pickDiscountLabel(autoDiscount, locale) : '';
   const autoDiscountRed = !!autoDiscount && autoDiscount.badge !== 'classic';

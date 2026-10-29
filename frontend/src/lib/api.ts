@@ -346,6 +346,7 @@ export interface AutoDiscount {
   leer_end_km: number | null;
   /** München-Modus: PLZ, deren Fahrtziel nicht zählt (null = Standardliste, '' = keine) */
   leer_exclude_plz: string | null;
+  dynamic_mode?: string | null;
 }
 
 export interface LeerItem {
@@ -512,7 +513,22 @@ export const marketingApi = {
   campaigns: async (): Promise<MkCampaign[]> => (await api.get('/admin/marketing2/campaigns')).data,
 };
 
+export interface AutopilotSettings {
+  enabled: boolean; maxPercent: number; minKm: number; excludeStamm: boolean; excludeBusiness: boolean;
+  ignorePgFloor: boolean; holdoutPct: number; weeklyBudget: number; minScore: number;
+}
+export interface AutopilotReport {
+  days: number; offers: number;
+  holdout: { n: number; booked: number }; offered: { n: number; booked: number }; noOffer: { n: number; booked: number };
+  levels: Array<{ percent: number; n: number; booked: number }>;
+  bookings: number; discount: number; revenue: number; weekSpent: number; globalIgnorePgFloor: boolean;
+  reasons: Array<{ reason: string; n: number }>;
+}
+
 export const autoDiscountsApi = {
+  autopilot: async (days = 30): Promise<{ settings: AutopilotSettings; report: AutopilotReport }> =>
+    (await api.get('/auto-discounts/admin/autopilot', { params: { days } })).data,
+  saveAutopilot: async (s: Partial<AutopilotSettings>) => (await api.put('/auto-discounts/admin/autopilot', s)).data,
   searchStats: async (from: string, to: string): Promise<SearchStats> => {
     const response = await api.get('/auto-discounts/admin/search-stats', { params: { from, to } });
     return response.data;

@@ -1,3 +1,4 @@
+import { linkBookingToOffer } from '../services/rabattAutopilot';
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
@@ -477,6 +478,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         visitCount: await countVisitorSessions(visitor_id || null),
         visitorPriceByBypass,
         fixedRouteApplied,
+        // Rabatt-Autopilot: nur das in der Vorschau eingefrorene Angebot (nie neu entscheiden)
+        autopilot: { mode: 'booking', visitorId: visitor_id || null, sessionId: session_id || null, pickup: pickup_address || null, dropoff: dropoff_address || null },
       });
 
       if (adResult) {
@@ -684,6 +687,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       );
     }
 
+    // Rabatt-Autopilot lernt: Buchung dem Angebot (oder der Kontrollgruppe) zuordnen
+    linkBookingToOffer({
+      visitorId: visitor_id || null, pickup: pickup_address || null, dropoff: dropoff_address || null,
+      tripDate: pickup_datetime ? String(pickup_datetime).replace(' ', 'T').slice(0, 10) : null, bookingId: result.insertId,
+    }).catch(err => console.error('autopilot link failed:', err));
+
     const [newBooking] = await query('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
 
     // Company card-on-file: charge immediately if this company is configured to
@@ -840,6 +849,9 @@ export interface PublicAutoDiscount {
 
 export interface RoutePriceOptions {
   visitorId?: string | null;
+  sessionId?: string | null;
+  /** true nur aus /calculate-price (Buchungsablauf) — dann darf der Rabatt-Autopilot entscheiden */
+  autopilot?: boolean;
   email?: string | null;
   phone?: string | null;
   pickupDatetime?: string | null;
@@ -986,6 +998,9 @@ export async function computeRoutePrice(
       visitCount: await countVisitorSessions(options?.visitorId || null),
       visitorPriceByBypass,
       fixedRouteApplied: fixedRouteMatch,
+      // Rabatt-Autopilot nur im echten Buchungsablauf (calculate-price mit Besucher)
+      autopilot: options?.autopilot ? { mode: 'preview', visitorId: options.visitorId || null, sessionId: options.sessionId || null,
+        pickup: pickup_address || null, dropoff: dropoff_address || null } : undefined,
     });
     if (result) {
       // §51 Abs. 5 PBefG: Rabatt darf den Pflichttarif nicht unterschreiten — sonst
@@ -1027,7 +1042,7 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
   try {
     const {
       vehicle_type, distance_km, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
-      pickup_address, dropoff_address, visitor_id, email, pickup_datetime, trip_type,
+      pickup_address, dropoff_address, visitor_id, email, pickup_datetime, trip_type, session_id,
     } = req.body;
 
     if (!vehicle_type || distance_km === undefined) {
@@ -1038,6 +1053,8 @@ router.post('/calculate-price', async (req: Request, res: Response): Promise<voi
     const km = parseFloat(distance_km);
     const estimate = await computeRoutePrice(req, vehicle_type, km, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, {
       visitorId: visitor_id || null,
+      sessionId: session_id || null,
+      autopilot: true,
       email: email || null,
       pickupDatetime: pickup_datetime || null,
       tripType: trip_type || null,

@@ -1549,11 +1549,45 @@ export async function initializeDatabase(): Promise<void> {
       // München-Modus: PLZ, deren Fahrtziel nicht zählt (NULL = Standardliste Dachau/Karlsfeld/
       // Unter-/Oberschleißheim, '' = keine Ausschlüsse)
       ['leer_exclude_plz', 'VARCHAR(500) DEFAULT NULL'],
+      // 'autopilot' = Wert wird je Besucher von services/rabattAutopilot.ts bestimmt
+      ['dynamic_mode', 'VARCHAR(20) DEFAULT NULL'],
     ]) {
       try {
         await conn.execute(`ALTER TABLE auto_discounts ADD COLUMN ${col} ${def}`);
       } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error(`auto_discounts.${col} migration failed:`, e.message); }
     }
+    // Rabatt-Autopilot: eine Regelzeile (anfangs AUS) + Angebote je Besucher/Strecke
+    try {
+      await conn.execute(`
+        INSERT INTO auto_discounts (name, discount_type, discount_value, zone_scope, min_km, booking_index_max,
+          exclude_business, ip_bypass_mode, priority, active, show_in_banner, show_countdown, show_remaining,
+          label_de, label_en, label_tr, dynamic_mode)
+        SELECT 'Rabatt-Autopilot', 'percent', 7, 'any', 25, 2, 1, 'alle', 25, 0, 0, 0, 0,
+          'Sonderangebot · solange verfügbar', 'Special offer · while available', 'Özel teklif · sınırlı sayıda', 'autopilot'
+        FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM auto_discounts WHERE dynamic_mode = 'autopilot')`);
+    } catch (e: any) { console.error('autopilot rule seed failed:', e.message); }
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS autopilot_offers (
+          id INT NOT NULL AUTO_INCREMENT,
+          visitor_id VARCHAR(64) NOT NULL,
+          session_id VARCHAR(64) DEFAULT NULL,
+          route_key VARCHAR(200) NOT NULL,
+          trip_date DATE DEFAULT NULL,
+          km DECIMAL(6,1) DEFAULT NULL,
+          percent TINYINT NOT NULL DEFAULT 0,
+          holdout TINYINT(1) NOT NULL DEFAULT 0,
+          score DECIMAL(4,3) DEFAULT NULL,
+          p_model DECIMAL(4,3) DEFAULT NULL,
+          reasons VARCHAR(255) DEFAULT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME NOT NULL,
+          booking_id INT DEFAULT NULL,
+          PRIMARY KEY (id),
+          KEY idx_visitor_route (visitor_id, route_key),
+          KEY idx_created (created_at)
+        ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    } catch (e: any) { console.error('autopilot_offers table failed:', e.message); }
     try {
       // Alte ganzstündige Fahrtzeit (hour_from/hour_to) → Minuten. Speichern einer Regel setzt
       // hour_from/hour_to auf NULL, daher läuft diese Übernahme pro Regel nur ein einziges Mal.

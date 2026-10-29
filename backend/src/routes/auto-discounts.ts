@@ -6,6 +6,7 @@ import { visitorDistanceToBase } from '../services/visitorDistance';
 import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
 import { vacanciesAround, DEFAULT_LEER_END_KM, parsePlzList } from '../services/leerfahrt';
 import { searchStats } from '../services/searchDemand';
+import { invalidateAutopilotSettings } from '../services/rabattAutopilot';
 import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 
 const router = Router();
@@ -359,6 +360,99 @@ router.get('/admin/search-stats', authenticateAdmin, async (req: Request, res: R
 });
 
 // POST /api/auto-discounts/admin — create rule
+// ---- Rabatt-Autopilot (services/rabattAutopilot.ts) ------------------------------------------
+// Regelzeile (dynamic_mode = 'autopilot') trägt die Grenzen: aktiv, Höchst-%, Mindest-km,
+// Stammkunde (booking_index_max), Firma (exclude_business), Pflichttarif (ip_bypass_mode 'alle' = darf
+// darunter). Kontrollgruppe, Wochenbudget, Mindest-Bedarf stehen in settings.
+
+async function autopilotRule(): Promise<any | null> {
+  const [r] = await query<any>(`SELECT * FROM auto_discounts WHERE dynamic_mode = 'autopilot' ORDER BY id LIMIT 1`);
+  return r || null;
+}
+async function apSetting(key: string, def: string): Promise<string> {
+  const [r] = await query<{ setting_value: string }>('SELECT setting_value FROM settings WHERE setting_key = ?', [key]);
+  return r ? r.setting_value : def;
+}
+
+router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rule = await autopilotRule();
+    if (!rule) { res.status(404).json({ error: 'Autopilot-Regel fehlt (Server neu starten)' }); return; }
+    const days = Math.min(90, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    const minScore = Number(await apSetting('autopilot_min_score', '0.35')) || 0.35;
+    const offers = await query<any>(
+      `SELECT percent, holdout, score, reasons, booking_id IS NOT NULL AS booked FROM autopilot_offers WHERE created_at > NOW() - INTERVAL ? DAY`, [days]);
+    const grp = (f: (o: any) => boolean) => { const xs = offers.filter(f); return { n: xs.length, booked: xs.filter(o => Number(o.booked) === 1).length }; };
+    const reasons: Record<string, number> = {};
+    for (const o of offers) for (const r of String(o.reasons || '').split(', ').filter(Boolean)) {
+      const k = r.replace(/\d+ Tage Vorlauf/, 'Vorlauf ≥ 2 Tage').replace(/Buchungschance \d+ %/, 'niedrige Buchungschance').replace(/^\d+ km$/, 'lange Fahrt');
+      reasons[k] = (reasons[k] || 0) + 1;
+    }
+    const [money] = await query<any>(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(auto_discount_amount), 0) AS discount, COALESCE(SUM(price), 0) AS revenue FROM bookings
+        WHERE auto_discount_id = ? AND status <> 'cancelled' AND created_at > NOW() - INTERVAL ? DAY`, [rule.id, days]);
+    const today = berlinDateSql(0);
+    const wd = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
+    const monday = new Date(Date.parse(`${today}T12:00:00Z`) - wd * 86_400_000).toISOString().slice(0, 10);
+    const [week] = await query<any>(
+      `SELECT COALESCE(SUM(auto_discount_amount), 0) AS s FROM bookings WHERE auto_discount_id = ? AND status <> 'cancelled' AND created_at >= ?`,
+      [rule.id, `${monday} 00:00:00`]);
+    res.json({
+      settings: {
+        enabled: Number(rule.active) === 1,
+        maxPercent: Number(rule.discount_value),
+        minKm: rule.min_km != null ? Number(rule.min_km) : 0,
+        excludeStamm: rule.booking_index_max != null,
+        excludeBusiness: Number(rule.exclude_business) === 1,
+        ignorePgFloor: rule.ip_bypass_mode === 'alle',
+        holdoutPct: Number(await apSetting('autopilot_holdout_pct', '15')),
+        weeklyBudget: Number(await apSetting('autopilot_weekly_budget', '150')),
+        minScore,
+      },
+      report: {
+        days,
+        offers: offers.length,
+        holdout: grp(o => Number(o.holdout) === 1 && Number(o.score) >= minScore),
+        offered: grp(o => Number(o.holdout) === 0 && Number(o.percent) > 0),
+        levels: [3, 5, 7].map(l => ({ percent: l, ...grp(o => Number(o.holdout) === 0 && Number(o.percent) === l) })),
+        noOffer: grp(o => Number(o.holdout) === 0 && Number(o.percent) === 0),
+        bookings: Number(money?.n) || 0, discount: Number(money?.discount) || 0, revenue: Number(money?.revenue) || 0,
+        weekSpent: Number(week?.s) || 0,
+        // Rabatte-Einstellung „Pflichttarif-Boden ignorieren" gilt für alle Regeln — dann ist der Autopilot-Schalter wirkungslos
+        globalIgnorePgFloor: (await apSetting('auto_discount_ignore_pg_floor', '0')) === '1',
+        reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => ({ reason: k, n })),
+      },
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Autopilot konnte nicht geladen werden' });
+  }
+});
+
+router.put('/admin/autopilot', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rule = await autopilotRule();
+    if (!rule) { res.status(404).json({ error: 'Autopilot-Regel fehlt' }); return; }
+    const b = req.body || {};
+    const num = (v: any, min: number, max: number, def: number) => { const n = Number(v); return Number.isFinite(n) && n >= min && n <= max ? n : def; };
+    const maxPercent = num(b.maxPercent, 1, 15, Number(rule.discount_value));
+    const minKm = num(b.minKm, 0, 500, rule.min_km != null ? Number(rule.min_km) : 25);
+    await run(
+      `UPDATE auto_discounts SET active = ?, discount_value = ?, min_km = ?, booking_index_max = ?, exclude_business = ?, ip_bypass_mode = ? WHERE id = ?`,
+      [b.enabled ? 1 : 0, maxPercent, minKm > 0 ? minKm : null, b.excludeStamm === false ? null : 2,
+        b.excludeBusiness === false ? 0 : 1, b.ignorePgFloor === false ? null : 'alle', rule.id]);
+    const upsert = (k: string, v: string) => run(
+      `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`, [k, v, v]);
+    if (b.holdoutPct != null) await upsert('autopilot_holdout_pct', String(num(b.holdoutPct, 0, 50, 15)));
+    if (b.weeklyBudget != null) await upsert('autopilot_weekly_budget', String(num(b.weeklyBudget, 0, 5000, 150)));
+    if (b.minScore != null) await upsert('autopilot_min_score', String(num(b.minScore, 0, 0.9, 0.35)));
+    invalidateAutoDiscountCache();
+    invalidateAutopilotSettings();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Speichern fehlgeschlagen' });
+  }
+});
+
 router.post('/admin', authenticateAdmin, async (req: Request, res: Response): Promise<void> => {
   const parsed = parseRuleBody(req.body);
   if (parsed.error) { res.status(400).json({ error: parsed.error }); return; }

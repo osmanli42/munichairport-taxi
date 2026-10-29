@@ -8,6 +8,7 @@ import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/
 import DemandPanel from '@/components/discount/DemandPanel';
 import GapPanel from '@/components/discount/GapPanel';
 import LeerPanel from '@/components/discount/LeerPanel';
+import AutopilotPanel from '@/components/discount/AutopilotPanel';
 import PersonalLinkPanel from '@/components/discount/PersonalLinkPanel';
 import SearchDemandPanel from '@/components/discount/SearchDemandPanel';
 
@@ -189,7 +190,8 @@ export default function RabatteTab({ token }: { token: string }) {
   const load = useCallback(async () => {
     try {
       const [list, settings] = await Promise.all([autoDiscountsApi.getAll(), settingsApi.getAll()]);
-      setRules(list);
+      // Autopilot-Regel hat ihre eigene Karte (AutopilotPanel)
+      setRules(list.filter(r => r.dynamic_mode !== 'autopilot'));
       setMasterEnabled((settings.auto_discounts_enabled ?? '1') === '1');
       setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
       setShowInEmail((settings.auto_discount_show_in_email ?? '0') === '1');
@@ -386,6 +388,9 @@ export default function RabatteTab({ token }: { token: string }) {
         </div>
         <Toggle on={masterEnabled} onClick={toggleMaster} disabled={saving} />
       </div>
+
+      {/* Rabatt-Autopilot — her ziyaretçi için o an indirim kararı */}
+      <AutopilotPanel onChanged={load} />
 
       {/* Sakin gün indirimi — ana şalter + doluluk */}
       <DemandPanel onTemplate={startDemandTemplate} refreshKey={demandRefresh} disabled={saving} />
