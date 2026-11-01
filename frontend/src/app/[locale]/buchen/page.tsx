@@ -176,7 +176,6 @@ function BuchenContent() {
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
       if (s.booking_form_restore_enabled === '0') setFormRestoreEnabled(false);
       if (s.card_fail_contact_enabled === '0') setCardContactEnabled(false);
-      if (s.card_auto_book_enabled === '0') setCardAutoBookEnabled(false);
       const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
       setCheckoutV2(assignVariant(visitorId, 'checkout_v2', s.experiment_checkout_v2) === 'b');
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
@@ -323,8 +322,6 @@ function BuchenContent() {
   // Karte abgelehnt → Anrufen/WhatsApp unter dem Kartenfeld (Admin: Preise → Formular)
   const [cardContactEnabled, setCardContactEnabled] = useState(true);
   const [cardDeclined, setCardDeclined] = useState(false);
-  // Karte: nach der Bankbestätigung direkt buchen, ohne zweiten Klick auf der Prüfseite (Admin: Preise → Formular)
-  const [cardAutoBookEnabled, setCardAutoBookEnabled] = useState(true);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
   // Server's night-confirm decision for the booking just made (null = older API → client rule)
@@ -753,8 +750,6 @@ function BuchenContent() {
       }
       return;
     }
-    // Karte schon bestätigt, nur das Buchen schlug fehl: nicht noch einmal zur Bank schicken
-    if (payment === 'card' && cardAutoBookEnabled && cardResult) { handleSubmit(cardResult); return; }
     if (payment === 'card') {
       setCardSubmitting(true);
       setCardDeclined(false);
@@ -766,7 +761,6 @@ function BuchenContent() {
         return;
       }
       setCardResult(result);
-      if (cardAutoBookEnabled) { handleSubmit(result); return; }
     }
     setSubmitState('review');
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
@@ -822,9 +816,8 @@ function BuchenContent() {
     }
   }
 
-  async function handleSubmit(confirmedCard?: CardPaymentResult) {
+  async function handleSubmit() {
     if (!validate()) return;
-    const card = confirmedCard ?? cardResult;
     setSubmitState('loading');
     try {
       const pickupDatetime = `${date}T${time}:00`;
@@ -878,9 +871,9 @@ function BuchenContent() {
         rechnung_required: rechnungRequired && rechnungAdresse.trim() ? 1 : 0,
         rechnung_adresse: rechnungRequired && rechnungAdresse.trim() ? rechnungAdresse : undefined,
       };
-      if (payment === 'card' && card) {
-        body.stripe_customer_id = card.customerId;
-        body.stripe_payment_method_id = card.paymentMethodId;
+      if (payment === 'card' && cardResult) {
+        body.stripe_customer_id = cardResult.customerId;
+        body.stripe_payment_method_id = cardResult.paymentMethodId;
       }
 
       const res = await fetch(`${API_URL}/bookings`, {
@@ -1655,7 +1648,7 @@ function BuchenContent() {
                     </div>
                   )}
 
-                  <button onClick={() => handleSubmit()} disabled={isLoading}
+                  <button onClick={handleSubmit} disabled={isLoading}
                     className="mt-6 w-full bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 disabled:opacity-70 text-primary-800 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2.5 text-base">
                     {isLoading ? <><Loader2 size={20} className="animate-spin" /> {tx.submitting}</> : <><Lock size={18} /> {tx.review_confirm} <ArrowRight size={18} /></>}
                   </button>
@@ -2159,11 +2152,7 @@ function BuchenContent() {
                   </span>
                 </div>
               )}
-              {payment === 'card' && cardAutoBookEnabled && cardResult ? (
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
-                  <CheckCircle size={16} className="shrink-0" /> {L('Karte bestätigt', 'Card confirmed', 'Kart onaylandı')} · {(cardResult.brand || '').toUpperCase()} •••• {cardResult.last4}
-                </div>
-              ) : payment === 'card' && (
+              {payment === 'card' && (
                 <div className="mt-4 space-y-3">
                   <CardPaymentField
                     ref={cardFieldRef}
@@ -2228,22 +2217,15 @@ function BuchenContent() {
               </div>
             )}
 
-            {payment === 'card' && cardAutoBookEnabled && (
+            {payment === 'card' && (
               <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
                 <p className="font-semibold">{L('So geht es weiter:', 'What happens next:', 'Sonraki adım:')}</p>
-                <p className="mt-1">{L('Ihre Bank fragt evtl. nach einer Bestätigung, z. B. in Ihrer Banking-App. Das kann 1–2 Minuten dauern. Kehren Sie danach hierher zurück – Ihre Buchung wird automatisch abgeschlossen.', 'Your bank may ask you to confirm, e.g. in your banking app. This can take 1–2 minutes. Then return to this page – your booking is completed automatically.', 'Bankanız, örneğin banka uygulamasında onay isteyebilir. Bu 1–2 dakika sürebilir. Sonra bu sayfaya dönün, rezervasyonunuz otomatik tamamlanır.')}</p>
-                <p className="mt-2 text-xs text-blue-800">
-                  {L('Mit der Buchung akzeptieren Sie unsere', 'By booking you accept our', 'Rezervasyonla')}{' '}
-                  <a href={locale === 'de' ? '/agb' : `/${locale}/agb`} target="_blank" className="underline">{L('AGB', 'Terms', 'Hizmet Şartlarımızı')}</a>{' '}
-                  {L('und', 'and', 've')}{' '}
-                  <a href={locale === 'de' ? '/datenschutz' : `/${locale}/datenschutz`} target="_blank" className="underline">{L('Datenschutzerklärung', 'Privacy Policy', 'Gizlilik Politikamızı')}</a>
-                  {locale === 'tr' ? ' kabul etmiş olursunuz.' : '.'}
-                </p>
+                <p className="mt-1">{L('Ihre Bank fragt evtl. nach einer Bestätigung, z. B. in Ihrer Banking-App. Das kann 1–2 Minuten dauern. Kehren Sie danach hierher zurück – im nächsten Schritt prüfen Sie Ihre Angaben und schließen die Buchung ab.', 'Your bank may ask you to confirm, e.g. in your banking app. This can take 1–2 minutes. Then return to this page – in the next step you check your details and complete the booking.', 'Bankanız, örneğin banka uygulamasında onay isteyebilir. Bu 1–2 dakika sürebilir. Sonra bu sayfaya dönün; bir sonraki adımda bilgilerinizi kontrol edip rezervasyonu tamamlarsınız.')}</p>
               </div>
             )}
             <button onClick={handleContinueToReview} disabled={cardSubmitting}
               className="mt-6 w-full bg-gold-400 hover:bg-[#f0b92b] active:bg-gold-500 text-primary-800 font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-base shadow-sm disabled:opacity-60">
-              {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {payment === 'card' && cardAutoBookEnabled ? L('Warten auf Ihre Bank…', 'Waiting for your bank…', 'Bankanız bekleniyor…') : tx.submitting}</> : payment === 'card' && cardAutoBookEnabled ? <>{L('Zahlungspflichtig buchen', 'Book and pay', 'Öde ve rezerve et')} <ArrowRight size={18} /></> : <>{tx.submit} <ArrowRight size={18} /></>}
+              {cardSubmitting ? <><Loader2 size={20} className="animate-spin" /> {payment === 'card' ? L('Warten auf Ihre Bank…', 'Waiting for your bank…', 'Bankanız bekleniyor…') : tx.submitting}</> : <>{tx.submit} <ArrowRight size={18} /></>}
             </button>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-gray-600">
               <Lock size={13} /> {L('Ihre Daten sind bei uns sicher und werden verschlüsselt übertragen.', 'Your data is safe with us and transmitted encrypted.', 'Verileriniz bizde güvende ve şifreli olarak iletilir.')}
@@ -2450,7 +2432,7 @@ function BuchenContent() {
           disabled={cardSubmitting}
           className="flex-1 max-w-[220px] bg-gold-400 hover:bg-[#f0b92b] text-primary-800 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-60"
         >
-          {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : payment === 'card' && cardAutoBookEnabled ? <>{L('Zahlungspflichtig buchen', 'Book and pay', 'Öde ve rezerve et')} <ArrowRight size={16} /></> : <>{L('Weiter', 'Continue', 'Devam')} <ArrowRight size={16} /></>}
+          {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{L('Weiter', 'Continue', 'Devam')} <ArrowRight size={16} /></>}
         </button>
       </div>
       <SocialProofToast locale={locale} />
@@ -2459,7 +2441,7 @@ function BuchenContent() {
       {payment === 'card' && cardSubmitting && (
         <BankWaitBanner
           title={L('Bitte bestätigen Sie die Zahlung in Ihrer Banking-App.', 'Please confirm the payment in your banking app.', 'Lütfen ödemeyi banka uygulamanızda onaylayın.')}
-          text={L('Danach hierher zurückkehren – Ihre Buchung wird automatisch abgeschlossen.', 'Then return here – your booking is completed automatically.', 'Sonra buraya dönün, rezervasyonunuz otomatik tamamlanır.')}
+          text={L('Danach hierher zurückkehren – im nächsten Schritt prüfen Sie Ihre Angaben und schließen die Buchung ab.', 'Then return here – in the next step you check your details and complete the booking.', 'Sonra buraya dönün; bir sonraki adımda bilgilerinizi kontrol edip rezervasyonu tamamlarsınız.')}
         />
       )}
 
@@ -2570,21 +2552,26 @@ function BuchenContent() {
   );
 }
 
-// Stripes Bankfenster liegt auf höchster Ebene über der Seite. Der Hinweis bleibt darüber sichtbar, indem er
-// dieselbe Ebene nutzt und im DOM immer zuletzt steht; Klicks gehen hindurch, das Bankfenster bleibt bedienbar.
+// Stripes Bankfenster liegt über der Seite. Der Hinweis nutzt deshalb die oberste Browser-Ebene (Popover, sonst höchster
+// z-index) und wird regelmäßig neu nach oben geholt; Klicks gehen hindurch, das Bankfenster bleibt bedienbar.
 function BankWaitBanner({ title, text }: { title: string; text: string }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
     const el = document.createElement('div');
-    document.body.appendChild(el);
+    el.setAttribute('popover', 'manual');
+    el.style.cssText = 'position:fixed;inset:auto 0 0 0;width:100%;max-width:100%;margin:0;padding:0;border:0;background:transparent;overflow:visible;pointer-events:none;z-index:2147483647';
+    const raise = () => {
+      document.body.appendChild(el); // Entfernen aus dem DOM schließt das Popover, daher danach neu öffnen
+      try { el.showPopover?.(); } catch { /* nicht unterstützt: z-index bleibt */ }
+    };
+    raise();
     setHost(el);
-    const keepLast = setInterval(() => { if (document.body.lastElementChild !== el) document.body.appendChild(el); }, 300);
-    return () => { clearInterval(keepLast); el.remove(); };
+    const keepOnTop = setInterval(raise, 500);
+    return () => { clearInterval(keepOnTop); el.remove(); };
   }, []);
   if (!host) return null;
   return createPortal(
-    <div role="status" aria-live="polite" style={{ zIndex: 2147483647 }}
-      className="pointer-events-none fixed inset-x-0 bottom-0 border-t-4 border-gold-400 bg-primary-800 px-4 py-3 text-center text-white">
+    <div role="status" aria-live="polite" className="border-t-4 border-gold-400 bg-primary-800 px-4 py-3 text-center text-white">
       <p className="text-base font-extrabold leading-snug">{title}</p>
       <p className="text-sm font-semibold leading-snug text-white/90">{text}</p>
     </div>,
