@@ -11,7 +11,7 @@ import {
   Clock, CreditCard, ExternalLink, Eye, FileText, History, LayoutGrid, Wallet, FileWarning, Landmark, Luggage, Phone, PlaneLanding,
   PlaneTakeoff, Receipt, RefreshCw, Repeat, TrendingDown, TrendingUp, Users, Zap, Car, Network, MousePointerClick,
   EllipsisVertical, Copy, UserRound, CarFront, Bus, MapPin, ArrowUp, ArrowDown, Euro, ChevronDown, Flag, Move,
-  Megaphone, MailWarning,
+  Megaphone, MailWarning, X,
 } from 'lucide-react';
 import { adminApi, Booking } from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -72,23 +72,25 @@ interface DashboardData {
   intakeCalendar?: Record<'today' | 'yesterday' | 'week', Agg>;
   chart: Array<{ date: string } & Agg>;
   month: { month: string; payment: Record<string, Agg>; status: Record<string, number> };
-  attention: Record<AttentionKey, Leg[]> & {
+  attention: Record<AttentionKey, (Leg & { dismiss_key?: string })[]> & {
     /** Card rides still to charge: tomorrow's after 20:15, today's upcoming ones always. */
     cardsUncharged?: UnchargedCard[];
     /** Monthly Search Console backlink export not uploaded yet (SEO → Backlinks). */
-    seoBacklinks?: { lastUpload: string | null } | null;
+    seoBacklinks?: { lastUpload: string | null; dismiss_key?: string } | null;
     /** Pages that dropped out of Google's index (SEO → Indexierung). */
-    seoIndex?: { dropped: number } | null;
+    seoIndex?: { dropped: number; dismiss_key?: string } | null;
     /** Weekly Google Ads report upload (Google Ads → Veri & Bağlantı) not done yet. */
-    adsReports?: { lastUpload: string | null } | null;
+    adsReports?: { lastUpload: string | null; dismiss_key?: string } | null;
     /** Month over (or its last day): Sammelrechnungen / calendar Rechnung rides not sent yet. */
     monthEndInvoices?: {
-      companies: Array<{ company_id: number; company_name: string; month: string; rides: number; total: number }>;
-      calendar: Array<{ month: string; rides: number }>;
+      companies: Array<{ company_id: number; company_name: string; month: string; rides: number; total: number; dismiss_key?: string }>;
+      calendar: Array<{ month: string; rides: number; dismiss_key?: string }>;
     } | null;
     /** Marketing occasion whose reminder window is open (Admin → Marketing). */
-    marketing?: Array<{ id: string; name: string; date: string; daysLeft: number; urgent: boolean }> | null;
+    marketing?: Array<{ id: string; name: string; date: string; daysLeft: number; urgent: boolean; dismiss_key?: string }> | null;
   };
+  /** Handlungsbedarf entries hidden in the last 30 days (can be brought back). */
+  attentionDismissed?: Array<{ item_key: string; label: string | null }>;
   card_deadline?: string;
   recent: Recent[];
   calendar: { enabled: boolean; error: string | null; legs: CalLeg[]; mismatches: CalMismatch[] };
@@ -106,6 +108,7 @@ type CalSum = { count: number; priced: number; revenue: number; estimated?: numb
 type AttentionKey = 'unconfirmed' | 'failedCharges' | 'unpaidTransfers' | 'invoiceFailed' | 'openStatus' | 'mailFailed';
 
 type UnchargedCard = {
+  dismiss_key?: string;
   id: number;
   booking_number: string;
   name: string;
@@ -646,15 +649,55 @@ function Schedule({ items, now, onOpen, calendar, showCal, onToggleCal }: {
 // ---------------------------------------------------------------------------------------
 // Attention panel
 
-function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpty }: {
-  a: DashboardData['attention']; mismatches: CalMismatch[]; deadline: string; onOpen: (id: number) => void; onGoTab: (tab: string) => void;
+function DismissX({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <button type="button" onClick={onClick} title="Aus der Liste entfernen" aria-label="Aus der Liste entfernen"
+      className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-red-100 hover:text-red-600', className)}>
+      <X size={14} />
+    </button>
+  );
+}
+
+function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, onReload, hideWhenEmpty }: {
+  a: DashboardData['attention']; mismatches: (CalMismatch & { dismiss_key?: string })[]; dismissed: Array<{ item_key: string; label: string | null }>;
+  deadline: string; onOpen: (id: number) => void; onGoTab: (tab: string) => void; onReload: () => void;
   hideWhenEmpty?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const cards = a.cardsUncharged || [];
+  const [showHidden, setShowHidden] = useState(false);
+  // Sofort aus der Liste nehmen; der Server blendet sie ab dem nächsten Laden selbst aus.
+  const [gone, setGone] = useState<Record<string, string>>({});
+  const [restored, setRestored] = useState<Set<string>>(new Set());
+  const keep = <T extends { dismiss_key?: string }>(rows: T[]) => rows.filter((r) => !r.dismiss_key || !(r.dismiss_key in gone));
+  const shown = (r?: { dismiss_key?: string } | null) => (r && !(r.dismiss_key && r.dismiss_key in gone) ? r : null);
+  const dismiss = (key: string | undefined, label: string) => {
+    if (!key || !confirm(`„${label}“ wirklich aus Handlungsbedarf entfernen?\n\nEs wird nur aus dieser Liste genommen, sonst ändert sich nichts.`)) return;
+    setGone((g) => ({ ...g, [key]: label }));
+    setRestored((r) => { const n = new Set(r); n.delete(key); return n; });
+    adminApi.dismissAttention(key, label).catch(() => {
+      setGone((g) => { const n = { ...g }; delete n[key]; return n; });
+      alert('Konnte nicht entfernt werden.');
+    });
+  };
+  const restore = (key: string) => {
+    setRestored((r) => new Set(r).add(key));
+    setGone((g) => { const n = { ...g }; delete n[key]; return n; });
+    adminApi.restoreAttention(key).then(onReload).catch(() => alert('Konnte nicht zurückgeholt werden.'));
+  };
+  const hiddenList = [
+    ...Object.entries(gone).map(([item_key, label]) => ({ item_key, label: label as string | null })),
+    ...dismissed.filter((d) => !(d.item_key in gone)),
+  ].filter((d) => !restored.has(d.item_key));
+  mismatches = keep(mismatches);
+  const cards = keep(a.cardsUncharged || []);
   // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
   const cardIds = new Set(cards.map((c) => c.id));
-  a = { ...a, failedCharges: a.failedCharges.filter((l) => !cardIds.has(l.id)) };
+  a = {
+    ...a,
+    failedCharges: keep(a.failedCharges).filter((l) => !cardIds.has(l.id)),
+    unconfirmed: keep(a.unconfirmed), unpaidTransfers: keep(a.unpaidTransfers), invoiceFailed: keep(a.invoiceFailed),
+    openStatus: keep(a.openStatus), mailFailed: keep(a.mailFailed),
+  };
   const groups: Array<{ key: AttentionKey; title: string; hint: string; Icon: typeof Clock; tone: string }> = [
     { key: 'mailFailed', title: 'Buchungsmail nicht zugestellt', hint: 'Automatischer Versand mehrmals fehlgeschlagen — Bestätigung im Buchungsdetail erneut senden', Icon: MailWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'failedCharges', title: 'Kartenzahlung fehlgeschlagen', hint: 'Stripe-Abbuchung erneut versuchen oder Kunde kontaktieren', Icon: CreditCard, tone: 'text-red-600 bg-red-50' },
@@ -663,12 +706,12 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
     { key: 'invoiceFailed', title: 'Rechnung nicht versendet', hint: 'Automatischer Versand nach 3 Versuchen abgebrochen', Icon: FileWarning, tone: 'text-red-600 bg-red-50' },
     { key: 'openStatus', title: 'Fahrt vorbei, Status offen', hint: 'Noch „Bestätigt“ — auf „Abgeschlossen“ setzen', Icon: Receipt, tone: 'text-gray-600 bg-gray-100' },
   ];
-  const seo = a.seoBacklinks || null;
-  const seoIdx = a.seoIndex || null;
-  const adsRep = a.adsReports || null;
-  const monthEnd = a.monthEndInvoices || null;
+  const seo = shown(a.seoBacklinks) as DashboardData['attention']['seoBacklinks'];
+  const seoIdx = shown(a.seoIndex) as DashboardData['attention']['seoIndex'];
+  const adsRep = shown(a.adsReports) as DashboardData['attention']['adsReports'];
+  const monthEnd = a.monthEndInvoices ? { companies: keep(a.monthEndInvoices.companies), calendar: keep(a.monthEndInvoices.calendar) } : null;
   const monthEndCount = monthEnd ? monthEnd.companies.length + monthEnd.calendar.length : 0;
-  const mkt = a.marketing || [];
+  const mkt = keep(a.marketing || []);
   const openMarketing = (id: string) => {
     try { sessionStorage.setItem('mt_marketing_occasion', id); } catch { /* ignore */ }
     onGoTab('marketing');
@@ -687,7 +730,7 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
     ...mkt.map((m) => ({ label: `📣 ${m.name.replace(/\s*\(.*\)$/, '')}`, urgent: m.urgent })),
     ...(mismatches.length ? [{ label: `Zeit weicht vom Kalender ab (${mismatches.length})`, urgent: false }] : []),
   ];
-  if (hideWhenEmpty && total === 0) return null;
+  if (hideWhenEmpty && total === 0 && !Object.keys(gone).length) return null;
   return (
     <Card
       title="Handlungsbedarf"
@@ -733,8 +776,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </div>
               <ul className="mt-2 space-y-1">
                 {cards.map((c) => (
-                  <li key={c.id}>
-                    <button onClick={() => onOpen(c.id)} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                  <li key={c.id} className="flex items-start gap-1">
+                    <DismissX className="mt-1" onClick={() => dismiss(c.dismiss_key, `Karte nicht abgebucht · ${c.name}`)} />
+                    <button onClick={() => onOpen(c.id)} className="min-w-0 flex-1 rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-red-700 shrink-0">{c.day === 'today' ? 'Heute' : 'Morgen'} {hhmm(c.pickup_datetime)}</span>
                         <span className="truncate font-medium text-gray-800">{c.name}</span>
@@ -762,8 +806,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </div>
               <ul className="mt-2 space-y-1">
                 {monthEnd.companies.map((c) => (
-                  <li key={`${c.company_id}-${c.month}`}>
-                    <button onClick={() => onGoTab('b2b')} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                  <li key={`${c.company_id}-${c.month}`} className="flex items-start gap-1">
+                    <DismissX className="mt-1" onClick={() => dismiss(c.dismiss_key, `Monatsende-Rechnung · ${c.company_name} · ${monthName(c.month)}`)} />
+                    <button onClick={() => onGoTab('b2b')} className="min-w-0 flex-1 rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
                       <div className="flex items-center gap-2">
                         <Building2 size={13} className="shrink-0 text-red-500" />
                         <span className="truncate font-medium text-gray-800">{c.company_name}</span>
@@ -776,8 +821,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                   </li>
                 ))}
                 {monthEnd.calendar.map((c) => (
-                  <li key={`cal-${c.month}`}>
-                    <button onClick={() => onGoTab('kalender')} className="w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                  <li key={`cal-${c.month}`} className="flex items-start gap-1">
+                    <DismissX className="mt-1" onClick={() => dismiss(c.dismiss_key, `Monatsende-Rechnung · Google Kalender · ${monthName(c.month)}`)} />
+                    <button onClick={() => onGoTab('kalender')} className="min-w-0 flex-1 rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
                       <div className="flex items-center gap-2">
                         <CalendarDays size={13} className="shrink-0 text-red-500" />
                         <span className="truncate font-medium text-gray-800">Google Kalender</span>
@@ -802,8 +848,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </div>
               <ul className="mt-2 space-y-1">
                 {mkt.map((m) => (
-                  <li key={m.id}>
-                    <button onClick={() => openMarketing(m.id)} className={cn('w-full rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 hover:ring-amber-300', m.urgent ? 'ring-red-200' : 'ring-amber-100')}>
+                  <li key={m.id} className="flex items-start gap-1">
+                    <DismissX className="mt-0.5" onClick={() => dismiss(m.dismiss_key, `Marketing · ${m.name}`)} />
+                    <button onClick={() => openMarketing(m.id)} className={cn('min-w-0 flex-1 rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 hover:ring-amber-300', m.urgent ? 'ring-red-200' : 'ring-amber-100')}>
                       <div className="flex items-center gap-2">
                         <Megaphone size={13} className={cn('shrink-0', m.urgent ? 'text-red-500' : 'text-amber-500')} />
                         <span className="truncate font-medium text-gray-800">{m.name}</span>
@@ -819,7 +866,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
             </div>
           )}
           {adsRep && (
-            <button onClick={() => onGoTab('ads')} className="w-full px-5 py-3 bg-red-50/60 text-left hover:bg-red-50">
+            <div className="flex items-start bg-red-50/60 pl-3">
+              <DismissX className="mt-3.5" onClick={() => dismiss(adsRep.dismiss_key, 'Google Ads: Wochen-Reports hochladen')} />
+              <button onClick={() => onGoTab('ads')} className="min-w-0 flex-1 pl-1 pr-5 py-3 text-left hover:bg-red-50">
               <div className="flex items-start gap-2.5">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><MousePointerClick size={15} /></span>
                 <div className="min-w-0 flex-1">
@@ -830,10 +879,13 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                 </div>
                 <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
               </div>
-            </button>
+              </button>
+            </div>
           )}
           {seoIdx && (
-            <button onClick={() => onGoTab('seo')} className="w-full px-5 py-3 bg-red-50/60 text-left hover:bg-red-50">
+            <div className="flex items-start bg-red-50/60 pl-3">
+              <DismissX className="mt-3.5" onClick={() => dismiss(seoIdx.dismiss_key, 'SEO: Google-Index fällt')} />
+              <button onClick={() => onGoTab('seo')} className="min-w-0 flex-1 pl-1 pr-5 py-3 text-left hover:bg-red-50">
               <div className="flex items-start gap-2.5">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><Network size={15} /></span>
                 <div className="min-w-0 flex-1">
@@ -842,10 +894,13 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                 </div>
                 <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
               </div>
-            </button>
+              </button>
+            </div>
           )}
           {seo && (
-            <button onClick={() => onGoTab('seo')} className="w-full px-5 py-3 bg-red-50/60 text-left hover:bg-red-50">
+            <div className="flex items-start bg-red-50/60 pl-3">
+              <DismissX className="mt-3.5" onClick={() => dismiss(seo.dismiss_key, 'SEO: Backlink-CSV hochladen')} />
+              <button onClick={() => onGoTab('seo')} className="min-w-0 flex-1 pl-1 pr-5 py-3 text-left hover:bg-red-50">
               <div className="flex items-start gap-2.5">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><Network size={15} /></span>
                 <div className="min-w-0 flex-1">
@@ -856,7 +911,8 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
                 </div>
                 <ChevronRight size={15} className="mt-1 shrink-0 text-red-300" />
               </div>
-            </button>
+              </button>
+            </div>
           )}
           {mismatches.length > 0 && (
             <div className="px-5 py-3">
@@ -869,8 +925,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </div>
               <ul className="mt-2 space-y-1">
                 {mismatches.slice(0, 5).map((m) => (
-                  <li key={`${m.id}-${m.calendar_time}`}>
-                    <button onClick={() => onOpen(m.id)} className="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
+                  <li key={`${m.id}-${m.calendar_time}`} className="flex items-start gap-1">
+                    <DismissX className="mt-1" onClick={() => dismiss(m.dismiss_key, `Zeit weicht ab · ${m.name}`)} />
+                    <button onClick={() => onOpen(m.id)} className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium text-gray-800">{m.name}</span>
                         <span className="font-mono text-gray-400 shrink-0">{m.booking_number}</span>
@@ -898,8 +955,9 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </div>
               <ul className="mt-2 space-y-1">
                 {a[g.key].slice(0, 5).map((l) => (
-                  <li key={l.id}>
-                    <button onClick={() => onOpen(l.id)} className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
+                  <li key={l.id} className="flex items-center gap-1">
+                    <DismissX onClick={() => dismiss(l.dismiss_key, `${g.title} · ${l.name}`)} />
+                    <button onClick={() => onOpen(l.id)} className="min-w-0 flex-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-50">
                       <span className="font-mono text-gray-400 shrink-0">{short(l.leg_time)}</span>
                       <span className="truncate font-medium text-gray-800">{l.name}</span>
                       <span className="ml-auto shrink-0 font-semibold text-gray-700">{formatPrice(l.price)}</span>
@@ -911,6 +969,23 @@ function AttentionPanel({ a, mismatches, deadline, onOpen, onGoTab, hideWhenEmpt
               </ul>
             </div>
           ))}
+        </div>
+      )}
+      {hiddenList.length > 0 && (
+        <div className="border-t border-gray-100 px-5 py-2 text-xs">
+          <button onClick={() => setShowHidden((v) => !v)} aria-expanded={showHidden} className="inline-flex items-center gap-1 font-medium text-gray-500 hover:text-gray-700">
+            Ausgeblendet ({hiddenList.length}) <ChevronDown size={13} className={cn('transition-transform', showHidden && 'rotate-180')} />
+          </button>
+          {showHidden && (
+            <ul className="mt-1 space-y-1">
+              {hiddenList.map((d) => (
+                <li key={d.item_key} className="flex items-center gap-2">
+                  <span className="min-w-0 truncate text-gray-500">{d.label || d.item_key}</span>
+                  <button onClick={() => restore(d.item_key)} className="ml-auto shrink-0 font-semibold text-blue-600 hover:underline">Zurückholen</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </Card>
@@ -1510,7 +1585,7 @@ export default function DashboardTab({ reloadToken, onOpenBooking, onShowCard, o
         onHide={toggleWidget}
         labels={{ ...Object.fromEntries(WIDGETS), attention: 'Handlungsbedarf', schedule: 'Fahrplan', kpi_month: `${monthName} bis heute` }}
         blocks={{
-          attention: <AttentionPanel hideWhenEmpty={!editing} a={data.attention} mismatches={data.calendar?.mismatches || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} />,
+          attention: <AttentionPanel hideWhenEmpty={!editing} a={data.attention} mismatches={data.calendar?.mismatches || []} dismissed={data.attentionDismissed || []} deadline={data.card_deadline ?? '20:15'} onOpen={onOpenBooking} onGoTab={onGoTab} onReload={load} />,
           kpi_rides: show('kpi_rides') ? (
         <HeadKpi
           label="Fahrten heute"

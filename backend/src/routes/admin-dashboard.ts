@@ -266,14 +266,22 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const since14 = `${berlinDateSql(-14)} 00:00:00`;
     const since60 = `${berlinDateSql(-60)} 00:00:00`;
     const in3Days = `${berlinDateSql(3)} 23:59:59`;
-    const attentionQuery = (where: string, params: unknown[], order = 'ASC') => query<any>(`
+    // Vom Admin ausgeblendete Einträge; dismiss_key kommt vom Server, damit Filter und Knopf zusammenpassen.
+    const hidden = new Set((await query<{ item_key: string }>(`SELECT item_key FROM attention_dismissed`).catch(() => [])).map((r) => r.item_key));
+    const visible = <T extends object>(rows: T[], key: (r: T) => string) =>
+      rows.map((r) => ({ ...r, dismiss_key: key(r) })).filter((r) => !hidden.has(r.dismiss_key));
+    const attentionQuery = (prefix: string, where: string, params: unknown[], order = 'ASC') => {
+      const skip = [...hidden].filter((k) => k.startsWith(`${prefix}:`)).map((k) => Number(k.slice(prefix.length + 1))).filter(Boolean);
+      return query<any>(`
       SELECT ${RIDE_COLS}, 'hin' AS leg, b.pickup_datetime AS leg_time ${RIDE_FROM}
-       WHERE ${where}
+       WHERE ${where} ${skip.length ? `AND b.id NOT IN (${skip.join(',')})` : ''}
        ORDER BY ${wallSql('b.pickup_datetime')} ${order} LIMIT 20`, params)
-      .then((rows) => rows.map((r) => ({ ...r, leg_time: wall(r.leg_time) })));
+      .then((rows) => rows.map((r) => ({ ...r, leg_time: wall(r.leg_time), dismiss_key: `${prefix}:${r.id}` })));
+    };
 
     // Card rides that should be charged by now: tomorrow's after the deadline (System tab), today's still ahead.
-    const cardsUncharged = await unchargedCards();
+    // Same key as failedCharges: a ride hidden from one list must not resurface in the other.
+    const cardsUncharged = visible(await unchargedCards(), (c: any) => `charge:${c.id}`);
     // Monthly Search Console backlink export not uploaded yet (SEO → Backlinks).
     const seoBacklinks = await backlinkReminder().catch(() => null);
     // Pages that dropped out of Google's index (SEO → Indexierung).
@@ -285,19 +293,19 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const marketing = await marketingPending;
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed] = await Promise.all([
       // Not yet confirmed, ride still ahead.
-      attentionQuery(`b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
+      attentionQuery('unconfirmed', `b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
       // Stripe charge failed — money for a ride that happened or is about to.
-      attentionQuery(`b.status <> 'cancelled' AND b.charge_status = 'failed' AND ${wallSql('b.pickup_datetime')} >= ?`, [since14]),
+      attentionQuery('charge', `b.status <> 'cancelled' AND b.charge_status = 'failed' AND ${wallSql('b.pickup_datetime')} >= ?`, [since14]),
       // Bank transfer not marked as received, ride within 3 days or already done.
-      attentionQuery(`b.status <> 'cancelled' AND b.payment_method = 'ueberweisung' AND b.ueberweisung_paid_at IS NULL
+      attentionQuery('unpaidTransfers', `b.status <> 'cancelled' AND b.payment_method = 'ueberweisung' AND b.ueberweisung_paid_at IS NULL
         AND ${wallSql('b.pickup_datetime')} BETWEEN ? AND ?`, [since60, in3Days]),
       // The automatic invoice gave up after its retries.
-      attentionQuery(`b.status <> 'cancelled' AND (b.rechnung_number IS NULL OR b.rechnung_number = '')
+      attentionQuery('invoiceFailed', `b.status <> 'cancelled' AND (b.rechnung_number IS NULL OR b.rechnung_number = '')
         AND b.rechnung_attempts >= ? AND ${wallSql('b.pickup_datetime')} >= ?`, [RECHNUNG_MAX_ATTEMPTS, since60], 'DESC'),
       // Ride over (last leg before today) but still 'confirmed' — status never closed.
-      attentionQuery(`b.status = 'confirmed' AND ${wallSql(lastLegSql)} < ? AND ${wallSql(lastLegSql)} >= ?`, [todayStart, since14], 'DESC'),
+      attentionQuery('openStatus', `b.status = 'confirmed' AND ${wallSql(lastLegSql)} < ? AND ${wallSql(lastLegSql)} >= ?`, [todayStart, since14], 'DESC'),
       // Kundenbestätigung trotz automatischer Wiederholungen nicht zugestellt (services/mailRetry.ts)
-      attentionQuery(`b.status <> 'cancelled' AND b.mail_attempts >= ? AND b.mail_customer_sent_at IS NULL AND b.created_at >= ?`, [MAIL_MAX_ATTEMPTS, since14], 'DESC'),
+      attentionQuery('mailFailed', `b.status <> 'cancelled' AND b.mail_attempts >= ? AND b.mail_customer_sent_at IS NULL AND b.created_at >= ?`, [MAIL_MAX_ATTEMPTS, since14], 'DESC'),
     ]);
 
     // ---- Latest bookings ---------------------------------------------------------------
@@ -369,6 +377,11 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       console.error('[admin-dashboard] monthNet', e?.message || e);
     }
 
+    const berlinDay = new Date(`${today}T12:00:00Z`);
+    const adsWeek = new Date(berlinDay.getTime() - ((berlinDay.getUTCDay() + 6) % 7) * 86400_000).toISOString().slice(0, 10);
+    const attentionDismissed = await query<{ item_key: string; label: string | null }>(
+      `SELECT item_key, label FROM attention_dismissed WHERE created_at >= NOW() - INTERVAL 30 DAY ORDER BY created_at DESC LIMIT 30`).catch(() => []);
+
     res.json({
       now: wall(now),
       today,
@@ -377,10 +390,22 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
       intakeCalendar,
       chart,
       month: { month, payment, status },
-      attention: { unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed, cardsUncharged, seoBacklinks: seoBacklinks?.due ? seoBacklinks : null, seoIndex: seoIndex?.due ? { dropped: seoIndex.dropped } : null, adsReports: adsReports?.due ? adsReports : null, monthEndInvoices: monthEnd, marketing },
+      attention: {
+        unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed, cardsUncharged,
+        // Wiederkehrende Erinnerungen: ausgeblendet nur für diesen Monat/diese Woche, danach wieder sichtbar
+        seoBacklinks: seoBacklinks?.due && !hidden.has(`seoBacklinks:${month}`) ? { ...seoBacklinks, dismiss_key: `seoBacklinks:${month}` } : null,
+        seoIndex: seoIndex?.due && !hidden.has(`seoIndex:${seoIndex.dropped}`) ? { dropped: seoIndex.dropped, dismiss_key: `seoIndex:${seoIndex.dropped}` } : null,
+        adsReports: adsReports?.due && !hidden.has(`adsReports:${adsWeek}`) ? { ...adsReports, dismiss_key: `adsReports:${adsWeek}` } : null,
+        monthEndInvoices: monthEnd ? {
+          companies: visible(monthEnd.companies, (c: any) => `monthEndCompany:${c.company_id}:${c.month}`),
+          calendar: visible(monthEnd.calendar, (c: any) => `monthEndCalendar:${c.month}`),
+        } : null,
+        marketing: marketing ? visible(marketing, (m) => `marketing:${m.id}:${m.date}`) : null,
+      },
+      attentionDismissed,
       card_deadline: await cardDeadline(),
       recent,
-      calendar,
+      calendar: { ...calendar, mismatches: visible(calendar.mismatches, (m) => `mismatch:${m.id}:${m.calendar_time}`) },
       calendarMonth: calMonth,
       calendarPrevMonth: calPrevMonth,
       calendarTotal: calTotal,
@@ -470,6 +495,34 @@ export async function todayBookedTotals(): Promise<{ count: number; revenue: num
     revenue: bookings.reduce((s, b) => s + (Number(b.price) || 0), 0) + rides.reduce((s, r) => s + (Number(r.price) || 0), 0),
   };
 }
+
+// Handlungsbedarf: Eintrag aus der Liste nehmen / zurückholen. Ändert nur die Anzeige, nie die Buchung.
+const DISMISS_KEY_RE = /^[a-zA-Z]+:[\w:.\-]{1,160}$/;
+
+router.post('/attention/dismiss', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const key = String(req.body?.key || '');
+  if (!DISMISS_KEY_RE.test(key)) { res.status(400).json({ error: 'Invalid key' }); return; }
+  const label = String(req.body?.label || '').slice(0, 255) || null;
+  try {
+    await query(`INSERT INTO attention_dismissed (item_key, label) VALUES (?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label), created_at = CURRENT_TIMESTAMP`, [key, label]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('[admin-dashboard/attention/dismiss]', error);
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+router.post('/attention/restore', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  const key = String(req.body?.key || '');
+  if (!DISMISS_KEY_RE.test(key)) { res.status(400).json({ error: 'Invalid key' }); return; }
+  try {
+    await query(`DELETE FROM attention_dismissed WHERE item_key = ?`, [key]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('[admin-dashboard/attention/restore]', error);
+    res.status(500).json({ error: 'Failed' });
+  }
+});
 
 router.get('/day', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

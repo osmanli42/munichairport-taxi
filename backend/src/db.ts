@@ -1024,6 +1024,16 @@ export async function initializeDatabase(): Promise<void> {
         PRIMARY KEY (pair_key)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // Dashboard „Handlungsbedarf“: vom Admin ausgeblendete Einträge (nur die Liste, die Buchung bleibt unverändert)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS attention_dismissed (
+        item_key VARCHAR(190) NOT NULL,
+        label VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (item_key),
+        KEY idx_created (created_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
     await conn.execute(`
       CREATE TABLE IF NOT EXISTS calendar_rides (
         uid VARCHAR(255) NOT NULL,

@@ -791,6 +791,14 @@ export const adminApi = {
     return response.data;
   },
 
+  dismissAttention: async (key: string, label: string) => {
+    await api.post('/admin/dashboard/attention/dismiss', { key, label });
+  },
+
+  restoreAttention: async (key: string) => {
+    await api.post('/admin/dashboard/attention/restore', { key });
+  },
+
   getTodayBookings: async (): Promise<Booking[]> => {
     const response = await api.get('/admin/bookings/today');
     return response.data;
