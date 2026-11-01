@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { Caveat } from 'next/font/google';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -2456,15 +2457,10 @@ function BuchenContent() {
 
       {/* Während der Bankbestätigung: klar sagen, was zu tun ist */}
       {payment === 'card' && cardSubmitting && (
-        <div role="status" aria-live="polite" className="fixed inset-x-4 top-1/2 z-[9999] mx-auto max-w-md -translate-y-1/2 rounded-2xl border-2 border-gold-400 bg-white p-6 text-center shadow-2xl">
-          <Loader2 size={32} className="mx-auto animate-spin text-primary-800" />
-          <p className="mt-3 text-xl font-extrabold leading-snug text-primary-800">
-            {L('Bitte öffnen Sie Ihre Banking-App und bestätigen Sie die Zahlung.', 'Please open your banking app and confirm the payment.', 'Lütfen banka uygulamanızı açın ve ödemeyi onaylayın.')}
-          </p>
-          <p className="mt-2 text-base font-semibold text-gray-700">
-            {L('Danach hierher zurückkehren.', 'Then return to this page.', 'Sonra bu sayfaya dönün.')}
-          </p>
-        </div>
+        <BankWaitBanner
+          title={L('Bitte bestätigen Sie die Zahlung in Ihrer Banking-App.', 'Please confirm the payment in your banking app.', 'Lütfen ödemeyi banka uygulamanızda onaylayın.')}
+          text={L('Danach hierher zurückkehren – Ihre Buchung wird automatisch abgeschlossen.', 'Then return here – your booking is completed automatically.', 'Sonra buraya dönün, rezervasyonunuz otomatik tamamlanır.')}
+        />
       )}
 
       {/* Rechnungsadresse modal */}
@@ -2571,6 +2567,28 @@ function BuchenContent() {
         </>
       )}
     </div>
+  );
+}
+
+// Stripes Bankfenster liegt auf höchster Ebene über der Seite. Der Hinweis bleibt darüber sichtbar, indem er
+// dieselbe Ebene nutzt und im DOM immer zuletzt steht; Klicks gehen hindurch, das Bankfenster bleibt bedienbar.
+function BankWaitBanner({ title, text }: { title: string; text: string }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    setHost(el);
+    const keepLast = setInterval(() => { if (document.body.lastElementChild !== el) document.body.appendChild(el); }, 300);
+    return () => { clearInterval(keepLast); el.remove(); };
+  }, []);
+  if (!host) return null;
+  return createPortal(
+    <div role="status" aria-live="polite" style={{ zIndex: 2147483647 }}
+      className="pointer-events-none fixed inset-x-0 bottom-0 border-t-4 border-gold-400 bg-primary-800 px-4 py-3 text-center text-white">
+      <p className="text-base font-extrabold leading-snug">{title}</p>
+      <p className="text-sm font-semibold leading-snug text-white/90">{text}</p>
+    </div>,
+    host,
   );
 }
 
