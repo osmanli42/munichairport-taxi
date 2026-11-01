@@ -1572,6 +1572,13 @@ export default function AdminPage() {
                   control={sw('card_fail_contact_enabled', 'Karte abgelehnt: Kontakt anbieten', true)}
                 />
                 <SettingCard
+                  icon={CreditCard}
+                  title="Karte: direkt buchen"
+                  description="Nach der Bankbestätigung wird die Buchung automatisch abgeschlossen, ohne zweiten Klick auf der Prüfseite."
+                  on={settingOn('card_auto_book_enabled', true)}
+                  control={sw('card_auto_book_enabled', 'Karte: direkt buchen', true)}
+                />
+                <SettingCard
                   icon={MapPin}
                   title="Hotels & Lokale an der Adresse"
                   description="Zeigt Hotels, Gasthäuser und Restaurants in der Adresssuche (max. 3 pro Adresse)."

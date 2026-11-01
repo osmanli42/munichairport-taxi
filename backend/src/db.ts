@@ -207,6 +207,7 @@ export async function initializeDatabase(): Promise<void> {
       // /buchen merkt sich Formulareingaben im sessionStorage (Zurück zu /ergebnisse)
       ['booking_form_restore_enabled', '1'],
       ['card_fail_contact_enabled', '1'],
+      ['card_auto_book_enabled', '1'],
       // Adress-Vorschläge zeigen Hotels/Lokale an derselben Hausnummer (routes/maps.ts /address-places)
       ['address_poi_enabled', '1'],
       // Nacht-Stornierung: Online-Storno nachts gesperrt, Kunde muss anrufen (routes/bookings.ts)
