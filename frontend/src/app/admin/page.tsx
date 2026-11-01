@@ -10,8 +10,7 @@ import {
   Mail, Upload, Users, BadgePercent, Activity, Flame, Server, Play, MousePointerClick, MapPin, Pencil, Plus,
   Zap, CheckCircle2, AlertCircle, CalendarDays, Percent, Car, ShieldCheck,
   Settings, Settings2, Route, Milestone, Moon, Plane, Megaphone, Workflow, Landmark, Clock, Phone, Ban, CarFront,
-  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus, Fuel, Wallet, ArrowLeftRight,
-} from 'lucide-react';
+  ClipboardList, Bike, Save, Trash2, Bell, Handshake, Minus, Fuel, Wallet, ArrowLeftRight, CreditCard } from 'lucide-react';
 import LiveVisitorsTab from '@/components/LiveVisitorsTab';
 import HeatmapTab from '@/components/HeatmapTab';
 import SystemTab from '@/components/SystemTab';
@@ -1564,6 +1563,13 @@ export default function AdminPage() {
                   info={<>Geht der Kunde von „Ihre Angaben“ zurück (z. B. um ein anderes Fahrzeug anzusehen), bleiben Name, Telefon, E-Mail, Flugnummer, Extras und Rechnungsadresse ausgefüllt. Nur im Browser-Tab des Kunden gespeichert, nach der Buchung gelöscht.</>}
                   on={settingOn('booking_form_restore_enabled', true)}
                   control={sw('booking_form_restore_enabled', 'Formular merken', true)}
+                />
+                <SettingCard
+                  icon={CreditCard}
+                  title="Karte abgelehnt: Kontakt anbieten"
+                  description="Zeigt nach einer abgelehnten Karte „Anrufen“ und „WhatsApp“ unter dem Kartenfeld."
+                  on={settingOn('card_fail_contact_enabled', true)}
+                  control={sw('card_fail_contact_enabled', 'Karte abgelehnt: Kontakt anbieten', true)}
                 />
                 <SettingCard
                   icon={MapPin}

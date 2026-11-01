@@ -27,7 +27,8 @@ export interface CardPaymentResult {
   last4: string;
 }
 
-export type CardConfirmOutcome = ({ success: true } & CardPaymentResult) | { success: false; error: string };
+/** inputError: nur eine Lücke im Formular (z. B. Nummer unvollständig), die Karte selbst wurde nicht abgelehnt. */
+export type CardConfirmOutcome = ({ success: true } & CardPaymentResult) | { success: false; error: string; inputError?: boolean };
 
 export interface CardPaymentFieldHandle {
   confirmCard(): Promise<CardConfirmOutcome>;
@@ -86,7 +87,7 @@ const CardPaymentFieldInner = forwardRef<CardPaymentFieldHandle, Props>(function
       const result = await stripe.confirmCardSetup(clientSecretRef.current, {
         payment_method: { card: cardElement, billing_details: name ? { name } : undefined },
       });
-      if (result.error) return { success: false, error: result.error.message || 'Karte konnte nicht bestätigt werden' };
+      if (result.error) return { success: false, error: result.error.message || 'Karte konnte nicht bestätigt werden', inputError: result.error.type === 'validation_error' };
 
       const pm = result.setupIntent?.payment_method;
       const paymentMethodId = typeof pm === 'string' ? pm : pm?.id;

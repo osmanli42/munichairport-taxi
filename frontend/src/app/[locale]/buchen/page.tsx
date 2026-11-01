@@ -5,7 +5,8 @@ import { Caveat } from 'next/font/google';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck, PawPrint, Landmark } from 'lucide-react';
-import { formatPrice, cn, CONTACT_INFO, addressIcon } from '@/lib/utils';
+import { formatPrice, cn, CONTACT_INFO, addressIcon, liveRef } from '@/lib/utils';
+import { getSessionId } from '@/lib/liveAssist';
 import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
@@ -173,6 +174,7 @@ function BuchenContent() {
       if (s.flight_validation_enabled === '0') setFlightValidationEnabled(false);
       if (s.phone_validation_enabled === '0') setPhoneValidationEnabled(false);
       if (s.booking_form_restore_enabled === '0') setFormRestoreEnabled(false);
+      if (s.card_fail_contact_enabled === '0') setCardContactEnabled(false);
       const visitorId = typeof localStorage !== 'undefined' ? localStorage.getItem('mt_visitor_id') : null;
       setCheckoutV2(assignVariant(visitorId, 'checkout_v2', s.experiment_checkout_v2) === 'b');
     }).catch(() => {}).finally(() => setSettingsLoaded(true));
@@ -316,6 +318,9 @@ function BuchenContent() {
   const cardFieldRef = useRef<CardPaymentFieldHandle>(null);
   const [cardResult, setCardResult] = useState<CardPaymentResult | null>(null);
   const [cardSubmitting, setCardSubmitting] = useState(false);
+  // Karte abgelehnt → Anrufen/WhatsApp unter dem Kartenfeld (Admin: Preise → Formular)
+  const [cardContactEnabled, setCardContactEnabled] = useState(true);
+  const [cardDeclined, setCardDeclined] = useState(false);
   const [submitState, setSubmitState] = useState<'idle' | 'review' | 'loading' | 'success' | 'error'>('idle');
   const [bookingNumber, setBookingNumber] = useState('');
   // Server's night-confirm decision for the booking just made (null = older API → client rule)
@@ -713,6 +718,26 @@ function BuchenContent() {
     return payment === 'ueberweisung' && !transferHasAddress && !(rechnungRequired && rechnungAdresse.trim());
   }
 
+  // Vorausgefüllter Text für WhatsApp/E-Mail nach abgelehnter Karte: alle Fahrtdaten, nie Kartendaten.
+  function cardHelpMessage(): string {
+    const clean = (x: string) => x.replace(/,\s*(Deutschland|Germany|Almanya)\s*$/i, '').trim();
+    const dmy = (d: string) => d.split('-').reverse().join('.');
+    const at = L('um', 'at', 'saat');
+    const vehicleName = ({ kombi: 'Kombi', van: 'Van / Minibus', grossraumtaxi: L('Großraumtaxi', 'Large Taxi', 'Büyük Taksi') } as Record<string, string>)[vehicle] || vehicle;
+    return [
+      L('Hallo, meine Kartenzahlung hat nicht funktioniert. Ich möchte diese Fahrt trotzdem buchen:', 'Hello, my card payment did not work. I would still like to book this ride:', 'Merhaba, kart ödemem olmadı. Bu yolculuğu yine de ayırtmak istiyorum:'),
+      '',
+      `${clean(pickup)} → ${clean(dropoff)}`,
+      `${dmy(date)} ${at} ${time} · ${passengers} ${L('Pers.', 'pax', 'kişi')} · ${vehicleName}`,
+      tripType === 'roundtrip' && returnDate ? `${L('Rückfahrt', 'Return', 'Dönüş')}: ${dmy(returnDate)} ${at} ${returnTime}` : null,
+      `${L('Preis', 'Price', 'Fiyat')}: ${formatPrice(finalPriceWithAutoDiscount)}`,
+      '',
+      name || null, phone.trim() ? toSubmitValue(phone, phoneCountry) : null, email.trim() || null,
+      errors.card ? `${L('Meldung', 'Message', 'Mesaj')}: ${errors.card}` : null,
+      liveRef(getSessionId()) ? `(Ref: ${liveRef(getSessionId())})` : null,
+    ].filter((l) => l !== null).join('\n');
+  }
+
   async function handleContinueToReview() {
     if (!validate()) {
       // Fehlende Rechnungsadresse bei Überweisung: Eingabefenster direkt öffnen
@@ -726,10 +751,12 @@ function BuchenContent() {
     }
     if (payment === 'card') {
       setCardSubmitting(true);
+      setCardDeclined(false);
       const result = await cardFieldRef.current?.confirmCard();
       setCardSubmitting(false);
       if (!result || !result.success) {
         setErrors(prev => ({ ...prev, card: result?.error || tx.err_card }));
+        setCardDeclined(!result?.inputError);
         return;
       }
       setCardResult(result);
@@ -2135,6 +2162,25 @@ function BuchenContent() {
                     notConfiguredText={L('Kartenzahlung ist noch nicht konfiguriert.', 'Card payment is not configured yet.', 'Kart ödemesi henüz yapılandırılmadı.')}
                     trustText={L('Ihre Kreditkartendaten werden verschlüsselt direkt an unseren Zahlungsdienstleister Stripe übertragen und niemals auf unseren Servern gespeichert.', 'Your card details are encrypted and transmitted directly to our payment provider Stripe — they are never stored on our servers.', "Kart bilgileriniz şifrelenerek doğrudan ödeme sağlayıcımız Stripe'a iletilir ve sunucularımızda asla saklanmaz.")}
                   />
+                  {cardContactEnabled && cardDeclined && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <p className="font-semibold">{L('Karte funktioniert nicht? Kontaktieren Sie uns.', 'Card not working? Contact us.', 'Kart çalışmıyor mu? Bize ulaşın.')}</p>
+                      <p className="mt-1 text-xs">{L('Wir finden gemeinsam eine Lösung für Ihre Fahrt. Bitte senden Sie keine Kartendaten per WhatsApp oder E-Mail.', 'We will sort out your ride together. Please do not send card details via WhatsApp or email.', 'Yolculuğunuz için birlikte çözüm bulalım. Lütfen kart bilgilerinizi WhatsApp veya e-posta ile göndermeyin.')}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <a href={CONTACT_INFO.phoneHref} className="flex items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+                          <Phone size={15} /> {L('Anrufen', 'Call', 'Ara')}
+                        </a>
+                        <a href={`${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(cardHelpMessage())}`}
+                          target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-2 text-sm font-semibold text-white hover:brightness-95">
+                          <MessageSquare size={15} /> WhatsApp
+                        </a>
+                        <a href={`mailto:${CONTACT_INFO.email}?subject=${encodeURIComponent(L('Kartenzahlung hat nicht funktioniert', 'Card payment did not work', 'Kart ödemesi olmadı'))}&body=${encodeURIComponent(cardHelpMessage().replace(/\n/g, '\r\n'))}`}
+                          className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-amber-100">
+                          <Mail size={15} /> {L('E-Mail', 'Email', 'E-posta')}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-xs text-blue-700 font-semibold">
                     <Lock size={14} /> {L('SSL-verschlüsselt — Ihre Kartendaten sind sicher', 'SSL encrypted — your card data is secure', 'SSL şifreli — kart bilgileriniz güvende')}
                   </div>
