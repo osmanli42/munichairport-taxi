@@ -93,8 +93,14 @@ export default function FlightBoard({ data, today, onOpen, onToggle }: {
       {data && (
         <footer className="px-5 py-2 border-t border-gray-100 text-[11px] text-gray-400">
           {data.enabled
-            ? `Live-Abfrage ab 1 Std vorher bis 8 Std voraus · heute ${data.budget.used}/${data.budget.cap} Abfragen`
+            ? `Live-Abfrage ab 2 Std vorher bis 1 Std danach · heute ${data.budget.used}/${data.budget.cap} Abfragen`
             : 'Live-Abfrage aus — keine API-Kosten'}
+          {data.quota && (
+            <div className={data.quota.remaining < 100 ? 'mt-0.5 font-semibold text-red-600' : 'mt-0.5'}>
+              Monatskontingent: noch {Math.max(0, data.quota.remaining)} von {data.quota.limit} · neu ab {new Date(data.quota.resetAt).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })}
+              {data.quota.calls && ` · Kunden ${data.quota.calls.customer}, Live ${data.quota.calls.live} Abfragen`}
+            </div>
+          )}
         </footer>
       )}
     </Card>

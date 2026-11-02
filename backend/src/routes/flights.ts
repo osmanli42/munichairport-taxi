@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { flightApiAllowed, recordFlightApiResponse } from '../services/flightQuota';
 
 const router = Router();
 
@@ -100,6 +101,11 @@ router.get('/validate', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  if (!(await flightApiAllowed('customer'))) {
+    res.json({ available: false, found: false });
+    return;
+  }
+
   try {
     const url = `https://${AERODATABOX_HOST}/flights/number/${encodeURIComponent(flight)}/${encodeURIComponent(date)}`;
     const fetchOpts = {
@@ -111,11 +117,14 @@ router.get('/validate', async (req: Request, res: Response): Promise<void> => {
     };
 
     let response = await fetch(url, fetchOpts);
+    await recordFlightApiResponse(response, 'customer');
     // Basic tier has a very low per-second rate limit — one short retry
     // absorbs the occasional collision instead of surfacing a false negative.
-    if (response.status === 429) {
+    // Pointless once the monthly quota is gone.
+    if (response.status === 429 && await flightApiAllowed('customer')) {
       await new Promise(r => setTimeout(r, 1100));
       response = await fetch(url, fetchOpts);
+      await recordFlightApiResponse(response, 'customer');
     }
 
     // AeroDataBox returns 204 (empty body) or 404 when no matching flight exists.

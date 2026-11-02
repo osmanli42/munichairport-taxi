@@ -18,6 +18,7 @@ import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_C
 import { backlinkReminder } from '../services/seo/backlinks';
 import { indexReminder } from '../services/seo/indexing';
 import { adsReminder } from '../services/ads/coach';
+import { flightQuotaReminder } from '../services/flightQuota';
 import { CostSettings, loadCostSettings, rideCosts, rideDrivers, resolveKm, kmFor, summarize, fixedForDays, calendarDriverCounts, driverKind } from '../services/netEarnings';
 
 const router = Router();
@@ -289,6 +290,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     // Weekly Google Ads report upload not done yet (Google Ads → Veri & Bağlantı).
     const adsReports = await adsReminder().catch(() => null);
     const monthEnd = await monthEndInvoices().catch(() => null);
+    // Monatliches AeroDataBox-Kontingent fast aufgebraucht (Flugnummer-Prüfung, Flugstatus)
+    const flightQuotaDue = await flightQuotaReminder().catch(() => null);
     // Marketing-Anlass mit offenem Erinnerungsfenster (Ferien, Weihnachten, …) — Admin → Marketing
     const marketing = await marketingPending;
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed] = await Promise.all([
@@ -396,6 +399,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
         seoBacklinks: seoBacklinks?.due && !hidden.has(`seoBacklinks:${month}`) ? { ...seoBacklinks, dismiss_key: `seoBacklinks:${month}` } : null,
         seoIndex: seoIndex?.due && !hidden.has(`seoIndex:${seoIndex.dropped}`) ? { dropped: seoIndex.dropped, dismiss_key: `seoIndex:${seoIndex.dropped}` } : null,
         adsReports: adsReports?.due && !hidden.has(`adsReports:${adsWeek}`) ? { ...adsReports, dismiss_key: `adsReports:${adsWeek}` } : null,
+        flightQuota: flightQuotaDue && !hidden.has(flightQuotaDue.dismiss_key) ? flightQuotaDue : null,
         monthEndInvoices: monthEnd ? {
           companies: visible(monthEnd.companies, (c: any) => `monthEndCompany:${c.company_id}:${c.month}`),
           calendar: visible(monthEnd.calendar, (c: any) => `monthEndCalendar:${c.month}`),

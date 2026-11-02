@@ -243,7 +243,8 @@ function BuchenContent() {
   const [flightNumber, setFlightNumber] = useState('');
   const [flightCheckStatus, setFlightCheckStatus] = useState<'idle' | 'checking' | 'found' | 'wrongairport' | 'notfound'>('idle');
   const [flightCheckResult, setFlightCheckResult] = useState<{ airline?: string; origin?: string; scheduledArrival?: string; arrivesMUC?: boolean } | null>(null);
-  const flightCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Geprüft wird erst beim Verlassen des Felds: jede Abfrage verbraucht monatliches Kontingent
+  const [flightToCheck, setFlightToCheck] = useState('');
   const flightCheckAbort = useRef<AbortController | null>(null);
   const [pickupSign, setPickupSign] = useState('');
   const [luggageCount, setLuggageCount] = useState(1);
@@ -366,7 +367,7 @@ function BuchenContent() {
         if (!lastName && str(d.lastName)) setLastName(str(d.lastName));
         if (!phone && str(d.phone)) { setPhone(str(d.phone)); if (str(d.phoneCountry)) setPhoneCountry(d.phoneCountry as CountryCode); }
         if (!email && str(d.email)) setEmail(str(d.email));
-        if (!flightNumber && str(d.flightNumber)) setFlightNumber(str(d.flightNumber));
+        if (!flightNumber && str(d.flightNumber)) { setFlightNumber(str(d.flightNumber)); setFlightToCheck(str(d.flightNumber).trim()); }
         if (!pickupSign && str(d.pickupSign)) setPickupSign(str(d.pickupSign));
         if (!notes && str(d.notes)) { setNotes(str(d.notes)); setShowNotes(true); }
         if (typeof d.luggageCount === 'number') restoredLuggageRef.current = d.luggageCount;
@@ -652,19 +653,18 @@ function BuchenContent() {
   // the outbound date.
   const flightCheckDate = isAirportPickup ? date : returnDate;
   useEffect(() => {
-    if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current);
-    if (!settingsLoaded || !flightValidationEnabled || !flightNumberRequired || !flightNumber.trim() || !flightCheckDate) {
+    if (!settingsLoaded || !flightValidationEnabled || !flightNumberRequired || !flightToCheck || !flightCheckDate) {
       flightCheckAbort.current?.abort();
       setFlightCheckStatus('idle');
       setFlightCheckResult(null);
       return;
     }
-    flightCheckTimer.current = setTimeout(() => {
+    {
       flightCheckAbort.current?.abort();
       const controller = new AbortController();
       flightCheckAbort.current = controller;
       setFlightCheckStatus('checking');
-      fetch(`${API_URL}/flights/validate?flight=${encodeURIComponent(flightNumber.trim())}&date=${encodeURIComponent(flightCheckDate)}`, { signal: controller.signal })
+      fetch(`${API_URL}/flights/validate?flight=${encodeURIComponent(flightToCheck)}&date=${encodeURIComponent(flightCheckDate)}`, { signal: controller.signal })
         .then(r => r.json())
         .then(data => {
           if (!data.available) {
@@ -679,9 +679,8 @@ function BuchenContent() {
           }
         })
         .catch(() => { /* aborted or network error — stay silent, non-blocking */ });
-    }, 700);
-    return () => { if (flightCheckTimer.current) clearTimeout(flightCheckTimer.current); };
-  }, [flightNumber, flightCheckDate, flightNumberRequired, settingsLoaded, flightValidationEnabled]);
+    }
+  }, [flightToCheck, flightCheckDate, flightNumberRequired, settingsLoaded, flightValidationEnabled]);
 
   function buildFlightInfo(): string | undefined {
     if ((flightCheckStatus !== 'found' && flightCheckStatus !== 'wrongairport') || !flightCheckResult) return undefined;
@@ -1794,7 +1793,7 @@ function BuchenContent() {
               </FieldBox>
               <div>
                 <FieldBox as="label" icon={Plane} label={flightNumberRequired ? L('Flugnummer', 'Flight number', 'Uçuş numarası') : L('Flugnummer (optional)', 'Flight number (optional)', 'Uçuş numarası (isteğe bağlı)')} required={flightNumberRequired} error={errors.flightNumber}>
-                  <input value={flightNumber} onChange={e => setFlightNumber(e.target.value)} onBlur={e => validateField('flightNumber', e.target.value)} className={inputCls} placeholder={L('z. B. LH1234', 'e.g. LH1234', 'örn. LH1234')} />
+                  <input value={flightNumber} onChange={e => { setFlightNumber(e.target.value); setFlightToCheck(''); }} onBlur={e => { validateField('flightNumber', e.target.value); setFlightToCheck(e.target.value.trim()); }} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} className={inputCls} placeholder={L('z. B. LH1234', 'e.g. LH1234', 'örn. LH1234')} />
                 </FieldBox>
                 {flightCheckStatus === 'checking' && (
                   <p className="text-gray-400 text-xs mt-1.5 flex items-center gap-1">

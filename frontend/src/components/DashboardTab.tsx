@@ -86,6 +86,8 @@ interface DashboardData {
       companies: Array<{ company_id: number; company_name: string; month: string; rides: number; total: number; dismiss_key?: string }>;
       calendar: Array<{ month: string; rides: number; dismiss_key?: string }>;
     } | null;
+    /** AeroDataBox monthly quota nearly used up (flight number check, flight status). */
+    flightQuota?: { limit: number; remaining: number; resetAt: string; dismiss_key?: string } | null;
     /** Marketing occasion whose reminder window is open (Admin → Marketing). */
     marketing?: Array<{ id: string; name: string; date: string; daysLeft: number; urgent: boolean; dismiss_key?: string }> | null;
   };
@@ -709,6 +711,7 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
   const seo = shown(a.seoBacklinks) as DashboardData['attention']['seoBacklinks'];
   const seoIdx = shown(a.seoIndex) as DashboardData['attention']['seoIndex'];
   const adsRep = shown(a.adsReports) as DashboardData['attention']['adsReports'];
+  const flightQ = shown(a.flightQuota) as DashboardData['attention']['flightQuota'];
   const monthEnd = a.monthEndInvoices ? { companies: keep(a.monthEndInvoices.companies), calendar: keep(a.monthEndInvoices.calendar) } : null;
   const monthEndCount = monthEnd ? monthEnd.companies.length + monthEnd.calendar.length : 0;
   const mkt = keep(a.marketing || []);
@@ -717,13 +720,14 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
     onGoTab('marketing');
   };
   const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const total = groups.reduce((s, g) => s + (a[g.key] || []).length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + monthEndCount + mkt.length;
+  const total = groups.reduce((s, g) => s + (a[g.key] || []).length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + (flightQ ? 1 : 0) + monthEndCount + mkt.length;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   // Eingeklappt: nur Stichworte; dringende (rot) zuerst
   const chips: Array<{ label: string; urgent: boolean }> = [
     ...(cards.length ? [{ label: `Karte nicht abgebucht (${cards.length})`, urgent: true }] : []),
     ...(monthEndCount ? [{ label: `Monatsende-Rechnungen (${monthEndCount})`, urgent: true }] : []),
     ...(adsRep ? [{ label: 'Google-Ads-Reports', urgent: true }] : []),
+    ...(flightQ ? [{ label: 'Flug-API-Kontingent', urgent: true }] : []),
     ...(seoIdx ? [{ label: 'Google-Index fällt', urgent: true }] : []),
     ...(seo ? [{ label: 'Backlink-CSV', urgent: true }] : []),
     ...groups.filter((g) => (a[g.key] || []).length).map((g) => ({ label: `${g.title} (${(a[g.key] || []).length})`, urgent: g.tone.includes('red') })),
@@ -863,6 +867,24 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {flightQ && (
+            <div className="flex items-start bg-red-50/60 pl-3">
+              <DismissX className="mt-3.5" onClick={() => dismiss(flightQ.dismiss_key, 'Flug-API-Kontingent')} />
+              <div className="min-w-0 flex-1 pl-1 pr-5 py-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500"><PlaneLanding size={15} /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-red-700">
+                      {flightQ.remaining <= 0 ? 'Flug-API: Kontingent aufgebraucht' : `Flug-API: nur noch ${flightQ.remaining} von ${flightQ.limit} Einheiten`}
+                    </div>
+                    <div className="text-[11px] text-red-600/80">
+                      Flugnummer-Prüfung und Flugstatus {flightQ.remaining <= 0 ? 'funktionieren nicht' : 'stoppen bald'} · neu ab {new Date(flightQ.resetAt).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' })} · oder Plan bei RapidAPI erhöhen
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           {adsRep && (

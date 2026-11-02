@@ -1500,6 +1500,14 @@ export default function AdminPage() {
                   on={settingOn('flight_validation_enabled')}
                   control={sw('flight_validation_enabled', 'Flugnummer-Validierung')}
                 />
+                <SettingCard
+                  icon={Plane}
+                  title="Flug-API: Kontingent-Warnung"
+                  description="Warnt im Dashboard (Handlungsbedarf), wenn das Monatskontingent der Flugdaten-API unter 100 Einheiten fällt."
+                  info={<>Die letzten 150 Einheiten bleiben für die Flugnummer-Prüfung der Kunden reserviert; Live-Flugstatus stoppt vorher. Der Stand steht unten in der Flugstatus-Karte.</>}
+                  on={settingOn('flight_quota_alert_enabled', true)}
+                  control={sw('flight_quota_alert_enabled', 'Flug-API: Kontingent-Warnung', true)}
+                />
                 {(() => {
                   // Partner-Vertretung: ab Start für X Stunden alle Buchungs-/Storno-Mails auch an den Partner
                   const coverHours = Math.min(72, Math.max(1, parseInt(settings.partner_cover_hours || '5', 10) || 5));

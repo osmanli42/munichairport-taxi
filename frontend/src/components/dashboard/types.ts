@@ -113,4 +113,4 @@ export type FlightRow = {
   status: FlightStatus | null;
 };
 
-export type Flights = { enabled: boolean; budget: { used: number; cap: number }; flights: FlightRow[] };
+export type Flights = { enabled: boolean; budget: { used: number; cap: number }; quota?: { limit: number; remaining: number; resetAt: string; calls?: { customer: number; live: number } } | null; flights: FlightRow[] };

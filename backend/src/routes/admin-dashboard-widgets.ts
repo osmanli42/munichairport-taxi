@@ -16,6 +16,7 @@ import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berl
 import { calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED } from '../services/calendarRides';
 import { classifyEvent } from '../services/calendarInvoice';
 import { getFlightStatus, normalizeFlightNumber, FlightStatus } from '../services/flightStatus';
+import { flightQuota, flightApiAllowed } from '../services/flightQuota';
 import { sourcedEvents, DEFAULT_SOURCES, SourceSwitches, SourceKind } from '../services/eventSources';
 import { returnLeg } from '../utils/returnLeg';
 
@@ -417,8 +418,9 @@ router.put('/events', authenticateAdmin, async (req: AuthRequest, res: Response)
 
 // ---- Flights ----------------------------------------------------------------------------
 
-const FLIGHT_DAILY_CAP = 150;           // AeroDataBox calls per day from the dashboard
-const FLIGHT_REFRESH_MS = 15 * 60_000;  // per flight
+const FLIGHT_DAILY_CAP = 10;            // AeroDataBox calls per day from the dashboard (monthly quota: about 300 calls)
+const FLIGHT_REFRESH_MS = 60 * 60_000;  // per flight
+const FLIGHT_LOOKUP_BEFORE_MIN = 2 * 60; // only this close to the pickup
 let flightBudget = { day: '', used: 0 };
 const flightSeen = new Map<string, { at: number; data: FlightStatus | null }>();
 
@@ -470,12 +472,12 @@ router.get('/flights', authenticateAdmin, async (_req: AuthRequest, res: Respons
       const diff = wallMinutes(p.time) - nowMin;
       let status: FlightStatus | null = flightSeen.get(key)?.data ?? null;
       let live = false;
-      // Only flights between an hour ago and 8 hours ahead are looked up — the rest would
+      // Only flights between an hour ago and 2 hours ahead are looked up — the rest would
       // cost calls without telling anything useful yet.
-      if (enabled && diff >= -60 && diff <= 8 * 60) {
+      if (enabled && diff >= -60 && diff <= FLIGHT_LOOKUP_BEFORE_MIN) {
         live = true;
         const seen = flightSeen.get(key);
-        if ((!seen || Date.now() - seen.at > FLIGHT_REFRESH_MS) && flightBudget.used < FLIGHT_DAILY_CAP) {
+        if ((!seen || Date.now() - seen.at > FLIGHT_REFRESH_MS) && flightBudget.used < FLIGHT_DAILY_CAP && await flightApiAllowed('live')) {
           flightBudget.used++;
           status = await getFlightStatus(p.flight, date);
           flightSeen.set(key, { at: Date.now(), data: status });
@@ -484,7 +486,7 @@ router.get('/flights', authenticateAdmin, async (_req: AuthRequest, res: Respons
       }
       out.push({ ...p, live, status });
     }
-    res.json({ enabled, budget: { used: flightBudget.used, cap: FLIGHT_DAILY_CAP }, flights: out });
+    res.json({ enabled, budget: { used: flightBudget.used, cap: FLIGHT_DAILY_CAP }, quota: await flightQuota(), flights: out });
   } catch (error) {
     console.error('[dashboard-widgets] flights:', error);
     res.status(500).json({ error: 'Failed to load flights' });

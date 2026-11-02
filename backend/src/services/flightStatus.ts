@@ -2,11 +2,13 @@
 //
 // Uses the same AeroDataBox account as routes/flights.ts (booking-time validation). The
 // basic tier is rate-limited and billed per call, so results are cached per flight+date
-// for 10 minutes and callers only ask for rides close to pickup (see driverTracking.ts).
+// for 15 minutes and callers only ask for rides close to pickup (see driverTracking.ts).
+
+import { flightApiAllowed, recordFlightApiResponse } from './flightQuota';
 
 const AERODATABOX_API_KEY = process.env.AERODATABOX_API_KEY || '';
 const AERODATABOX_HOST = 'aerodatabox.p.rapidapi.com';
-const CACHE_TTL_MS = 10 * 60_000;
+const CACHE_TTL_MS = 15 * 60_000;
 const CACHE_MAX = 300;
 
 export interface FlightStatus {
@@ -45,12 +47,16 @@ export async function getFlightStatus(rawFlight: string | null | undefined, date
   const hit = cache.get(key);
   if (hit && Date.now() - hit.ts < CACHE_TTL_MS) return hit.data;
 
+  // Near the monthly limit: keep the rest for the booking page, and don't cache "no data"
+  if (!(await flightApiAllowed('live'))) return hit?.data ?? null;
+
   let data: FlightStatus | null = null;
   try {
     const res = await fetch(`https://${AERODATABOX_HOST}/flights/number/${encodeURIComponent(flight)}/${date}`, {
       headers: { 'x-rapidapi-key': AERODATABOX_API_KEY, 'x-rapidapi-host': AERODATABOX_HOST },
       signal: AbortSignal.timeout(8000),
     });
+    await recordFlightApiResponse(res, 'live');
     if (res.ok && res.status !== 204) {
       const legs = await res.json() as any[];
       const leg = Array.isArray(legs)
