@@ -19,11 +19,13 @@ const eur = (v: number) => `${v.toLocaleString('de-DE', { minimumFractionDigits:
 const short = (a: string) => (a || '—').replace(/,\s*(Deutschland|Germany)$/i, '').slice(0, 48);
 
 export default function LeerPanel({
-  onTemplate, refreshKey, disabled,
+  onTemplate, refreshKey, disabled, smartOn,
 }: {
   onTemplate: () => void;
   refreshKey: number;
   disabled?: boolean;
+  /** Smart Rabatt açık: şalter Smart kartında */
+  smartOn?: boolean;
 }) {
   const [data, setData] = useState<LeerOverview | null>(null);
   const [err, setErr] = useState('');
@@ -71,13 +73,13 @@ export default function LeerPanel({
             </p>
           </div>
         </div>
-        <button
+        {!smartOn && <button
           onClick={toggle}
           disabled={saving || disabled || !data}
           className={cn('relative w-14 h-7 rounded-full transition-colors flex-shrink-0', enabled ? 'bg-green-500' : 'bg-gray-300', (saving || disabled) && 'opacity-50 cursor-not-allowed')}
         >
           <div className={cn('absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform', enabled ? 'translate-x-7' : 'translate-x-0.5')} />
-        </button>
+        </button>}
       </div>
 
       {err && <div className="mx-5 mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{err}</div>}

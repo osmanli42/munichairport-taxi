@@ -1621,6 +1621,30 @@ export async function initializeDatabase(): Promise<void> {
           KEY idx_created (created_at)
         ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
     } catch (e: any) { console.error('autopilot_offers table failed:', e.message); }
+    // Smart Rabatt: maschinenlesbare Signale, erreichte Stufen-Obergrenze, Grund für „kein Rabatt“.
+    // engine = 2 trennt die neue Bewertung von den alten Autopilot-Zeilen (eigene Auswertung).
+    for (const [col, def] of [
+      ['signals', 'VARCHAR(255) DEFAULT NULL'],
+      ['level_cap', 'TINYINT NOT NULL DEFAULT 0'],
+      ['blocked', 'VARCHAR(20) DEFAULT NULL'],
+      ['engine', 'TINYINT NOT NULL DEFAULT 1'],
+    ]) {
+      try {
+        await conn.execute(`ALTER TABLE autopilot_offers ADD COLUMN ${col} ${def}`);
+      } catch (e: any) { if (!e.message?.includes('Duplicate column')) console.error(`autopilot_offers.${col} migration failed:`, e.message); }
+    }
+    try {
+      await conn.execute(`ALTER TABLE autopilot_offers ADD INDEX idx_session (session_id)`);
+    } catch (e: any) { if (!e.message?.includes('Duplicate key name')) console.error('autopilot_offers idx_session failed:', e.message); }
+    // Einmalig beim Umstieg auf Smart Rabatt: Name, Etikett ohne Dringlichkeit, Schwelle auf neuer Skala
+    try {
+      const [mig] = await conn.execute(
+        `INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('smart_rabatt_started_at', UTC_TIMESTAMP())`) as any;
+      if (mig.affectedRows === 1) {
+        await conn.execute(`UPDATE auto_discounts SET name = 'Smart Rabatt', label_de = 'Sonderangebot', label_en = 'Special offer', label_tr = 'Özel teklif' WHERE dynamic_mode = 'autopilot'`);
+        await conn.execute(`INSERT INTO settings (setting_key, setting_value) VALUES ('autopilot_min_score', '0.45') ON DUPLICATE KEY UPDATE setting_value = '0.45'`);
+      }
+    } catch (e: any) { console.error('smart rabatt migration failed:', e.message); }
     try {
       // Alte ganzstündige Fahrtzeit (hour_from/hour_to) → Minuten. Speichern einer Regel setzt
       // hour_from/hour_to auf NULL, daher läuft diese Übernahme pro Regel nur ein einziges Mal.
@@ -1641,6 +1665,15 @@ export async function initializeDatabase(): Promise<void> {
       ['leer_discount_enabled', '0'],
       ['demand_min_expected', '2'],
       ['demand_horizon_days', '14'],
+      // Fahrzeuge um die Abholzeit belegt (±Fenster) → kein automatischer Rabatt.
+      ['auto_discount_capacity_enabled', '1'],
+      ['auto_discount_capacity_vehicles', '3'],
+      ['auto_discount_capacity_window', '45'],
+      // Smart Rabatt: welche Signale zählen; Hinweis „automatisiert personalisierter Preis“ (EGBGB Art. 246a).
+      ['smart_signal_quiet_day', '1'],
+      ['smart_signal_gap', '1'],
+      ['smart_signal_behavior', '1'],
+      ['smart_price_notice_enabled', '1'],
     ]) {
       try {
         await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);

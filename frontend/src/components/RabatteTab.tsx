@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Percent, Trash2, Plus, Pencil, Copy, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert } from 'lucide-react';
+import { Percent, Trash2, Plus, Pencil, Copy, X, AlertTriangle, Mail, Tag, Timer, Megaphone, Users, ShieldAlert, ChevronDown } from 'lucide-react';
 import { autoDiscountsApi, AutoDiscount, settingsApi, adminApi, pflichtgebietApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDiscountValue, minutesToHHMM, hhmmToMinutes } from '@/components/discount/format';
 import DemandPanel from '@/components/discount/DemandPanel';
 import GapPanel from '@/components/discount/GapPanel';
 import LeerPanel from '@/components/discount/LeerPanel';
-import AutopilotPanel from '@/components/discount/AutopilotPanel';
+import SmartRabattPanel from '@/components/discount/SmartRabattPanel';
 import PersonalLinkPanel from '@/components/discount/PersonalLinkPanel';
 import SearchDemandPanel from '@/components/discount/SearchDemandPanel';
 
@@ -20,6 +20,21 @@ const WEEKDAYS = [
 const VEHICLES = [
   { v: 'kombi', label: 'Kombi' }, { v: 'van', label: 'Van' }, { v: 'grossraumtaxi', label: 'Großraumtaxi' },
 ];
+
+function Section({ title, hint, open, children }: { title: string; hint: string; open?: boolean; children: React.ReactNode }) {
+  return (
+    <details open={open} className="group border border-gray-200 rounded-2xl bg-white">
+      <summary className="px-5 py-4 cursor-pointer list-none flex items-center justify-between gap-3">
+        <span>
+          <span className="block font-bold text-gray-900">{title}</span>
+          <span className="block text-sm text-gray-500">{hint}</span>
+        </span>
+        <ChevronDown size={18} className="text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">{children}</div>
+    </details>
+  );
+}
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return (
@@ -171,6 +186,7 @@ export default function RabatteTab({ token }: { token: string }) {
   const [masterEnabled, setMasterEnabled] = useState(true);
   const [ignorePgFloor, setIgnorePgFloor] = useState(false);
   const [showInEmail, setShowInEmail] = useState(false);
+  const [smartOn, setSmartOn] = useState(false);
   const [displaySettings, setDisplaySettings] = useState<Record<string, boolean>>({});
   const [bypassKm, setBypassKm] = useState<number | null>(null);
   const [demandRefresh, setDemandRefresh] = useState(0);
@@ -192,6 +208,7 @@ export default function RabatteTab({ token }: { token: string }) {
       const [list, settings] = await Promise.all([autoDiscountsApi.getAll(), settingsApi.getAll()]);
       // Autopilot-Regel hat ihre eigene Karte (AutopilotPanel)
       setRules(list.filter(r => r.dynamic_mode !== 'autopilot'));
+      setSmartOn(list.some(r => r.dynamic_mode === 'autopilot' && !!r.active));
       setMasterEnabled((settings.auto_discounts_enabled ?? '1') === '1');
       setIgnorePgFloor((settings.auto_discount_ignore_pg_floor ?? '0') === '1');
       setShowInEmail((settings.auto_discount_show_in_email ?? '0') === '1');
@@ -375,6 +392,21 @@ export default function RabatteTab({ token }: { token: string }) {
       {msg && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">{msg}</div>}
       {err && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{err}</div>}
 
+      {/* Smart Rabatt — tüm otomatik indirimler tek kartta */}
+      <SmartRabattPanel onChanged={load} masterEnabled={masterEnabled} />
+
+      {/* Takvim ve talep tabloları — Smart kapalıyken eski şalterleriyle çalışır */}
+      <Section title="Takvim ve talep detayları" hint="Doluluk, boş saatler, boşa dönecek araçlar, arama talebi" open={!smartOn} key={smartOn ? 'detail-smart' : 'detail-old'}>
+        <DemandPanel onTemplate={startDemandTemplate} refreshKey={demandRefresh} disabled={saving} smartOn={smartOn} />
+        <GapPanel onTemplate={startGapTemplate} refreshKey={demandRefresh} disabled={saving} smartOn={smartOn} />
+        <LeerPanel onTemplate={startLeerTemplate} refreshKey={demandRefresh} disabled={saving} smartOn={smartOn} />
+        <SearchDemandPanel refreshKey={demandRefresh} />
+      </Section>
+
+      {/* Kişisel kupon linki (özür / teşekkür) — tek müşteriye, e-postayla */}
+      <PersonalLinkPanel />
+
+      <Section title="Diğer ayarlar" hint="Ana şalter, Pflicht tabanı, e-posta satırı, görünüm, elle kurallar">
       {/* Ana şalter */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -388,21 +420,6 @@ export default function RabatteTab({ token }: { token: string }) {
         </div>
         <Toggle on={masterEnabled} onClick={toggleMaster} disabled={saving} />
       </div>
-
-      {/* Rabatt-Autopilot — her ziyaretçi için o an indirim kararı */}
-      <AutopilotPanel onChanged={load} />
-
-      {/* Sakin gün indirimi — ana şalter + doluluk */}
-      <DemandPanel onTemplate={startDemandTemplate} refreshKey={demandRefresh} disabled={saving} />
-
-      {/* Boş saat indirimi — ana şalter + takvim şeridi */}
-      <GapPanel onTemplate={startGapTemplate} refreshKey={demandRefresh} disabled={saving} />
-
-      {/* Leerfahrt indirimi — ana şalter + boşa dönecek araçlar */}
-      <LeerPanel onTemplate={startLeerTemplate} refreshKey={demandRefresh} disabled={saving} />
-
-      {/* Arama talebi — hangi gün/saatler aranıyor, kaçı rezervasyona dönüyor (dönem karşılaştırmalı) */}
-      <SearchDemandPanel refreshKey={demandRefresh} />
 
       {/* Tarif-Untergrenze — §51 PBefG */}
       <div className={cn('border rounded-2xl p-5 flex items-center justify-between', ignorePgFloor ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200')}>
@@ -457,9 +474,6 @@ export default function RabatteTab({ token }: { token: string }) {
           </div>
         );
       })}
-
-      {/* Kişisel kupon linki (özür / teşekkür) — tek müşteriye, e-postayla */}
-      <PersonalLinkPanel />
 
       {/* Kural listesi */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -554,6 +568,8 @@ export default function RabatteTab({ token }: { token: string }) {
           </div>
         )}
       </div>
+
+      </Section>
 
       {/* Kural formu */}
       {editing && (

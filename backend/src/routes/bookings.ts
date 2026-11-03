@@ -168,6 +168,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       promo_code,
       visitor_id,
       session_id,
+      auto_discount_shown,
       pickup_lat,
       pickup_lng,
       dropoff_lat,
@@ -533,6 +534,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         fixedRouteApplied,
         // Rabatt-Autopilot: nur das in der Vorschau eingefrorene Angebot (nie neu entscheiden)
         autopilot: { mode: 'booking', visitorId: visitor_id || null, sessionId: session_id || null, pickup: pickup_address || null, dropoff: dropoff_address || null },
+        discountShown: auto_discount_shown === true,
       });
 
       if (adResult) {
@@ -917,6 +919,7 @@ export interface PublicAutoDiscount {
   remaining: number | null; // freie Rabattplätze, nur wenn global + für die Regel aktiv
   badge: 'red' | 'classic';
   max_amount: number | null; // Höchstbetrag der Regel — die Fahrzeugkarten rechnen selbst und kappen damit
+  personalized?: boolean; // Smart Rabatt: Hinweis „automatisiert personalisierter Preis“ anzeigen
 }
 
 export interface RoutePriceOptions {
@@ -1048,7 +1051,7 @@ export async function computeRoutePrice(
     });
     const settingRows = await query<{ setting_key: string; setting_value: string }>(
       `SELECT setting_key, setting_value FROM settings WHERE setting_key IN
-        ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_remaining_enabled')`
+        ('auto_discount_ignore_pg_floor', 'auto_discount_red_badge_enabled', 'auto_discount_countdown_enabled', 'auto_discount_remaining_enabled', 'smart_price_notice_enabled')`
     );
     const adSettings = Object.fromEntries(settingRows.map(r => [r.setting_key, r.setting_value]));
     const ignorePgFloor = adSettings.auto_discount_ignore_pg_floor === '1';
@@ -1094,6 +1097,7 @@ export async function computeRoutePrice(
           remaining: (adSettings.auto_discount_remaining_enabled ?? '1') === '1' && Number(result.rule.show_remaining) === 1 ? result.remaining : null,
           badge: (adSettings.auto_discount_red_badge_enabled ?? '1') === '1' ? 'red' : 'classic',
           max_amount: result.rule.max_discount_amount != null ? Number(result.rule.max_discount_amount) : null,
+          personalized: result.rule.dynamic_mode === 'autopilot' && adSettings.smart_price_notice_enabled !== '0',
         };
       }
     }

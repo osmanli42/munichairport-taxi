@@ -23,11 +23,13 @@ function paceColor(pace: number | null): string {
 }
 
 export default function DemandPanel({
-  onTemplate, refreshKey, disabled,
+  onTemplate, refreshKey, disabled, smartOn,
 }: {
   onTemplate: (tier: 7 | 4) => void;
   refreshKey: number;
   disabled?: boolean;
+  /** Smart Rabatt açık: bu tablo sadece onun sinyalidir, eski kural/şablon uygulanmaz */
+  smartOn?: boolean;
 }) {
   const [data, setData] = useState<DemandOverview | null>(null);
   const [err, setErr] = useState('');
@@ -68,18 +70,19 @@ export default function DemandPanel({
           <div>
             <p className="font-bold text-gray-900">Sakin gün indirimi (Ruhiger-Tag-Rabatt)</p>
             <p className="text-sm text-gray-500 max-w-xl">
+              {smartOn ? 'Smart Rabatt bu tabloyu sinyal olarak kullanır: doluluk düştükçe puan artar. Sabit indirim uygulanmaz.' : <>
               Ana şalter — açıkken „Sakin gün“ koşulu olan kurallar, fahrt günü normalden az doluysa
-              kendiliğinden devreye girer. Kapalıyken hepsi durur, diğer indirimler etkilenmez.
+              kendiliğinden devreye girer. Kapalıyken hepsi durur, diğer indirimler etkilenmez.</>}
             </p>
           </div>
         </div>
-        <button
+        {!smartOn && <button
           onClick={() => saveSetting('demand_discount_enabled', enabled ? '0' : '1')}
           disabled={saving || disabled || !data}
           className={cn('relative w-14 h-7 rounded-full transition-colors flex-shrink-0', enabled ? 'bg-green-500' : 'bg-gray-300', (saving || disabled) && 'opacity-50 cursor-not-allowed')}
         >
           <div className={cn('absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform', enabled ? 'translate-x-7' : 'translate-x-0.5')} />
-        </button>
+        </button>}
       </div>
 
       {err && <div className="mx-5 mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{err}</div>}
@@ -104,7 +107,7 @@ export default function DemandPanel({
                   <th className="px-1 py-1 font-semibold text-right" title="Bu güne şu an sistemde ve takvimde kayıtlı fahrt sayısı">Şu an kayıtlı</th>
                   <th className="px-1 py-1 font-semibold text-right" title="Son 8 aynı haftagününde, bu kadar gün önceden kaç fahrt kayıtlıydı (ortanca)">Normalde bu zamana kadar</th>
                   <th className="px-1 py-1 font-semibold text-right">Doluluk</th>
-                  <th className="px-1 py-1 font-semibold">Uygulanan</th>
+                  {!smartOn && <th className="px-1 py-1 font-semibold">Uygulanan</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -123,11 +126,11 @@ export default function DemandPanel({
                         {d.pace == null ? '—' : `%${Math.round(d.pace * 100)}`}
                       </span>
                     </td>
-                    <td className="px-1 py-1.5 text-xs">
+                    {!smartOn && <td className="px-1 py-1.5 text-xs">
                       {d.rule
                         ? <span className="font-bold text-red-600">{formatDiscountValue(d.rule.type, d.rule.value, 'de')} · {d.rule.name}</span>
                         : <span className="text-gray-300">—</span>}
-                    </td>
+                    </td>}
                   </tr>
                 ))}
               </tbody>
@@ -139,10 +142,10 @@ export default function DemandPanel({
             haftagününe, bugünkü kadar gün önceden kaç fahrt kayıtlıydı (ortanca). Örnek: 4 gün sonraki Perşembe için,
             geçmiş Perşembelere 4 gün kala kaç fahrt vardı. Doluluk = ikisinin oranı. Normal değer {data.settings.minExpected}'den
             azsa sinyal yok sayılır ve indirim verilmez — uzak tarihler bu yüzden gri.
-            {!enabled && <strong className="text-gray-500"> Ana şalter kapalı: tablo bilgi amaçlı, indirim uygulanmıyor.</strong>}
+            {!enabled && !smartOn && <strong className="text-gray-500"> Ana şalter kapalı: tablo bilgi amaçlı, indirim uygulanmıyor.</strong>}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {!smartOn && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
               <p className="text-xs text-gray-500">Son 30 gün indirimli rezervasyon</p>
               <p className="text-lg font-bold text-gray-900 tabular-nums">{data.stats.bookings}</p>
@@ -155,7 +158,7 @@ export default function DemandPanel({
               <p className="text-xs text-gray-500">Bu rezervasyonların cirosu</p>
               <p className="text-lg font-bold text-gray-900 tabular-nums">{eur(data.stats.revenue)}</p>
             </div>
-          </div>
+          </div>}
 
           <div className="flex items-end gap-3 flex-wrap">
             <label className="text-xs text-gray-500">
@@ -170,7 +173,7 @@ export default function DemandPanel({
                 onBlur={e => e.target.value !== String(data.settings.minExpected) && saveSetting('demand_min_expected', e.target.value)}
                 className="mt-1 block w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
             </label>
-            <div className="ml-auto flex items-center gap-2 flex-wrap">
+            {!smartOn && <div className="ml-auto flex items-center gap-2 flex-wrap">
               <button onClick={() => onTemplate(7)} title="Doluluk %50 altı · öncelik 20"
                 className="flex items-center gap-1.5 text-sm font-semibold text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg">
                 <Plus size={15} /> %7 şablon (çok sakin)
@@ -179,7 +182,7 @@ export default function DemandPanel({
                 className="flex items-center gap-1.5 text-sm font-semibold text-amber-800 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg">
                 <Plus size={15} /> %4 şablon (sakin)
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       )}

@@ -12,7 +12,7 @@ import SocialProofToast from '@/components/SocialProofToast';
 import SearchBar, { DateTimeField } from '@/components/SearchBar';
 import Countdown from '@/components/discount/Countdown';
 import CallbackRequest from '@/components/CallbackRequest';
-import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
+import { PublicAutoDiscount, formatDiscountValue, pickDiscountLabel, formatRemainingSpots, personalizedPriceNotice } from '@/components/discount/format';
 
 const _BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const API_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
@@ -378,6 +378,39 @@ function ResultsContent() {
         .catch(() => [v.type, null] as const)
     )).then(entries => setAutoDiscounts(Object.fromEntries(entries)));
   }, [distanceKm, pickup, dropoff, date, time, tripType, discountRefresh]);
+
+  // Smart Rabatt: der Server bewertet bei jeder Abfrage neu (Rabatt kann nur steigen). Neu fragen, wenn
+  // der Kunde lange nicht wählt, zur Seite zurückkehrt oder die Seite verlassen will.
+  useEffect(() => {
+    if (!distanceKm || distanceKm <= 0) return;
+    const refresh = () => setDiscountRefresh(n => n + 1);
+    const dwell = setTimeout(refresh, 47_000); // knapp nach DWELL_SECONDS (45 s) in rabattAutopilot.ts
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt >= 10_000) { hiddenAt = 0; setTimeout(refresh, 1000); }
+    };
+    let exitSent = false;
+    const onLeave = (e: MouseEvent) => {
+      if (exitSent || e.clientY > 0) return;
+      exitSent = true;
+      let sessionId: string | null = null;
+      try { sessionId = sessionStorage.getItem('mt_session_id'); } catch { /* egal */ }
+      if (!sessionId) return;
+      fetch(`${API_URL}/track/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, path: window.location.pathname + window.location.search, events: [{ type: 'exit_intent', target: 'top' }] }),
+      }).then(refresh).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    document.documentElement.addEventListener('mouseleave', onLeave);
+    return () => {
+      clearTimeout(dwell);
+      document.removeEventListener('visibilitychange', onVisibility);
+      document.documentElement.removeEventListener('mouseleave', onLeave);
+    };
+  }, [distanceKm, pickup, dropoff, date, time, tripType]);
 
   // Rückfahrt-Streckenpreis je Fahrzeug — eigene, schnelle Anfrage (price_only: ohne Rabatt-Vorschau),
   // parallel zur Rabatt-Vorschau, damit der Preis nicht auf diese warten muss
@@ -1032,6 +1065,9 @@ function ResultsContent() {
                     {autoDiscount && !redBadge && autoDiscount.ends_at && (
                       <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={() => setDiscountRefresh(n => n + 1)}
                         className="text-xs font-semibold text-green-700 md:justify-end w-full" />
+                    )}
+                    {autoDiscount?.personalized && (
+                      <div className="text-[11px] leading-snug text-gray-500 mt-1 md:text-right md:max-w-[240px]">{personalizedPriceNotice(locale)}</div>
                     )}
                     {anfahrtCost > 0 && (
                       <div className="text-xs text-amber-600 font-medium mt-0.5 md:text-right">

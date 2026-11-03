@@ -17,11 +17,13 @@ const eur = (v: number) => `${v.toLocaleString('de-DE', { minimumFractionDigits:
 const hh = (h: number) => String(h).padStart(2, '0');
 
 export default function GapPanel({
-  onTemplate, refreshKey, disabled,
+  onTemplate, refreshKey, disabled, smartOn,
 }: {
   onTemplate: () => void;
   refreshKey: number;
   disabled?: boolean;
+  /** Smart Rabatt açık: takvim sadece onun sinyalidir, „indirim çıkar“ gösterilmez */
+  smartOn?: boolean;
 }) {
   const [data, setData] = useState<GapOverview | null>(null);
   const [err, setErr] = useState('');
@@ -63,18 +65,19 @@ export default function GapPanel({
           <div>
             <p className="font-bold text-gray-900">Boş saat indirimi (Lücken-Rabatt)</p>
             <p className="text-sm text-gray-500 max-w-xl">
+              {smartOn ? 'Smart Rabatt bu takvimi sinyal olarak kullanır: alış saatinin çevresi boşsa puan artar. Sabit indirim uygulanmaz.' : <>
               Ana şalter — açıkken „Sadece takvimde boş saatlerde“ koşulu olan kurallar, müşterinin seçtiği
-              alış saatinin çevresinde takvim boşsa devreye girer. Kapalıyken hepsi durur, diğer indirimler etkilenmez.
+              alış saatinin çevresinde takvim boşsa devreye girer. Kapalıyken hepsi durur, diğer indirimler etkilenmez.</>}
             </p>
           </div>
         </div>
-        <button
+        {!smartOn && <button
           onClick={toggle}
           disabled={saving || disabled || !data}
           className={cn('relative w-14 h-7 rounded-full transition-colors flex-shrink-0', enabled ? 'bg-green-500' : 'bg-gray-300', (saving || disabled) && 'opacity-50 cursor-not-allowed')}
         >
           <div className={cn('absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform', enabled ? 'translate-x-7' : 'translate-x-0.5')} />
-        </button>
+        </button>}
       </div>
 
       {err && <div className="mx-5 mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{err}</div>}
@@ -84,7 +87,7 @@ export default function GapPanel({
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm font-bold text-gray-900">Takvim — saat saat</p>
             <div className="flex items-center gap-3 text-xs text-gray-500">
-              <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> indirim çıkar</span>
+              {!smartOn && <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> indirim çıkar</span>}
               <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-300" /> fahrt var</span>
               <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200" /> boş</span>
             </div>
@@ -109,7 +112,7 @@ export default function GapPanel({
                     </td>
                     {d.hours.map((n, h) => {
                       // Stunde mit Rabatt, wenn eine der beiden Halbstunden greift
-                      const rule = d.slots[h * 2] || d.slots[h * 2 + 1];
+                      const rule = smartOn ? null : d.slots[h * 2] || d.slots[h * 2 + 1];
                       return (
                         <td key={h}
                           title={`${hh(h)}:00–${hh(h)}:59 · ${n} fahrt${rule ? ` · ${formatDiscountValue(rule.type, rule.value, 'de')} ${rule.name}` : ''}`}
@@ -128,10 +131,10 @@ export default function GapPanel({
             Hücredeki sayı = o saatte başlayan fahrt sayısı (web + takvim, gidiş ve dönüş ayrı; takvim 15 dk'da bir
             güncellenir). Yeşil = o saatte alış seçen yeni müşteri boş saat indirimini görür (kuralın saat aralığı,
             gün sınırı ve boşluk penceresine göre; Stammkunde/firma gibi müşteri koşulları ayrıca kontrol edilir).
-            {!enabled && <strong className="text-gray-500"> Ana şalter kapalı: yeşil hücre yok, indirim uygulanmıyor.</strong>}
+            {!enabled && !smartOn && <strong className="text-gray-500"> Ana şalter kapalı: yeşil hücre yok, indirim uygulanmıyor.</strong>}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {!smartOn && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
               <p className="text-xs text-gray-500">Son 30 gün indirimli rezervasyon</p>
               <p className="text-lg font-bold text-gray-900 tabular-nums">{data.stats.bookings}</p>
@@ -144,14 +147,14 @@ export default function GapPanel({
               <p className="text-xs text-gray-500">Bu rezervasyonların cirosu</p>
               <p className="text-lg font-bold text-gray-900 tabular-nums">{eur(data.stats.revenue)}</p>
             </div>
-          </div>
+          </div>}
 
-          <div className="flex justify-end">
+          {!smartOn && <div className="flex justify-end">
             <button onClick={onTemplate}
               className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-3 py-1.5 rounded-lg">
               <Plus size={15} /> %7 boş saat şablonu
             </button>
-          </div>
+          </div>}
         </div>
       )}
     </div>

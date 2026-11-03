@@ -15,7 +15,7 @@ import PhoneInput from '@/components/booking/PhoneInput';
 import { parsePhone, toSubmitValue, DEFAULT_COUNTRY } from '@/lib/phone';
 import { assignVariant } from '@/lib/experiment';
 import Countdown from '@/components/discount/Countdown';
-import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots } from '@/components/discount/format';
+import { PublicAutoDiscount, pickDiscountLabel, formatRemainingSpots, personalizedPriceNotice } from '@/components/discount/format';
 import { LIVE_PROMO_KEY, LA_PROMO_EVENT } from '@/lib/liveAssist';
 import { readGutschein, clearGutschein, GUTSCHEIN_EVENT } from '@/lib/gutschein';
 import type { CountryCode } from 'libphonenumber-js/max';
@@ -828,6 +828,7 @@ function BuchenContent() {
         // admin funnel (tracking.ts) can count real web conversions instead of every
         // booking regardless of source. Dies with the tab, unlike mt_visitor_id.
         session_id: typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('mt_session_id') || undefined : undefined,
+        auto_discount_shown: !!autoDiscount && !appliedPromo,
         pickup_address: pickup,
         dropoff_address: dropoff,
         pickup_datetime: pickupDatetime,
@@ -1579,6 +1580,9 @@ function BuchenContent() {
                       )}
                       <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="text-xs font-semibold text-red-300" />
                     </div>
+                  )}
+                  {autoDiscount?.personalized && !appliedPromo && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-white/70">{personalizedPriceNotice(locale)}</p>
                   )}
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
                     <p className="mt-2 text-xs text-green-300 font-medium flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {L('Hin- & Rückfahrt Rabatt inklusive', 'round trip discount included', 'gidiş-dönüş indirimi dahil')}</p>
@@ -2384,6 +2388,9 @@ function BuchenContent() {
                         {autoDiscountRemaining && <span className="ml-1 font-semibold">· {autoDiscountRemaining}</span>}
                         <Countdown endsAt={autoDiscount.ends_at} locale={locale} onExpire={onAutoDiscountExpire} className="ml-1 font-semibold" /></p>
                     )
+                  )}
+                  {autoDiscount?.personalized && !appliedPromo && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-gray-500">{personalizedPriceNotice(locale)}</p>
                   )}
                   {tripType === 'roundtrip' && roundtripDiscount > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1"><Tag size={12} /> {roundtripDiscount}% {L('Hin- & Rückfahrt Rabatt inklusive', 'round trip discount included', 'gidiş-dönüş indirimi dahil')}</p>

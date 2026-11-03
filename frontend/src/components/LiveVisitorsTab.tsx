@@ -14,6 +14,7 @@ import { useLiveAssistAdmin, LiveAssistPanel, LiveAssistRow, LiveAssistArchive, 
 import CustomerHistory, { CustomerHistoryData } from '@/components/live/CustomerHistory';
 import LivePlayer from '@/components/replay/LivePlayer';
 import { LivePrediction, ProbabilityRing, FactorChips, ModelInfoCard, fmtPct } from '@/components/live/Prediction';
+import { SmartDecision, smartLine } from '@/components/discount/format';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 
@@ -78,6 +79,8 @@ interface LiveSession {
   lng: number | null;
   /** Kaufwahrscheinlichkeit (backend/src/services/conversionModel.ts); null ohne Modell */
   prediction?: LivePrediction | null;
+  /** Smart Rabatt: letzte Entscheidung dieser Sitzung */
+  smart?: SmartDecision | null;
 }
 
 interface Stats {
@@ -875,6 +878,9 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                     {/* Prognose: die stärksten Gründe */}
                     {!bookedNow && pred && pred.factors.length > 0 && (
                       <div className="mb-2"><FactorChips factors={pred.factors} /></div>
+                    )}
+                    {s.smart && (
+                      <div className="mb-2 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">{smartLine(s.smart)}</div>
                     )}
                     {hesitating && (
                       <div className="mb-2 flex items-center gap-2 text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-lg px-3 py-1.5">

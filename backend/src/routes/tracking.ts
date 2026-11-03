@@ -6,6 +6,7 @@ import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
 import { berlinMidnightUtcSql } from '../utils/berlinTime';
 import { variantString } from '../utils/experiments';
 import { scoreLiveSessions, getConversionModel, trainConversionModel, modelSummary } from '../services/conversionModel';
+import { smartDecisions } from '../services/rabattAutopilot';
 
 const router = Router();
 
@@ -318,6 +319,8 @@ const ALLOWED_EVENT_TYPES = new Set([
   'price_shown', 'call_click', 'tab_away', 'price_copy', 'address_unverified',
   // Rabatte → Arama talebi: araç kartında gösterilen otomatik indirim (tutar|kural)
   'discount_shown',
+  // Smart Rabatt: Maus verlässt die Preisseite nach oben (Tab/Zurück)
+  'exit_intent',
   // Cookie-Banner (CookieBanner): gezeigt (target = popup|bottom) und Wahl (target = all|necessary|custom|<style>)
   'consent_shown', 'consent',
 ]);
@@ -646,6 +649,13 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
       for (const x of sessions as any[]) x.prediction = preds.get(x.session_id) || null;
     } catch (e: any) {
       console.error('live prediction error:', e.message);
+    }
+    // Smart Rabatt: letzte Entscheidung je Sitzung
+    try {
+      const smart = await smartDecisions(sessions.map((x: any) => x.session_id));
+      for (const x of sessions as any[]) x.smart = smart.get(x.session_id) || null;
+    } catch (e: any) {
+      console.error('live smart decision error:', e.message);
     }
 
     res.json({ count: sessions.length, sessions });

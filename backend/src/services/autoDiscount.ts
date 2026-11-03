@@ -1,6 +1,6 @@
 // Automatische Rabatte (Rabatte-Tab): kural bazlı, kod gerektirmeyen indirim motoru.
 // Hem POST /api/bookings (kesin fiyat) hem POST /calculate-price (önizleme) kullanır.
-import { autopilotOffer, findOfferForBooking } from './rabattAutopilot';
+import { audienceAllows, autopilotOffer, findOfferForBooking, noteCapacityBlock } from './rabattAutopilot';
 import { query } from '../db';
 import { paceForTrip, ruleUsesOnTripDate, ridesNear, demandSettings } from './demandPace';
 import { leerMatch, Coords, parsePlzList } from './leerfahrt';
@@ -155,6 +155,8 @@ export interface AutoDiscountInput {
    * Ohne Angabe (z. B. Kalender-Schätzpreis, Startseiten-Routen) greift der Autopilot nie.
    */
   autopilot?: { mode: 'preview' | 'booking'; visitorId: string | null; sessionId: string | null; pickup: string | null; dropoff: string | null };
+  /** POST /api/bookings: Kunde hat den Rabatt auf /buchen gesehen — er bleibt, auch wenn die Stunde inzwischen voll ist. */
+  discountShown?: boolean;
 }
 
 export interface AutoDiscountResult {
@@ -389,6 +391,21 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     return true;
   });
 
+  // Alle Fahrzeuge um diese Zeit belegt → kein automatischer Rabatt, egal welche Regel
+  // (nur im echten Buchungsablauf, nicht beim Kalender-Schätzpreis).
+  if (candidates.length > 0 && input.autopilot && trip && !input.discountShown) {
+    const cap = await demandSettings();
+    if (cap.capacityEnabled) {
+      const near = await ridesNear(trip.dateStr, trip.minutes, cap.capacityWindow).catch(() => 0);
+      if (near >= cap.capacityVehicles) {
+        if (input.autopilot.mode === 'preview') {
+          noteCapacityBlock({ ...input.autopilot, tripDate: trip.dateStr, km: input.km }).catch(() => {});
+        }
+        return null;
+      }
+    }
+  }
+
   // Ruhiger Tag / Kontingent je Fahrtdatum: brauchen DB-Abfragen, daher erst nach den
   // billigen Bedingungen und nur für Regeln, die bis hierher passen.
   const matching: AutoDiscountRule[] = [];
@@ -396,6 +413,8 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
     let r = r0;
     if (r.dynamic_mode === 'autopilot') {
       if (!input.autopilot?.visitorId) continue;
+      // Wer den Rabatt auf /buchen gesehen hat, behält ihn (wie bei voller Stunde)
+      if (!input.discountShown && !(await audienceAllows(input.autopilot).catch(() => false))) continue;
       // Hin & Rück: Rückfahrt-Rabatt steckt schon im Preis — Autopilot gibt dort nur
       // roundtrip_value % dazu (Admin „Hin & Rück: zusätzlich %", NULL/0 = kein zweiter Rabatt)
       const rtMax = r.roundtrip_value != null ? Number(r.roundtrip_value) : 0;
@@ -435,7 +454,7 @@ export async function resolveAutoDiscount(input: AutoDiscountInput): Promise<Aut
       });
       if (!match) continue;
     }
-    if (r.trip_date_max_uses != null) {
+    if (r.trip_date_max_uses != null && !(r.dynamic_mode === 'autopilot' && input.discountShown)) {
       if (!tripDateStr) continue;
       if (await ruleUsesOnTripDate(r.id, tripDateStr) >= Number(r.trip_date_max_uses)) continue;
     }

@@ -114,6 +114,8 @@ export interface Pageview { path: string; title: string; viewed_at: string; ts: 
 
 export interface RecordingDetail {
   session_id: string;
+  /** Smart Rabatt: letzte Entscheidung dieser Sitzung */
+  smart?: import('@/components/discount/format').SmartDecision | null;
   meta: any;
   pageviews: Pageview[];
   signals: Signal[];

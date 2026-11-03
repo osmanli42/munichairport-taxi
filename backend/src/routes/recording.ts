@@ -19,6 +19,7 @@ import { promisify } from 'util';
 import zlib from 'zlib';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
+import { smartDecisions } from '../services/rabattAutopilot';
 
 const gzipAsync = promisify(zlib.gzip);
 
@@ -796,8 +797,11 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
       [sessionId]
     );
 
+    const smart = await smartDecisions([sessionId]).catch(() => new Map());
+
     const payload = JSON.stringify({
       session_id: sessionId,
+      smart: smart.get(sessionId) || null,
       meta: meta || null,
       pageviews,
       signals,

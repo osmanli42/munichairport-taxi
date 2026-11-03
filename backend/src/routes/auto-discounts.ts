@@ -3,7 +3,8 @@ import { query, run } from '../db';
 import { authenticateAdmin } from '../middleware/auth';
 import { invalidateAutoDiscountCache, resolveBannerDiscount, ruleLabels, windowMatches } from '../services/autoDiscount';
 import { visitorDistanceToBase } from '../services/visitorDistance';
-import { demandSettings, getDayPace, rideMinutesOn, ridesNear } from '../services/demandPace';
+import { demandSettings, getDayPace, invalidateDemandCache, rideMinutesOn, ridesNear } from '../services/demandPace';
+import { loadCostSettings } from '../services/netEarnings';
 import { vacanciesAround, DEFAULT_LEER_END_KM, parsePlzList } from '../services/leerfahrt';
 import { searchStats } from '../services/searchDemand';
 import { invalidateAutopilotSettings } from '../services/rabattAutopilot';
@@ -379,24 +380,63 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
     const rule = await autopilotRule();
     if (!rule) { res.status(404).json({ error: 'Autopilot-Regel fehlt (Server neu starten)' }); return; }
     const days = Math.min(90, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
-    const minScore = Number(await apSetting('autopilot_min_score', '0.35')) || 0.35;
+    const minScore = Number(await apSetting('autopilot_min_score', '0.45')) || 0.45;
+    const startedAt = await apSetting('smart_rabatt_started_at', '');
+    // Nur Zeilen der neuen Bewertung: die alten Autopilot-Punkte sind nicht vergleichbar
     const offers = await query<any>(
-      `SELECT percent, holdout, score, reasons, booking_id IS NOT NULL AS booked FROM autopilot_offers WHERE created_at > NOW() - INTERVAL ? DAY`, [days]);
-    const grp = (f: (o: any) => boolean) => { const xs = offers.filter(f); return { n: xs.length, booked: xs.filter(o => Number(o.booked) === 1).length }; };
-    const reasons: Record<string, number> = {};
-    for (const o of offers) for (const r of String(o.reasons || '').split(', ').filter(Boolean)) {
-      const k = r.replace(/\d+ Tage Vorlauf/, 'Vorlauf ≥ 2 Tage').replace(/Buchungschance \d+ %/, 'niedrige Buchungschance').replace(/^\d+ km$/, 'lange Fahrt');
-      reasons[k] = (reasons[k] || 0) + 1;
+      `SELECT o.percent, o.holdout, o.score, o.signals, o.blocked, o.booking_id IS NOT NULL AS booked,
+              b.auto_discount_amount AS discount, b.auto_discount_id AS discount_rule, b.price, b.distance_km
+         FROM autopilot_offers o LEFT JOIN bookings b ON b.id = o.booking_id AND b.status <> 'cancelled'
+        WHERE o.engine = 2 AND o.created_at > NOW() - INTERVAL ? DAY`, [days]);
+    const decided = offers.filter(o => !o.blocked);
+    const grp = (f: (o: any) => boolean) => { const xs = decided.filter(f); return { n: xs.length, booked: xs.filter(o => Number(o.booked) === 1).length }; };
+    const offered = grp(o => Number(o.holdout) === 0 && Number(o.percent) > 0);
+    const holdout = grp(o => Number(o.holdout) === 1 && Number(o.score) >= minScore);
+    const noOffer = grp(o => Number(o.holdout) === 0 && Number(o.percent) === 0);
+
+    // Schieberegler: Verteilung der Werte (0,05-Schritte) → „wie viele sähen bei dieser Schwelle Rabatt“
+    const scoreHist = Array.from({ length: 21 }, () => 0);
+    for (const o of decided) if (o.score != null) scoreHist[Math.min(20, Math.floor(Number(o.score) * 20 + 1e-9))]++;
+
+    // Signal-Tabelle
+    const sig: Record<string, { n: number; booked: number; discount: number }> = {};
+    for (const o of decided) {
+      for (const k of String(o.signals || '').split(',').filter(Boolean)) {
+        const e = sig[k] || (sig[k] = { n: 0, booked: 0, discount: 0 });
+        e.n++;
+        if (Number(o.booked) === 1) e.booked++;
+        if (Number(o.discount_rule) === rule.id) e.discount += Number(o.discount) || 0;
+      }
     }
+
+    // Netto-Gewinn: Mehrbuchungen gegenüber der Kontrollgruppe × Netto je Fahrt − gegebener Rabatt
+    const discounted = decided.filter(o => Number(o.booked) === 1 && Number(o.discount_rule) === rule.id);
+    const discountGiven = discounted.reduce((a, o) => a + (Number(o.discount) || 0), 0);
+    const cost = await loadCostSettings();
+    const netOf = (o: any) => {
+      const gross = (Number(o.price) || 0) + (Number(o.discount) || 0);
+      return gross * (1 - cost.driverPct / 100) - (Number(o.distance_km) || 0) * 2 * (cost.lPer100 / 100) * cost.eurPerL;
+    };
+    const avgNet = discounted.length ? discounted.reduce((a, o) => a + netOf(o), 0) / discounted.length : null;
+    const rateO = offered.n ? offered.booked / offered.n : 0;
+    const rateH = holdout.n ? holdout.booked / holdout.n : 0;
+    const enough = offered.n >= 20 && holdout.n >= 20;
+    const se = enough ? Math.sqrt((rateO * (1 - rateO)) / offered.n + (rateH * (1 - rateH)) / holdout.n) : 0;
+    const confidence: 'low' | 'uncertain' | 'reliable' = !enough ? 'low' : Math.abs(rateO - rateH) > 1.96 * se ? 'reliable' : 'uncertain';
+    const extraBookings = enough ? (rateO - rateH) * offered.n : null;
+    const netGain = extraBookings != null && avgNet != null ? Math.round((extraBookings * avgNet - discountGiven) * 100) / 100 : null;
+
+    const since = startedAt || '1970-01-01 00:00:00';
     const [money] = await query<any>(
       `SELECT COUNT(*) AS n, COALESCE(SUM(auto_discount_amount), 0) AS discount, COALESCE(SUM(price), 0) AS revenue FROM bookings
-        WHERE auto_discount_id = ? AND status <> 'cancelled' AND created_at > NOW() - INTERVAL ? DAY`, [rule.id, days]);
+        WHERE auto_discount_id = ? AND status <> 'cancelled' AND created_at > NOW() - INTERVAL ? DAY AND created_at >= ?`, [rule.id, days, since]);
     const today = berlinDateSql(0);
     const wd = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
     const monday = new Date(Date.parse(`${today}T12:00:00Z`) - wd * 86_400_000).toISOString().slice(0, 10);
     const [week] = await query<any>(
       `SELECT COALESCE(SUM(auto_discount_amount), 0) AS s FROM bookings WHERE auto_discount_id = ? AND status <> 'cancelled' AND created_at >= ?`,
       [rule.id, `${monday} 00:00:00`]);
+    const dem = await demandSettings();
     res.json({
       settings: {
         enabled: Number(rule.active) === 1,
@@ -404,24 +444,50 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
         minKm: rule.min_km != null ? Number(rule.min_km) : 0,
         excludeStamm: rule.booking_index_max != null,
         excludeBusiness: Number(rule.exclude_business) === 1,
-        ignorePgFloor: rule.ip_bypass_mode === 'alle',
+        // 'fern' sagt nichts über den Schalter aus — sonst ginge er beim Zurückstellen auf „Herkes“ verloren
+        ignorePgFloor: rule.ip_bypass_mode === 'fern' ? (await apSetting('smart_ignore_pg_floor', '1')) !== '0' : rule.ip_bypass_mode === 'alle' || rule.ip_bypass_mode === 'nah',
         roundtripPercent: rule.roundtrip_value != null ? Number(rule.roundtrip_value) : 0,
         holdoutPct: Number(await apSetting('autopilot_holdout_pct', '15')),
         weeklyBudget: Number(await apSetting('autopilot_weekly_budget', '150')),
         minScore,
+        signalQuietDay: (await apSetting('smart_signal_quiet_day', '1')) !== '0',
+        signalGap: (await apSetting('smart_signal_gap', '1')) !== '0',
+        signalBehavior: (await apSetting('smart_signal_behavior', '1')) !== '0',
+        leerEnabled: dem.leerEnabled,
+        capacityEnabled: dem.capacityEnabled,
+        capacityVehicles: dem.capacityVehicles,
+        capacityWindow: dem.capacityWindow,
+        priceNotice: (await apSetting('smart_price_notice_enabled', '1')) !== '0',
+        // Kimler görsün
+        zoneInside: rule.zone_scope !== 'outside',
+        zoneOutside: rule.zone_scope !== 'inside',
+        stammFrom: rule.booking_index_max != null ? Number(rule.booking_index_max) : 2,
+        visitorScope: rule.ip_bypass_mode === 'fern' || rule.ip_bypass_mode === 'nah' ? rule.ip_bypass_mode : 'alle',
+        // Ohne Einschränkung: alle (leer hieße „keine“ und wird beim Speichern abgelehnt)
+        vehicles: rule.vehicle_types ? String(rule.vehicle_types).split(',').map((x: string) => x.trim()).filter(Boolean) : ['kombi', 'van', 'grossraumtaxi'],
+        weekdays: rule.weekday_mask ? String(rule.weekday_mask).split(',').map(Number).filter(Boolean) : [1, 2, 3, 4, 5, 6, 7],
+        tripFrom: rule.trip_time_from != null ? Number(rule.trip_time_from) : null,
+        tripTo: rule.trip_time_to != null ? Number(rule.trip_time_to) : null,
+        maxKm: rule.max_km != null ? Number(rule.max_km) : null,
+        maxDaysAhead: rule.max_days_ahead != null ? Number(rule.max_days_ahead) : null,
+        maxPerTripDate: rule.trip_date_max_uses != null ? Number(rule.trip_date_max_uses) : null,
+        allowFixedRoutes: Number(rule.allow_fixed_routes) === 1,
+        source: await apSetting('smart_source', 'all'),
+        direction: await apSetting('smart_direction', 'all'),
       },
       report: {
-        days,
-        offers: offers.length,
-        holdout: grp(o => Number(o.holdout) === 1 && Number(o.score) >= minScore),
-        offered: grp(o => Number(o.holdout) === 0 && Number(o.percent) > 0),
+        days, startedAt: startedAt || null,
+        offers: decided.length,
+        capacityBlocked: offers.length - decided.length,
+        holdout, offered, noOffer,
         levels: [3, 5, 7].map(l => ({ percent: l, ...grp(o => Number(o.holdout) === 0 && Number(o.percent) === l) })),
-        noOffer: grp(o => Number(o.holdout) === 0 && Number(o.percent) === 0),
         bookings: Number(money?.n) || 0, discount: Number(money?.discount) || 0, revenue: Number(money?.revenue) || 0,
         weekSpent: Number(week?.s) || 0,
+        scoreHist,
+        signals: Object.entries(sig).sort((a, b) => b[1].n - a[1].n).map(([key, v]) => ({ key, n: v.n, booked: v.booked, discount: Math.round(v.discount * 100) / 100 })),
+        net: { gain: netGain, avgNet: avgNet != null ? Math.round(avgNet * 100) / 100 : null, extraBookings: extraBookings != null ? Math.round(extraBookings * 10) / 10 : null, discount: Math.round(discountGiven * 100) / 100, confidence },
         // Rabatte-Einstellung „Pflichttarif-Boden ignorieren" gilt für alle Regeln — dann ist der Autopilot-Schalter wirkungslos
         globalIgnorePgFloor: (await apSetting('auto_discount_ignore_pg_floor', '0')) === '1',
-        reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => ({ reason: k, n })),
       },
     });
   } catch (e: any) {
@@ -438,17 +504,51 @@ router.put('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
     const maxPercent = num(b.maxPercent, 1, 15, Number(rule.discount_value));
     const minKm = num(b.minKm, 0, 500, rule.min_km != null ? Number(rule.min_km) : 25);
     const rtPercent = num(b.roundtripPercent, 0, maxPercent, rule.roundtrip_value != null ? Number(rule.roundtrip_value) : 0);
+    if (b.zoneInside === false && b.zoneOutside === false) { res.status(400).json({ error: 'En az bir bölge seçili olmalı: Pflichtgebiet içi veya dışı' }); return; }
+    const VEHICLE_TYPES = ['kombi', 'van', 'grossraumtaxi'];
+    const vehicles = Array.isArray(b.vehicles) ? b.vehicles.filter((v: string) => VEHICLE_TYPES.includes(v)) : [];
+    if (Array.isArray(b.vehicles) && b.vehicles.length === 0) { res.status(400).json({ error: 'En az bir araç tipi seçili olmalı' }); return; }
+    const weekdays = Array.isArray(b.weekdays) ? [...new Set(b.weekdays.map(Number).filter((d: number) => d >= 1 && d <= 7))].sort() as number[] : [];
+    if (Array.isArray(b.weekdays) && weekdays.length === 0) { res.status(400).json({ error: 'En az bir gün seçili olmalı' }); return; }
+    const minute = (v: any) => (v == null || v === '' ? null : num(v, 0, 1439, -1));
+    const tripFrom = minute(b.tripFrom), tripTo = minute(b.tripTo);
+    if (tripFrom === -1 || tripTo === -1 || (tripFrom == null) !== (tripTo == null)) { res.status(400).json({ error: 'Alış saati: başlangıç ve bitişi birlikte girin' }); return; }
+    const optInt = (v: any, min: number, max: number) => { if (v == null || v === '') return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= min && n <= max ? n : null; };
+    const maxKm = optInt(b.maxKm, 1, 1000);
+    if (maxKm != null && minKm > maxKm) { res.status(400).json({ error: 'En fazla km, en az km değerinden küçük olamaz' }); return; }
+    const scope = b.visitorScope === 'fern' || b.visitorScope === 'nah' ? b.visitorScope : 'alle';
+    // 'nah' und 'alle' halten den Pflichttarif-Boden nicht ein, 'fern' und NULL schon (siehe ruleIgnoresPgFloor)
+    const bypass = scope !== 'alle' ? scope : b.ignorePgFloor === false ? null : 'alle';
+    const stammFrom = Math.round(num(b.stammFrom, 1, 50, 2));
     await run(
-      `UPDATE auto_discounts SET active = ?, discount_value = ?, min_km = ?, booking_index_max = ?, exclude_business = ?, ip_bypass_mode = ?, roundtrip_value = ? WHERE id = ?`,
-      [b.enabled ? 1 : 0, maxPercent, minKm > 0 ? minKm : null, b.excludeStamm === false ? null : 2,
-        b.excludeBusiness === false ? 0 : 1, b.ignorePgFloor === false ? null : 'alle', rtPercent > 0 ? rtPercent : null, rule.id]);
+      `UPDATE auto_discounts SET active = ?, discount_value = ?, min_km = ?, max_km = ?, booking_index_max = ?, exclude_business = ?, ip_bypass_mode = ?, roundtrip_value = ?,
+              zone_scope = ?, vehicle_types = ?, weekday_mask = ?, trip_time_from = ?, trip_time_to = ?, max_days_ahead = ?, trip_date_max_uses = ?, allow_fixed_routes = ? WHERE id = ?`,
+      [b.enabled ? 1 : 0, maxPercent, minKm > 0 ? minKm : null, maxKm, b.excludeStamm === false ? null : stammFrom,
+        b.excludeBusiness === false ? 0 : 1, bypass, rtPercent > 0 ? rtPercent : null,
+        b.zoneInside === false ? 'outside' : b.zoneOutside === false ? 'inside' : 'any',
+        vehicles.length === 0 || vehicles.length === VEHICLE_TYPES.length ? null : vehicles.join(','),
+        weekdays.length === 0 || weekdays.length === 7 ? null : weekdays.join(','),
+        tripFrom, tripTo, optInt(b.maxDaysAhead, 0, 365), optInt(b.maxPerTripDate, 1, 100), b.allowFixedRoutes ? 1 : 0, rule.id]);
     const upsert = (k: string, v: string) => run(
       `INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()`, [k, v, v]);
+    const flag = async (k: string, v: unknown) => { if (typeof v === 'boolean') await upsert(k, v ? '1' : '0'); };
     if (b.holdoutPct != null) await upsert('autopilot_holdout_pct', String(num(b.holdoutPct, 0, 50, 15)));
     if (b.weeklyBudget != null) await upsert('autopilot_weekly_budget', String(num(b.weeklyBudget, 0, 5000, 150)));
-    if (b.minScore != null) await upsert('autopilot_min_score', String(num(b.minScore, 0, 0.9, 0.35)));
+    if (b.minScore != null) await upsert('autopilot_min_score', String(num(b.minScore, 0.2, 0.8, 0.45)));
+    await flag('smart_signal_quiet_day', b.signalQuietDay);
+    await flag('smart_signal_gap', b.signalGap);
+    await flag('smart_signal_behavior', b.signalBehavior);
+    await flag('leer_discount_enabled', b.leerEnabled);
+    await flag('auto_discount_capacity_enabled', b.capacityEnabled);
+    await flag('smart_price_notice_enabled', b.priceNotice);
+    await flag('smart_ignore_pg_floor', b.ignorePgFloor);
+    if (['all', 'ads', 'other'].includes(b.source)) await upsert('smart_source', b.source);
+    if (['all', 'from_airport', 'to_airport'].includes(b.direction)) await upsert('smart_direction', b.direction);
+    if (b.capacityVehicles != null) await upsert('auto_discount_capacity_vehicles', String(Math.round(num(b.capacityVehicles, 1, 50, 3))));
+    if (b.capacityWindow != null) await upsert('auto_discount_capacity_window', String(Math.round(num(b.capacityWindow, 5, 240, 45))));
     invalidateAutoDiscountCache();
     invalidateAutopilotSettings();
+    invalidateDemandCache();
     res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Speichern fehlgeschlagen' });

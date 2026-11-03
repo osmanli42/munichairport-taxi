@@ -528,13 +528,21 @@ export const marketingApi = {
 export interface AutopilotSettings {
   enabled: boolean; maxPercent: number; minKm: number; excludeStamm: boolean; excludeBusiness: boolean;
   ignorePgFloor: boolean; roundtripPercent: number; holdoutPct: number; weeklyBudget: number; minScore: number;
+  signalQuietDay: boolean; signalGap: boolean; signalBehavior: boolean; leerEnabled: boolean;
+  capacityEnabled: boolean; capacityVehicles: number; capacityWindow: number; priceNotice: boolean;
+  zoneInside: boolean; zoneOutside: boolean; stammFrom: number; visitorScope: 'alle' | 'fern' | 'nah';
+  vehicles: string[]; weekdays: number[]; tripFrom: number | null; tripTo: number | null;
+  maxKm: number | null; maxDaysAhead: number | null; maxPerTripDate: number | null; allowFixedRoutes: boolean;
+  source: 'all' | 'ads' | 'other'; direction: 'all' | 'from_airport' | 'to_airport';
 }
 export interface AutopilotReport {
-  days: number; offers: number;
+  days: number; startedAt: string | null; offers: number; capacityBlocked: number;
   holdout: { n: number; booked: number }; offered: { n: number; booked: number }; noOffer: { n: number; booked: number };
   levels: Array<{ percent: number; n: number; booked: number }>;
   bookings: number; discount: number; revenue: number; weekSpent: number; globalIgnorePgFloor: boolean;
-  reasons: Array<{ reason: string; n: number }>;
+  scoreHist: number[];
+  signals: Array<{ key: string; n: number; booked: number; discount: number }>;
+  net: { gain: number | null; avgNet: number | null; extraBookings: number | null; discount: number; confidence: 'low' | 'uncertain' | 'reliable' };
 }
 
 export const autoDiscountsApi = {

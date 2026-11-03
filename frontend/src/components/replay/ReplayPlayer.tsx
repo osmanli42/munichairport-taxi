@@ -4,6 +4,7 @@
 // kutuda oynatıyordu: mobil kayıtlarda ekranın 2/3'ü boş kalıyordu, olaylar zaman
 // çizelgesinde görünmüyordu. Burada sahne kayıt ekranının oranına göre ölçeklenir,
 // telefon/tarayıcı çerçevesi çizilir ve tüm sinyaller tek bir zaman çizelgesinde birleşir.
+import { smartLine } from '@/components/discount/format';
 import 'rrweb/dist/rrweb.min.css';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -348,6 +349,7 @@ export default function ReplayPlayer({
           <span>·</span>
           <span>{fmtDuration(recSeconds(row))}</span>
           {detail && <><span>·</span><span>{detail.event_count.toLocaleString('de-DE')} event</span></>}
+          {detail?.smart && <><span>·</span><span className="font-semibold">{smartLine(detail.smart)}</span></>}
         </div>
         <div className="ml-auto flex items-center gap-1">
           <button
