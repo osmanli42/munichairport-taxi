@@ -98,7 +98,7 @@ type DesignText = {
   trustTop: { title: string; text: string }[];
   trustBottom: { title: string; text: string }[];
   // Entscheidungspunkt-Texte direkt an der Preisspalte (Vertrauen statt Rabatt)
-  rating: string;          // "4,9 ★ · 100.000+ Fahrgäste"
+  rating: string;          // "Inkl. Maut & Gepäck"
   perPerson: string;       // "pro Person bei 7 Personen"
   groupHint: string;       // Hinweis auf ein Fahrzeug für die ganze Gruppe
 };
@@ -122,7 +122,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'Pünktlich am Ziel', text: 'Wir überwachen Ihren Flug' },
       { title: 'Persönlicher Service', text: 'Wir sind 24/7 für Sie da' },
     ],
-    rating: '4,9 ★ · über 100.000 Fahrgäste',
+    rating: 'Inkl. Maut & Gepäck',
     perPerson: 'pro Person',
     groupHint: 'Ein Fahrzeug für die ganze Gruppe – kein Umsteigen, kein zweites Taxi',
   },
@@ -144,7 +144,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'On time', text: 'We monitor your flight' },
       { title: 'Personal service', text: 'We are here for you 24/7' },
     ],
-    rating: '4.9 ★ · over 100,000 passengers',
+    rating: 'Incl. tolls & luggage',
     perPerson: 'per person',
     groupHint: 'One vehicle for the whole group – no transfers, no second taxi',
   },
@@ -166,7 +166,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
       { title: 'Zamanında varış', text: 'Uçuşunuzu takip ediyoruz' },
       { title: 'Kişisel hizmet', text: '7/24 yanınızdayız' },
     ],
-    rating: '4,9 ★ · 100.000+ yolcu',
+    rating: 'Otoyol ücreti ve bagaj dahil',
     perPerson: 'kişi başı',
     groupHint: 'Tüm grup için tek araç – aktarma yok, ikinci taksi yok',
   },
