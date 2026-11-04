@@ -10,8 +10,8 @@
 import { query, run } from '../db';
 
 export type AlertCategory = 'site_down' | 'site_recovered' | 'server' | 'pm2' | 'business' | 'ads' | 'daily_summary' | 'weekly_summary' | 'card_charge' | 'seo'
-  | 'calendar_new' | 'security';
-export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'weekly_summary', 'card_charge', 'seo', 'calendar_new', 'security'];
+  | 'calendar_new' | 'calendar_missing' | 'security';
+export const ALERT_CATEGORIES: AlertCategory[] = ['site_down', 'site_recovered', 'server', 'pm2', 'business', 'ads', 'daily_summary', 'weekly_summary', 'card_charge', 'seo', 'calendar_new', 'calendar_missing', 'security'];
 
 export interface AlertConfig {
   enabled: boolean;
@@ -23,7 +23,12 @@ export interface AlertConfig {
   card_charge_deadline: string;     // HH:mm Berlin — tomorrow's card rides must be charged by then
   calendar_new_mode: 'instant' | 'daily';  // new Google Calendar rides: each at once, or one mail a day
   calendar_new_time: string;        // HH:mm Berlin for the daily mail ('00:00' = midnight)
+  calendar_missing_emails: string;  // bookings not in the calendar: who gets the mail besides the admin, comma separated
+  calendar_missing_quiet: CalendarMissingQuiet;  // Berlin hours without that mail
 }
+
+export const CALENDAR_MISSING_QUIET = ['off', '22:00-07:00', '23:00-07:00', '00:00-06:00'] as const;
+export type CalendarMissingQuiet = typeof CALENDAR_MISSING_QUIET[number];
 
 // After the customer reminders at 20:00; the check job runs until 23:55.
 export const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
@@ -46,6 +51,8 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
     card_charge: true,
     seo: true,
     calendar_new: true,
+    // Off until the admin has looked at the list in the System tab: it mails the partner every hour.
+    calendar_missing: false,
     // Read by the server-side watchdog /usr/local/sbin/sec-watch (it mails on its own).
     security: true,
   },
@@ -56,6 +63,8 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   card_charge_deadline: '20:15',
   calendar_new_mode: 'instant',
   calendar_new_time: '00:00',
+  calendar_missing_emails: 'mali@freising.taxi',
+  calendar_missing_quiet: 'off',
 };
 
 let cache: { cfg: AlertConfig; at: number } | null = null;
@@ -81,6 +90,10 @@ function merge(raw: any): AlertConfig {
     card_charge_deadline: CARD_DEADLINE_OPTIONS.includes(raw?.card_charge_deadline) ? raw.card_charge_deadline : d.card_charge_deadline,
     calendar_new_mode: raw?.calendar_new_mode === 'daily' ? 'daily' : d.calendar_new_mode,
     calendar_new_time: CALENDAR_NEW_TIMES.includes(raw?.calendar_new_time) ? raw.calendar_new_time : d.calendar_new_time,
+    calendar_missing_emails: typeof raw?.calendar_missing_emails === 'string'
+      ? raw.calendar_missing_emails.split(',').map((e: string) => e.trim()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).join(', ')
+      : d.calendar_missing_emails,
+    calendar_missing_quiet: CALENDAR_MISSING_QUIET.includes(raw?.calendar_missing_quiet) ? raw.calendar_missing_quiet : d.calendar_missing_quiet,
   };
 }
 

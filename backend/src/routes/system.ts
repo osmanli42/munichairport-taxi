@@ -7,6 +7,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { runAllChecks, getLatestStatus } from '../services/healthMonitor';
 import { query } from '../db';
 import { calendarAlertPreview } from '../services/calendarRideAlert';
+import { calendarMissingStatus, setLegIgnored } from '../services/calendarMissingAlert';
 import { buildDailySummary } from '../services/dailySummary';
 import { buildWeeklySummary } from '../services/weeklySummary';
 import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
@@ -244,6 +245,32 @@ router.get('/admin/system-stats/calendar-alert-preview', authenticateAdmin, asyn
     const out = await calendarAlertPreview();
     if (!out) { res.status(409).json({ error: 'Google Kalender bağlı değil' }); return; }
     res.json(out);
+  } catch (err: any) {
+    res.status(500).json({ error: 'failed', detail: err.message });
+  }
+});
+
+// Bookings not in the Google Calendar right now, with the mail they would produce. Nothing is sent.
+router.get('/admin/system-stats/calendar-missing', authenticateAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const out = await calendarMissingStatus();
+    if (!out) { res.status(409).json({ error: 'Google Kalender bağlı değil' }); return; }
+    res.json(out);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Google Kalender okunamadı', detail: err.message });
+  }
+});
+
+router.post('/admin/system-stats/calendar-missing/ignore', authenticateAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.body?.booking_id);
+    const time = String(req.body?.time || '');
+    if (!Number.isInteger(id) || id <= 0 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(time)) {
+      res.status(400).json({ error: 'booking_id ve time gerekli' });
+      return;
+    }
+    await setLegIgnored(id, time, req.body?.ignored !== false);
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: 'failed', detail: err.message });
   }
