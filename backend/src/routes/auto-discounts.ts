@@ -7,7 +7,7 @@ import { demandSettings, getDayPace, invalidateDemandCache, rideMinutesOn, rides
 import { loadCostSettings } from '../services/netEarnings';
 import { vacanciesAround, DEFAULT_LEER_END_KM, parsePlzList } from '../services/leerfahrt';
 import { searchStats } from '../services/searchDemand';
-import { invalidateAutopilotSettings } from '../services/rabattAutopilot';
+import { invalidateAutopilotSettings, SMART_ENGINE } from '../services/rabattAutopilot';
 import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 
 const router = Router();
@@ -380,15 +380,21 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
     const rule = await autopilotRule();
     if (!rule) { res.status(404).json({ error: 'Autopilot-Regel fehlt (Server neu starten)' }); return; }
     const days = Math.min(90, Math.max(1, parseInt(String(req.query.days || '30'), 10) || 30));
+    // Alle Einstellungen in einer Abfrage statt ~20 einzelner
+    const settingRows = await query<{ setting_key: string; setting_value: string }>(
+      `SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'smart\\_%' OR setting_key LIKE 'autopilot\\_%' OR setting_key = 'auto_discount_ignore_pg_floor'`);
+    const stored = new Map(settingRows.map(r => [r.setting_key, r.setting_value]));
+    const apSetting = async (key: string, def: string) => stored.get(key) ?? def;
     const minScore = Number(await apSetting('autopilot_min_score', '0.45')) || 0.45;
     const startedAt = await apSetting('smart_rabatt_started_at', '');
     // Nur Zeilen der neuen Bewertung: die alten Autopilot-Punkte sind nicht vergleichbar
     const offers = await query<any>(
-      `SELECT o.percent, o.holdout, o.score, o.signals, o.blocked, o.booking_id IS NOT NULL AS booked,
+      `SELECT o.percent, o.holdout, o.score, o.signals, o.blocked, o.km, o.trip_date, o.created_at, b.booking_number, b.id IS NOT NULL AS booked,
               b.auto_discount_amount AS discount, b.auto_discount_id AS discount_rule, b.price, b.distance_km
          FROM autopilot_offers o LEFT JOIN bookings b ON b.id = o.booking_id AND b.status <> 'cancelled'
-        WHERE o.engine = 2 AND o.created_at > NOW() - INTERVAL ? DAY`, [days]);
-    const decided = offers.filter(o => !o.blocked);
+        WHERE o.engine = ? AND o.created_at > NOW() - INTERVAL ? DAY ORDER BY o.id DESC`, [SMART_ENGINE, days]);
+    // „Voll“ ist nur eine Momentaufnahme: wer den Rabatt schon gesehen hatte, kann trotzdem damit buchen
+    const decided = offers.filter(o => !o.blocked || Number(o.booked) === 1);
     const grp = (f: (o: any) => boolean) => { const xs = decided.filter(f); return { n: xs.length, booked: xs.filter(o => Number(o.booked) === 1).length }; };
     const offered = grp(o => Number(o.holdout) === 0 && Number(o.percent) > 0);
     const holdout = grp(o => Number(o.holdout) === 1 && Number(o.score) >= minScore);
@@ -484,6 +490,14 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
         bookings: Number(money?.n) || 0, discount: Number(money?.discount) || 0, revenue: Number(money?.revenue) || 0,
         weekSpent: Number(week?.s) || 0,
         scoreHist,
+        decisions24h: offers.filter(o => Date.now() - new Date(o.created_at).getTime() < 24 * 3_600_000).length,
+        // Rabatt-Buchungen ohne zugeordnete Entscheidung: Messung unvollständig
+        unlinked: Math.max(0, (Number(money?.n) || 0) - discounted.length),
+        recent: offers.slice(0, 30).map(o => ({
+          at: o.created_at, tripDate: o.trip_date ? String(o.trip_date instanceof Date ? o.trip_date.toISOString() : o.trip_date).slice(0, 10) : null,
+          km: o.km != null ? Math.round(Number(o.km)) : null, percent: Number(o.percent), holdout: Number(o.holdout) === 1, score: o.score != null ? Number(o.score) : null,
+          signals: String(o.signals || '').split(',').filter(Boolean), blocked: o.blocked || null, booking: o.booking_number || null,
+        })),
         signals: Object.entries(sig).sort((a, b) => b[1].n - a[1].n).map(([key, v]) => ({ key, n: v.n, booked: v.booked, discount: Math.round(v.discount * 100) / 100 })),
         net: { gain: netGain, avgNet: avgNet != null ? Math.round(avgNet * 100) / 100 : null, extraBookings: extraBookings != null ? Math.round(extraBookings * 10) / 10 : null, discount: Math.round(discountGiven * 100) / 100, confidence },
         // Rabatte-Einstellung „Pflichttarif-Boden ignorieren" gilt für alle Regeln — dann ist der Autopilot-Schalter wirkungslos

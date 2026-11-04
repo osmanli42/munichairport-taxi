@@ -1644,6 +1644,12 @@ export async function initializeDatabase(): Promise<void> {
         await conn.execute(`UPDATE auto_discounts SET name = 'Smart Rabatt', label_de = 'Sonderangebot', label_en = 'Special offer', label_tr = 'Özel teklif' WHERE dynamic_mode = 'autopilot'`);
         await conn.execute(`INSERT INTO settings (setting_key, setting_value) VALUES ('autopilot_min_score', '0.45') ON DUPLICATE KEY UPDATE setting_value = '0.45'`);
       }
+      // Bewertung Fassung 3 (freie Stunde nur nah am Datum und tagsüber): Auswertung beginnt neu
+      const [mig3] = await conn.execute(
+        `INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('smart_engine3_at', UTC_TIMESTAMP())`) as any;
+      if (mig3.affectedRows === 1) {
+        await conn.execute(`UPDATE settings SET setting_value = UTC_TIMESTAMP() WHERE setting_key = 'smart_rabatt_started_at'`);
+      }
     } catch (e: any) { console.error('smart rabatt migration failed:', e.message); }
     try {
       // Alte ganzstündige Fahrtzeit (hour_from/hour_to) → Minuten. Speichern einer Regel setzt

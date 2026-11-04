@@ -19,7 +19,7 @@ const PRIVATE_KEYS = ['flight_quota_state', 'night_confirm_partner_email', 'nigh
   // Smart Rabatt (Fahrzeugzahl, Schwelle, Signale) — nicht öffentlich, Pflege über /auto-discounts/admin/autopilot
   'auto_discount_capacity_enabled', 'auto_discount_capacity_vehicles', 'auto_discount_capacity_window',
   'autopilot_min_score', 'autopilot_holdout_pct', 'autopilot_weekly_budget', 'smart_rabatt_started_at',
-  'smart_signal_quiet_day', 'smart_signal_gap', 'smart_signal_behavior', 'smart_price_notice_enabled', 'smart_source', 'smart_direction', 'smart_ignore_pg_floor'];
+  'smart_signal_quiet_day', 'smart_signal_gap', 'smart_signal_behavior', 'smart_price_notice_enabled', 'smart_source', 'smart_direction', 'smart_ignore_pg_floor', 'smart_engine3_at'];
 
 // GET /api/settings/private - Admin-only settings
 router.get('/private', authenticateAdmin, async (_req: AuthRequest, res: Response): Promise<void> => {

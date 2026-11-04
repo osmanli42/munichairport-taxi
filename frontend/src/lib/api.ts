@@ -541,6 +541,8 @@ export interface AutopilotReport {
   levels: Array<{ percent: number; n: number; booked: number }>;
   bookings: number; discount: number; revenue: number; weekSpent: number; globalIgnorePgFloor: boolean;
   scoreHist: number[];
+  decisions24h: number; unlinked: number;
+  recent: Array<{ at: string; tripDate: string | null; km: number | null; percent: number; holdout: boolean; score: number | null; signals: string[]; blocked: string | null; booking: string | null }>;
   signals: Array<{ key: string; n: number; booked: number; discount: number }>;
   net: { gain: number | null; avgNet: number | null; extraBookings: number | null; discount: number; confidence: 'low' | 'uncertain' | 'reliable' };
 }

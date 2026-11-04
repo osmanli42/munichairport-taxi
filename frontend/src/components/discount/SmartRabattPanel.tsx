@@ -83,6 +83,20 @@ export default function SmartRabattPanel({ onChanged, masterEnabled }: { onChang
     form.tripFrom != null, form.maxKm != null, form.maxDaysAhead != null, form.maxPerTripDate != null, form.allowFixedRoutes].filter(Boolean).length;
   if (extraCount) who.push(`${extraCount} ek koşul`);
 
+  // Durum kontrolü: sistemin ayırt edip etmediğini ve ölçümün sağlam olup olmadığını kendisi söyler
+  const health: Array<{ bad: boolean; text: string }> = [];
+  if (rep) {
+    const decidedN = rep.offered.n + rep.noOffer.n;
+    const allN = decidedN + rep.holdout.n;
+    if (on && rep.decisions24h === 0) health.push({ bad: true, text: 'Son 24 saatte hiç karar yok. Şalter açık ama sistem çalışmıyor olabilir, ya da hiç fiyat bakan olmadı.' });
+    if (decidedN >= 30 && rep.offered.n / decidedN > 0.8) health.push({ bad: true, text: `Kararların %${Math.round((rep.offered.n / decidedN) * 100)}'inde indirim çıktı: neredeyse herkese veriyor, ayırt etmiyor. Sürgüyü kırmızıya doğru çek.` });
+    if (decidedN >= 30 && rep.offered.n / decidedN < 0.1) health.push({ bad: false, text: `Kararların sadece %${Math.round((rep.offered.n / decidedN) * 100)}'inde indirim çıktı: çok az. Sürgüyü yeşile doğru çekebilirsin.` });
+    if (allN >= 30) for (const g of rep.signals) if (g.n / allN > 0.8) health.push({ bad: true, text: `„${SMART_SIGNAL_LABELS[g.key] || g.key}" sinyali kararların %${Math.round((g.n / allN) * 100)}'inde var: herkeste olan sinyal müşteri ayırt etmez.` });
+    if (rep.unlinked > 0) health.push({ bad: true, text: `${rep.unlinked} indirimli rezervasyon bir karara bağlanamadı: net kazanç eksik hesaplanıyor olabilir.` });
+    if (s.weeklyBudget > 0 && rep.weekSpent >= s.weeklyBudget * 0.8) health.push({ bad: false, text: `Haftalık bütçenin %${Math.round((rep.weekSpent / s.weeklyBudget) * 100)}'i kullanıldı. Bütçe dolunca yeni indirim çıkmaz.` });
+    if (s.maxDaysAhead == null) health.push({ bad: false, text: 'Uzak tarihlere gün sınırı yok. „Daha fazla koşul" içinden en fazla kaç gün sonrası verilebilir.' });
+  }
+
   const net = rep?.net;
   const netBad = !!net && net.gain != null && net.gain < 0 && (rep?.offered.n ?? 0) >= 50 && (rep?.holdout.n ?? 0) >= 20;
   const confText = net?.confidence === 'reliable' ? 'güvenilir' : net?.confidence === 'uncertain' ? 'henüz kesin değil' : 'veri az';
@@ -123,6 +137,15 @@ export default function SmartRabattPanel({ onChanged, masterEnabled }: { onChang
       {netBad && (
         <p className="mx-5 mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex gap-2"><AlertTriangle size={15} className="shrink-0 mt-0.5" />
           Net kazanç eksi: indirim şu an getirdiğinden fazlasına mal oluyor. Sürgüyü kırmızıya doğru çekmeyi düşün. Sistem ayarı kendi değiştirmez.</p>
+      )}
+
+      {health.length > 0 && (
+        <div className="mx-5 mb-3 space-y-1.5">
+          {health.map((w, i) => (
+            <p key={i} className={cn('text-sm rounded-lg px-3 py-2 flex gap-2 border', w.bad ? 'text-amber-800 bg-amber-50 border-amber-200' : 'text-gray-600 bg-gray-50 border-gray-200')}>
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />{w.text}</p>
+          ))}
+        </div>
       )}
 
       {/* Sürgü */}
@@ -305,6 +328,36 @@ export default function SmartRabattPanel({ onChanged, masterEnabled }: { onChang
         <button onClick={() => save({})} disabled={busy || !dirty || audienceInvalid}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-lg disabled:opacity-50"><Check size={15} /> Kaydet</button>
       </Fold>
+
+      {/* Son kararlar */}
+      {rep && (
+        <Fold title="Son kararlar" hint="Her kararın puanı, sinyalleri ve sonucu">
+          {rep.recent.length === 0 ? <p className="text-sm text-gray-400">Henüz karar yok.</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[620px]">
+                <thead><tr className="text-xs text-gray-400 text-left">
+                  <th className="py-1 font-semibold">Zaman</th><th className="py-1 font-semibold">Fahrt</th><th className="py-1 font-semibold text-right">km</th><th className="py-1 font-semibold text-right">Puan</th><th className="py-1 font-semibold">Sonuç</th><th className="py-1 font-semibold">Sinyaller</th>
+                </tr></thead>
+                <tbody className="divide-y divide-gray-50">
+                  {rep.recent.map((r, i) => (
+                    <tr key={i} className="align-top">
+                      <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 tabular-nums">{new Date(r.at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 tabular-nums">{r.tripDate ? `${r.tripDate.slice(8, 10)}.${r.tripDate.slice(5, 7)}.` : '—'}</td>
+                      <td className="py-1.5 pr-2 text-right tabular-nums">{r.km ?? '—'}</td>
+                      <td className="py-1.5 pr-2 text-right tabular-nums">{r.score != null ? dec2(r.score) : '—'}</td>
+                      <td className="py-1.5 pr-2 whitespace-nowrap font-semibold text-gray-900">
+                        {r.blocked === 'capacity' ? 'Araçlar dolu' : r.holdout ? 'Kontrol' : r.percent > 0 ? `%${r.percent}` : 'Yok'}
+                        {r.booking && <span className="block text-xs font-normal text-emerald-700">{r.booking}</span>}
+                      </td>
+                      <td className="py-1.5 text-xs text-gray-500">{r.signals.map(k => SMART_SIGNAL_LABELS[k] || k).join(', ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Fold>
+      )}
 
       {/* Sinyal performansı */}
       {rep && (

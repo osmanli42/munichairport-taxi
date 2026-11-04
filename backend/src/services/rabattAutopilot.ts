@@ -103,8 +103,10 @@ export function pickLevel(stats: Record<number, { shown: number; booked: number 
   let best = levels[0], bestDraw = -1;
   for (const l of levels) {
     const s = stats[l] || { shown: 0, booked: 0 };
-    // Startwert ~10 % Buchungsquote (1 : 9), damit wenige Daten nicht sofort entscheiden
-    const draw = sampleBeta(1 + s.booked, 9 + Math.max(0, s.shown - s.booked));
+    // Startwert ~10 % Buchungsquote (1 : 9), damit wenige Daten nicht sofort entscheiden.
+    // Ziel ist der Gewinn, nicht die Buchungszahl: von rund 40 % Netto je Fahrt geht der Rabatt ab
+    // (%7 lohnt sich nur, wenn er spürbar mehr Buchungen bringt als %3).
+    const draw = sampleBeta(1 + s.booked, 9 + Math.max(0, s.shown - s.booked)) * (1 - l / 40);
     if (draw > bestDraw) { bestDraw = draw; best = l; }
   }
   return best;
@@ -134,6 +136,11 @@ const BEHAVIOR_WEIGHTS: Record<string, number> = {
   draft: 0.25, back_from_form: 0.15, exit: 0.2, returning: 0.15, search_changes: 0.15, dwell: 0.15, tab_away: 0.1,
 };
 export const DWELL_SECONDS = 45;
+const GAP_MAX_DAYS = 3;
+const GAP_FROM_MIN = 10 * 60;
+const GAP_TO_MIN = 22 * 60;
+// Zeilen mit anderer Bewertung sind nicht vergleichbar: neue Fassung = neue Nummer, Auswertung beginnt neu
+export const SMART_ENGINE = 3;
 
 export interface NeedResult { score: number; signals: string[]; reasons: string[]; block: boolean }
 
@@ -154,10 +161,11 @@ export async function needScore(ctx: AutopilotContext, s: Settings, offerAgeSec:
       if (pace != null && pace < 0.5) { demand = 0.4; signals.push('quiet_day'); reasons.push('ruhiger Tag'); }
       else if (pace != null && pace < 0.75) { demand = 0.24; signals.push('quiet_day'); reasons.push('eher ruhiger Tag'); }
     }
-    if (s.signalGap && ctx.tripMinutes != null) {
+    // Freie Stunde zählt nur nah am Fahrtdatum und tagsüber (Entscheidung 16.10.2026): weit voraus
+    // und nachts ist der Kalender immer leer — dort sagt das nichts über die Auslastung.
+    if (s.signalGap && ctx.tripMinutes != null && ctx.tripMinutes >= GAP_FROM_MIN && ctx.tripMinutes <= GAP_TO_MIN && ctx.tripDate <= berlinDateSql(GAP_MAX_DAYS)) {
       const near = await ridesNear(ctx.tripDate, ctx.tripMinutes, 120).catch(() => 99);
       if (near === 0) { demand = 0.4; signals.push('gap'); reasons.push('freie Stunde'); }
-      else if (near <= 2) { demand = Math.max(demand, 0.2); signals.push('gap'); reasons.push('wenig Fahrten ±2 h'); }
     }
   }
 
@@ -256,6 +264,11 @@ export async function autopilotOffer(ctx: AutopilotContext, ruleId: number): Pro
   const running = pending.get(lockKey);
   if (running) return running;
   const job = (async (): Promise<AutopilotOffer> => {
+    // Bots (Scanner) bekommen keinen Rabatt und verfälschen die Auswertung nicht
+    if (ctx.sessionId) {
+      const [sess] = await query<{ is_bot: number }>('SELECT is_bot FROM visitor_sessions WHERE session_id = ?', [ctx.sessionId]).catch(() => []);
+      if (Number(sess?.is_bot) === 1) return { percent: 0, holdout: false, offerId: null };
+    }
     const s = await settings();
     const [row] = await query<OfferRow>(
       `SELECT id, percent, holdout, score, level_cap, signals, blocked, TIMESTAMPDIFF(SECOND, created_at, NOW()) AS age
@@ -281,9 +294,9 @@ export async function autopilotOffer(ctx: AutopilotContext, ruleId: number): Pro
     if (!row) {
       const r = await run(
         `INSERT INTO autopilot_offers (visitor_id, session_id, route_key, trip_date, km, percent, holdout, score, p_model, reasons, signals, level_cap, engine, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2, NOW() + INTERVAL 24 HOUR)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() + INTERVAL 24 HOUR)`,
         [ctx.visitorId, ctx.sessionId, key, ctx.tripDate, ctx.km, percent, holdout ? 1 : 0, need.score, await modelP(ctx.sessionId),
-          reasons.join(', ').slice(0, 255), need.signals.join(',').slice(0, 255), cap]);
+          reasons.join(', ').slice(0, 255), need.signals.join(',').slice(0, 255), cap, SMART_ENGINE]);
       return { percent, holdout, offerId: r.insertId };
     }
     // Bestehende Entscheidung nur aktualisieren, wenn sich etwas geändert hat. Signale werden
@@ -292,8 +305,8 @@ export async function autopilotOffer(ctx: AutopilotContext, ruleId: number): Pro
     const bestScore = Math.max(Number(row.score) || 0, need.score);
     if (percent !== had || cap !== hadCap || merged !== (row.signals || '') || bestScore !== Number(row.score) || row.blocked) {
       await run(
-        `UPDATE autopilot_offers SET percent = ?, score = ?, reasons = ?, signals = ?, level_cap = ?, engine = 2, blocked = NULL WHERE id = ?`,
-        [percent, bestScore, reasons.join(', ').slice(0, 255), merged.slice(0, 255), cap, row.id]);
+        `UPDATE autopilot_offers SET percent = ?, score = ?, reasons = ?, signals = ?, level_cap = ?, engine = ?, blocked = NULL WHERE id = ?`,
+        [percent, bestScore, reasons.join(', ').slice(0, 255), merged.slice(0, 255), cap, SMART_ENGINE, row.id]);
     }
     return { percent, holdout, offerId: row.id };
   })();
@@ -311,8 +324,8 @@ export async function noteCapacityBlock(ctx: Pick<AutopilotContext, 'visitorId' 
   const s = await settings();
   await run(
     `INSERT INTO autopilot_offers (visitor_id, session_id, route_key, trip_date, km, percent, holdout, blocked, engine, expires_at)
-     VALUES (?, ?, ?, ?, ?, 0, ?, 'capacity', 2, NOW() + INTERVAL 24 HOUR)`,
-    [ctx.visitorId, ctx.sessionId, key, ctx.tripDate, ctx.km, bucket(ctx.visitorId, 'rabatt_autopilot') < s.holdoutPct ? 1 : 0]);
+     VALUES (?, ?, ?, ?, ?, 0, ?, 'capacity', ?, NOW() + INTERVAL 24 HOUR)`,
+    [ctx.visitorId, ctx.sessionId, key, ctx.tripDate, ctx.km, bucket(ctx.visitorId, 'rabatt_autopilot') < s.holdoutPct ? 1 : 0, SMART_ENGINE]);
 }
 
 export interface SmartDecision { percent: number; holdout: boolean; blocked: string | null; signals: string[]; score: number | null }
@@ -323,7 +336,7 @@ export async function smartDecisions(sessionIds: string[]): Promise<Map<string, 
   if (!sessionIds.length) return out;
   const rows = await query<{ session_id: string; percent: number; holdout: number; blocked: string | null; signals: string | null; score: number | null }>(
     `SELECT session_id, percent, holdout, blocked, signals, score FROM autopilot_offers
-      WHERE engine = 2 AND session_id IN (${sessionIds.map(() => '?').join(',')}) ORDER BY id ASC`, sessionIds);
+      WHERE engine >= 2 AND session_id IN (${sessionIds.map(() => '?').join(',')}) ORDER BY id ASC`, sessionIds);
   for (const r of rows) {
     out.set(r.session_id, {
       percent: Number(r.percent), holdout: Number(r.holdout) === 1, blocked: r.blocked,

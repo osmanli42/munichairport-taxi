@@ -391,8 +391,10 @@ function ResultsContent() {
       else if (hiddenAt && Date.now() - hiddenAt >= 10_000) { hiddenAt = 0; setTimeout(refresh, 1000); }
     };
     let exitSent = false;
+    const openedAt = Date.now();
     const onLeave = (e: MouseEvent) => {
-      if (exitSent || e.clientY > 0) return;
+      // Erste Sekunden zählen nicht: wer gerade kommt, fährt oft nur mit der Maus nach oben
+      if (exitSent || e.clientY > 0 || Date.now() - openedAt < 10_000) return;
       exitSent = true;
       let sessionId: string | null = null;
       try { sessionId = sessionStorage.getItem('mt_session_id'); } catch { /* egal */ }
