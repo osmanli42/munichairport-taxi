@@ -103,6 +103,7 @@ const sections = [
     content: () => (
       <div className="space-y-3">
         <p>Der Transport von normalem Reisegepäck ist im Preis inbegriffen. Sperrgut oder Gegenstände, die besondere Transportanforderungen stellen, sind vorher anzumelden und können zusätzliche Kosten verursachen.</p>
+        <p>Der Fahrgast ist verpflichtet, sein Gepäck am Abholort vollständig bereitzustellen und beim Ausladen am Zielort auf Vollständigkeit zu prüfen.</p>
         <p>Haustiere werden nur in einem geschlossenen Käfig bzw. einer Transportbox befördert; das Tier muss während der gesamten Fahrt darin verbleiben. Das Mitführen eines Haustieres ist bei der Buchung anzugeben und zu bestätigen. Assistenzhunde (z. B. Blindenführhunde) sind von dieser Regelung ausgenommen.</p>
       </div>
     ),
