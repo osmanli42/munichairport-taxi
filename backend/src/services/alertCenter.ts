@@ -25,6 +25,7 @@ export interface AlertConfig {
   calendar_new_time: string;        // HH:mm Berlin for the daily mail ('00:00' = midnight)
   calendar_missing_emails: string;  // bookings not in the calendar: who gets the mail besides the admin, comma separated
   calendar_missing_quiet: CalendarMissingQuiet;  // Berlin hours without that mail
+  calendar_missing_dashboard: boolean;  // the same list in the dashboard's Handlungsbedarf
 }
 
 export const CALENDAR_MISSING_QUIET = ['off', '22:00-07:00', '23:00-07:00', '00:00-06:00'] as const;
@@ -65,6 +66,7 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   calendar_new_time: '00:00',
   calendar_missing_emails: 'mali@freising.taxi',
   calendar_missing_quiet: 'off',
+  calendar_missing_dashboard: true,
 };
 
 let cache: { cfg: AlertConfig; at: number } | null = null;
@@ -94,6 +96,7 @@ function merge(raw: any): AlertConfig {
       ? raw.calendar_missing_emails.split(',').map((e: string) => e.trim()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).join(', ')
       : d.calendar_missing_emails,
     calendar_missing_quiet: CALENDAR_MISSING_QUIET.includes(raw?.calendar_missing_quiet) ? raw.calendar_missing_quiet : d.calendar_missing_quiet,
+    calendar_missing_dashboard: typeof raw?.calendar_missing_dashboard === 'boolean' ? raw.calendar_missing_dashboard : d.calendar_missing_dashboard,
   };
 }
 

@@ -90,6 +90,8 @@ interface DashboardData {
     flightQuota?: { limit: number; remaining: number; resetAt: string; dismiss_key?: string } | null;
     /** Marketing occasion whose reminder window is open (Admin → Marketing). */
     marketing?: Array<{ id: string; name: string; date: string; daysLeft: number; urgent: boolean; dismiss_key?: string }> | null;
+    /** Booked rides with no entry in the Google Calendar (backend services/calendarMissingAlert.ts). */
+    calendarMissing?: Array<{ booking_id: number; booking_number: string; name: string; price: number; leg: 'outbound' | 'return'; roundtrip: boolean; time: string; from: string | null; to: string | null; dismiss_key?: string }>;
   };
   /** Handlungsbedarf entries hidden in the last 30 days (can be brought back). */
   attentionDismissed?: Array<{ item_key: string; label: string | null }>;
@@ -692,6 +694,7 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
   ].filter((d) => !restored.has(d.item_key));
   mismatches = keep(mismatches);
   const cards = keep(a.cardsUncharged || []);
+  const calMissing = keep(a.calendarMissing || []);
   // A failed charge for a ride that is already listed under "nicht abgebucht" shows once.
   const cardIds = new Set(cards.map((c) => c.id));
   a = {
@@ -720,10 +723,11 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
     onGoTab('marketing');
   };
   const monthName = (m: string) => new Date(`${m}-15T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const total = groups.reduce((s, g) => s + (a[g.key] || []).length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + (flightQ ? 1 : 0) + monthEndCount + mkt.length;
+  const total = groups.reduce((s, g) => s + (a[g.key] || []).length, 0) + mismatches.length + cards.length + (seo ? 1 : 0) + (seoIdx ? 1 : 0) + (adsRep ? 1 : 0) + (flightQ ? 1 : 0) + monthEndCount + mkt.length + calMissing.length;
   const short = (t: string) => `${dayLabel(t.slice(0, 10), { day: '2-digit', month: '2-digit' })} ${hhmm(t)}`;
   // Eingeklappt: nur Stichworte; dringende (rot) zuerst
   const chips: Array<{ label: string; urgent: boolean }> = [
+    ...(calMissing.length ? [{ label: `Nicht im Kalender (${calMissing.length})`, urgent: true }] : []),
     ...(cards.length ? [{ label: `Karte nicht abgebucht (${cards.length})`, urgent: true }] : []),
     ...(monthEndCount ? [{ label: `Monatsende-Rechnungen (${monthEndCount})`, urgent: true }] : []),
     ...(adsRep ? [{ label: 'Google-Ads-Reports', urgent: true }] : []),
@@ -767,6 +771,33 @@ function AttentionPanel({ a, mismatches, dismissed, deadline, onOpen, onGoTab, o
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
+          {calMissing.length > 0 && (
+            <div className="px-5 py-3 bg-red-50/60">
+              <div className="flex items-start gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white bg-red-500 animate-pulse"><CalendarDays size={15} /></span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-red-700">Nicht im Google Kalender <span className="font-normal">({calMissing.length})</span></div>
+                  <div className="text-[11px] text-red-600/80">Gebuchte Fahrt ohne Termin — bitte mit Buchungsnummer eintragen</div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1">
+                {calMissing.map((l) => (
+                  <li key={`${l.booking_id}-${l.time}`} className="flex items-start gap-1">
+                    <DismissX className="mt-1" onClick={() => dismiss(l.dismiss_key, `Nicht im Kalender · ${l.name} · ${short(l.time)}`)} />
+                    <button onClick={() => onOpen(l.booking_id)} className="min-w-0 flex-1 rounded-lg bg-white px-2 py-1.5 text-left text-xs ring-1 ring-red-100 hover:ring-red-300">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-red-700 shrink-0">{short(l.time)}</span>
+                        <span className="truncate font-medium text-gray-800">{l.name}</span>
+                        {l.roundtrip && <span className="shrink-0 text-amber-700">{l.leg === 'return' ? 'Rückfahrt' : 'Hinfahrt'}</span>}
+                        <ChevronRight size={13} className="ml-auto shrink-0 text-gray-300" />
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-gray-500">{l.from || '?'} → {l.to || '?'}</div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {cards.length > 0 && (
             <div className="px-5 py-3 bg-red-50/60">
               <div className="flex items-start gap-2.5">

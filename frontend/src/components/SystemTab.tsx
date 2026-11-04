@@ -87,6 +87,7 @@ interface AlertCfg {
   calendar_new_time?: string;
   calendar_missing_emails?: string;
   calendar_missing_quiet?: string;
+  calendar_missing_dashboard?: boolean;
   email_to?: string;
 }
 const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
@@ -211,7 +212,8 @@ export default function SystemTab({ token }: { token: string }) {
           reminder_hours: ad.reminder_hours, server_cooldown_hours: ad.server_cooldown_hours,
           business_cooldown_hours: ad.business_cooldown_hours, card_charge_deadline: ad.card_charge_deadline,
           calendar_new_mode: ad.calendar_new_mode, calendar_new_time: ad.calendar_new_time,
-          calendar_missing_emails: ad.calendar_missing_emails, calendar_missing_quiet: ad.calendar_missing_quiet, email_to: ad.email_to,
+          calendar_missing_emails: ad.calendar_missing_emails, calendar_missing_quiet: ad.calendar_missing_quiet,
+          calendar_missing_dashboard: ad.calendar_missing_dashboard, email_to: ad.email_to,
         });
       }
       setLastUpdated(new Date());
@@ -676,7 +678,7 @@ export default function SystemTab({ token }: { token: string }) {
                 ['calendar_new', '📅 Yeni Kalender-Fahrt', alertSettings.calendar_new_mode === 'daily'
                   ? `Google Takvim’e eklenen fahrt’lar toplanır, her gün saat ${timeLabel(alertSettings.calendar_new_time || '00:00')}’de tek e-postada gelir: tarih, saat, adres, fiyat, not, takvim linki. O gün yeni fahrt yoksa e-posta gitmez.`
                   : 'Google Takvim’e her yeni fahrt eklendiğinde 5–10 dakika içinde e-posta: tarih, saat, adres, fiyat, not, takvim linki. Web rezervasyonları zaten kendi e-postasını gönderdiği için dahil değil.'],
-                ['calendar_missing', '🗓️ Takvime eklenmemiş fahrt', 'Her saat başı, Buchungen’deki ilerideki aktif fahrt’lardan Google Takvim’de olmayanlar tek e-postada sana ve partnere gider. Fahrt takvime eklenene, iptal edilene veya saati geçene kadar her saat tekrar eder. Eksik yoksa e-posta gitmez. Yeni rezervasyona 30 dakika süre tanınır.'],
+                ['calendar_missing', '🗓️ Takvime eklenmemiş fahrt', 'Her saat başı, Buchungen’deki ilerideki aktif fahrt’lardan Google Takvim’de olmayanlar tek e-postada sana ve partnere gider. Fahrt takvime eklenene, iptal edilene veya saati geçene kadar her saat tekrar eder. Eksik yoksa e-posta gitmez. Yeni rezervasyona 30 dakika süre tanınır. Bu şalter yalnızca e-postayı açar/kapatır; Dashboard → Handlungsbedarf için aşağıdaki kutu geçerli.'],
                 ['security', '🛡️ Güvenlik bekçisi', 'Sunucuda şüpheli bir şey görülürse (gizli program, madenci, yeni SSH anahtarı, şifreli giriş, kapatılan firewall…) hemen e-posta. Aynı sorun için günde en fazla bir hatırlatma. Kapalıyken de kontrol sürer, yalnızca e-posta gitmez — yukarıdaki „Sunucu Güvenliği“ kartında görünür.'],
                 ['card_charge', '💳 Kart çekilmedi', `Saat ${alertSettings.card_charge_deadline || '20:15'}’te yarının kartlı fahrt’larından çekilmemiş olan varsa tek e-posta (listeyle); dashboard’da da o saatten sonra kırmızı uyarı. Müşteri hatırlatmaları 20:00’de gider.`],
               ] as [AlertCategory, string, string][]).map(([key, label, hint]) => (
@@ -731,6 +733,7 @@ export default function SystemTab({ token }: { token: string }) {
                         token={token}
                         emails={alertSettings.calendar_missing_emails ?? ''}
                         quiet={alertSettings.calendar_missing_quiet || 'off'}
+                        dashboard={alertSettings.calendar_missing_dashboard !== false}
                         saving={alertSaving}
                         onSave={saveAlertSettings}
                         onPreview={() => previewMail('calendar-missing')}

@@ -1,7 +1,8 @@
 // Hourly reminder for bookings nobody has copied into the operator's Google Calendar yet. The
 // calendar is what the drivers plan from, so a booking missing there is a ride nobody drives.
 // One mail to the admin and the partner, every full hour until the entry exists; no mail when
-// nothing is missing. Switched in System → E-posta Uyarıları (category calendar_missing).
+// nothing is missing. Switched in System → E-posta Uyarıları (category calendar_missing). The same
+// list also shows in the dashboard's Handlungsbedarf (calendar_missing_dashboard).
 //
 // A leg counts when it is still ahead and the booking is active: 'new' / 'confirmed', or a
 // round trip whose outbound leg auto-completed the booking while the return is still to come.
@@ -17,7 +18,7 @@ import { berlinDateSql, berlinNowSql } from '../utils/berlinTime';
 import { returnLeg } from '../utils/returnLeg';
 import { getAlertConfig, claimCooldown, setStateValue, getStateValue, CalendarMissingQuiet } from './alertCenter';
 import { fetchEventsRange, CalEvent } from './calendarInvoice';
-import { calendarId, classifyEvents, loadBookingRefs, BookingRef } from './calendarRides';
+import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, BookingRef } from './calendarRides';
 
 // A fresh booking gets this long to be entered by hand before it is reported.
 const GRACE_MIN = 30;
@@ -207,8 +208,11 @@ async function loadIgnored(): Promise<Set<string>> {
   return new Set(rows.map((r) => r.state_key));
 }
 
-/** Current state, read fresh from Google. null = no calendar connected. Throws if Google fails. */
-export async function currentMissing(): Promise<MissingLeg[] | null> {
+/**
+ * Current state. null = no calendar connected. Throws if Google fails.
+ * The mail reads Google fresh; the dashboard may use the shared 5-minute cache.
+ */
+export async function currentMissing(opts: { cached?: boolean } = {}): Promise<MissingLeg[] | null> {
   const id = await calendarId();
   if (!id) return null;
   const now = berlinNowSql().replace(' ', 'T').slice(0, 16);
@@ -230,7 +234,10 @@ export async function currentMissing(): Promise<MissingLeg[] | null> {
     const d = (b.return_datetime && wall(b.return_datetime) > wall(b.pickup_datetime) ? wall(b.return_datetime) : wall(b.pickup_datetime)).slice(0, 10);
     return d > max ? d : max;
   }, berlinDateSql(1));
-  const { events } = await fetchEventsRange(id, berlinDateSql(-2), lastDay);
+  const events = opts.cached
+    ? await calendarEventsCached(berlinDateSql(-2), lastDay)
+    : (await fetchEventsRange(id, berlinDateSql(-2), lastDay)).events;
+  if (!events) return null;
   // No entries at all is an unreadable or wrong calendar, never a real state of this business.
   if (!events.length) throw new Error('Kalender liefert keine Termine');
   const legs = findMissingLegs(events, bookings, now, ignored);
@@ -305,6 +312,13 @@ export async function calendarMissingStatus() {
     last: last ? JSON.parse(last) : null,
     ...(open.length ? { ...missingMail(open), empty: false } : { subject: '', html: '', empty: true }),
   };
+}
+
+/** Handlungsbedarf on the dashboard: independent of the mail switch, same list as the mail. */
+export async function calendarMissingReminder(): Promise<MissingLeg[]> {
+  const cfg = await getAlertConfig();
+  if (!cfg.calendar_missing_dashboard) return [];
+  return ((await currentMissing({ cached: true })) || []).filter((l) => !l.ignored);
 }
 
 /** Leave a leg out of the mail (it really isn't going into the calendar), or take it back in. */

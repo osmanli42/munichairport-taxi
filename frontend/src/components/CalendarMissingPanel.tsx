@@ -29,12 +29,13 @@ interface Leg {
 
 const when = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)} ${t.slice(11, 16)}`;
 
-export default function CalendarMissingPanel({ token, emails, quiet, saving, onSave, onPreview }: {
+export default function CalendarMissingPanel({ token, emails, quiet, dashboard, saving, onSave, onPreview }: {
   token: string | null;
   emails: string;
   quiet: string;
+  dashboard: boolean;
   saving: boolean;
-  onSave: (patch: { calendar_missing_emails?: string; calendar_missing_quiet?: string }) => void;
+  onSave: (patch: { calendar_missing_emails?: string; calendar_missing_quiet?: string; calendar_missing_dashboard?: boolean }) => void;
   onPreview: () => void;
 }) {
   const [legs, setLegs] = useState<Leg[] | null>(null);
@@ -96,6 +97,15 @@ export default function CalendarMissingPanel({ token, emails, quiet, saving, onS
           >
             {QUIET_OPTIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>
+        </label>
+        <label className="inline-flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={dashboard}
+            onChange={(e) => onSave({ calendar_missing_dashboard: e.target.checked })}
+            disabled={saving}
+          />
+          Handlungsbedarf’ta göster
         </label>
         <button onClick={onPreview} className="font-semibold text-blue-600 hover:underline">E-postayı önizle</button>
       </div>

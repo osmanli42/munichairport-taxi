@@ -14,6 +14,7 @@ import { berlinDateSql, berlinMidnightUtcSql, berlinNowSql } from '../utils/berl
 import { MAX_ATTEMPTS as RECHNUNG_MAX_ATTEMPTS } from '../services/autoRechnungJob';
 import { unchargedCards, cardDeadline } from '../services/cardChargeReminder';
 import { CalEvent } from '../services/calendarInvoice';
+import { calendarMissingReminder } from '../services/calendarMissingAlert';
 import { calendarId, calendarEventsCached, classifyEvents, loadBookingRefs, RE_CAL_CANCELLED, calendarSyncStatus, syncAll } from '../services/calendarRides';
 import { backlinkReminder } from '../services/seo/backlinks';
 import { indexReminder } from '../services/seo/indexing';
@@ -294,6 +295,8 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
     const flightQuotaDue = await flightQuotaReminder().catch(() => null);
     // Marketing-Anlass mit offenem Erinnerungsfenster (Ferien, Weihnachten, …) — Admin → Marketing
     const marketing = await marketingPending;
+    // Buchungen ohne Termin im Google Kalender (System → E-posta Uyarıları); Kalender nicht lesbar = keine Zeile.
+    const calendarMissing = await calendarMissingReminder().catch(() => []);
     const [unconfirmed, failedCharges, unpaidTransfers, invoiceFailed, openStatus, mailFailed] = await Promise.all([
       // Not yet confirmed, ride still ahead.
       attentionQuery('unconfirmed', `b.status = 'new' AND ${wallSql(lastLegSql)} >= ?`, [todayStart]),
@@ -405,6 +408,7 @@ router.get('/', authenticateAdmin, async (_req: AuthRequest, res: Response): Pro
           calendar: visible(monthEnd.calendar, (c: any) => `monthEndCalendar:${c.month}`),
         } : null,
         marketing: marketing ? visible(marketing, (m) => `marketing:${m.id}:${m.date}`) : null,
+        calendarMissing: visible(calendarMissing, (l) => `calMissing:${l.booking_id}:${l.time}`),
       },
       attentionDismissed,
       card_deadline: await cardDeadline(),
