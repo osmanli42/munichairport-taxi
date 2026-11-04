@@ -76,22 +76,27 @@ const eventText = (ev: CalEvent) => `${ev.summary}\n${ev.location}\n${ev.descrip
 
 // The same person's entry without the number: the surname, the phone's last digits
 // or the flight number. Only ever checked close to the leg's time on the same day.
-function softMatch(b: MissingBooking, leg: 'outbound' | 'return', text: string): boolean {
+function softMatch(b: MissingBooking, text: string): boolean {
   const folded = fold(text);
   // Without the first name: "Anna" alone says little, the surname does.
   const parts = fold(b.name || '').split(/[^\p{L}]+/u).filter(Boolean);
   if ((parts.length > 1 ? parts.slice(1) : parts).some((n) => n.length >= 4 && folded.includes(n))) return true;
   const phone = String(b.phone || '').replace(/\D/g, '');
   if (phone.length >= 7 && text.replace(/\D/g, '').includes(phone.slice(-7))) return true;
-  const flight = String((leg === 'return' ? b.return_flight_number : b.flight_number) || '').replace(/\s/g, '').toLowerCase();
-  return flight.length >= 4 && folded.replace(/\s/g, '').includes(flight);
+  // Either field for either leg: round trips usually hold the return flight in flight_number too.
+  const compact = folded.replace(/\s/g, '');
+  return [b.flight_number, b.return_flight_number].some((f) => {
+    const flight = String(f || '').replace(/\s/g, '').toLowerCase();
+    return flight.length >= 4 && compact.includes(flight);
+  });
 }
 
 /**
  * Which legs still ahead of `now` have no calendar entry. Every leg (past ones too) claims one
  * entry, so the outbound entry of a round trip never passes as its return:
  *   1. an entry linked to the booking on the leg's day — by number or by classifyEvents' twin check
- *   2. an entry without any link, same day and close by, that names the customer
+ *   2. an entry no booking claimed in step 1, same day and close by, that names the customer
+ *      (it may carry the number of a cancelled or older booking, e.g. after a rebooking)
  *   3. an entry with the booking's number on another day — a ride moved in the calendar
  */
 export function findMissingLegs(
@@ -99,64 +104,62 @@ export function findMissingLegs(
 ): MissingLeg[] {
   const byNumber = new Map(bookings.map((b) => [b.booking_number, b]));
   const linked = new Map<number, CalEvent[]>();
-  const unlinked: CalEvent[] = [];
+  const all: CalEvent[] = [];
   for (const c of classifyEvents(events, bookings)) {
+    all.push(c.event);
     const ids = new Set<number>(c.booking ? [c.booking.id] : []);
     for (const n of eventText(c.event).match(RE_BOOKING_NO) || []) {
       const b = byNumber.get(n);
       if (b) ids.add(b.id);
     }
-    if (!ids.size) unlinked.push(c.event);
     for (const id of ids) {
       if (!linked.has(id)) linked.set(id, []);
       linked.get(id)!.push(c.event);
     }
   }
 
-  const usedSoft = new Set<string>();
-  const out: MissingLeg[] = [];
+  type Leg = { b: MissingBooking; leg: 'outbound' | 'return'; time: string; from: string | null; to: string | null };
+  const claimed = new Set<CalEvent>();
+  const own = new Map<number, CalEvent[]>();
+  let open: Leg[] = [];
   for (const b of bookings) {
     if (b.status === 'cancelled') continue;
-    const roundtrip = b.trip_type === 'roundtrip' && !!b.return_datetime;
-    const legs: Array<{ leg: 'outbound' | 'return'; time: string; from: string | null; to: string | null }> = [
-      { leg: 'outbound', time: wall(b.pickup_datetime), from: b.pickup_address, to: b.dropoff_address },
-    ];
-    if (roundtrip) {
+    const legs: Leg[] = [{ b, leg: 'outbound', time: wall(b.pickup_datetime), from: b.pickup_address, to: b.dropoff_address }];
+    if (b.trip_type === 'roundtrip' && b.return_datetime) {
       const r = returnLeg(b);
-      legs.push({ leg: 'return', time: wall(b.return_datetime), from: r.from || null, to: r.to || null });
+      legs.push({ b, leg: 'return', time: wall(b.return_datetime), from: r.from || null, to: r.to || null });
     }
+    const mine = [...(linked.get(b.id) || [])];
+    own.set(b.id, mine);
+    for (const l of legs) {
+      const i = mine.findIndex((ev) => ev.start!.slice(0, 10) === l.time.slice(0, 10));
+      if (i < 0) { open.push(l); continue; }
+      claimed.add(mine[i]);
+      mine.splice(i, 1);
+    }
+  }
+  open = open.filter((l) => {
+    const min = wallMinutes(l.time);
+    const hit = all.find((ev) => !claimed.has(ev)
+      && ev.start!.slice(0, 10) === l.time.slice(0, 10)
+      && Math.abs(wallMinutes(ev.start!) - min) <= SOFT_MATCH_WINDOW_MIN
+      && softMatch(l.b, eventText(ev)));
+    if (hit) claimed.add(hit);
+    return !hit;
+  }).filter((l) => !own.get(l.b.id)!.shift());
 
-    const own = [...(linked.get(b.id) || [])];
-    const take = (ev: CalEvent) => { own.splice(own.indexOf(ev), 1); };
-    const open = legs.filter((l) => {
-      const hit = own.find((ev) => ev.start!.slice(0, 10) === l.time.slice(0, 10));
-      if (hit) take(hit);
-      return !hit;
-    }).filter((l) => {
-      const min = wallMinutes(l.time);
-      const hit = unlinked.find((ev) => !usedSoft.has(ev.uid)
-        && ev.start!.slice(0, 10) === l.time.slice(0, 10)
-        && Math.abs(wallMinutes(ev.start!) - min) <= SOFT_MATCH_WINDOW_MIN
-        && softMatch(b, l.leg, eventText(ev)));
-      if (hit) usedSoft.add(hit.uid);
-      return !hit;
-    }).filter((l) => {
-      const hit = own[0];
-      if (hit) take(hit);
-      return !hit;
+  const out: MissingLeg[] = [];
+  for (const l of open) {
+    const b = l.b;
+    if (l.time < now || b.fresh) continue;
+    const active = b.status === 'new' || b.status === 'confirmed'
+      || (b.status === 'completed' && l.leg === 'return' && wall(b.pickup_datetime) < now);
+    if (!active) continue;
+    out.push({
+      booking_id: b.id, booking_number: b.booking_number, name: b.name, phone: b.phone,
+      price: Number(b.price) || 0, status: b.status, leg: l.leg, roundtrip: b.trip_type === 'roundtrip' && !!b.return_datetime,
+      time: l.time, from: l.from, to: l.to, ignored: ignored.has(ignoreKey(b.id, l.time)),
     });
-
-    for (const l of open) {
-      if (l.time < now || b.fresh) continue;
-      const active = b.status === 'new' || b.status === 'confirmed'
-        || (b.status === 'completed' && l.leg === 'return' && wall(b.pickup_datetime) < now);
-      if (!active) continue;
-      out.push({
-        booking_id: b.id, booking_number: b.booking_number, name: b.name, phone: b.phone,
-        price: Number(b.price) || 0, status: b.status, leg: l.leg, roundtrip,
-        time: l.time, from: l.from, to: l.to, ignored: ignored.has(ignoreKey(b.id, l.time)),
-      });
-    }
   }
   return out.sort((a, b) => a.time.localeCompare(b.time));
 }
