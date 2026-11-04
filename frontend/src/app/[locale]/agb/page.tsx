@@ -19,7 +19,11 @@ const sections = [
     num: '§ 2',
     title: 'Vertragsschluss',
     content: () => (
-      <p>Eine Buchung kommt durch die Bestätigung seitens Flughafen-München.TAXI zustande. Die Buchungsanfrage des Kunden (online, telefonisch oder per WhatsApp) stellt ein Angebot zum Vertragsschluss dar. Flughafen-München.TAXI kann dieses Angebot annehmen oder ablehnen.</p>
+      <div className="space-y-3">
+        <p>Die Buchungsanfrage des Kunden (online, telefonisch oder per WhatsApp) stellt ein Angebot zum Abschluss eines Beförderungsvertrags dar. Flughafen-München.TAXI kann dieses Angebot annehmen oder ablehnen.</p>
+        <p>Die nach einer Buchung automatisch versandte E-Mail „Buchung eingegangen“ bestätigt lediglich den Eingang der Buchungsanfrage. Sie ist keine Buchungsbestätigung und stellt keine Annahme des Angebots dar; durch sie allein kommt kein Beförderungsvertrag zustande.</p>
+        <p>Der Beförderungsvertrag kommt erst zustande, wenn Flughafen-München.TAXI die Buchung ausdrücklich bestätigt hat. Hierfür sind sowohl eine gesonderte E-Mail „Buchung bestätigt“ als auch eine Bestätigung per WhatsApp erforderlich. Bis dahin besteht kein Anspruch auf Beförderung. Dies gilt auch für die fremdsprachigen Fassungen dieser E-Mails.</p>
+      </div>
     ),
   },
   {
