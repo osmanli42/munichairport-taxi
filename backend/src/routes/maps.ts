@@ -196,7 +196,8 @@ router.get('/address-places', async (req: Request, res: Response): Promise<void>
         displayName?: { text: string };
         shortFormattedAddress?: string;
         types?: string[];
-        addressComponents?: { longText: string; types: string[] }[];
+        // Places (New) liefert teils Einträge ohne types (z. B. Name eines Betriebs an erster Stelle).
+        addressComponents?: { longText: string; types?: string[] }[];
       }[];
     };
 
@@ -206,8 +207,8 @@ router.get('/address-places', async (req: Request, res: Response): Promise<void>
       .filter(p => {
         const types = p.types || [];
         if (!p.displayName?.text || types.some(t => NON_BUSINESS_TYPES.includes(t))) return false;
-        const pRoute = p.addressComponents?.find(c => c.types.includes('route'))?.longText;
-        const pNumber = p.addressComponents?.find(c => c.types.includes('street_number'))?.longText;
+        const pRoute = p.addressComponents?.find(c => c.types?.includes('route'))?.longText;
+        const pNumber = p.addressComponents?.find(c => c.types?.includes('street_number'))?.longText;
         return !!pRoute && !!pNumber && normStreet(pRoute) === wantStreet && normNumber(pNumber) === wantNumber;
       })
       .map(p => ({
