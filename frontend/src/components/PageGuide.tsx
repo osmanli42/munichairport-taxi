@@ -15,7 +15,7 @@ const ABOUT: Record<Lang, Guide> = {
     intro:
       'Flughafen-München.TAXI ist ein Taxiunternehmen aus Freising und seit über 20 Jahren am Flughafen München tätig. Seitdem haben wir mehr als 100.000 Fahrgäste zum Flughafen gebracht oder dort abgeholt: Geschäftsreisende, Familien, Urlauber und Messegäste. So läuft eine Fahrt mit uns ab:',
     blocks: [
-      { h3: '1. Buchen mit Festpreis', p: 'Sie geben Abholadresse, Ziel, Datum und Uhrzeit ein und sehen sofort den Preis für Kombi, Van und Großraumtaxi. Der Preis steht bei der Buchung fest. Danach erhalten Sie eine Bestätigung mit Buchungsnummer per E-Mail.' },
+      { h3: '1. Buchen mit Festpreis', p: 'Sie geben Abholadresse, Ziel, Datum und Uhrzeit ein und sehen sofort den Preis für Kombi, Van und Großraumtaxi. Der Preis steht bei der Buchung fest. Danach erhalten Sie eine Eingangsbestätigung mit Buchungsnummer per E-Mail; die endgültige Bestätigung folgt separat per E-Mail und WhatsApp.' },
       { h3: '2. Ansehen oder stornieren', p: 'Unter „Buchung verwalten“ sehen Sie Ihre Fahrt mit Buchungsnummer und E-Mail-Adresse. Bis 3 Stunden vor der Abholung stornieren Sie kostenlos.' },
       { h3: '3. Abholung am Flughafen', p: 'Bei Ankünften verfolgen wir Ihren Flug. Ihr Fahrer wartet mit Namensschild im Ankunftsbereich von Terminal 1 oder Terminal 2 und bei Verspätung bis zu 60 Minuten kostenlos.' },
       { h3: '4. Fahrer live verfolgen', p: 'Vor der Abholung bekommen Sie einen Link, über den Sie auf der Karte sehen, wo Ihr Fahrer gerade ist. So wissen Sie genau, wann er vor der Tür steht.' },
@@ -30,7 +30,7 @@ const ABOUT: Record<Lang, Guide> = {
     intro:
       'Flughafen-München.TAXI is a taxi company from Freising and has been working at Munich Airport for more than 20 years. Since then we have driven more than 100,000 passengers to and from the airport: business travellers, families, holidaymakers and trade fair visitors. This is how a ride with us works:',
     blocks: [
-      { h3: '1. Book at a fixed price', p: 'Enter pickup address, destination, date and time and you see the price for estate car, van and large taxi straight away. The price is fixed when you book. You then receive a confirmation with your booking number by e-mail.' },
+      { h3: '1. Book at a fixed price', p: 'Enter pickup address, destination, date and time and you see the price for estate car, van and large taxi straight away. The price is fixed when you book. You then receive an acknowledgement of receipt with your booking number by e-mail; the final confirmation follows separately by e-mail and WhatsApp.' },
       { h3: '2. View or cancel', p: 'Under “Manage booking” you see your ride with booking number and e-mail address. Cancellation is free of charge up to 3 hours before pickup.' },
       { h3: '3. Pickup at the airport', p: 'For arrivals we track your flight. Your driver waits with a name sign in the arrivals area of Terminal 1 or Terminal 2, up to 60 minutes free of charge if your flight is late.' },
       { h3: '4. Follow your driver live', p: 'Before pickup you receive a link that shows on a map where your driver is right now, so you know exactly when the car is at the door.' },
@@ -45,7 +45,7 @@ const ABOUT: Record<Lang, Guide> = {
     intro:
       'Flughafen-München.TAXI, Freising merkezli bir taksi firmasıdır ve 20 yılı aşkın süredir Münih Havalimanı’nda hizmet vermektedir. Bu sürede 100.000’den fazla yolcuyu havalimanına götürdük veya oradan aldık: iş seyahatindekiler, aileler, tatilciler ve fuar ziyaretçileri. Bizimle bir yolculuk şöyle işler:',
     blocks: [
-      { h3: '1. Sabit fiyatla rezervasyon', p: 'Alış adresini, varış noktasını, tarih ve saati girersiniz; Kombi, Van ve büyük taksi fiyatını hemen görürsünüz. Fiyat rezervasyon anında sabitlenir. Ardından rezervasyon numaranızla bir onay e-postası alırsınız.' },
+      { h3: '1. Sabit fiyatla rezervasyon', p: 'Alış adresini, varış noktasını, tarih ve saati girersiniz; Kombi, Van ve büyük taksi fiyatını hemen görürsünüz. Fiyat rezervasyon anında sabitlenir. Ardından rezervasyon numaranızla bir alındı e-postası alırsınız; kesin onay ayrıca e-posta ve WhatsApp ile gönderilir.' },
       { h3: '2. Görüntüleme veya iptal', p: '“Rezervasyonu yönet” bölümünde rezervasyon numarası ve e-posta adresinizle yolculuğunuzu görürsünüz. Alıştan 3 saat öncesine kadar iptal ücretsizdir.' },
       { h3: '3. Havalimanında karşılama', p: 'Varışlarda uçuşunuzu takip ederiz. Şoförünüz Terminal 1 veya Terminal 2 geliş salonunda isim tabelasıyla bekler; uçuş gecikirse 60 dakikaya kadar ücretsiz.' },
       { h3: '4. Şoförünüzü canlı takip edin', p: 'Alıştan önce bir bağlantı alırsınız; haritada şoförünüzün o an nerede olduğunu görür, aracın kapıda ne zaman olacağını tam olarak bilirsiniz.' },

@@ -66,7 +66,7 @@ const adminPay = (m: string) => ADMIN_PAY[m] || 'Bar';
 
 const T: Record<Lang, Record<string, string>> = {
   de: {
-    subject: 'Buchung eingegangen', status: 'Buchung eingegangen', hello: 'Hallo',
+    subject: 'Ihre Buchungsanfrage eingegangen', status: 'Ihre Buchungsanfrage eingegangen', hello: 'Hallo',
     intro: 'vielen Dank für Ihre Buchung! Wir haben Ihre Anfrage erhalten und melden uns in Kürze bei Ihnen.',
     bookingNo: 'Buchungsnummer', outbound: 'Hinfahrt', ret: 'Rückfahrt', trip: 'Ihre Fahrt',
     pickup: 'Abholung', stop: 'Zwischenstopp', dropoff: 'Ziel', approx: 'ca.', min: 'Min.',
@@ -86,7 +86,7 @@ const T: Record<Lang, Record<string, string>> = {
     questions: 'Fragen? Wir sind rund um die Uhr erreichbar.',
   },
   en: {
-    subject: 'Booking received', status: 'Booking received', hello: 'Hello',
+    subject: 'Your booking request has been received', status: 'Your booking request has been received', hello: 'Hello',
     intro: 'thank you for your booking! We have received your request and will get back to you shortly.',
     bookingNo: 'Booking number', outbound: 'Outbound', ret: 'Return', trip: 'Your trip',
     pickup: 'Pickup', stop: 'Stop', dropoff: 'Destination', approx: 'approx.', min: 'min',
@@ -106,7 +106,7 @@ const T: Record<Lang, Record<string, string>> = {
     questions: 'Questions? We are available around the clock.',
   },
   tr: {
-    subject: 'Rezervasyon alındı', status: 'Rezervasyon alındı', hello: 'Merhaba',
+    subject: 'Rezervasyon talebiniz alındı', status: 'Rezervasyon talebiniz alındı', hello: 'Merhaba',
     intro: 'rezervasyonunuz için teşekkürler! Talebinizi aldık, en kısa sürede size dönüş yapacağız.',
     bookingNo: 'Rezervasyon numarası', outbound: 'Gidiş', ret: 'Dönüş', trip: 'Yolculuğunuz',
     pickup: 'Alış', stop: 'Ara durak', dropoff: 'Varış', approx: 'yakl.', min: 'dk',

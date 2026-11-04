@@ -113,7 +113,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
     trustTop: [
       { title: 'Festpreisgarantie', text: 'Keine versteckten Kosten' },
       { title: 'Kindersitz kostenlos', text: 'Auf Anfrage' },
-      { title: 'Sofortbestätigung', text: 'Direkt per E-Mail' },
+      { title: 'Persönliche Bestätigung', text: 'Per E-Mail & WhatsApp' },
       { title: 'Kostenlose Stornierung', text: 'Bis 3 Stunden vorher' },
     ],
     trustBottom: [
@@ -135,7 +135,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
     trustTop: [
       { title: 'Fixed price guarantee', text: 'No hidden costs' },
       { title: 'Free child seat', text: 'On request' },
-      { title: 'Instant confirmation', text: 'Directly by email' },
+      { title: 'Personal confirmation', text: 'By email & WhatsApp' },
       { title: 'Free cancellation', text: 'Up to 3 hours before' },
     ],
     trustBottom: [
@@ -157,7 +157,7 @@ const DESIGN: Record<'de' | 'en' | 'tr', DesignText> = {
     trustTop: [
       { title: 'Sabit fiyat garantisi', text: 'Gizli maliyet yok' },
       { title: 'Ücretsiz çocuk koltuğu', text: 'Talep üzerine' },
-      { title: 'Anında onay', text: 'Doğrudan e-posta ile' },
+      { title: 'Kişisel onay', text: 'E-posta ve WhatsApp ile' },
       { title: 'Ücretsiz iptal', text: '3 saat öncesine kadar' },
     ],
     trustBottom: [

@@ -451,9 +451,9 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {(() => {
             const tp: Record<string, { heading: string; items: string[] }> = {
-              de: { heading: 'Unsere Versprechen an Sie', items: ['Kostenloser Storno bis 3 Std.', '60 Min. Gratis-Wartezeit', 'Sofortige Bestätigung', 'Kindersitze kostenlos', 'Vollversicherte Fahrzeuge', '100.000+ zufriedene Kunden'] },
-              en: { heading: 'Our promises to you', items: ['Free cancellation up to 3 hrs', '60 min. free waiting time', 'Instant confirmation', 'Free child seats', 'Fully insured vehicles', '100,000+ happy customers'] },
-              tr: { heading: 'Size olan vaatlerimiz', items: ['3 saate kadar ücretsiz iptal', '60 dk. ücretsiz bekleme', 'Anında onay', 'Ücretsiz çocuk koltuğu', 'Tam sigortalı araçlar', '100.000+ memnun müşteri'] },
+              de: { heading: 'Unsere Versprechen an Sie', items: ['Kostenloser Storno bis 3 Std.', '60 Min. Gratis-Wartezeit', 'Persönliche Bestätigung', 'Kindersitze kostenlos', 'Vollversicherte Fahrzeuge', '100.000+ zufriedene Kunden'] },
+              en: { heading: 'Our promises to you', items: ['Free cancellation up to 3 hrs', '60 min. free waiting time', 'Personal confirmation', 'Free child seats', 'Fully insured vehicles', '100,000+ happy customers'] },
+              tr: { heading: 'Size olan vaatlerimiz', items: ['3 saate kadar ücretsiz iptal', '60 dk. ücretsiz bekleme', 'Kişisel onay', 'Ücretsiz çocuk koltuğu', 'Tam sigortalı araçlar', '100.000+ memnun müşteri'] },
             };
             const tp2 = tp[locale] || tp.de;
             const tpIcons = [Ban, Plane, MailCheck, Baby, ShieldCheck, Users];

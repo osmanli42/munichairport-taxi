@@ -171,7 +171,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
     stepsTitle: 'How it works',
     steps: [
       ['Enter address & date', 'Price appears instantly – fixed, no taximeter.'],
-      ['Book in 1 minute', 'Pay cash, by card or invoice. Confirmation by e-mail.'],
+      ['Book in 1 minute', 'Pay cash, by card or invoice. Confirmation by e-mail and WhatsApp.'],
       ['Driver at your door', 'On arrival we track your flight and wait with a name sign.'],
     ],
     localTitle: `Taxi in ${c} – good to know`, pickupsTitle: 'Popular pickup points', tipsTitle: 'Tips',
@@ -192,7 +192,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
       { q: 'Do you have child seats?', a: 'Yes, child seats and boosters are free of charge – just state the age of your child when booking.' },
     ],
     moreTitle: 'More taxi routes to Munich Airport', moreSub: '→ Munich Airport', moreLabel: (n: string) => `Taxi ${n} – Munich Airport`,
-    ctaTitle: `Book your taxi from ${c} now`, ctaSub: `Fixed price from ${m(p.kombi)} · 24/7 · instant confirmation`, ctaBook: 'Calculate price',
+    ctaTitle: `Book your taxi from ${c} now`, ctaSub: `Fixed price from ${m(p.kombi)} · 24/7 · personal confirmation`, ctaBook: 'Calculate price',
   };
   if (l === 'tr') return {
     home: 'Ana sayfa', blog: 'Münih Havalimanı taksi', crumb: `${c} – Münih Havalimanı taksi`,
@@ -227,7 +227,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
     stepsTitle: 'Nasıl çalışır?',
     steps: [
       ['Adres ve tarihi girin', 'Fiyat hemen görünür – sabit, taksimetre yok.'],
-      ['1 dakikada rezervasyon', 'Nakit, kart veya fatura. Onay e-postayla gelir.'],
+      ['1 dakikada rezervasyon', 'Nakit, kart veya fatura. Onay e-posta ve WhatsApp ile gelir.'],
       ['Şoför kapınızda', 'Varışta uçuşunuzu takip eder, isim tabelasıyla bekleriz.'],
     ],
     localTitle: `${c}’da taksi – bilmeniz gerekenler`, pickupsTitle: 'Sık alış noktaları', tipsTitle: 'İpuçları',
@@ -248,7 +248,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
       { q: 'Çocuk koltuğu var mı?', a: 'Evet, çocuk koltuğu ve yükseltici ücretsizdir – rezervasyonda çocuğun yaşını belirtmeniz yeterli.' },
     ],
     moreTitle: 'Münih Havalimanı’na diğer taksi güzergâhları', moreSub: '→ Münih Havalimanı', moreLabel: (n: string) => `${n} – Münih Havalimanı`,
-    ctaTitle: `${c}’dan taksinizi şimdi ayırtın`, ctaSub: `Sabit fiyat ${m(p.kombi)}’dan · 7/24 · anında onay`, ctaBook: 'Fiyat hesapla',
+    ctaTitle: `${c}’dan taksinizi şimdi ayırtın`, ctaSub: `Sabit fiyat ${m(p.kombi)}’dan · 7/24 · kişisel onay`, ctaBook: 'Fiyat hesapla',
   };
   return {
     home: 'Startseite', blog: 'Taxi Flughafen München', crumb: `Taxi ${c} – Flughafen München`,
@@ -283,7 +283,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
     stepsTitle: 'So einfach geht’s',
     steps: [
       ['Adresse & Termin eingeben', 'Der Preis erscheint sofort – fest, ohne Taxameter.'],
-      ['In 1 Minute buchen', 'Bar, Karte oder Rechnung. Bestätigung per E-Mail.'],
+      ['In 1 Minute buchen', 'Bar, Karte oder Rechnung. Bestätigung per E-Mail und WhatsApp.'],
       ['Fahrer vor der Tür', 'Bei Ankunft verfolgen wir Ihren Flug und warten mit Namensschild.'],
     ],
     localTitle: `Taxi in ${c} – gut zu wissen`, pickupsTitle: 'Beliebte Abholorte', tipsTitle: 'Tipps',
@@ -304,7 +304,7 @@ function texts(l: Lang, city: CityData, r: ReturnType<typeof route>, p: Prices) 
       { q: 'Gibt es Kindersitze?', a: 'Ja, Kindersitze und Sitzerhöhungen sind kostenlos – bitte bei der Buchung das Alter des Kindes angeben.' },
     ],
     moreTitle: 'Weitere Taxi-Strecken zum Flughafen München', moreSub: '→ Flughafen München', moreLabel: (n: string) => `Taxi ${n} – Flughafen München`,
-    ctaTitle: `Jetzt Taxi von ${c} buchen`, ctaSub: `Festpreis ab ${m(p.kombi)} · rund um die Uhr · Sofortbestätigung`, ctaBook: 'Preis berechnen',
+    ctaTitle: `Jetzt Taxi von ${c} buchen`, ctaSub: `Festpreis ab ${m(p.kombi)} · rund um die Uhr · Persönliche Bestätigung`, ctaBook: 'Preis berechnen',
   };
 }
 

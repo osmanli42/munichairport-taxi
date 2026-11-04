@@ -34,7 +34,7 @@ export default function MailOpenCard() {
             <h3 className="font-bold text-gray-900 text-lg">Buchungsmail geöffnet → WhatsApp</h3>
           </div>
           <p className="text-sm text-gray-600 max-w-2xl">
-            Öffnet ein Kunde die Mail „Buchung eingegangen“ oder Ihre Stornierungsmail, kommt je Mail einmalig eine WhatsApp an Sie
+            Öffnet ein Kunde die Mail „Ihre Buchungsanfrage eingegangen“ oder Ihre Stornierungsmail, kommt je Mail einmalig eine WhatsApp an Sie
             (gleicher Kanal wie „Neue Buchung“, <b>kein Resend-Kontingent</b>). Im Buchungsdetail steht
             „E-Mail geöffnet · Uhrzeit“. Gilt für Mails, die nach dem Einschalten gesendet werden. Für den Kunden unsichtbar (1×1-Bild ohne Text). Automatische Sicherheitsprüfungen von Google/Microsoft direkt nach dem Versand werden erkannt und nicht gemeldet (im Buchungsdetail als „🛡 Scan“).
           </p>

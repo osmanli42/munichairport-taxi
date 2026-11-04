@@ -46,8 +46,8 @@
     "price_label": "Tahmini Fiyat",
     "calculating": "Fiyat hesaplanıyor...",
     "enter_addresses": "Lütfen alış ve hedef adreslerini girin",
-    "success_title": "Rezervasyon Başarılı!",
-    "success_message": "Rezervasyon talebiniz başarıyla gönderildi. {email} adresine onay e-postası gönderilecek.",
+    "success_title": "Rezervasyonunuz Alındı!",
+    "success_message": "Rezervasyon talebiniz başarıyla gönderildi. {email} adresine alındı e-postası gönderilecek; kesin onay ayrıca e-posta ve WhatsApp ile gelir.",
     "success_booking_number": "Rezervasyon Numarası",
     "error_title": "Hata",
     "error_message": "Rezervasyon gönderilemedi. Lütfen tekrar deneyin veya bizi arayın.",
@@ -233,8 +233,8 @@
     "fixed_price_sub": "Taksimetre yok – rezervasyonda fiyat belirlenir",
     "flight_wait": "60 dk ücretsiz bekleme",
     "flight_wait_sub": "Uçuş gecikmesinde ücretsiz bekliyoruz",
-    "confirmation": "Anında e-posta onayı",
-    "confirmation_sub": "Rezervasyondan hemen sonra gelen kutunuzda",
+    "confirmation": "Kişisel onay",
+    "confirmation_sub": "E-posta ve WhatsApp ile",
     "child_seat": "Ücretsiz çocuk koltuğu",
     "child_seat_sub": "Bebek taşıyıcı, çocuk koltuğu & yükseltici",
     "secure_payment": "Güvenli ödeme",
@@ -249,7 +249,7 @@
     "no_hidden_sub": "Gördüğünüzü ödersiniz – fazlası yok",
     "checkout_storno": "✅ 3 saate kadar ücretsiz iptal",
     "checkout_price": "💰 Sabit fiyat garantili",
-    "checkout_confirm": "📧 Anında e-posta onayı"
+    "checkout_confirm": "📧 E-posta ve WhatsApp ile onay"
   },
   "cookie": {
     "title": "🍪 Çerez Ayarları",
@@ -395,7 +395,7 @@
       }
     ],
     "ctaTitle": "{city}'den taksinizi şimdi rezerve edin",
-    "ctaSubtitle": "{price} €'dan başlayan sabit fiyat · 7/24 hizmet · Anında onay",
+    "ctaSubtitle": "{price} €'dan başlayan sabit fiyat · 7/24 hizmet · Kişisel onay",
     "ctaBook": "Online rezervasyon",
     "ctaCall": "Ara",
     "seoTitle": "Taksi {city} Münih Havalimanı – {price} €'dan başlayan sabit fiyat",

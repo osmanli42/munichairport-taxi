@@ -442,7 +442,7 @@ export default async function TaxiFlughafenMuenchenPage() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <section className="rounded-3xl bg-gradient-to-br from-gold-400 to-gold-500 p-8 text-center md:p-12">
           <h2 className="text-2xl font-extrabold text-primary-900 md:text-3xl">Jetzt Taxi zum Flughafen München buchen</h2>
-          <p className="mt-2 text-primary-900/80">Festpreis ab {eur(from)} · rund um die Uhr · Sofortbestätigung</p>
+          <p className="mt-2 text-primary-900/80">Festpreis ab {eur(from)} · rund um die Uhr · Persönliche Bestätigung</p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <a href="#booking" className="rounded-xl bg-primary-900 px-8 py-3 font-bold text-white transition hover:bg-primary-800">Preis berechnen →</a>
             <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-primary-900 px-8 py-3 font-bold text-primary-900 transition hover:bg-primary-900 hover:text-white">

@@ -24,7 +24,7 @@ export const faqData: Record<string, FAQData> = {
       {
         label: '🚗 Buchung & Preise',
         items: [
-          { question: 'Wie buche ich einen Transfer?', answer: 'Die Buchung ist ganz einfach: Geben Sie auf unserer Website Start- und Zieladresse ein, wählen Sie Ihr Fahrzeug und füllen Sie Ihre Kontaktdaten aus. Nach der Buchung erhalten Sie sofort eine Bestätigungsmail mit Ihrer Buchungsnummer.' },
+          { question: 'Wie buche ich einen Transfer?', answer: 'Die Buchung ist ganz einfach: Geben Sie auf unserer Website Start- und Zieladresse ein, wählen Sie Ihr Fahrzeug und füllen Sie Ihre Kontaktdaten aus. Nach der Buchung erhalten Sie sofort eine Eingangsbestätigung mit Ihrer Buchungsnummer per E-Mail; die endgültige Bestätigung folgt separat per E-Mail und WhatsApp.' },
           { question: 'Wie weit im Voraus muss ich buchen?', answer: 'Wir empfehlen, mindestens 24 Stunden im Voraus zu buchen. Für kurzfristige Buchungen rufen Sie uns bitte direkt an oder schreiben Sie uns über WhatsApp – wir versuchen, auch kurzfristige Anfragen zu erfüllen. Sie können selbstverständlich auch schon Wochen oder Monate im Voraus buchen.' },
           { question: 'Was sind Festpreise und warum sind sie vorteilhaft?', answer: 'Festpreise bedeuten, dass der Preis bei der Buchung festgelegt wird und sich nicht ändert – unabhängig von Verkehr oder Umwegen. So haben Sie volle Kostenkontrolle und keine unangenehmen Überraschungen.' },
           { question: 'Welche Zahlungsmethoden werden akzeptiert?', answer: 'Sie können bar (in Euro) direkt beim Fahrer oder per Kreditkarte bezahlen. Die Zahlungsmethode wählen Sie bereits bei der Buchung aus.' },
@@ -106,7 +106,7 @@ export const faqData: Record<string, FAQData> = {
       {
         label: '🚗 Booking & Prices',
         items: [
-          { question: 'How do I book a transfer?', answer: 'Booking is simple: enter your pickup and drop-off address on our website, select your vehicle, and fill in your contact details. After booking, you will instantly receive a confirmation email with your booking number.' },
+          { question: 'How do I book a transfer?', answer: 'Booking is simple: enter your pickup and drop-off address on our website, select your vehicle, and fill in your contact details. After booking, you will instantly receive an acknowledgement of receipt with your booking number by email; the final confirmation follows separately by email and WhatsApp.' },
           { question: 'How far in advance do I need to book?', answer: 'We recommend booking at least 24 hours in advance. For last-minute bookings, please call us directly or contact us via WhatsApp – we will do our best to accommodate short-notice requests. You are of course also welcome to book weeks or months in advance.' },
           { question: 'What are fixed prices and why are they beneficial?', answer: 'Fixed prices mean the price is set at the time of booking and does not change – regardless of traffic or detours. This gives you full cost control with no unpleasant surprises.' },
           { question: 'What payment methods are accepted?', answer: 'You can pay in cash (Euro) directly to the driver or by credit card. You select the payment method when booking.' },
@@ -188,7 +188,7 @@ export const faqData: Record<string, FAQData> = {
       {
         label: '🚗 Rezervasyon & Fiyatlar',
         items: [
-          { question: 'Transfer nasıl rezerve edilir?', answer: 'Rezervasyon çok basit: Web sitemizde başlangıç ve varış adresini girin, aracınızı seçin ve iletişim bilgilerinizi doldurun. Rezervasyonun ardından anında rezervasyon numaranızı içeren bir onay e-postası alacaksınız.' },
+          { question: 'Transfer nasıl rezerve edilir?', answer: 'Rezervasyon çok basit: Web sitemizde başlangıç ve varış adresini girin, aracınızı seçin ve iletişim bilgilerinizi doldurun. Rezervasyonun ardından rezervasyon numaranızı içeren bir alındı e-postası anında gelir; kesin onay ayrıca e-posta ve WhatsApp ile gönderilir.' },
           { question: 'Ne kadar önceden rezervasyon yapmalıyım?', answer: 'En az 24 saat önceden rezervasyon yapmanızı öneririz. Son dakika rezervasyonları için lütfen bizi doğrudan arayın veya WhatsApp üzerinden yazın – son dakika taleplerini de karşılamaya çalışıyoruz. Tabii ki haftalar veya aylar öncesinden de rezervasyon yaptırabilirsiniz.' },
           { question: 'Sabit fiyatlar nedir ve neden avantajlıdır?', answer: 'Sabit fiyatlar, fiyatın rezervasyon sırasında belirleneceği ve trafik veya sapmalara bakılmaksızın değişmeyeceği anlamına gelir. Bu sayede tam maliyet kontrolüne sahip olur ve sürprizlerle karşılaşmazsınız.' },
           { question: 'Hangi ödeme yöntemleri kabul edilmektedir?', answer: 'Nakit (Euro) olarak doğrudan sürücüye veya kredi kartıyla ödeme yapabilirsiniz. Ödeme yöntemini rezervasyon sırasında seçersiniz.' },

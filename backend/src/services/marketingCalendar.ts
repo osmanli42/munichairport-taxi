@@ -125,7 +125,7 @@ export const TEMPLATES: Array<Omit<MarketingTemplate, 'defaults'> & { defaults: 
 
 # Online buchen in 60 Sekunden
 - **Festpreis sofort:** Adresse eingeben, Preis sehen – kein Taxameter, keine Überraschungen
-- **Sofortige Bestätigung** per E-Mail, kurz darauf die endgültige Bestätigung Ihrer Fahrt
+- **Eingangsbestätigung** sofort per E-Mail, kurz darauf die endgültige Bestätigung Ihrer Fahrt per E-Mail und WhatsApp
 - **Bezahlen, wie Sie möchten:** bar beim Fahrer, mit Kreditkarte oder auf Rechnung
 - **Rechnung automatisch** als PDF direkt nach der Fahrt in Ihrem Postfach
 - **Buchung online verwalten** und bis 3 Stunden vorher kostenlos stornieren
@@ -158,7 +158,7 @@ Natürlich erreichen Sie uns weiterhin rund um die Uhr telefonisch und per Whats
 
 # Book online in 60 seconds
 - **Fixed price instantly:** enter your address, see the price – no meter, no surprises
-- **Instant confirmation** by e-mail, followed shortly by the final confirmation of your ride
+- **Acknowledgement of receipt** instantly by e-mail, followed shortly by the final confirmation of your ride by e-mail and WhatsApp
 - **Pay the way you like:** cash to the driver, by credit card or on invoice
 - **Automatic invoice** as a PDF in your inbox right after the ride
 - **Manage your booking online** and cancel free of charge up to 3 hours before
@@ -191,7 +191,7 @@ Of course you can still reach us around the clock by phone and WhatsApp – just
 
 # 60 saniyede online rezervasyon
 - **Anında sabit fiyat:** adresi girin, fiyatı görün – taksimetre yok, sürpriz yok
-- **Anında onay** e-postayla, kısa süre sonra yolculuğunuzun kesin onayı
+- **Alındı e-postası** hemen gelir, kısa süre sonra yolculuğunuzun kesin onayı e-posta ve WhatsApp ile gönderilir
 - **Dilediğiniz gibi ödeyin:** şoföre nakit, kredi kartıyla ya da faturayla
 - **Otomatik fatura:** yolculuktan hemen sonra PDF olarak e-postanızda
 - **Rezervasyonu online yönetin**, 3 saat öncesine kadar ücretsiz iptal edin

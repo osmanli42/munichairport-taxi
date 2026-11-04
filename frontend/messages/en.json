@@ -46,8 +46,8 @@
     "price_label": "Estimated Price",
     "calculating": "Calculating price...",
     "enter_addresses": "Please enter pickup and destination addresses",
-    "success_title": "Booking Successful!",
-    "success_message": "Your booking request was submitted successfully. You will receive a confirmation email at {email}.",
+    "success_title": "Booking Received!",
+    "success_message": "Your booking request was submitted successfully. You will receive an acknowledgement of receipt at {email}; the final confirmation follows separately by email and WhatsApp.",
     "success_booking_number": "Booking Number",
     "error_title": "Error",
     "error_message": "The booking could not be submitted. Please try again or call us.",
@@ -233,8 +233,8 @@
     "fixed_price_sub": "No meter – price is fixed at booking",
     "flight_wait": "60 min. free waiting time",
     "flight_wait_sub": "We wait for free if your flight is delayed",
-    "confirmation": "Instant email confirmation",
-    "confirmation_sub": "Directly in your inbox after booking",
+    "confirmation": "Personal confirmation",
+    "confirmation_sub": "By email & WhatsApp",
     "child_seat": "Child seats free of charge",
     "child_seat_sub": "Infant carrier, child seat & booster",
     "secure_payment": "Secure payment",
@@ -249,7 +249,7 @@
     "no_hidden_sub": "What you see is what you pay – nothing more",
     "checkout_storno": "✅ Free cancellation up to 3 hrs before",
     "checkout_price": "💰 Fixed price guaranteed",
-    "checkout_confirm": "📧 Instant email confirmation"
+    "checkout_confirm": "📧 Confirmation by email & WhatsApp"
   },
   "cookie": {
     "title": "🍪 Cookie Settings",
@@ -395,7 +395,7 @@
       }
     ],
     "ctaTitle": "Book your taxi from {city} now",
-    "ctaSubtitle": "Fixed price from {price} € · Available 24/7 · Instant confirmation",
+    "ctaSubtitle": "Fixed price from {price} € · Available 24/7 · Personal confirmation",
     "ctaBook": "Book online",
     "ctaCall": "Call",
     "seoTitle": "Taxi {city} Munich Airport – Fixed price from {price} €",

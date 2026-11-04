@@ -46,8 +46,8 @@
     "price_label": "Geschätzter Preis",
     "calculating": "Preis wird berechnet...",
     "enter_addresses": "Bitte geben Sie Start- und Zieladresse ein",
-    "success_title": "Buchung erfolgreich!",
-    "success_message": "Ihre Buchungsanfrage wurde erfolgreich übermittelt. Sie erhalten eine Bestätigungsmail an {email}.",
+    "success_title": "Buchung eingegangen!",
+    "success_message": "Ihre Buchungsanfrage wurde erfolgreich übermittelt. Sie erhalten eine Eingangsbestätigung an {email}; die endgültige Bestätigung folgt separat per E-Mail und WhatsApp.",
     "success_booking_number": "Buchungsnummer",
     "error_title": "Fehler",
     "error_message": "Die Buchung konnte nicht übermittelt werden. Bitte versuchen Sie es erneut oder rufen Sie uns an.",
@@ -233,8 +233,8 @@
     "fixed_price_sub": "Kein Taxameter – Preis steht fest",
     "flight_wait": "60 Min. Gratis-Wartezeit",
     "flight_wait_sub": "Bei Flugverspätungen warten wir kostenlos",
-    "confirmation": "Sofortige E-Mail-Bestätigung",
-    "confirmation_sub": "Nach der Buchung sofort in Ihrem Postfach",
+    "confirmation": "Persönliche Bestätigung",
+    "confirmation_sub": "Per E-Mail & WhatsApp",
     "child_seat": "Kindersitze kostenlos",
     "child_seat_sub": "Babyschale, Kindersitz & Sitzerhöhung",
     "secure_payment": "Sichere Zahlung",
@@ -249,7 +249,7 @@
     "no_hidden_sub": "Was Sie sehen, zahlen Sie – nicht mehr",
     "checkout_storno": "✅ Kostenloser Storno bis 3 Std. vorher",
     "checkout_price": "💰 Festpreis garantiert",
-    "checkout_confirm": "📧 Sofortige E-Mail-Bestätigung"
+    "checkout_confirm": "📧 Bestätigung per E-Mail & WhatsApp"
   },
   "cookie": {
     "title": "🍪 Cookie-Einstellungen",
@@ -395,7 +395,7 @@
       }
     ],
     "ctaTitle": "Jetzt Taxi von {city} buchen",
-    "ctaSubtitle": "Festpreis ab {price} € · 24/7 verfügbar · Sofortbestätigung",
+    "ctaSubtitle": "Festpreis ab {price} € · 24/7 verfügbar · Persönliche Bestätigung",
     "ctaBook": "Online buchen",
     "ctaCall": "Anrufen",
     "seoTitle": "Taxi {city} Flughafen München – Festpreis ab {price} €",
