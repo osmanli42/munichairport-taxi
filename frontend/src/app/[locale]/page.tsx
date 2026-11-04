@@ -139,7 +139,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { value: '20+', label: locale === 'en' ? 'YEARS OF EXPERIENCE' : locale === 'tr' ? 'YIL DENEYİM' : 'JAHRE ERFAHRUNG' },
-              { value: '4,9 ★', label: locale === 'en' ? 'AVG. RATING' : locale === 'tr' ? 'ORT. PUAN' : 'Ø BEWERTUNG' },
+              { value: locale === 'en' ? '4.7 ★' : '4,7 ★', label: locale === 'en' ? 'AVG. RATING' : locale === 'tr' ? 'ORT. PUAN' : 'Ø BEWERTUNG' },
               { value: '100%', label: locale === 'en' ? 'FIXED PRICES' : locale === 'tr' ? 'SABİT FİYAT' : 'FESTPREISE' },
               { value: '24/7', label: locale === 'en' ? 'AVAILABLE' : locale === 'tr' ? 'HİZMETTE' : 'VERFÜGBAR' },
             ].map((stat) => (

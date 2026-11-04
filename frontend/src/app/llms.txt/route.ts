@@ -66,7 +66,7 @@ export async function GET() {
 
   const body = `# Flughafen-München.TAXI (Munich Airport Taxi)
 
-> Fixed-price taxi and airport transfer service to and from Munich Airport (MUC), 24/7. Based in Freising next to the airport, serving Munich, all of Bavaria and Austria. Online booking with the final price shown before booking. Rated 4.9/5 on Google, more than 100,000 passengers transported, 20 years of experience.
+> Fixed-price taxi and airport transfer service to and from Munich Airport (MUC), 24/7. Based in Freising next to the airport, serving Munich, all of Bavaria and Austria. Online booking with the final price shown before booking. Rated 4.7/5 on Google, more than 100,000 passengers transported, 20 years of experience.
 
 Last updated: ${today}. Prices below are live from the booking system.
 
@@ -92,7 +92,7 @@ Last updated: ${today}. Prices below are live from the booking system.
 - E-mail: ${CONTACT_INFO.email}
 - Availability: 24 hours a day, 7 days a week, including public holidays
 - Languages: German, English, Turkish
-- Google rating: 4.9 / 5
+- Google rating: 4.7 / 5
 - Experience: 20 years, more than 100,000 passengers
 
 ## Vehicles
