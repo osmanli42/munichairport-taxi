@@ -721,6 +721,11 @@ export const adminApi = {
     return response.data as StornoInfo[];
   },
 
+  resendRechnung: async (id: number, email?: string) => {
+    const response = await api.post(`/admin/bookings/${id}/rechnung/resend`, email ? { email } : {});
+    return response.data as { success: boolean; rechnungsnummer: string; sent_to: string };
+  },
+
   resendStorno: async (id: number, email?: string) => {
     const response = await api.post(`/admin/stornos/${id}/send`, email ? { email } : {});
     return response.data;

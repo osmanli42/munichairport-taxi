@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FileX, Send, AlertTriangle } from 'lucide-react';
 import { adminApi, StornoInfo } from '@/lib/api';
 import StornoDialog from './StornoDialog';
+import RechnungResendButton from './RechnungResendButton';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const eur = (v: number | string) => `${(-Number(v)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -67,6 +68,10 @@ export default function InvoiceStornoCard({ booking, onChanged }: {
           </div>
         </div>
       ))}
+
+      {booking.rechnung_number && !current && (
+        <RechnungResendButton booking={booking} rechnungNumber={booking.rechnung_number} onResult={setMsg} />
+      )}
 
       {booking.rechnung_number && !current && (
         <button

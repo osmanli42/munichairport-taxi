@@ -11,6 +11,7 @@
 import { customerRecipient } from '../utils/recipient';
 import { query, run } from '../db';
 import { fetchBankSettings, generateRechnungPdf, buildRechnungEmail, roundGrossPrice } from './rechnung';
+import { stornoForBookingInvoice } from './storno';
 
 const FROM_EMAIL = 'info@flughafen-muenchen.taxi';
 
@@ -205,6 +206,63 @@ async function doSendRechnung(
   );
 
   return { rechnungsnummer };
+}
+
+// Thrown when the invoice may not be re-mailed as it stands; the route answers 409.
+export class RechnungResendBlocked extends Error {}
+
+// Re-mail an invoice that was already issued: same number, same date, same render params
+// as GET .../rechnung.pdf. It writes nothing to the booking, so the issue date and the
+// gapless number sequence stay untouched. A correction is a different thing: that goes
+// through Storno + new invoice (POST .../rechnung with force).
+export async function resendRechnungForBooking(booking: any, to?: string): Promise<{ rechnungsnummer: string; sent_to: string }> {
+  if (!booking?.rechnung_number) throw new RechnungResendBlocked('Für diese Buchung wurde noch keine Rechnung versendet');
+  const recipient = customerRecipient(to || booking.email);
+  if (inFlight.has(booking.id)) throw new Error('Rechnung wird für diese Buchung bereits versendet');
+  inFlight.add(booking.id);
+  try {
+    const rechnungsnummer: string = booking.rechnung_number;
+    if (await stornoForBookingInvoice(booking.id, rechnungsnummer)) {
+      throw new RechnungResendBlocked(`Die Rechnung ${rechnungsnummer} ist storniert und kann nicht erneut gesendet werden.`);
+    }
+    // Nothing is archived, the PDF is rebuilt from the booking. If the price changed after
+    // issuing, the rebuilt PDF would carry the same number with a different amount.
+    const gross = roundGrossPrice(Number(booking.price) || 0, booking.source === 'calendar');
+    if (booking.rechnung_amount != null && Math.abs(Number(booking.rechnung_amount) - gross) >= 0.005) {
+      throw new RechnungResendBlocked(`Der Preis der Buchung wurde nach dem Versand geändert (Rechnung ${rechnungsnummer}: ${Number(booking.rechnung_amount).toFixed(2)} €, Buchung: ${gross.toFixed(2)} €). Bitte die Rechnung über „Rechnung senden“ neu ausstellen.`);
+    }
+
+    const d = defaultsFromBooking(booking);
+    const mwst = [0, 7, 19].includes(Number(booking.rechnung_mwst)) ? Number(booking.rechnung_mwst) as 0 | 7 | 19 : d.mwst;
+    const lang = booking.rechnung_sprache === 'en' ? 'en' : 'de';
+    const zahlungsart: Zahlungsart = booking.rechnung_zahlungsart || d.zahlungsart;
+
+    const s = await fetchBankSettings();
+    const pdfBuffer = await generateRechnungPdf({
+      booking, rechnungsnummer, mwst, lang, s, zahlungsart,
+      empfaenger_adresse: booking.rechnung_adresse || undefined,
+      invoice_date: booking.rechnung_sent_at || undefined,
+    });
+
+    const resend = new (await import('resend')).Resend(process.env.RESEND_API_KEY);
+    const { error: sendError } = await resend.emails.send({
+      from: `Flughafen München Taxi <${FROM_EMAIL}>`,
+      to: recipient,
+      subject: lang === 'en'
+        ? `Your Invoice ${rechnungsnummer} (sent again) – Munich Airport Taxi`
+        : `Ihre Rechnung ${rechnungsnummer} (erneute Zusendung) – Flughafen München Taxi`,
+      html: buildRechnungEmail({ booking, rechnungsnummer, mwst, lang, s, zahlungsart }),
+      attachments: [{
+        filename: `Rechnung_${rechnungsnummer}.pdf`,
+        content: pdfBuffer.toString('base64'),
+      }],
+    });
+    if (sendError) throw new Error(`Resend: ${sendError.message}`);
+
+    return { rechnungsnummer, sent_to: recipient };
+  } finally {
+    inFlight.delete(booking.id);
+  }
 }
 
 // ─── PROFORMA ────────────────────────────────────────────────────────────────

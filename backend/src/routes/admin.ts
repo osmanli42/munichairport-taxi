@@ -10,7 +10,7 @@ import { stornoSingleInvoice, getStorno, renderStornoPdf, sendStornoEmail, listS
 import { isBookingCancelReason, stornoReasonText } from '../services/cancelReasons';
 import { decrypt } from './bookings';
 import { BANK_SETTINGS_KEYS, fetchBankSettings, generateRechnungPdf, buildRechnungEmail, fmtPrice, roundGrossPrice, fmtDate } from '../services/rechnung';
-import { nextRechnungsnummer, sendRechnungForBooking, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
+import { nextRechnungsnummer, sendRechnungForBooking, resendRechnungForBooking, RechnungResendBlocked, defaultsFromBooking, nextProformaNummer, sendProformaForBooking, proformaDueDate } from '../services/rechnungSender';
 import { chargeSavedCard, getCompanyForCharge, ChargeableCard } from '../services/stripeCards';
 import { berlinMidnightUtcSql, berlinDayOfMonth, berlinNowSql, berlinDateSql } from '../utils/berlinTime';
 import { getClientIp } from '../utils/ipGeo';
@@ -1994,6 +1994,24 @@ router.post('/bookings/:id/rechnung', authenticateAdmin, async (req: AuthRequest
       return;
     }
     res.status(500).json({ error: error.message || 'Failed to generate invoice' });
+  }
+});
+
+// POST /api/admin/bookings/:id/rechnung/resend — { email? } mail the issued invoice again,
+// unchanged: same number and date, no Storno, nothing written to the booking.
+router.post('/bookings/:id/rechnung/resend', authenticateAdmin, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const [booking] = await query<any>('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    if (!booking) { res.status(404).json({ error: 'Booking not found' }); return; }
+    const to = typeof req.body?.email === 'string' && req.body.email.trim() ? req.body.email.trim() : booking.email || '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.status(400).json({ error: 'Gültige E-Mail-Adresse erforderlich' }); return; }
+    const r = await resendRechnungForBooking(booking, to);
+    console.log(`[rechnung] ${r.rechnungsnummer} erneut gesendet (booking ${booking.booking_number}) by ${req.adminUsername || '?'}`);
+    res.json({ success: true, ...r });
+  } catch (error: any) {
+    if (error instanceof RechnungResendBlocked) { res.status(409).json({ error: error.message }); return; }
+    console.error('Rechnung resend error:', error);
+    res.status(500).json({ error: error.message || 'Senden fehlgeschlagen' });
   }
 });
 
