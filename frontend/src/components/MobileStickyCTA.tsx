@@ -18,7 +18,7 @@ export default function MobileStickyCTA() {
   const isBookingFlow = pathname?.includes('/ergebnisse') || pathname?.includes('/buchen') || pathname?.includes('/booking');
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+    <div data-mobile-sticky className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
       {/* Trust line */}
       <div className="bg-green-700 text-white text-center py-1 text-xs font-medium px-4 flex items-center justify-center gap-1.5">
         <Ban size={11} className="shrink-0" /> {t.cancel}

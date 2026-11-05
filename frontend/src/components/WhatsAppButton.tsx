@@ -49,7 +49,7 @@ export default function WhatsAppButton() {
   if (chatOnline) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+    <div data-floating-button className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
       {bubble && (
         <div
           className="bg-white rounded-2xl shadow-xl border border-gray-100 px-3 py-2 flex items-center gap-2 animate-fade-in"

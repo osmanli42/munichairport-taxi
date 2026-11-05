@@ -296,6 +296,7 @@ export default function LiveAssist() {
       <button
         type="button"
         onClick={() => { setOpen(true); setAutoMode(false); setUnread(0); }}
+        data-floating-button
         className="fixed z-[60] bottom-[100px] right-4 md:bottom-6 md:right-6 flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white pl-4 pr-5 h-14 rounded-full shadow-xl"
         aria-label={t.chat}
       >
