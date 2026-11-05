@@ -1,114 +1,81 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CarTaxiFront } from 'lucide-react';
+import { CarTaxiFront, X } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
+const DISMISS_KEY = 'mt_social_proof_dismissed';
+const MAX_SHOWN = 3;
 
-type SocialItem = { name: string; dest: string; minsAgo: number };
+type SocialItem = { dest: string; minsAgo: number };
 
-// Nur den Ort zeigen (wie backend/src/utils/socialProofPlace.ts) — nie Straße/Hausnummer
-function placeOnly(address: string): string {
-  if (/flughafen|airport|terminal/i.test(address) && /85356|flughafen m(ü|ue)nchen|munich airport/i.test(address)) return 'Flughafen München';
-  const m = String(address || '').match(/\b\d{5}\s+([^,]+)/);
-  if (!m) return '';
-  let city = m[1].trim();
-  if (/^M(ü|ue)nchen\b/i.test(city)) return 'München';
-  if (city.length > 24 && city.includes('-')) city = city.split('-')[0].trim();
-  return city.slice(0, 30);
-}
-
-// Only real, anonymised bookings from /bookings/recent-social are shown.
-// If there are none (and no own recent booking), the toast never appears.
+// Only real, confirmed bookings from /bookings/recent-social, without names (DSGVO, UWG).
+// If there are none, the toast never appears. Shown at most MAX_SHOWN times, closable.
 export default function SocialProofToast({ locale }: { locale: string }) {
   const [items, setItems] = useState<SocialItem[]>([]);
   const [current, setCurrent] = useState(0);
   const [visible, setVisible] = useState(false);
-  const [hasOwn, setHasOwn] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    let own: SocialItem | null = null;
     try {
-      const raw = localStorage.getItem('mt_last_booking');
-      if (raw) {
-        const lb = JSON.parse(raw);
-        if (Date.now() - lb.ts < 48 * 60 * 60 * 1000) {
-          own = { name: lb.name, dest: placeOnly(lb.dest), minsAgo: Math.max(1, Math.round((Date.now() - lb.ts) / 60000)) };
-          setHasOwn(true);
-        }
-      }
+      if (sessionStorage.getItem(DISMISS_KEY)) { setDismissed(true); return; }
     } catch {}
-
-    fetch(`${API_BASE}/settings`)
+    fetch(`${API_BASE}/bookings/recent-social`)
       .then(r => r.json())
-      .then(s => {
-        if (s?.social_proof_enabled === '0') return; // disabled in admin
-        fetch(`${API_BASE}/bookings/recent-social`)
-          .then(r => r.json())
-          .then((real: SocialItem[]) => {
-            const realMapped = (Array.isArray(real) ? real : []).map(r => ({
-              name: r.name, dest: r.dest, minsAgo: r.minsAgo,
-            }));
-            if (own) realMapped.unshift(own);
-            setItems(realMapped.slice(0, 20));
-          })
-          .catch(() => { setItems(own ? [own] : []); });
-      })
-      .catch(() => {
-        // settings unreachable — show toast anyway
-        fetch(`${API_BASE}/bookings/recent-social`)
-          .then(r => r.json())
-          .then((real: SocialItem[]) => {
-            const realMapped = (Array.isArray(real) ? real : []).map(r => ({
-              name: r.name, dest: r.dest, minsAgo: r.minsAgo,
-            }));
-            if (own) realMapped.unshift(own);
-            setItems(realMapped.slice(0, 20));
-          })
-          .catch(() => { setItems(own ? [own] : []); });
-      });
+      .then((real: SocialItem[]) => setItems(Array.isArray(real) ? real.slice(0, MAX_SHOWN) : []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (items.length === 0) return;
-    // show immediately if user just booked, else 3s delay
-    const delay = hasOwn ? 0 : 3000;
-    const showDelay = setTimeout(() => setVisible(true), delay);
-    const cycle = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setCurrent(i => (i + 1) % items.length);
-        setVisible(true);
-      }, 600);
-    }, 12000);
-    return () => { clearTimeout(showDelay); clearInterval(cycle); };
-  }, [items, hasOwn]);
+    const timers: ReturnType<typeof setTimeout>[] = [setTimeout(() => setVisible(true), 3000)];
+    items.forEach((_, i) => {
+      timers.push(setTimeout(() => setVisible(false), 3000 + (i + 1) * 12000 - 600));
+      if (i + 1 < items.length) {
+        timers.push(setTimeout(() => { setCurrent(i + 1); setVisible(true); }, 3000 + (i + 1) * 12000));
+      }
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [items]);
 
-  if (items.length === 0) return null;
+  if (dismissed || items.length === 0) return null;
   const b = items[current];
   const hours = Math.round(b.minsAgo / 60);
-  const ago = b.minsAgo < 60
-    ? (locale === 'tr' ? `${b.minsAgo} dk önce` : locale === 'en' ? `${b.minsAgo} min ago` : `Vor ${b.minsAgo} Min`)
-    : (locale === 'tr' ? `${hours} sa önce` : locale === 'en' ? `${hours} h ago` : `Vor ${hours} Std.`);
+  const ago = hours <= 1
+    ? (locale === 'tr' ? 'Son bir saatte' : locale === 'en' ? 'In the last hour' : 'In der letzten Stunde')
+    : (locale === 'tr' ? `${hours} saat önce` : locale === 'en' ? `${hours} hours ago` : `Vor ${hours} Std.`);
   const label = locale === 'tr'
-    ? `${ago}: ${b.name} rezervasyon yaptı ✓`
+    ? `${ago}: ${b.dest} için yolculuk rezerve edildi`
     : locale === 'en'
-    ? `${ago}: ${b.name} booked a ride ✓`
-    : b.dest
-    ? `${ago}: ${b.name} hat eine Fahrt nach ${b.dest} gebucht ✓`
-    : `${ago}: ${b.name} hat eine Fahrt gebucht ✓`;
+    ? `${ago}: ride to ${b.dest} booked`
+    : `${ago}: Fahrt nach ${b.dest} gebucht`;
+  const source = locale === 'tr'
+    ? 'Son 48 saatin gerçek rezervasyonları'
+    : locale === 'en'
+    ? 'Real bookings from the last 48 hours'
+    : 'Echte Buchungen der letzten 48 Stunden';
+  const closeLabel = locale === 'tr' ? 'Kapat' : locale === 'en' ? 'Close' : 'Schließen';
+
+  const close = () => {
+    setDismissed(true);
+    try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch {}
+  };
 
   return (
     <div
-      className="fixed bottom-6 left-4 z-50 transition-all duration-500"
-      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(12px)', pointerEvents: 'none' }}
+      className="fixed bottom-44 md:bottom-6 left-4 right-4 md:right-auto z-30 transition-all duration-500"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(12px)', pointerEvents: visible ? 'auto' : 'none' }}
     >
-      <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 max-w-sm">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-lg pl-4 pr-1 py-2 flex items-center gap-3 md:max-w-sm">
         <CarTaxiFront size={24} className="text-gold-500 shrink-0" />
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-gray-800">{label}</p>
-          <p className="text-xs text-gray-400 mt-0.5">flughafen-muenchen.taxi</p>
+          <p className="text-xs text-gray-400 mt-0.5">{source}</p>
         </div>
+        <button type="button" onClick={close} aria-label={closeLabel} className="shrink-0 w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-700">
+          <X size={16} />
+        </button>
       </div>
     </div>
   );

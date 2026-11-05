@@ -14,6 +14,17 @@ export function socialProofPlace(address: string | null | undefined): string {
   return city.slice(0, 30);
 }
 
+// Testbuchungen gehören nicht in den Toast: sonst wirbt die Seite mit einer Fahrt, die es nie gab (UWG).
+export function isSocialProofTest(name: string | null | undefined, email?: string | null): boolean {
+  return /\b(test|testing|demo|muster|mustermann)\b/i.test(String(name || ''))
+    || /(^|[.+_-])test|@example\.|@test\./i.test(String(email || ''));
+}
+
+// Auf volle Stunden runden (mindestens 1): genaue Minuten könnten eine Buchung identifizierbar machen.
+export function socialProofRoundMins(ms: number): number {
+  return Math.max(1, Math.ceil(ms / 3600_000)) * 60;
+}
+
 // Social-Proof-Toast für Kalender-Fahrten: aus dem Fahrgast der Terminbeschreibung
 // "Vorname N." machen — wie bei Web-Buchungen. Mehrere Fahrgäste → der erste;
 // "MÜLLER, ANNA" (Nachname, Vorname) → "Anna M."; Anrede/Klammern weg. Sieht es nicht nach

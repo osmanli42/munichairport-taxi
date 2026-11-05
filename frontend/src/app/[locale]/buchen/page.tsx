@@ -8,7 +8,6 @@ import { useLocale } from 'next-intl';
 import { MapPin, ArrowRight, Calendar, Users, Car, User, UserRound, Phone, Mail, Plane, CreditCard, Banknote, CheckCircle, AlertCircle, Loader2, Luggage, ChevronLeft, Signpost, Baby, Bike, StickyNote, Map, Moon, PartyPopper, Ban, BadgeEuro, Tag, Lock, FileText, Check, X, Minus, Plus, Info, MessageSquare, Star, ArrowLeftRight, Pencil, Clock, CalendarDays, Flame, Headphones, Copy, Home, Briefcase, ShieldCheck, PawPrint, Landmark } from 'lucide-react';
 import { formatPrice, cn, CONTACT_INFO, addressIcon, liveRef } from '@/lib/utils';
 import { getSessionId } from '@/lib/liveAssist';
-import SocialProofToast from '@/components/SocialProofToast';
 import RouteMap from '@/components/RouteMap';
 import CardPaymentField, { CardPaymentFieldHandle, CardPaymentResult } from '@/components/booking/CardPaymentField';
 import PhoneInput from '@/components/booking/PhoneInput';
@@ -1294,7 +1293,6 @@ function BuchenContent() {
             </a>
           </div>
         </div>
-        <SocialProofToast locale={locale} />
       </div>
     );
   }
@@ -1716,7 +1714,6 @@ function BuchenContent() {
               </div>
             </div>
           </div>
-          <SocialProofToast locale={locale} />
         </div>
       );
     }
@@ -2441,7 +2438,6 @@ function BuchenContent() {
           {cardSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>{L('Weiter', 'Continue', 'Devam')} <ArrowRight size={16} /></>}
         </button>
       </div>
-      <SocialProofToast locale={locale} />
 
       {/* Während der Bankbestätigung: klar sagen, was zu tun ist */}
       {payment === 'card' && cardSubmitting && (

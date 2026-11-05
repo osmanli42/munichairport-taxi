@@ -20,7 +20,7 @@ import { visitorDistanceToBase } from '../services/visitorDistance';
 import { roundPriceUp } from '../utils/price';
 import { chargeSavedCard, createAnonymousSetupIntent, getPaymentMethodCardInfo, createBookingPaymentIntent, updateBookingPaymentIntentAmount, verifyBookingPaymentIntent } from '../services/stripeCards';
 import { berlinWallNow, parseClock, rideBeforeNightEnds } from '../utils/nightWindow';
-import { socialProofPlace, socialProofGuestName } from '../utils/socialProofPlace';
+import { socialProofPlace, socialProofGuestName, socialProofRoundMins, isSocialProofTest } from '../utils/socialProofPlace';
 import { berlinNowSql } from '../utils/berlinTime';
 import { bookingConfirmUrl, mailOpenPixelUrl } from '../utils/bookingConfirmToken';
 import { normalizePickup, wallMs, toWholeNumber, editHoursFrom, checkCapacity, ruleDependsOnTripTime, BOOKING_EDIT_MAX_DAYS_AHEAD } from '../utils/bookingEdit';
@@ -1187,24 +1187,22 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
       res.json([]);
       return;
     }
-    const rows = await query<{ name: string; dropoff_address: string; created_at: string }>(
-      `SELECT name, dropoff_address, created_at FROM bookings
-       WHERE created_at >= NOW() - INTERVAL 48 HOUR AND status != 'cancelled'
+    // Nur bestätigte Buchungen: laut AGB § 2 ist „new“ noch keine feste Buchung. Keine Namen und nur
+    // volle Stunden ausgeben, damit sich kein Eintrag einer Person zuordnen lässt (DSGVO).
+    const rows = await query<{ name: string; email: string; dropoff_address: string; created_at: string }>(
+      `SELECT name, email, dropoff_address, created_at FROM bookings
+       WHERE created_at >= NOW() - INTERVAL 48 HOUR AND status NOT IN ('new', 'cancelled')
        ORDER BY created_at DESC LIMIT 20`
     );
-    const items = rows.map(r => {
-      const parts = (r.name || '').trim().split(/\s+/);
-      const first = parts[0] || '?';
-      const lastInit = parts.length > 1 ? parts[parts.length - 1][0] + '.' : '';
-      return {
-        name: `${first} ${lastInit}`.trim(),
-        dest: socialProofPlace(r.dropoff_address),
-        minsAgo: Math.max(1, Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000)),
-      };
-    });
+    const items: { dest: string; minsAgo: number }[] = [];
+    for (const r of rows) {
+      const dest = socialProofPlace(r.dropoff_address);
+      if (!dest || isSocialProofTest(r.name, r.email)) continue;
+      items.push({ dest, minsAgo: socialProofRoundMins(Date.now() - new Date(r.created_at).getTime()) });
+    }
 
     // Fahrten aus dem Google-Kalender (telefonisch/WhatsApp), die in den letzten 48 Std. eingetragen
-    // wurden — Name aus der Terminbeschreibung; ohne erkennbare Person oder Ort nicht gezeigt.
+    // wurden — ohne erkennbare Person oder Ort nicht gezeigt.
     try {
       const nowWall = berlinNowSql().replace(' ', 'T').slice(0, 16);
       const sinceWall = berlinNowSql(new Date(Date.now() - 48 * 3600_000)).replace(' ', 'T').slice(0, 16);
@@ -1214,10 +1212,9 @@ router.get('/recent-social', async (req: Request, res: Response): Promise<void> 
           ORDER BY entered_at DESC LIMIT 20`, [sinceWall, nowWall]);
       const nowMs = Date.parse(`${nowWall}:00Z`);
       for (const c of cal) {
-        const name = socialProofGuestName(c.guest_name);
         const dest = socialProofPlace(c.dropoff_address);
-        if (!name || !dest) continue;
-        items.push({ name, dest, minsAgo: Math.max(1, Math.round((nowMs - Date.parse(`${c.entered_at.slice(0, 16)}:00Z`)) / 60000)) });
+        if (!socialProofGuestName(c.guest_name) || !dest || isSocialProofTest(c.guest_name)) continue;
+        items.push({ dest, minsAgo: socialProofRoundMins(nowMs - Date.parse(`${c.entered_at.slice(0, 16)}:00Z`)) });
       }
       items.sort((a, b) => a.minsAgo - b.minsAgo);
     } catch { /* Kalender optional */ }
