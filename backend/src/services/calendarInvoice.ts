@@ -580,6 +580,10 @@ function extractBilling(desc: string): BillingInfo | null {
       if (RE_BILLING_END.test(l)) break;
       block.push(l);
     }
+    // "… 80807 München aus." — Satzende aus "Rechnung auf die Firma … aus(stellen)" gehört nicht zur Adresse
+    if (block.length) block[block.length - 1] = block[block.length - 1].replace(/\s+(?:aus|ausstellen)\s*\.?$/i, '').trim();
+    // "Rechnung gewünscht: ja" ist eine Antwort, kein Empfänger
+    if (block.length === 1 && /^(?:ja|yes|nein|no|bitte|evet|hayır)\b\.?$/i.test(block[0])) continue;
     if (block.length) {
       const one = block.length === 1 ? splitInlineBilling(block[0]) : null;
       if (one) return { name: one.name, address: one.address, email: email || emails[0] || null, ust_idnr: ust || id || one.id, project: null };
@@ -624,6 +628,9 @@ const RE_BILLING_TRIGGERS: RegExp[] = [
   /\binvoice\s+(?:to|for)\s*:\s*(.*)$/i,
   /\brechnung\b[^\n]{0,40}\b(?:folgende[nr]?|diese)\s+(?:daten|adresse|firma|anschrift)\s*:?\s*(.*)$/i,
   /\b(?:rechnungsdaten|rechnungsempfänger(?:in)?)\s*:?\s*(.*)$/i,
+  // "🧾 Rechnung gewünscht: Rechnung auf die Firma:" + Firma / Straße / "80807 München aus."
+  /\brechnung\s+auf\s+(?:die\s+)?firma\s*:?\s*(.*)$/i,
+  /\brechnung\s+gewünscht\s*:\s*(.*)$/i,
   /\bfatura\s+(?:bilgileri|adresi)\s*:?\s*(.*)$/i,
 ];
 // Firmen-/Steuernummer-Zeile im Block → ust_idnr (nicht Teil der Adresse).

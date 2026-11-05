@@ -497,6 +497,15 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
 
   const includedRides = (g: Group) => g.rides.filter((r) => !excluded.has(r.key));
 
+  // Name leer, aber mehrzeilige Adresse eingetragen ("Firma / Straße / PLZ Ort"): erste Zeile ist der Name.
+  const resolveNewCustomer = (nf?: NewCustomerForm): { name: string; address: string } => {
+    const name = nf?.company_name.trim() || '';
+    const address = nf?.address.trim() || '';
+    if (name) return { name, address };
+    const parts = address.split('\n').map((l) => l.trim()).filter(Boolean);
+    return parts.length >= 2 ? { name: parts[0], address: parts.slice(1).join('\n') } : { name: '', address };
+  };
+
   const groupProblems = (g: Group): string[] => {
     const inc = includedRides(g);
     const problems: string[] = [];
@@ -505,7 +514,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     }
     const invalid = inc.filter((r) => !rideValid(r)).length;
     if (invalid) problems.push(`${invalid} fahrt eksik (fiyat/adres)`);
-    if (!g.companyId && !(g.customerKey.startsWith('n:') && newForms[g.customerKey]?.company_name.trim())) problems.push('Müşteri seç veya yeni müşteri adı gir');
+    if (!g.companyId && !(g.customerKey.startsWith('n:') && resolveNewCustomer(newForms[g.customerKey]).name)) problems.push('Müşteri seç veya yeni müşteri adı gir');
     return problems;
   };
 
@@ -526,11 +535,12 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
     const inc = includedRides(g);
     const alias = aliasChoice[g.key];
     const nf = newForms[g.customerKey];
+    const resolved = resolveNewCustomer(nf);
     return {
       company_id: g.companyId || undefined,
       new_company: g.companyId ? undefined : nf && {
-        company_name: nf.company_name.trim(),
-        address: nf.address.trim(),
+        company_name: resolved.name,
+        address: resolved.address,
         ust_idnr: nf.ust_idnr.trim() || undefined,
         contact_name: nf.contact_name.trim() || undefined,
       },
@@ -606,7 +616,7 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
           open: prev.open.filter((r) => !doneKeys.has(r.key)),
           invoices: [...prev.invoices, { id: d.invoice.id, company_id: d.company.id, invoice_number: d.invoice.invoice_number, period_month: g.month, total: d.invoice.total, status: 'sent', manual_sent_at: null }],
           companies: prev.companies.some((c) => c.id === d.company.id) ? prev.companies : [...prev.companies, {
-            id: d.company.id, company_name: d.company.company_name, contact_name: '', address: newForms[g.customerKey]?.address || '',
+            id: d.company.id, company_name: d.company.company_name, contact_name: '', address: resolveNewCustomer(newForms[g.customerKey]).address,
             ust_idnr: null, invoice_email: null, payment_term_days: 7,
           }],
         });
@@ -1007,7 +1017,10 @@ export default function KalenderTab({ token, onOpenCountChange }: { token: strin
                 {isNew && nf && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     <Field label="Müşteri / Firma adı (faturada)">
-                      <input value={nf.company_name} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, company_name: e.target.value } }))} className={inputCls} />
+                      <input value={nf.company_name} placeholder={resolveNewCustomer(nf).name} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, company_name: e.target.value } }))} className={inputCls} />
+                      {!nf.company_name.trim() && resolveNewCustomer(nf).name && (
+                        <span className="block text-[11px] text-gray-500 mt-1">Boş bırakılırsa adresin ilk satırı firma adı olur.</span>
+                      )}
                     </Field>
                     <Field label="Fatura adresi">
                       <textarea value={nf.address} onChange={(e) => setNewForms((f) => ({ ...f, [g.customerKey]: { ...nf, address: e.target.value } }))} rows={Math.min(7, Math.max(3, nf.address.split('\n').length + 1))} placeholder={'Abteilung (opsiyonel)\nSokak No\nPLZ Şehir'} className={`${inputCls} resize-y leading-snug`} />
