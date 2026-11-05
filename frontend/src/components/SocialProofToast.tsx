@@ -5,12 +5,11 @@ import { CarTaxiFront, X } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/api$/, '/api');
 const DISMISS_KEY = 'mt_social_proof_dismissed';
-const MAX_SHOWN = 3;
 
 type SocialItem = { dest: string; minsAgo: number };
 
 // Only real, confirmed bookings from /bookings/recent-social, without names (DSGVO, UWG).
-// If there are none, the toast never appears. Shown at most MAX_SHOWN times, closable.
+// If there are none, the toast never appears. Each one is shown once, closable.
 export default function SocialProofToast({ locale }: { locale: string }) {
   const [items, setItems] = useState<SocialItem[]>([]);
   const [current, setCurrent] = useState(0);
@@ -23,7 +22,7 @@ export default function SocialProofToast({ locale }: { locale: string }) {
     } catch {}
     fetch(`${API_BASE}/bookings/recent-social`)
       .then(r => r.json())
-      .then((real: SocialItem[]) => setItems(Array.isArray(real) ? real.slice(0, MAX_SHOWN) : []))
+      .then((real: SocialItem[]) => setItems(Array.isArray(real) ? real : []))
       .catch(() => {});
   }, []);
 
