@@ -94,17 +94,18 @@ export default function SmartRabattPanel({ onChanged, masterEnabled }: { onChang
     if (allN >= 30) for (const g of rep.signals) if (g.n / allN > 0.8) health.push({ bad: true, text: `„${SMART_SIGNAL_LABELS[g.key] || g.key}" sinyali kararların %${Math.round((g.n / allN) * 100)}'inde var: herkeste olan sinyal müşteri ayırt etmez.` });
     if (rep.unlinked > 0) health.push({ bad: true, text: `${rep.unlinked} indirimli rezervasyon bir karara bağlanamadı: net kazanç eksik hesaplanıyor olabilir.` });
     if (s.weeklyBudget > 0 && rep.weekSpent >= s.weeklyBudget * 0.8) health.push({ bad: false, text: `Haftalık bütçenin %${Math.round((rep.weekSpent / s.weeklyBudget) * 100)}'i kullanıldı. Bütçe dolunca yeni indirim çıkmaz.` });
-    if (s.maxDaysAhead == null) health.push({ bad: false, text: 'Uzak tarihlere gün sınırı yok. „Daha fazla koşul" içinden en fazla kaç gün sonrası verilebilir.' });
   }
 
   const net = rep?.net;
   const netBad = !!net && net.gain != null && net.gain < 0 && (rep?.offered.n ?? 0) >= 50 && (rep?.holdout.n ?? 0) >= 20;
   const confText = net?.confidence === 'reliable' ? 'güvenilir' : net?.confidence === 'uncertain' ? 'henüz kesin değil' : 'veri az';
 
-  const signalToggles: Array<{ key: 'signalBehavior' | 'signalQuietDay' | 'signalGap' | 'leerEnabled'; title: string; desc: string }> = [
+  const signalToggles: Array<{ key: 'signalBehavior' | 'signalQuietDay' | 'signalGap' | 'signalEarly' | 'signalUsualQuiet' | 'leerEnabled'; title: string; desc: string }> = [
     { key: 'signalBehavior', title: 'Müşteri hareketi', desc: 'Geri dönme, bekleme, çıkış, tekrar gelme' },
     { key: 'signalQuietDay', title: 'Sakin gün', desc: 'Gün normalden az doluysa' },
-    { key: 'signalGap', title: 'Boş saat', desc: '±2 saatte fahrt yok ya da az' },
+    { key: 'signalGap', title: 'Boş saat', desc: 'En fazla 3 gün sonrası, 10–22, ±2 saatte fahrt yok' },
+    { key: 'signalEarly', title: 'Erken rezervasyon', desc: `Fahrt ${form.earlyDays}+ gün sonra (uçak bileti gibi)` },
+    { key: 'signalUsualQuiet', title: 'Genelde sakin saat', desc: '3 günden uzak tarihlerde: o gün ve saat son 8 haftada çoğunlukla boştu' },
     { key: 'leerEnabled', title: 'Leerfahrt', desc: 'Boş dönen araca yakın: sabit %10, sürgüden bağımsız' },
   ];
 
@@ -289,6 +290,12 @@ export default function SmartRabattPanel({ onChanged, masterEnabled }: { onChang
             </label>
           ))}
         </div>
+        {form.signalEarly && (
+          <div className="max-w-xs"><label className={label}>Erken rezervasyon: kaç gün ve sonrası</label>
+            <input type="number" min={7} max={365} className={input} value={form.earlyDays} onChange={e => setForm({ ...form, earlyDays: Number(e.target.value) })} /></div>
+        )}
+        <button onClick={() => save({})} disabled={busy || !dirty || audienceInvalid}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-lg disabled:opacity-50"><Check size={15} /> Kaydet</button>
       </div>
 
       {/* Sınırlar */}

@@ -459,6 +459,9 @@ router.get('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
         signalQuietDay: (await apSetting('smart_signal_quiet_day', '1')) !== '0',
         signalGap: (await apSetting('smart_signal_gap', '1')) !== '0',
         signalBehavior: (await apSetting('smart_signal_behavior', '1')) !== '0',
+        signalEarly: (await apSetting('smart_signal_early', '1')) !== '0',
+        earlyDays: Number(await apSetting('smart_early_days', '30')) || 30,
+        signalUsualQuiet: (await apSetting('smart_signal_usual_quiet', '1')) !== '0',
         leerEnabled: dem.leerEnabled,
         capacityEnabled: dem.capacityEnabled,
         capacityVehicles: dem.capacityVehicles,
@@ -552,6 +555,9 @@ router.put('/admin/autopilot', authenticateAdmin, async (req: Request, res: Resp
     await flag('smart_signal_quiet_day', b.signalQuietDay);
     await flag('smart_signal_gap', b.signalGap);
     await flag('smart_signal_behavior', b.signalBehavior);
+    await flag('smart_signal_early', b.signalEarly);
+    await flag('smart_signal_usual_quiet', b.signalUsualQuiet);
+    if (b.earlyDays != null) await upsert('smart_early_days', String(Math.round(num(b.earlyDays, 7, 365, 30))));
     await flag('leer_discount_enabled', b.leerEnabled);
     await flag('auto_discount_capacity_enabled', b.capacityEnabled);
     await flag('smart_price_notice_enabled', b.priceNotice);

@@ -29,7 +29,7 @@ export function personalizedPriceNotice(locale: string): string {
 export interface SmartDecision { percent: number; holdout: boolean; blocked: string | null; signals: string[]; score: number | null }
 
 export const SMART_SIGNAL_LABELS: Record<string, string> = {
-  quiet_day: 'sakin gün', gap: 'boş saat', draft: 'yarım form', back_from_form: 'formdan döndü', exit: 'çıkış hareketi',
+  quiet_day: 'sakin gün', gap: 'boş saat', early: 'erken rezervasyon', usual_quiet: 'genelde sakin saat', draft: 'yarım form', back_from_form: 'formdan döndü', exit: 'çıkış hareketi',
   returning: 'tekrar geldi', search_changes: 'tarih/saat değiştirdi', dwell: '45+ sn bekledi', tab_away: 'sekmeden döndü',
 };
 

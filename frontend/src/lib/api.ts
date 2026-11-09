@@ -529,6 +529,7 @@ export interface AutopilotSettings {
   enabled: boolean; maxPercent: number; minKm: number; excludeStamm: boolean; excludeBusiness: boolean;
   ignorePgFloor: boolean; roundtripPercent: number; holdoutPct: number; weeklyBudget: number; minScore: number;
   signalQuietDay: boolean; signalGap: boolean; signalBehavior: boolean; leerEnabled: boolean;
+  signalEarly: boolean; earlyDays: number; signalUsualQuiet: boolean;
   capacityEnabled: boolean; capacityVehicles: number; capacityWindow: number; priceNotice: boolean;
   zoneInside: boolean; zoneOutside: boolean; stammFrom: number; visitorScope: 'alle' | 'fern' | 'nah';
   vehicles: string[]; weekdays: number[]; tripFrom: number | null; tripTo: number | null;

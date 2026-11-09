@@ -36,13 +36,13 @@ export interface AutopilotContext {
 
 export interface AutopilotOffer { percent: number; holdout: boolean; offerId: number | null }
 
-interface Settings { holdoutPct: number; weeklyBudget: number | null; minScore: number; signalQuietDay: boolean; signalGap: boolean; signalBehavior: boolean; source: string; direction: string }
+interface Settings { holdoutPct: number; weeklyBudget: number | null; minScore: number; signalQuietDay: boolean; signalGap: boolean; signalBehavior: boolean; signalEarly: boolean; earlyDays: number; signalUsualQuiet: boolean; source: string; direction: string }
 
 let settingsCache: { at: number; s: Settings } | null = null;
 async function settings(): Promise<Settings> {
   if (settingsCache && Date.now() - settingsCache.at < 30_000) return settingsCache.s;
   const rows = await query<{ setting_key: string; setting_value: string }>(
-    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('autopilot_holdout_pct', 'autopilot_weekly_budget', 'autopilot_min_score', 'smart_signal_quiet_day', 'smart_signal_gap', 'smart_signal_behavior', 'smart_source', 'smart_direction')`);
+    `SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('autopilot_holdout_pct', 'autopilot_weekly_budget', 'autopilot_min_score', 'smart_signal_quiet_day', 'smart_signal_gap', 'smart_signal_behavior', 'smart_signal_early', 'smart_early_days', 'smart_signal_usual_quiet', 'smart_source', 'smart_direction')`);
   const v = (k: string) => rows.find(r => r.setting_key === k)?.setting_value;
   const num = (x: string | undefined, d: number) => (x != null && x !== '' && Number.isFinite(Number(x)) ? Number(x) : d);
   const budget = v('autopilot_weekly_budget');
@@ -53,6 +53,9 @@ async function settings(): Promise<Settings> {
     signalQuietDay: v('smart_signal_quiet_day') !== '0',
     signalGap: v('smart_signal_gap') !== '0',
     signalBehavior: v('smart_signal_behavior') !== '0',
+    signalEarly: v('smart_signal_early') !== '0',
+    earlyDays: Math.min(365, Math.max(7, num(v('smart_early_days'), 30))),
+    signalUsualQuiet: v('smart_signal_usual_quiet') !== '0',
     source: v('smart_source') || 'all',
     direction: v('smart_direction') || 'all',
   };
@@ -137,6 +140,30 @@ const BEHAVIOR_WEIGHTS: Record<string, number> = {
 };
 export const DWELL_SECONDS = 45;
 const GAP_MAX_DAYS = 3;
+const EARLY_WEIGHT = 0.25;
+const USUAL_QUIET_WEIGHT = 0.25;
+const USUAL_WEEKS = 8;
+
+/**
+ * Ist diese Stunde an diesem Wochentag üblicherweise leer? Blick auf dieselbe Uhrzeit (±2 h) an
+ * den letzten 8 gleichen Wochentagen (Buchungen + Kalender). Für Fahrten weit voraus, deren Tag
+ * im echten Plan noch leer ist. Saisonalität (Sommer, Messe) kennt dieser Blick nicht.
+ */
+async function usuallyQuiet(tripDate: string, minute: number): Promise<boolean> {
+  const today = berlinDateSql(0);
+  const dayMs = 86_400_000;
+  const tripDow = new Date(`${tripDate}T12:00:00Z`).getUTCDay();
+  let d = Date.parse(`${today}T12:00:00Z`) - dayMs;
+  while (new Date(d).getUTCDay() !== tripDow) d -= dayMs;
+  const counts: number[] = [];
+  for (let k = 0; k < USUAL_WEEKS; k++) {
+    const date = new Date(d - k * 7 * dayMs).toISOString().slice(0, 10);
+    counts.push(await ridesNear(date, minute, 120));
+  }
+  counts.sort((a, b) => a - b);
+  // Mehrheit der Wochen ohne Fahrt in diesem Fenster
+  return counts[Math.floor(USUAL_WEEKS / 2)] === 0;
+}
 const GAP_FROM_MIN = 10 * 60;
 const GAP_TO_MIN = 22 * 60;
 // Zeilen mit anderer Bewertung sind nicht vergleichbar: neue Fassung = neue Nummer, Auswertung beginnt neu
@@ -167,6 +194,16 @@ export async function needScore(ctx: AutopilotContext, s: Settings, offerAgeSec:
       const near = await ridesNear(ctx.tripDate, ctx.tripMinutes, 120).catch(() => 99);
       if (near === 0) { demand = 0.4; signals.push('gap'); reasons.push('freie Stunde'); }
     }
+    // Weit voraus (wie bei Flugtickets): früh Buchende füllen den Kalender planbar. Für Tage, an
+    // denen der echte Plan noch leer ist, zählt stattdessen, wie voll dieselbe Stunde sonst ist.
+    const lead = Math.round((Date.parse(`${ctx.tripDate}T12:00:00Z`) - Date.parse(`${berlinDateSql(0)}T12:00:00Z`)) / 86_400_000);
+    let far = 0;
+    if (s.signalEarly && lead >= s.earlyDays) { far += EARLY_WEIGHT; signals.push('early'); reasons.push(`${lead} Tage im Voraus`); }
+    if (s.signalUsualQuiet && lead > GAP_MAX_DAYS && ctx.tripMinutes != null && ctx.tripMinutes >= GAP_FROM_MIN && ctx.tripMinutes <= GAP_TO_MIN
+        && await usuallyQuiet(ctx.tripDate, ctx.tripMinutes).catch(() => false)) {
+      far += USUAL_QUIET_WEIGHT; signals.push('usual_quiet'); reasons.push('Stunde sonst ruhig');
+    }
+    demand = Math.min(0.4, Math.max(demand, far));
   }
 
   // Verhalten (höchstens 0,45)

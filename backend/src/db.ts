@@ -1679,6 +1679,10 @@ export async function initializeDatabase(): Promise<void> {
       ['smart_signal_quiet_day', '1'],
       ['smart_signal_gap', '1'],
       ['smart_signal_behavior', '1'],
+      // Weit voraus: Frühbucher (ab N Tagen) und „Stunde sonst ruhig“ (Vergangenheit statt leerem Plan)
+      ['smart_signal_early', '1'],
+      ['smart_early_days', '30'],
+      ['smart_signal_usual_quiet', '1'],
       ['smart_price_notice_enabled', '1'],
     ]) {
       try {
