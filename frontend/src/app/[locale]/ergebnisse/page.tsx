@@ -550,6 +550,16 @@ function ResultsContent() {
     (pgPointInZone(dropoffCoords, pgConfig) || (pgConfig.airport_enabled === 1 && isAirportArea(dropoff)))
   ));
 
+  // Rückfahrt-Badge: Wert aus Admin → Preise (roundtrip_discount); bei unterschiedlichen Fahrzeugen "bis zu".
+  const rtDiscounts = Object.values(apiPrices || {}).map(p => Number(p.roundtrip_discount) || 0).filter(d => d > 0);
+  const rtMax = pgInZone && pgConfig?.roundtrip_discount_enabled === 0 ? 0 : Math.max(0, ...rtDiscounts);
+  const rtUpTo = rtDiscounts.some(d => d !== rtMax);
+  const rtPct = rtMax.toLocaleString(locale === 'en' ? 'en-GB' : 'de-DE', { maximumFractionDigits: 1 });
+  const rtBadge = rtMax <= 0 ? ''
+    : locale === 'de' ? `${rtUpTo ? 'bis zu ' : ''}${rtPct}% Rabatt`
+    : locale === 'en' ? `${rtUpTo ? 'up to ' : ''}${rtPct}% discount`
+    : `${rtUpTo ? '%' + rtPct + "'e varan" : '%' + rtPct} indirim`;
+
   const dateFormatted = date
     ? new Date(date + 'T00:00:00').toLocaleDateString(
         locale === 'en' ? 'en-GB' : locale === 'tr' ? 'tr-TR' : 'de-DE',
@@ -824,9 +834,11 @@ function ResultsContent() {
               >
                 <ArrowLeftRight size={20} className="shrink-0" />
                 <span className="text-base font-bold">{locale === 'de' ? '+ Rückfahrt' : locale === 'en' ? '+ Return trip' : '+ Dönüş'}</span>
-                <span className="text-xs font-medium text-gray-800 px-2 py-0.5 rounded-md" style={{ background: '#fdf0c8' }}>
-                  {locale === 'de' ? '5% Rabatt' : locale === 'en' ? '5% discount' : '%5 indirim'}
-                </span>
+                {rtBadge && (
+                  <span className="text-xs font-medium text-gray-800 px-2 py-0.5 rounded-md" style={{ background: '#fdf0c8' }}>
+                    {rtBadge}
+                  </span>
+                )}
                 <ChevronRight size={18} className="absolute right-5 text-gray-900" />
               </button>
             )}
