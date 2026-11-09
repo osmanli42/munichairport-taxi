@@ -254,7 +254,10 @@ export default function ReplayTab({ token }: { token: string }) {
       headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (r.ok) { setConfirmDelete(null); setSelectedId(null); refreshAll(); }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(`Silinemedi: ${d.detail || d.error || r.status}`); return; }
+    setConfirmDelete(null); setSelectedId(null); refreshAll();
+    if (d.continuing) alert('Silme arka planda sürüyor — birkaç dakika sonra "Yenile"ye bas.');
   };
 
   // Dönüşüm sayaçları: 'session' kesin eşleşme, 'visitor' aynı cihazdan olası eşleşme

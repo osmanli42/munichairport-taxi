@@ -923,9 +923,11 @@ router.delete('/admin/recordings/bulk', authenticateAdmin, async (req: AuthReque
     const { older_than_days, session_ids, all } = req.body || {};
 
     if (all === true) {
-      const r = await run(`DELETE FROM session_recordings`);
+      // TRUNCATE: GB'lık tabloda satır satır silmekten çok daha hızlı, tabloyu kilitlemez.
+      const [{ n }] = await query<any>(`SELECT COUNT(*) AS n FROM session_recordings`);
+      await run(`TRUNCATE TABLE session_recordings`);
       await run(`DELETE FROM session_recording_marks`);
-      res.json({ ok: true, deleted: r.affectedRows });
+      res.json({ ok: true, deleted: Number(n) || 0 });
       return;
     }
 
@@ -940,12 +942,34 @@ router.delete('/admin/recordings/bulk', authenticateAdmin, async (req: AuthReque
     }
 
     if (typeof older_than_days === 'number' && older_than_days > 0) {
-      const r = await run(
+      // Otomatik saklama gibi 2000'lik partilerle — tek büyük DELETE tabloyu dakikalarca kilitlerdi.
+      // ~40 sn sonra cevap verilir (nginx 60 sn'de keser), kalan partiler arka planda silinir.
+      const days = Math.round(older_than_days);
+      const batch = () => run(
         `DELETE FROM session_recordings WHERE created_at < NOW() - INTERVAL ? DAY
-           AND session_id NOT IN (SELECT session_id FROM session_recording_marks WHERE starred = 1)`,
-        [older_than_days]
+           AND session_id NOT IN (SELECT session_id FROM session_recording_marks WHERE starred = 1)
+         LIMIT 2000`,
+        [days]
       );
-      res.json({ ok: true, deleted: r.affectedRows });
+      const started = Date.now();
+      let deleted = 0;
+      let more = true;
+      while (more && Date.now() - started < 40_000) {
+        const r = await batch();
+        deleted += r.affectedRows;
+        more = r.affectedRows >= 2000;
+      }
+      res.json({ ok: true, deleted, continuing: more });
+      if (more) {
+        (async () => {
+          for (let i = 0; i < 5000; i++) {
+            const r = await batch();
+            deleted += r.affectedRows;
+            if (r.affectedRows < 2000) break;
+          }
+          console.log(`[recording-bulk] ${deleted} parça silindi (> ${days} gün)`);
+        })().catch((e) => console.error('[recording-bulk]', e.message));
+      }
       return;
     }
 
