@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import {
@@ -288,6 +288,13 @@ function ResultsContent() {
   // Zwischenstopp state
   const zwischenstoppAddress = params.get('zwischenstopp_address') || '';
   const [showZwischenstoppPicker, setShowZwischenstoppPicker] = useState(false);
+  // Die Picker öffnen oben über der Fahrzeugliste — auf dem Handy sieht der Kunde das nicht,
+  // weil er unten beim Rückfahrt-Button steht. Deshalb hinscrollen.
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showReturnPicker && !showZwischenstoppPicker) return;
+    requestAnimationFrame(() => pickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [showReturnPicker, showZwischenstoppPicker]);
   const [zwischenstoppInput, setZwischenstoppInput] = useState('');
   const [zwischenstoppSuggestions, setZwischenstoppSuggestions] = useState<any[]>([]);
   const [zwischenstoppLoading, setZwischenstoppLoading] = useState(false);
@@ -748,7 +755,7 @@ function ResultsContent() {
 
         {/* Pickers (full width, shown one at a time) */}
         {showReturnPicker && (
-          <div className="mt-8 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 shadow-sm">
+          <div ref={pickerRef} className="mt-8 scroll-mt-28 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 shadow-sm">
             <p className="text-sm font-bold text-primary-800">
               {locale === 'de' ? '⇄ Rückfahrt hinzufügen' : locale === 'en' ? '⇄ Add return trip' : '⇄ Dönüş ekle'}
             </p>
@@ -774,7 +781,7 @@ function ResultsContent() {
           </div>
         )}
         {showZwischenstoppPicker && (
-          <div className="mt-8 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 relative shadow-sm">
+          <div ref={pickerRef} className="mt-8 scroll-mt-28 bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-3 relative shadow-sm">
             <p className="text-sm font-bold text-primary-800">
               {locale === 'de' ? 'Zwischenstopp hinzufügen' : locale === 'en' ? 'Add intermediate stop' : 'Ara durak ekle'}
             </p>
