@@ -5,6 +5,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { parsePhone, formatPhoneDisplay } from '../utils/phone';
 import { isRateLimited, registerFailure } from '../utils/rateLimit';
 import { sendWhatsAppAdmin } from '../services/whatsappNotify';
+import { getAlertConfig } from '../services/alertCenter';
 
 const router = Router();
 
@@ -152,6 +153,13 @@ router.post('/callback-request', async (req: Request, res: Response) => {
     ]).catch(() => { /* Benachrichtigung darf den Request nie beeinflussen */ });
 
     if (!RESEND_API_KEY) return;
+    // Empfänger: System → E-posta Uyarıları → "Rückruf anfordern" (Admin und/oder Partner)
+    const cfg = await getAlertConfig();
+    const to = [
+      ...(cfg.callback_to_admin ? [ADMIN_EMAIL] : []),
+      ...(cfg.callback_to_partner ? cfg.callback_partner_emails.split(',').map(e => e.trim()).filter(Boolean) : []),
+    ].filter((e, i, a) => a.indexOf(e) === i);
+    if (!to.length) return;
     const resend = new Resend(RESEND_API_KEY);
 
     // "19.09.2026 um 10:00" — der Kunde soll am Telefon nichts wiederholen müssen,
@@ -180,7 +188,7 @@ router.post('/callback-request', async (req: Request, res: Response) => {
 
     resend.emails.send({
       from: `Flughafen-muenchen.TAXI <${FROM_EMAIL}>`,
-      to: ADMIN_EMAIL,
+      to,
       subject: `📞 Rückruf gewünscht: ${formatPhoneDisplay(data.phone)}${data.name ? ` (${data.name})` : ''}`,
       html: `
         <div style="font-family:-apple-system,sans-serif;max-width:640px;margin:0 auto;padding:24px;background:#f9fafb;">

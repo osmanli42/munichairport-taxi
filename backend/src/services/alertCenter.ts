@@ -26,6 +26,10 @@ export interface AlertConfig {
   calendar_missing_emails: string;  // bookings not in the calendar: who gets the mail besides the admin, comma separated
   calendar_missing_quiet: CalendarMissingQuiet;  // Berlin hours without that mail
   calendar_missing_dashboard: boolean;  // the same list in the dashboard's Handlungsbedarf
+  // "Rückruf anfordern" mails from customers — not an alert, so the master switch above does not gate them
+  callback_to_admin: boolean;
+  callback_to_partner: boolean;
+  callback_partner_emails: string;  // comma separated
 }
 
 export const CALENDAR_MISSING_QUIET = ['off', '22:00-07:00', '23:00-07:00', '00:00-06:00'] as const;
@@ -67,6 +71,9 @@ export const DEFAULT_ALERT_CONFIG: AlertConfig = {
   calendar_missing_emails: 'mali@freising.taxi',
   calendar_missing_quiet: 'off',
   calendar_missing_dashboard: true,
+  callback_to_admin: true,
+  callback_to_partner: true,
+  callback_partner_emails: 'mali@freising.taxi',
 };
 
 let cache: { cfg: AlertConfig; at: number } | null = null;
@@ -97,6 +104,11 @@ function merge(raw: any): AlertConfig {
       : d.calendar_missing_emails,
     calendar_missing_quiet: CALENDAR_MISSING_QUIET.includes(raw?.calendar_missing_quiet) ? raw.calendar_missing_quiet : d.calendar_missing_quiet,
     calendar_missing_dashboard: typeof raw?.calendar_missing_dashboard === 'boolean' ? raw.calendar_missing_dashboard : d.calendar_missing_dashboard,
+    callback_to_admin: typeof raw?.callback_to_admin === 'boolean' ? raw.callback_to_admin : d.callback_to_admin,
+    callback_to_partner: typeof raw?.callback_to_partner === 'boolean' ? raw.callback_to_partner : d.callback_to_partner,
+    callback_partner_emails: typeof raw?.callback_partner_emails === 'string'
+      ? raw.callback_partner_emails.split(',').map((e: string) => e.trim()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).join(', ')
+      : d.callback_partner_emails,
   };
 }
 

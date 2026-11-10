@@ -7,6 +7,7 @@ import MailOpenCard from './MailOpenCard';
 import CookieBannerCard from './CookieBannerCard';
 import SecurityCard from './SecurityCard';
 import CalendarMissingPanel from './CalendarMissingPanel';
+import CallbackMailPanel from './CallbackMailPanel';
 
 // What each PM2 process is, in plain words (checked against the VPS: pm2 cwd/script and
 // the nginx site that routes to its port), what happens if it is stopped, and why some
@@ -88,6 +89,9 @@ interface AlertCfg {
   calendar_missing_emails?: string;
   calendar_missing_quiet?: string;
   calendar_missing_dashboard?: boolean;
+  callback_to_admin?: boolean;
+  callback_to_partner?: boolean;
+  callback_partner_emails?: string;
   email_to?: string;
 }
 const CARD_DEADLINE_OPTIONS = ['20:15', '20:30', '20:45', '21:00', '21:30', '22:00', '22:30', '23:00'];
@@ -214,6 +218,8 @@ export default function SystemTab({ token }: { token: string }) {
           calendar_new_mode: ad.calendar_new_mode, calendar_new_time: ad.calendar_new_time,
           calendar_missing_emails: ad.calendar_missing_emails, calendar_missing_quiet: ad.calendar_missing_quiet,
           calendar_missing_dashboard: ad.calendar_missing_dashboard, email_to: ad.email_to,
+          callback_to_admin: ad.callback_to_admin, callback_to_partner: ad.callback_to_partner,
+          callback_partner_emails: ad.callback_partner_emails,
         });
       }
       setLastUpdated(new Date());
@@ -763,6 +769,15 @@ export default function SystemTab({ token }: { token: string }) {
                 </div>
               ))}
             </div>
+
+            <CallbackMailPanel
+              adminEmail={alertSettings.email_to || 'info@flughafen-muenchen.taxi'}
+              toAdmin={alertSettings.callback_to_admin !== false}
+              toPartner={alertSettings.callback_to_partner !== false}
+              partnerEmails={alertSettings.callback_partner_emails ?? ''}
+              saving={alertSaving}
+              onSave={saveAlertSettings}
+            />
 
             <div className={`grid sm:grid-cols-2 gap-3 mt-4 ${alertSettings.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
               {([
