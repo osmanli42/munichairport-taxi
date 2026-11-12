@@ -766,9 +766,18 @@ export function parseInvoiceRide(ev: CalEvent, companies: CompanyRef[], aliases:
 
 const distanceCache = new Map<string, number | null>();
 
-export async function drivingDistanceKm(from: string, to: string): Promise<number | null> {
+// Google Distance Matrix löst „Flughafen München“ (ohne PLZ) zur Stadtmitte auf → 8 statt 45 km.
+// Flughafen-Angaben ohne PLZ bekommen deshalb die Flughafen-PLZ angehängt.
+const AIRPORT_RE = /flughafen\s*m(ü|ue|u)nchen|munich\s*airport|airport\s*munich|m(ü|ue|u)nchen[\s-]*flughafen|\bMUC\b|franz[\s-]*josef[\s-]*strau/i;
+export function distanceAddress(a: string): string {
+  return AIRPORT_RE.test(a) && !/\b\d{5}\b/.test(a) ? `${a.trim()}, 85356 München-Flughafen` : a;
+}
+
+export async function drivingDistanceKm(rawFrom: string, rawTo: string): Promise<number | null> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
-  if (!key || !from || !to) return null;
+  if (!key || !rawFrom || !rawTo) return null;
+  const from = distanceAddress(rawFrom);
+  const to = distanceAddress(rawTo);
   const cacheKey = `${from.toLowerCase()}|${to.toLowerCase()}`;
   if (distanceCache.has(cacheKey)) return distanceCache.get(cacheKey)!;
   try {

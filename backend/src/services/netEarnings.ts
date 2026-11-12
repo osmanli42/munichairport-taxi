@@ -12,7 +12,7 @@
 // dauerhaft in distance_cache gespeichert (pro Anfrage begrenzt, Rest beim nächsten Laden).
 import crypto from 'crypto';
 import { query, run } from '../db';
-import { drivingDistanceKm } from './calendarInvoice';
+import { drivingDistanceKm, distanceAddress } from './calendarInvoice';
 import { driverTokens } from '../utils/calendarDriver';
 
 export interface CostSettings {
@@ -164,7 +164,9 @@ export function summarize(items: Array<{ price: number | null; cost: RideCost }>
 
 // ---- Strecke je Adresspaar (dauerhaft) ------------------------------------------------
 
-const normAddr = (a: string) => a.toLowerCase().replace(/,\s*(deutschland|germany)\s*$/i, '').replace(/\s+/g, ' ').trim();
+// distanceAddress: Flughafen ohne PLZ bekommt die PLZ — dadurch auch neue Schlüssel, die alten
+// (falschen, ~8 km zur Stadtmitte) Einträge im distance_cache werden nicht mehr gelesen.
+const normAddr = (a: string) => distanceAddress(a).toLowerCase().replace(/,\s*(deutschland|germany)\s*$/i, '').replace(/\s+/g, ' ').trim();
 const pairKey = (from: string, to: string) => crypto.createHash('sha1').update(`${normAddr(from)}|${normAddr(to)}`).digest('hex');
 const RETRY_NULL_DAYS = 7;
 
