@@ -14,6 +14,7 @@ const SearchBar = dynamic(() => import('@/components/SearchBar'), {
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
 import HomeSeoContent from '@/components/HomeSeoContent';
+import StepAnimation from '@/components/StepAnimations';
 import { CONTACT_INFO } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -186,21 +187,13 @@ export default function HomePage() {
           {/* Steps — 3 kart */}
           <div className="grid gap-6 lg:grid-cols-3">
             {sd.steps.map((s, idx) => {
-              const foto = ['/images/step-1-adresse.webp', '/images/step-2-fahrzeug.webp', '/images/step-3-ankunft.webp'][idx];
               const ikonlar = [[Clock, Plane, Calendar], [Users, Users, Users], [User, Clock, Luggage]][idx];
               return (
                 <div key={s.title} className="relative">
                   <div className="h-full bg-white rounded-2xl p-5 pt-8 flex flex-col" style={{ boxShadow: '0 4px 24px rgba(15,27,45,.07)' }}>
                     {/* Foto + numara rozeti */}
                     <div className="relative">
-                      <img
-                        src={foto}
-                        alt={s.title}
-                        loading="lazy"
-                        width={433}
-                        height={208}
-                        className="w-full aspect-[433/208] object-cover rounded-xl"
-                      />
+                      <StepAnimation step={idx} locale={locale} />
                       <span
                         className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full text-white font-extrabold text-lg"
                         style={{ width: '44px', height: '44px', background: '#c9a84c', boxShadow: '0 3px 10px rgba(201,168,76,.45)', border: '3px solid #fff' }}

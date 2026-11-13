@@ -1,0 +1,425 @@
+/* "In 3 Schritten zum Transfer" — hafif, kodla cizilen hareketli kartlar.
+   Kural: elemanlarin TEMEL stili = animasyonun son (tamamlanmis) hali.
+   Boylece prefers-reduced-motion'da animasyon kapaninca kart dolu ve anlamli gorunur.
+   Kart ekranda degilken (data-play yok) animasyonlar duraklatilir. */
+
+.root {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 433 / 208;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  user-select: none;
+}
+.root:not([data-play]) *,
+.root:not([data-play]) *::before,
+.root:not([data-play]) *::after {
+  animation-play-state: paused !important;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  font-size: clamp(9px, 3.05cqw, 13.5px);
+  line-height: 1.25;
+  color: #0f1b2d;
+  animation: stageFade 8s ease-in-out infinite both;
+}
+@keyframes stageFade {
+  0% { opacity: 0; }
+  3% { opacity: 1; }
+  93% { opacity: 1; }
+  99%, 100% { opacity: 0; }
+}
+
+/* ---------- ortak zemin ---------- */
+.bgLight {
+  background:
+    linear-gradient(rgba(15, 27, 45, 0.045) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
+    linear-gradient(90deg, rgba(15, 27, 45, 0.045) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
+    linear-gradient(135deg, #f6f1e4 0%, #fbf9f4 55%, #eef2f8 100%);
+}
+.panel {
+  position: absolute;
+  background: #fff;
+  border-radius: 0.9em;
+  box-shadow: 0 0.5em 1.6em rgba(15, 27, 45, 0.12), 0 0 0 1px rgba(15, 27, 45, 0.05);
+}
+
+/* =========================================================
+   1) Adresse & Zeit
+   ========================================================= */
+.form {
+  left: 5%;
+  top: 13%;
+  width: 58%;
+  height: 79%;
+  padding: 0.85em 0.95em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  padding: 0.42em 0.6em;
+  border-radius: 0.55em;
+  border: 1px solid #e6e9ef;
+  background: #fafbfc;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.field1 { animation: focus1 8s infinite both; }
+.field2 { animation: focus2 8s infinite both; }
+@keyframes focus1 {
+  0%, 3% { border-color: #e6e9ef; box-shadow: none; }
+  5%, 21% { border-color: #c9a84c; box-shadow: 0 0 0 0.2em rgba(201, 168, 76, 0.18); }
+  24%, 100% { border-color: #e6e9ef; box-shadow: none; }
+}
+@keyframes focus2 {
+  0%, 22% { border-color: #e6e9ef; box-shadow: none; }
+  24%, 39% { border-color: #c9a84c; box-shadow: 0 0 0 0.2em rgba(201, 168, 76, 0.18); }
+  42%, 100% { border-color: #e6e9ef; box-shadow: none; }
+}
+.dotO, .dotF {
+  flex: 0 0 auto;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+}
+.dotO { border: 0.16em solid #0f1b2d; }
+.dotF { background: #c9a84c; }
+
+.type1, .type2 {
+  display: inline-block;
+  clip-path: inset(0 0 0 0);
+}
+.type1 { animation: type1 8s infinite both; animation-timing-function: steps(22, end); }
+.type2 { animation: type2 8s infinite both; animation-timing-function: steps(20, end); }
+@keyframes type1 {
+  0%, 5% { clip-path: inset(0 100% 0 0); }
+  20%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes type2 {
+  0%, 25% { clip-path: inset(0 100% 0 0); }
+  38%, 100% { clip-path: inset(0 0 0 0); }
+}
+
+.chips {
+  display: flex;
+  gap: 0.4em;
+  animation: chipsIn 8s infinite both;
+}
+@keyframes chipsIn {
+  0%, 41% { opacity: 0; transform: translateY(0.4em); }
+  46%, 100% { opacity: 1; transform: none; }
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.3em 0.55em;
+  border-radius: 999px;
+  background: #fdf8ec;
+  border: 1px solid #f3e7c4;
+  color: #8a6d1f;
+  font-weight: 700;
+  font-size: 0.86em;
+  white-space: nowrap;
+}
+
+.btn {
+  margin-top: auto;
+  text-align: center;
+  padding: 0.5em 0.6em;
+  border-radius: 0.55em;
+  background: linear-gradient(180deg, #d4b45c, #c9a84c);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0.25em 0.7em rgba(201, 168, 76, 0.4);
+  animation: press 8s infinite both;
+}
+@keyframes press {
+  0%, 51% { transform: scale(1); filter: none; }
+  53.5% { transform: scale(0.95); filter: brightness(0.9); }
+  57%, 100% { transform: scale(1); filter: none; }
+}
+
+.price {
+  right: 5%;
+  top: 22%;
+  width: 31%;
+  padding: 0.8em 0.8em 0.75em;
+  text-align: left;
+  animation: popIn 8s infinite both;
+}
+@keyframes popIn {
+  0%, 57% { opacity: 0; transform: translateY(0.8em) scale(0.94); }
+  63%, 100% { opacity: 1; transform: none; }
+}
+.priceLabel {
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c9a84c;
+}
+.priceValue {
+  font-size: 2.15em;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0.1em 0 0.15em;
+}
+.priceMeta {
+  font-size: 0.8em;
+  color: #6b7c93;
+  font-weight: 600;
+}
+.priceOk {
+  margin-top: 0.5em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #1f8a4c;
+}
+
+/* =========================================================
+   2) Fahrzeug & Preis
+   ========================================================= */
+.list {
+  left: 5%;
+  right: 5%;
+  top: 12%;
+  bottom: 6%;
+  padding: 0.55em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+.rows {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0.4em;
+}
+.row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0 0.7em 0 0.45em;
+  border-radius: 0.6em;
+  border: 1px solid #edf0f4;
+  min-height: 0;
+}
+.thumb {
+  flex: 0 0 auto;
+  width: 22%;
+  height: auto;
+  max-height: 86%;
+  aspect-ratio: 176 / 76;
+  object-fit: cover;
+  border-radius: 0.4em;
+  background: #f1f3f6;
+}
+.rowName {
+  font-weight: 800;
+  font-size: 1.02em;
+  white-space: nowrap;
+}
+.rowMeta {
+  display: flex;
+  gap: 0.75em;
+  color: #6b7c93;
+  font-size: 0.82em;
+  font-weight: 600;
+  margin-top: 0.12em;
+}
+.rowMeta span { display: inline-flex; align-items: center; gap: 0.25em; }
+.rowPrice {
+  margin-left: auto;
+  font-weight: 900;
+  font-size: 1.12em;
+  white-space: nowrap;
+}
+.note {
+  text-align: center;
+  font-size: 0.76em;
+  color: #6b7c93;
+  font-weight: 600;
+}
+/* Kayan secim cercevesi: 3 satirin uzerinde sirayla gezer */
+.ring {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc((100% - 0.8em) / 3);
+  border: 2px solid #0f1b2d;
+  border-radius: 0.6em;
+  background: #fdf8ec;
+  z-index: 0;
+  transform: translateY(calc(100% + 0.4em));
+  animation: ringMove 8s infinite both cubic-bezier(0.65, 0, 0.35, 1);
+}
+@keyframes ringMove {
+  0%, 26% { transform: translateY(0); }
+  33%, 59% { transform: translateY(calc(100% + 0.4em)); }
+  66%, 92% { transform: translateY(calc(200% + 0.8em)); }
+  100% { transform: translateY(0); }
+}
+.check {
+  position: absolute;
+  right: -0.45em;
+  top: -0.45em;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: 50%;
+  background: #c9a84c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 0.15em #fff;
+  animation: checkPop 8s infinite both;
+}
+@keyframes checkPop {
+  0%, 4% { transform: scale(0); }
+  8%, 26% { transform: scale(1); }
+  29%, 37% { transform: scale(0); }
+  41%, 59% { transform: scale(1); }
+  62%, 70% { transform: scale(0); }
+  74%, 92% { transform: scale(1); }
+  100% { transform: scale(0); }
+}
+
+/* =========================================================
+   3) Entspannt ankommen
+   ========================================================= */
+.bgTerminal {
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(201, 168, 76, 0.18), transparent 55%),
+    linear-gradient(180deg, #eef1f6 0%, #f7f9fc 100%);
+}
+.board {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 13%;
+  padding: 0.6em 0.75em 0.5em;
+  border-radius: 0.8em;
+  background: #0f1621;
+  color: #e9edf3;
+  box-shadow: 0 0.6em 1.6em rgba(15, 27, 45, 0.28);
+}
+.boardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #9aa6b8;
+  margin-bottom: 0.35em;
+}
+.boardHead b { color: #c9a84c; letter-spacing: 0.06em; text-transform: uppercase; }
+.boardRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.28em 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.9em;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.flight { color: #f2d27a; min-width: 5.6em; }
+.city { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.status {
+  position: relative;
+  min-width: 7.2em;
+  height: 1.3em;
+  text-align: right;
+  perspective: 20em;
+}
+.status > span {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform-origin: 50% 50%;
+}
+.statusOld { opacity: 0; animation: flipOut 8s infinite both; }
+.statusNew { color: #4ade80; animation: flipIn 8s infinite both; }
+@keyframes flipOut {
+  0%, 22% { opacity: 1; transform: rotateX(0); }
+  26%, 100% { opacity: 0; transform: rotateX(90deg); }
+}
+@keyframes flipIn {
+  0%, 26% { opacity: 0; transform: rotateX(-90deg); }
+  30%, 100% { opacity: 1; transform: rotateX(0); }
+}
+.rowHighlight { animation: rowGlow 8s infinite both; border-radius: 0.3em; }
+@keyframes rowGlow {
+  0%, 28% { background: transparent; }
+  32%, 100% { background: rgba(74, 222, 128, 0.08); }
+}
+
+.sign {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  width: 46%;
+  padding: 0 0 0.55em;
+  background: #fff;
+  border-radius: 0.6em;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 0.8em 1.8em rgba(15, 27, 45, 0.25);
+  transform: translateX(-50%) rotate(-1.5deg);
+  animation: signUp 8s infinite both;
+}
+@keyframes signUp {
+  0%, 36% { opacity: 0; transform: translate(-50%, 60%) rotate(0deg); }
+  44% { opacity: 1; transform: translate(-50%, -4%) rotate(-2deg); }
+  48%, 100% { opacity: 1; transform: translateX(-50%) rotate(-1.5deg); }
+}
+.signBar {
+  background: #c9a84c;
+  color: #fff;
+  font-size: 0.7em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3em 0;
+  margin-bottom: 0.3em;
+}
+.signName {
+  font-size: 1.7em;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.signMeta {
+  font-size: 0.76em;
+  color: #6b7c93;
+  font-weight: 600;
+  margin-top: 0.15em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root *, .root *::before, .root *::after { animation: none !important; }
+  .ring { transform: translateY(0); }
+  .statusOld { opacity: 0; }
+}
