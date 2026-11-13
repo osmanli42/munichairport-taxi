@@ -58,7 +58,7 @@ export default function SiteChrome({
       <GutscheinCapture locale={locale} />
       <main className="flex-1 pb-[88px] md:pb-0">{children}</main>
       <Footer />
-      <WhatsAppButton />
+      <WhatsAppButton hideOnMobile={!suppressGlobalMobileCta} />
       {!suppressGlobalMobileCta && <MobileStickyCTA />}
       <CookieBanner />
       <VisitorTracker />

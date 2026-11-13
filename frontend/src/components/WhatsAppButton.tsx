@@ -11,7 +11,7 @@ const SHOW_DELAY = 30_000;
 const AUTO_HIDE = 10_000;
 const SUPPRESS_MS = 24 * 60 * 60 * 1000;
 
-export default function WhatsAppButton() {
+export default function WhatsAppButton({ hideOnMobile = false }: { hideOnMobile?: boolean }) {
   const [bubble, setBubble] = useState(false);
   const pathname = usePathname() || '';
   const locale = useLocale();
@@ -49,7 +49,9 @@ export default function WhatsAppButton() {
   if (chatOnline) return null;
 
   return (
-    <div data-floating-button className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+    // Auf Mobil sitzt WhatsApp als dritter Button in der MobileStickyCTA-Leiste —
+    // der schwebende Button würde dort "Anrufen" überdecken.
+    <div data-floating-button className={`fixed bottom-6 right-6 z-50 items-center gap-2 ${hideOnMobile ? 'hidden md:flex' : 'flex'}`}>
       {bubble && (
         <div
           className="bg-white rounded-2xl shadow-xl border border-gray-100 px-3 py-2 flex items-center gap-2 animate-fade-in"

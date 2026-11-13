@@ -73,7 +73,7 @@ export default function HomePage() {
   // LCP: hero fotografi inline CSS background oldugu icin tarayicinin preload
   // tarayicisi HTML'de goremiyor ve ancak render sonrasi kesfediyor. Preload ile
   // indirme sayfa yuklenir yuklenmez basliyor.
-  ReactDOM.preload('/images/hero-airport.webp', { as: 'image', fetchPriority: 'high' });
+  ReactDOM.preload('/images/hero-airport-v2.webp', { as: 'image', fetchPriority: 'high' });
 
   return (
     <>
@@ -81,14 +81,14 @@ export default function HomePage() {
       <section className="relative bg-primary-800 text-white overflow-visible">
         {/* Background photo — Munich Airport at sunset, full strength */}
         <div
-          className="absolute inset-0 pointer-events-none bg-cover"
-          style={{ backgroundImage: "url('/images/hero-airport.webp')", backgroundPosition: 'center 35%' }}
+          className="absolute inset-0 pointer-events-none bg-cover bg-[position:76%_10%] md:bg-[position:center_10%]"
+          style={{ backgroundImage: "url('/images/hero-airport-v2.webp')" }}
         />
         {/* Dark overlay — keeps the headline, badges and buttons readable over the photo */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(to bottom, rgba(16,34,60,0.88) 0%, rgba(16,34,60,0.70) 45%, rgba(16,34,60,0.90) 100%)',
+            background: 'linear-gradient(to bottom, rgba(16,34,60,0.72) 0%, rgba(16,34,60,0.56) 45%, rgba(16,34,60,0.82) 100%)',
           }}
         />
 
