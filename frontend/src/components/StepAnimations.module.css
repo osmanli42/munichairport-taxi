@@ -363,17 +363,17 @@
 .statusOld { opacity: 0; animation: flipOut 8s infinite both; }
 .statusNew { color: #4ade80; animation: flipIn 8s infinite both; }
 @keyframes flipOut {
-  0%, 22% { opacity: 1; transform: rotateX(0); }
-  26%, 100% { opacity: 0; transform: rotateX(90deg); }
+  0%, 10% { opacity: 1; transform: rotateX(0); }
+  14%, 100% { opacity: 0; transform: rotateX(90deg); }
 }
 @keyframes flipIn {
-  0%, 26% { opacity: 0; transform: rotateX(-90deg); }
-  30%, 100% { opacity: 1; transform: rotateX(0); }
+  0%, 14% { opacity: 0; transform: rotateX(-90deg); }
+  18%, 100% { opacity: 1; transform: rotateX(0); }
 }
 .rowHighlight { animation: rowGlow 8s infinite both; border-radius: 0.3em; }
 @keyframes rowGlow {
-  0%, 28% { background: transparent; }
-  32%, 100% { background: rgba(74, 222, 128, 0.08); }
+  0%, 16% { background: transparent; }
+  20%, 100% { background: rgba(74, 222, 128, 0.08); }
 }
 
 .sign {
@@ -391,9 +391,9 @@
   animation: signUp 8s infinite both;
 }
 @keyframes signUp {
-  0%, 36% { opacity: 0; transform: translate(-50%, 60%) rotate(0deg); }
-  44% { opacity: 1; transform: translate(-50%, -4%) rotate(-2deg); }
-  48%, 100% { opacity: 1; transform: translateX(-50%) rotate(-1.5deg); }
+  0%, 22% { opacity: 0; transform: translate(-50%, 60%) rotate(0deg); }
+  29% { opacity: 1; transform: translate(-50%, -4%) rotate(-2deg); }
+  32%, 100% { opacity: 1; transform: translateX(-50%) rotate(-1.5deg); }
 }
 .signBar {
   background: #c9a84c;
@@ -418,8 +418,54 @@
   margin-top: 0.15em;
 }
 
+/* 3. kare: sofor kapiyi aciyor, musteri biniyor (gercek foto) */
+.ride {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  animation: rideIn 8s infinite both;
+}
+@keyframes rideIn {
+  0%, 50% { opacity: 0; }
+  56%, 100% { opacity: 1; }
+}
+.rideImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 40% 50%;
+  display: block;
+  animation: rideZoom 8s infinite both linear;
+}
+@keyframes rideZoom {
+  0%, 50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.rideChip {
+  position: absolute;
+  left: 4%;
+  bottom: 7%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.35em 0.7em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f1b2d;
+  font-weight: 800;
+  font-size: 0.86em;
+  box-shadow: 0 0.3em 0.9em rgba(15, 27, 45, 0.2);
+  animation: chipRide 8s infinite both;
+}
+.rideChip svg { color: #c9a84c; }
+@keyframes chipRide {
+  0%, 60% { opacity: 0; transform: translateY(0.6em); }
+  66%, 100% { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .root *, .root *::before, .root *::after { animation: none !important; }
   .ring { transform: translateY(0); }
   .statusOld { opacity: 0; }
+  .ride { display: none; }
 }

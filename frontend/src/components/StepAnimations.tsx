@@ -10,19 +10,19 @@ const L = {
     from: 'Flughafen München (MUC)', to: 'München Hauptbahnhof', date: 'Fr. 20.11. · 14:30', btn: 'Preis berechnen',
     fixed: 'Festpreis', meta: 'Kombi · 40 Min.', fast: 'in 0,4 Sek.',
     kombi: 'Kombi', van: 'Van', gross: 'Großraumtaxi', note: 'Festpreis · kein Stauaufpreis',
-    arrivals: 'Ankunft · Arrivals', landed: 'GELANDET', mr: 'Herr Müller', terminal: 'Terminal 2', signBar: 'Ihr Fahrer',
+    arrivals: 'Ankunft · Arrivals', landed: 'GELANDET', mr: 'Herr Müller', terminal: 'Terminal 2', signBar: 'Ihr Fahrer', welcome: 'Willkommen in München',
   },
   en: {
     from: 'Munich Airport (MUC)', to: 'Munich Central Station', date: 'Fri 20 Nov · 2:30 pm', btn: 'Calculate price',
     fixed: 'Fixed price', meta: 'Kombi · 40 min', fast: 'in 0.4 sec',
     kombi: 'Kombi', van: 'Van', gross: 'Large taxi', note: 'Fixed price · no traffic surcharge',
-    arrivals: 'Arrivals', landed: 'LANDED', mr: 'Mr Miller', terminal: 'Terminal 2', signBar: 'Your driver',
+    arrivals: 'Arrivals', landed: 'LANDED', mr: 'Mr Miller', terminal: 'Terminal 2', signBar: 'Your driver', welcome: 'Welcome to Munich',
   },
   tr: {
     from: 'Münih Havalimanı (MUC)', to: 'Münih Merkez İstasyonu', date: 'Cum 20.11. · 14:30', btn: 'Fiyat hesapla',
     fixed: 'Sabit fiyat', meta: 'Kombi · 40 dk', fast: '0,4 sn’de',
     kombi: 'Kombi', van: 'Van', gross: 'Büyük taksi', note: 'Sabit fiyat · trafik ek ücreti yok',
-    arrivals: 'Varış · Arrivals', landed: 'İNDİ', mr: 'Bay Müller', terminal: 'Terminal 2', signBar: 'Sürücünüz',
+    arrivals: 'Varış · Arrivals', landed: 'İNDİ', mr: 'Bay Müller', terminal: 'Terminal 2', signBar: 'Sürücünüz', welcome: 'Münih’e hoş geldiniz',
   },
 } as const;
 
@@ -145,6 +145,10 @@ function Step3({ t }: { t: (typeof L)[Lang] }) {
         <div className={s.signBar}>{t.signBar}</div>
         <div className={s.signName}>{t.mr}</div>
         <div className={s.signMeta}>LH 2405 · {t.terminal}</div>
+      </div>
+      <div className={s.ride}>
+        <img src="/images/step-3-einsteigen.webp" alt="" width={720} height={346} loading="lazy" decoding="async" className={s.rideImg} />
+        <span className={s.rideChip}><Check size="1.1em" strokeWidth={3} />{t.welcome}</span>
       </div>
     </div>
   );
