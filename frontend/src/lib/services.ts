@@ -1,5 +1,5 @@
 import {
-  Plane, Presentation, MountainSnow, Route, Users, Beer, TrainFront, Briefcase, Package, HeartPulse,
+  Plane, Presentation, MountainSnow, Route, Users, Beer, TrainFront, Briefcase, Package, HeartPulse, Camera,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export const lang = (l: string): Lang => (l === 'en' || l === 'tr' ? l : 'de');
 
 export type ServiceKey =
   | 'airport' | 'messe' | 'ski' | 'longDistance' | 'groups'
-  | 'oktoberfest' | 'city' | 'business' | 'courier' | 'medical';
+  | 'oktoberfest' | 'city' | 'business' | 'courier' | 'medical' | 'sightseeing';
 
 type ServiceText = { title: string; short: string; text: string; bullets: [string, string, string]; cta: string };
 
@@ -57,6 +57,14 @@ export const SERVICES: Service[] = [
       de: { title: 'Shuttle, Gruppen & Events', short: 'Hochzeit, Firmenevent, Stadion', text: 'Für Gruppen stimmen wir mehrere Fahrzeuge aufeinander ab – für Hochzeiten, Firmenfeiern, Konzerte und Spiele.', bullets: ['Großraumtaxi bis 8 Personen', 'Mehrere Fahrzeuge zur gleichen Zeit', 'Hin- und Rückfahrt vorab geplant'], cta: 'Gruppenfahrt anfragen' },
       en: { title: 'Shuttle, groups & events', short: 'Weddings, company events, stadium', text: 'For groups we coordinate several vehicles – for weddings, company parties, concerts and matches.', bullets: ['Large taxi for up to 8 people', 'Several vehicles at the same time', 'Outward and return trip planned ahead'], cta: 'Request a group ride' },
       tr: { title: 'Shuttle, grup & etkinlik', short: 'Düğün, firma etkinliği, stadyum', text: 'Gruplar için birden fazla aracı koordine ediyoruz – düğün, firma kutlaması, konser ve maçlar için.', bullets: ['8 kişiye kadar büyük taksi', 'Aynı anda birden fazla araç', 'Gidiş ve dönüş önceden planlanır'], cta: 'Grup yolculuğu iste' },
+    },
+  },
+  {
+    key: 'sightseeing', icon: Camera, href: '/sightseeing',
+    text: {
+      de: { title: 'Sightseeing & Ausflüge', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Tagesausflüge mit dem Taxi ab München oder vom Flughafen: Ihr Fahrer bringt Sie hin, wartet vor Ort und fährt Sie zurück.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Pauschalpreis inkl. Rückfahrt vorab', 'Halt für Fotos, wo Sie möchten'], cta: 'Ausflüge ansehen' },
+      en: { title: 'Sightseeing & day trips', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Day trips by taxi from Munich or the airport: your driver takes you there, waits on site and drives you back.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Package price incl. return agreed upfront', 'Photo stops wherever you like'], cta: 'See day trips' },
+      tr: { title: 'Gezi & günübirlik turlar', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Münih’ten veya havalimanından taksiyle günübirlik gezi: Şoförünüz sizi götürür, orada bekler ve geri getirir.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Dönüş dahil paket fiyat önceden belli', 'İstediğiniz yerde fotoğraf molası'], cta: 'Gezileri gör' },
     },
   },
   {
