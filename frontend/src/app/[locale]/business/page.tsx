@@ -692,7 +692,7 @@ export default function BusinessPage() {
             </div>
           </div>
           <div className="relative order-1 lg:order-2">
-            <img src="/images/business/trust-fleet.webp" alt="" loading="lazy" className="aspect-[4/3] w-full rounded-3xl object-cover shadow-2xl" />
+            <img src="/images/business/trust-fleet-v2.webp" alt="" loading="lazy" className="aspect-video w-full rounded-3xl object-cover shadow-2xl" />
             <div className="absolute -bottom-6 left-6 flex items-center gap-3 rounded-2xl bg-primary-900 px-5 py-4 text-white shadow-xl">
               <span className="text-3xl font-extrabold text-gold-400">4,7</span>
               <div className="leading-tight">
