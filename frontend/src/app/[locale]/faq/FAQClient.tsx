@@ -1,83 +1,46 @@
 'use client';
 
-import { useState } from 'react';
-import { Phone, MessageCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Phone, MessageCircle, Search, X, ChevronDown, Mail } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { CONTACT_INFO } from '@/lib/utils';
 import { faqData } from './faqData';
 import { faqDesign, categoryIcons, trustIcons } from './faqDesign';
 
-function FAQAccordion({ items }: { items: { question: string; answer: string }[] }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+type Item = { question: string; answer: string };
 
+const UI = {
+  de: { search: 'Frage suchen, z. B. Kindersitz, Stornierung, Wartezeit …', results: (n: number) => `${n} Treffer`, none: 'Keine passende Frage gefunden – rufen Sie uns an oder schreiben Sie uns per WhatsApp.', topics: 'Themen', questions: 'Fragen', contact: 'Kontakt', clear: 'Suche löschen' },
+  en: { search: 'Search a question, e.g. child seat, cancellation, waiting time …', results: (n: number) => `${n} results`, none: 'No matching question – call us or message us on WhatsApp.', topics: 'Topics', questions: 'questions', contact: 'Contact', clear: 'Clear search' },
+  tr: { search: 'Soru arayın, ör. çocuk koltuğu, iptal, bekleme süresi …', results: (n: number) => `${n} sonuç`, none: 'Uygun soru bulunamadı – bizi arayın veya WhatsApp’tan yazın.', topics: 'Konular', questions: 'soru', contact: 'İletişim', clear: 'Aramayı temizle' },
+} as const;
+
+const clean = (label: string) => label.replace(/^[^\s]+\s/, '');
+
+/** All answers stay in the DOM (hidden when closed) so search engines can read them. */
+function FAQAccordion({ items, openFirst = true }: { items: Item[]; openFirst?: boolean }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(openFirst ? 0 : null);
   return (
     <div className="space-y-3">
-      {items.map((item, i) => (
-        <div
-          key={i}
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: '#fff',
-            border: openIndex === i ? '1px solid #c9a84c' : '1px solid #e5edf5',
-            boxShadow: openIndex === i
-              ? '0 4px 20px rgba(201,168,76,.12)'
-              : '0 2px 12px rgba(15,27,45,.04)',
-            transition: 'all .2s',
-          }}
-        >
-          <button
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-            onClick={() => setOpenIndex(openIndex === i ? null : i)}
-          >
-            <div className="flex items-center gap-3 pr-4">
-              <span
-                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                style={{ background: '#c9a84c' }}
-              >
-                {i + 1}
+      {items.map((item, i) => {
+        const open = openIndex === i;
+        return (
+          <div key={item.question} className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 transition ${open ? 'ring-gold-400 shadow-md' : 'ring-gray-200 hover:ring-gold-300'}`}>
+            <button type="button" aria-expanded={open} onClick={() => setOpenIndex(open ? null : i)}
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left sm:px-6">
+              <span className="font-semibold text-gray-900 md:text-[1.05rem]">{item.question}</span>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition ${open ? 'rotate-180 bg-gold-400 text-primary-900' : 'bg-gray-100 text-gray-500'}`}>
+                <ChevronDown size={17} />
               </span>
-              <span
-                className="font-semibold text-sm md:text-base"
-                style={{ color: '#0f1b2d' }}
-              >
-                {item.question}
-              </span>
-            </div>
-            <span
-              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all"
-              style={{
-                background: openIndex === i ? '#fdf8ec' : '#f4f7fb',
-                border: openIndex === i ? '1px solid #f0d890' : '1px solid #e5edf5',
-                transform: openIndex === i ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'all .25s',
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 4l4 4 4-4" stroke={openIndex === i ? '#c9a84c' : '#8a9bb0'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          </button>
-
-          {openIndex === i && (
-            <div
-              className="px-6 pb-5 pt-0 text-sm leading-relaxed"
-              style={{
-                borderTop: '1px solid #f0f4f8',
-                color: '#4a6280',
-                paddingTop: '1rem',
-              }}
-            >
-              <div className="flex gap-3">
-                <span
-                  className="flex-shrink-0 mt-0.5 w-1 rounded-full"
-                  style={{ background: '#c9a84c', minHeight: '100%' }}
-                />
-                <p>{item.answer}</p>
+            </button>
+            <div className={`grid transition-all duration-300 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+              <div className="overflow-hidden">
+                <p className="border-t border-gray-100 px-5 pb-5 pt-4 leading-relaxed text-gray-600 sm:px-6">{item.answer}</p>
               </div>
             </div>
-          )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -86,194 +49,149 @@ export default function FAQClient() {
   const locale = useLocale();
   const data = faqData[locale] || faqData.de;
   const dz = faqDesign[locale] || faqDesign.de;
-  const [activeCategory, setActiveCategory] = useState(0);
+  const ui = UI[(locale as keyof typeof UI)] || UI.de;
+  const [active, setActive] = useState(0);
+  const [query, setQuery] = useState('');
+
+  const q = query.trim().toLowerCase();
+  const results = useMemo(() => {
+    if (q.length < 2) return null;
+    return data.categories.flatMap((c) => c.items).filter((it) => `${it.question} ${it.answer}`.toLowerCase().includes(q));
+  }, [q, data]);
+
+  const ActiveIcon = categoryIcons[active] || categoryIcons[0];
 
   return (
-    <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
-
-      {/* Hero — arka plan: Munih Havalimani M terminali (sol) + kule/ucak/taksi (sag),
-          tasarim gorselinden kesildi, ortaya dogru koyu lacivert (#0f1b2d) rengine soluyor */}
-      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute top-0 left-0 hidden sm:block h-full" style={{ width: '260px' }}>
-            <img src="/images/faq-bg-left.webp" alt="" width={180} height={280} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.20) 0%, #0f1b2d 92%)' }} />
+    <div className="bg-gray-50">
+      {/* Hero with search */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/faq/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[75%_center]" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/95 via-primary-900/80 to-primary-900/15" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 md:pb-20 md:pt-24 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-400">{dz.eyebrow}</p>
+            <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow sm:text-5xl md:text-6xl">{data.title}</h1>
+            <p className="mt-4 text-lg text-white/85 drop-shadow">{data.subtitle}</p>
+            <div className="relative mt-8">
+              <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={ui.search} aria-label={ui.search}
+                className="w-full rounded-2xl bg-white py-4 pl-12 pr-12 text-base text-gray-900 shadow-2xl outline-none ring-4 ring-white/10 placeholder:text-gray-400 focus:ring-gold-400/60" />
+              {query && (
+                <button type="button" onClick={() => setQuery('')} aria-label={ui.clear} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><X size={18} /></button>
+              )}
+            </div>
           </div>
-          <div className="absolute top-0 right-0 hidden sm:block h-full" style={{ width: '260px' }}>
-            <img src="/images/faq-bg-right.webp" alt="" width={179} height={280} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(15,27,45,.15) 0%, #0f1b2d 90%)' }} />
-          </div>
-        </div>
-
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
-            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#c9a84c' }}>{dz.eyebrow}</span>
-            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4" style={{ color: '#fff', textShadow: '0 2px 14px rgba(0,0,0,.35)' }}>
-            {data.title}
-          </h1>
-          <p className="text-lg" style={{ color: '#c3d2e3', textShadow: '0 1px 8px rgba(0,0,0,.4)' }}>{data.subtitle}</p>
-
-          {/* Quick stats */}
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-5">
+          <dl className="mt-10 grid max-w-3xl grid-cols-2 gap-4 rounded-2xl bg-white/10 p-5 ring-1 ring-white/15 backdrop-blur md:grid-cols-4">
             {dz.stats.map((s) => {
               const Ikon = s.icon;
               return (
-                <div key={s.label} className="flex items-center gap-2.5">
-                  <span
-                    className="flex items-center justify-center rounded-full shrink-0"
-                    style={{ width: '38px', height: '38px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
-                  >
-                    <Ikon size={17} style={{ color: '#c9a84c' }} />
-                  </span>
-                  <div className="text-left">
-                    <div className="text-base font-extrabold leading-tight" style={{ color: '#fff' }}>{s.value}</div>
-                    <div className="text-xs font-medium" style={{ color: '#a9bdd4' }}>{s.label}</div>
+                <div key={s.label} className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-400/15 ring-1 ring-gold-400/40"><Ikon size={18} className="text-gold-400" /></span>
+                  <div className="leading-tight">
+                    <dt className="text-lg font-extrabold">{s.value}</dt>
+                    <dd className="text-xs text-white/75">{s.label}</dd>
                   </div>
                 </div>
               );
             })}
-          </div>
+          </dl>
         </div>
       </section>
 
       {/* Main */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
-        {/* Category tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible">
-          {data.categories.map((cat, i) => {
-            const Ikon = categoryIcons[i] || categoryIcons[0];
-            return (
-              <button
-                key={i}
-                onClick={() => setActiveCategory(i)}
-                className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap"
-                style={
-                  activeCategory === i
-                    ? { background: '#c9a84c', color: '#0f1b2d', border: '1px solid transparent', boxShadow: '0 4px 16px rgba(201,168,76,.35)' }
-                    : { background: '#fff', color: '#3a5070', border: '1px solid #e5edf5' }
-                }
-              >
-                <Ikon size={16} />
-                {cat.label.replace(/^[^\s]+\s/, '')}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active category header card */}
-        <div
-          className="flex items-center gap-4 rounded-2xl px-5 sm:px-7 py-5 mb-6"
-          style={{ background: '#fff', border: '1px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-        >
-          <div
-            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center"
-            style={{ background: '#fdf3de' }}
-          >
-            {(() => { const Ikon = categoryIcons[activeCategory] || categoryIcons[0]; return <Ikon size={20} style={{ color: '#0f1b2d' }} />; })()}
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        {results && (
+          <div className="mx-auto max-w-3xl">
+            <p className="mb-5 text-sm font-semibold text-gray-500">{ui.results(results.length)}</p>
+            {results.length ? <FAQAccordion key={q} items={results} openFirst={results.length === 1} /> : (
+              <p className="rounded-2xl bg-white p-6 text-gray-600 shadow-sm ring-1 ring-gray-200">{ui.none}</p>
+            )}
           </div>
-          <div>
-            <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
-              {locale === 'en' ? 'Category' : locale === 'tr' ? 'Kategori' : 'Kategorie'} {activeCategory + 1} / {data.categories.length}
-            </div>
-            <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>
-              {data.categories[activeCategory].label.replace(/^[^\s]+\s/, '')}
-            </h2>
-          </div>
-          <span
-            className="ml-auto hidden sm:inline-block text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap"
-            style={{ background: '#f4f7fb', color: '#3a5070', border: '1px solid #e5edf5' }}
-          >
-            {data.categories[activeCategory].items.length} {locale === 'en' ? 'questions' : locale === 'tr' ? 'soru' : 'Fragen'}
-            {locale === 'de' ? ' in dieser Kategorie' : locale === 'tr' ? ' bu kategoride' : ' in this category'}
-          </span>
-        </div>
-
-        {/* FAQ accordion */}
-        <div className="mb-10">
-          <FAQAccordion key={activeCategory} items={data.categories[activeCategory].items} />
-        </div>
-
-        {/* CTA card */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)', border: '1px solid rgba(201,168,76,.3)' }}
-        >
-          <div className="px-6 sm:px-8 py-8 flex flex-col lg:flex-row lg:items-center gap-7 lg:gap-10">
-            <div className="lg:flex-1">
-              <div
-                className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
-                style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
-              >
-                {locale === 'en' ? 'Contact' : locale === 'tr' ? 'İletişim' : 'Kontakt'}
-              </div>
-              <h3 className="text-2xl font-extrabold text-white mb-2">{data.cta_title}</h3>
-              <p style={{ color: '#7a9ab8' }}>{data.cta_text}</p>
-            </div>
-
-            <div className="lg:shrink-0">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a
-                  href={CONTACT_INFO.phoneHref}
-                  className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                  style={{ background: 'linear-gradient(135deg, #c9a84c, #d4af6a)', color: '#0f1b2d', boxShadow: '0 4px 16px rgba(201,168,76,.3)' }}
-                >
-                  <Phone size={17} />
-                  {data.cta_call}
-                </a>
-                <a
-                  href={CONTACT_INFO.whatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2.5 font-bold px-7 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                  style={{ background: '#25d366', color: '#fff', boxShadow: '0 4px 16px rgba(37,211,102,.25)' }}
-                >
-                  <MessageCircle size={17} />
-                  {data.cta_whatsapp}
-                </a>
-              </div>
-
-              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-5 justify-center sm:justify-start">
-                {dz.contactExtra.map((c) => {
-                  const Ikon = c.icon;
+        )}
+        {/* All categories stay in the DOM (inactive ones hidden) so every answer is crawlable */}
+        <div className={`grid gap-8 lg:grid-cols-[280px_1fr] ${results ? 'hidden' : ''}`}>
+            {/* Categories */}
+            <aside className="min-w-0">
+              <p className="mb-3 hidden text-xs font-bold uppercase tracking-[.2em] text-gold-600 lg:block">{ui.topics}</p>
+              <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:sticky lg:top-28 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+                {data.categories.map((cat, i) => {
+                  const Ikon = categoryIcons[i] || categoryIcons[0];
+                  const on = active === i;
                   return (
-                    <div key={c.text} className="flex items-center gap-2 text-xs font-medium" style={{ color: '#a9bdd4' }}>
-                      <Ikon size={15} style={{ color: '#c9a84c' }} />
-                      {c.text}
-                    </div>
+                    <button key={cat.label} type="button" onClick={() => setActive(i)}
+                      className={`flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-4 py-3 text-left text-sm font-semibold transition lg:whitespace-normal ${on ? 'bg-primary-900 text-white shadow-lg' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-gold-300'}`}>
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-gold-400 text-primary-900' : 'bg-primary-50 text-primary-700'}`}><Ikon size={16} /></span>
+                      <span className="flex-1">{clean(cat.label)}</span>
+                      <span className={`hidden rounded-full px-2 py-0.5 text-xs lg:inline ${on ? 'bg-white/15 text-white' : 'bg-gray-100 text-gray-500'}`}>{cat.items.length}</span>
+                    </button>
                   );
                 })}
+              </nav>
+            </aside>
+
+            {/* Questions */}
+            <section className="min-w-0">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-400/15 text-gold-600"><ActiveIcon size={20} /></span>
+                <div>
+                  <h2 className="text-2xl font-extrabold text-gray-900">{clean(data.categories[active].label)}</h2>
+                  <p className="text-xs text-gray-500">{data.categories[active].items.length} {ui.questions}</p>
+                </div>
               </div>
+              {data.categories.map((c, i) => (
+                <div key={c.label} className={i === active ? '' : 'hidden'}>
+                  <FAQAccordion items={c.items} />
+                </div>
+              ))}
+            </section>
+          </div>
+
+      </div>
+
+      {/* CTA with photo */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/contact/hero.webp" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-[70%_center] opacity-35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-900/90 to-primary-900/50" />
+        <div className="relative mx-auto flex max-w-7xl flex-col gap-8 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div className="max-w-xl">
+            <span className="inline-block rounded-full bg-gold-400/15 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-400 ring-1 ring-gold-400/40">{ui.contact}</span>
+            <h2 className="mt-4 text-3xl font-extrabold">{data.cta_title}</h2>
+            <p className="mt-2 text-white/80">{data.cta_text}</p>
+            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
+              {dz.contactExtra.map((c) => {
+                const Ikon = c.icon;
+                return <span key={c.text} className="flex items-center gap-2 text-xs font-medium text-white/75"><Ikon size={15} className="text-gold-400" /> {c.text}</span>;
+              })}
             </div>
           </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-7 py-3.5 font-bold text-primary-900 transition hover:-translate-y-0.5 hover:bg-gold-300"><Phone size={17} /> {data.cta_call}</a>
+            <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-7 py-3.5 font-bold text-white transition hover:-translate-y-0.5 hover:bg-green-600"><MessageCircle size={17} /> {data.cta_whatsapp}</a>
+            <a href={`mailto:${CONTACT_INFO.email}`} className="inline-flex items-center justify-center gap-2 rounded-xl px-7 py-3.5 font-bold ring-1 ring-white/30 transition hover:bg-white/10"><Mail size={17} /> E-Mail</a>
+          </div>
         </div>
+      </section>
 
-        {/* Trust strip */}
-        <div className="mt-10 pt-8 grid grid-cols-2 lg:grid-cols-5 gap-y-6 items-center" style={{ borderTop: '1px solid #e3eaf3' }}>
+      {/* Trust strip */}
+      <section className="bg-white">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 items-center gap-6 px-4 py-10 sm:px-6 lg:grid-cols-5 lg:px-8">
           {dz.trust.map((tItem, i) => {
             const Ikon = trustIcons[i] || trustIcons[0];
             return (
-              <div key={tItem.title} className="flex items-center gap-3 pr-2">
-                <Ikon size={24} strokeWidth={1.75} className="shrink-0" style={{ color: '#0f1b2d' }} />
+              <div key={tItem.title} className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700"><Ikon size={20} /></span>
                 <div className="leading-tight">
-                  <div className="font-bold text-xs sm:text-sm" style={{ color: '#0f1b2d' }}>{tItem.title}</div>
-                  <div className="text-[11px] sm:text-xs" style={{ color: '#6b7c93' }}>{tItem.text}</div>
+                  <div className="text-sm font-bold text-gray-900">{tItem.title}</div>
+                  <div className="text-xs text-gray-500">{tItem.text}</div>
                 </div>
               </div>
             );
           })}
-          <div
-            className="hidden lg:block text-right text-lg italic"
-            style={{ color: '#c9a84c', fontFamily: 'Georgia, "Times New Roman", serif' }}
-          >
-            {dz.signature}
-          </div>
+          <div className="hidden text-right text-xl italic text-gold-600 lg:block" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{dz.signature}</div>
         </div>
-
-      </div>
+      </section>
     </div>
   );
 }
