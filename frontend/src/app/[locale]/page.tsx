@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 // um bis zu 252px nach unten (CLS ~0,12 auf Mobilgeräten)
 const SearchBar = dynamic(() => import('@/components/SearchBar'), {
   ssr: false,
-  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[92px] rounded-[22px] bg-white/10" />,
+  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[clamp(68px,9.8vh,92px)] rounded-[22px] bg-white/10" />,
 });
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
@@ -121,17 +121,17 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="relative max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px] pt-8 sm:pt-16 lg:pt-[108px] pb-8 lg:pb-[44px]">
+        <div className="relative max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px] pt-8 sm:pt-16 lg:pt-[clamp(20px,10.5vh,108px)] pb-8 lg:pb-[clamp(12px,4.2vh,44px)]">
           <div className="animate-fade-in max-w-[900px]">
             <h1
-              className={`${heroFont.className} font-semibold tracking-[-0.01em] leading-[1.12] text-[34px] sm:text-5xl lg:text-[64px] mb-4 lg:mb-6`}
+              className={`${heroFont.className} font-semibold tracking-[-0.01em] leading-[1.12] text-[34px] sm:text-5xl lg:text-[clamp(34px,min(4.2vw,7.6vh),64px)] mb-4 lg:mb-[clamp(6px,2.2vh,24px)]`}
               style={{ textShadow: '0 2px 18px rgba(0,0,0,0.35)' }}
             >
               {t('title')}
               <span className="block" style={{ color: GOLD }}>{t('subtitle')}</span>
             </h1>
 
-            <p className={`${heroFont.className} font-light text-white/95 text-lg sm:text-xl lg:text-[26px] lg:leading-[1.4] max-w-[620px] mb-4 sm:mb-8 lg:mb-[54px]`}>
+            <p className={`${heroFont.className} font-light text-white/95 text-lg sm:text-xl lg:text-[clamp(16px,3vh,26px)] lg:leading-[1.4] lg:max-w-[clamp(440px,72vh,620px)] mb-4 sm:mb-8 lg:mb-[clamp(10px,5.6vh,54px)]`}>
               {t('description')}
             </p>
 
@@ -139,15 +139,15 @@ export default function HomePage() {
             <div className="hidden sm:flex items-center">
               {heroBadges.map(({ icon: Icon, text }, i) => (
                 <div key={text} className={`flex items-center gap-3 ${i > 0 ? 'pl-7 ml-7 border-l' : ''}`} style={{ borderColor: 'rgba(214,169,87,.55)' }}>
-                  <Icon size={26} strokeWidth={1.5} style={{ color: GOLD }} />
-                  <span className={`${heroFont.className} text-[19px] font-normal`}>{text}</span>
+                  <Icon strokeWidth={1.5} className="w-[clamp(18px,3vh,26px)] h-[clamp(18px,3vh,26px)]" style={{ color: GOLD }} />
+                  <span className={`${heroFont.className} text-[clamp(14px,2.3vh,19px)] font-normal`}>{text}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Rabatt-Banner (Rabatte-Tab) — fester Platz über der Suche, damit nichts verrutscht */}
-          <div className="relative w-full mt-4 sm:mt-0 sm:h-[76px] sm:flex sm:items-center">
+          <div className="relative w-full mt-4 sm:mt-0 sm:h-[clamp(14px,7.5vh,76px)] sm:flex sm:items-center">
             <AutoDiscountBanner locale={locale} />
           </div>
 
@@ -159,7 +159,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats Strip */}
-      <section style={{ background: '#16181c' }} className="py-8 lg:py-10">
+      <section style={{ background: '#16181c' }} className="py-8 lg:py-[clamp(10px,3.4vh,40px)]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px]">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 text-center">
             {[
@@ -173,11 +173,11 @@ export default function HomePage() {
                 className={`flex flex-col items-center ${i > 0 ? 'md:border-l' : ''} ${i % 2 === 1 ? 'border-l md:border-l' : ''}`}
                 style={{ borderColor: 'rgba(214,169,87,.5)' }}
               >
-                <div className={`${heroFont.className} flex items-center gap-2 text-5xl lg:text-[62px] font-semibold leading-none tracking-tight`} style={{ color: GOLD }}>
+                <div className={`${heroFont.className} flex items-center gap-2 text-5xl lg:text-[clamp(28px,6.9vh,62px)] font-semibold leading-none tracking-tight`} style={{ color: GOLD }}>
                   {stat.value}
-                  {stat.star && <Star className="w-10 h-10 lg:w-[52px] lg:h-[52px]" fill={GOLD} strokeWidth={0} />}
+                  {stat.star && <Star className="w-10 h-10 lg:w-[clamp(24px,5.8vh,52px)] lg:h-[clamp(24px,5.8vh,52px)]" fill={GOLD} strokeWidth={0} />}
                 </div>
-                <div className={`${heroFont.className} text-sm lg:text-[20px] font-normal text-white mt-3 lg:mt-4 tracking-[.18em] uppercase`}>{stat.label}</div>
+                <div className={`${heroFont.className} text-sm lg:text-[clamp(11px,2.15vh,20px)] font-normal text-white mt-3 lg:mt-[clamp(4px,1.4vh,16px)] tracking-[.18em] uppercase`}>{stat.label}</div>
               </div>
             ))}
           </div>

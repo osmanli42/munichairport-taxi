@@ -64,14 +64,14 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#e9dfcc]" style={{ background: '#f8f3ea' }}>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-[52px]">
-        <div className="flex items-center justify-between h-16 lg:h-[88px]">
+        <div className="flex items-center justify-between h-16 lg:h-[clamp(60px,9.4vh,88px)]">
           {/* Logo */}
           <Link href={lp('/')} className="flex items-center group min-w-0">
             <img
               src="/images/logo-wide-dark.webp"
               srcSet="/images/logo-wide-dark-320.webp 320w, /images/logo-wide-dark-400.webp 400w, /images/logo-wide-dark-640.webp 640w, /images/logo-wide-dark.webp 823w"
               sizes="(min-width: 1024px) 380px, 200px"
-              alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-10 2xl:h-[60px] w-auto max-w-full object-contain object-left" />
+              alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-10 2xl:h-[clamp(40px,6.4vh,60px)] w-auto max-w-full object-contain object-left" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -79,7 +79,7 @@ export default function Header() {
             {navLinks.map((link) => {
               const linkCls = cn(
                 'relative flex items-center h-full px-1.5 xl:px-2 text-[15px] 2xl:text-[17px] transition-colors whitespace-nowrap text-[#1c1e22]',
-                'after:absolute after:left-0 after:right-0 after:bottom-[18px] after:h-[3px] after:rounded-full after:transition-opacity',
+                'after:absolute after:left-0 after:right-0 after:bottom-[clamp(10px,1.9vh,18px)] after:h-[3px] after:rounded-full after:transition-opacity',
                 pathname === lp(link.href)
                   ? 'font-bold after:bg-[#c9a052] after:opacity-100'
                   : 'font-normal hover:text-[#a8802f] after:opacity-0'
