@@ -8,8 +8,8 @@ import { CONTACT_INFO } from '@/lib/utils';
 
 // Krankenfahrten (seated patient transport): for patients, statutory health insurers (Muster 4),
 // Berufsgenossenschaften / Unfallkassen, Rentenversicherung (rehab) and private insurers.
-// Billing facts confirmed by the owner (14 Nov 2026): own IK number, direct billing with GKV, BG and
-// private insurers. Insurance rules below are general information (Krankentransport-Richtlinie,
+// Billing facts confirmed by the owner (14 Nov 2026): own IK number, direct billing with BG and private
+// insurers. NO contract with statutory health insurers (§ 133 SGB V) – GKV patients pay and claim back. Insurance rules below are general information (Krankentransport-Richtlinie,
 // § 60/61 SGB V), not legal advice. No wheelchair-seated or stretcher transports.
 
 const BASE = 'https://flughafen-muenchen.taxi';
@@ -19,9 +19,9 @@ type Props = { params: { locale: string } };
 const lang = (l: string): Lang => (l === 'en' || l === 'tr' ? l : 'de');
 
 const META: Record<Lang, { title: string; description: string }> = {
-  de: { title: 'Krankenfahrten (sitzend) München & Freising – Abrechnung mit Krankenkasse & BG', description: 'Sitzende Krankenfahrten zu Dialyse, Chemo, Reha, Klinik und Arzt. Direktabrechnung mit Krankenkassen (Muster 4), Berufsgenossenschaften und privaten Versicherungen – eigenes IK, 24/7.' },
-  en: { title: 'Seated Patient Transport Munich & Freising – Billing with Health & Accident Insurers', description: 'Seated patient transport to dialysis, chemotherapy, rehab, hospital and doctor. Direct billing with statutory health insurers, Berufsgenossenschaften and private insurers – own IK number, 24/7.' },
-  tr: { title: 'Hasta Yolculukları (oturarak) Münih & Freising – Krankenkasse & BG ile faturalama', description: 'Diyaliz, kemoterapi, rehabilitasyon, klinik ve doktora oturarak hasta yolculukları. Krankenkasse, Berufsgenossenschaft ve özel sigortalarla doğrudan faturalama – kendi IK numaramız, 7/24.' },
+  de: { title: 'Krankenfahrten (sitzend) München & Freising – Abrechnung mit BG & Versicherung', description: 'Sitzende Krankenfahrten zu Dialyse, Chemo, Reha, Klinik und Arzt. Direktabrechnung mit Berufsgenossenschaften und privaten Versicherungen, Quittung für Ihre Krankenkasse – eigenes IK, 24/7.' },
+  en: { title: 'Seated Patient Transport Munich & Freising – Billing with Accident & Private Insurers', description: 'Seated patient transport to dialysis, chemotherapy, rehab, hospital and doctor. Direct billing with Berufsgenossenschaften and private insurers, receipt for your health insurer – own IK number, 24/7.' },
+  tr: { title: 'Hasta Yolculukları (oturarak) Münih & Freising – BG & sigorta ile faturalama', description: 'Diyaliz, kemoterapi, rehabilitasyon, klinik ve doktora oturarak hasta yolculukları. Berufsgenossenschaft ve özel sigortalarla doğrudan faturalama, Krankenkasse için makbuz – kendi IK numaramız, 7/24.' },
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -45,14 +45,14 @@ function texts(l: Lang) {
     home: 'Home', services: 'Services', crumb: 'Patient transport',
     eyebrow: 'Seated patient transport',
     h1a: 'Patient transport', h1b: 'with time and care',
-    sub: 'To dialysis, chemotherapy, rehab, hospital or doctor – we pick you up at your door, help you get in and out and bill directly with your health insurer, Berufsgenossenschaft or private insurance.',
-    badges: ['Own IK number', 'Direct billing', 'Help getting in & out', 'Available 24/7'],
+    sub: 'To dialysis, chemotherapy, rehab, hospital or doctor – we pick you up at your door, help you get in and out and bill directly with your Berufsgenossenschaft or private insurance – patients with statutory insurance receive a receipt for their health insurer.',
+    badges: ['Own IK number', 'Direct billing with BG & insurers', 'Help getting in & out', 'Available 24/7'],
     ctaCall: 'Request a ride', ctaWa: 'WhatsApp',
     stats: [['20+', 'years of experience'], ['4.7 ★', 'avg. rating'], ['IK', 'registered for billing'], ['24/7', 'reachable']] as [string, string][],
     audEyebrow: 'Who we drive for', audTitle: 'For patients and payers',
     aud: [
       ['Patients & relatives', 'Regular or one-off rides – door to door, with help and without rush.'],
-      ['Statutory health insurers', 'Rides with a doctor’s prescription (Muster 4), billed directly with the insurer.'],
+      ['Patients with statutory insurance', 'Rides with a doctor’s prescription (Muster 4) – you receive a receipt to claim the costs back from your health insurer.'],
       ['Berufsgenossenschaften & Unfallkassen', 'Rides after a recognised accident at work or on the way to work – to the D-doctor, clinic or therapy.'],
       ['Private insurers & assistance', 'Experience with rides on behalf of private insurers – billing by cost approval or invoice.'],
       ['Hospitals, practices & care homes', 'Discharges, admissions and series rides – we coordinate times with your ward or practice.'],
@@ -67,13 +67,13 @@ function texts(l: Lang) {
     ] as [string, string][],
     billEyebrow: 'Billing', billTitle: 'Who pays – and what you need',
     bills: [
-      { title: 'Statutory health insurance', points: ['Doctor’s prescription on Muster 4 (Verordnung einer Krankenbeförderung).', 'Outpatient rides usually need prior approval by your insurer.', 'Usually deemed approved with disability card aG, Bl or H, care level 4 or 5, or care level 3 with permanently impaired mobility.', 'Co-payment by law: 10 % of the fare, min. €5, max. €10 per ride (unless exempt).'] },
+      { title: 'Statutory health insurance', points: ['Doctor’s prescription on Muster 4 (Verordnung einer Krankenbeförderung).', 'Outpatient rides usually need prior approval by your insurer – usually deemed approved with disability card aG, Bl or H, care level 4 or 5, or care level 3 with permanently impaired mobility.', 'You pay the ride with us and receive a receipt; you submit it with the prescription to your health insurer.', 'Whether and how much is reimbursed is decided by your insurer (statutory co-payment: 10 %, min. €5, max. €10 per ride).'] },
       { title: 'Berufsgenossenschaft / Unfallkasse', points: ['Accident at work or on the way to work, recognised by the BG.', 'Please have the name of the BG and, if available, the claim number or cost approval ready.', 'Rides to the D-doctor, the clinic and therapy appointments.', 'We bill directly with the BG or Unfallkasse.'] },
       { title: 'Private insurance & self-payers', points: ['Cover depends on your tariff.', 'With a cost approval we bill the insurer directly.', 'Otherwise you receive an invoice to submit to your insurer.', 'Fixed price agreed before the ride.'] },
     ],
     billNote: 'General information without guarantee. What counts is the decision of your health insurer or payer – if in doubt, ask them before the ride, or call us and we will help.',
     stepsTitle: 'How it works',
-    steps: [['Prescription or approval', 'Muster 4 from your doctor, cost approval of the BG or of your private insurer.'], ['Book the ride', 'By phone or WhatsApp – also several dates at once.'], ['Pickup at your door', 'Help getting in and out, waiting or return trip by arrangement.'], ['Billing', 'Directly with the payer – you only pay the statutory co-payment if applicable.']] as [string, string][],
+    steps: [['Prescription or approval', 'Muster 4 from your doctor, cost approval of the BG or of your private insurer.'], ['Book the ride', 'By phone or WhatsApp – also several dates at once.'], ['Pickup at your door', 'Help getting in and out, waiting or return trip by arrangement.'], ['Billing', 'Directly with the BG or your private insurer – with statutory health insurance you receive a receipt for reimbursement.']] as [string, string][],
     b2bEyebrow: 'For payers & clinics', b2bTitle: 'A reliable partner for your patients',
     b2b: ['Own IK number for billing with payers', 'Fixed contact person, reachable 24/7', 'Series rides planned in advance', 'Invoice per ride or monthly collective invoice', 'Drivers with experience in caring for patients', 'Experience with rides on behalf of private insurers'],
     b2bCta: 'Discuss cooperation',
@@ -82,8 +82,8 @@ function texts(l: Lang) {
     emergency: 'In an emergency always call 112.',
     faqTitle: 'Frequently asked questions',
     faqs: [
-      { q: 'Does my health insurer pay for the taxi?', a: 'Statutory insurers pay for medically necessary rides with a doctor’s prescription (Muster 4). For outpatient treatment prior approval is usually required – except e.g. with disability card aG, Bl or H or care level 4/5. You pay the statutory co-payment of 10 % (min. €5, max. €10).' },
-      { q: 'Do I have to pay in advance?', a: 'No, if the prescription or cost approval is valid: we bill directly with the payer. You only pay the statutory co-payment, if any.' },
+      { q: 'Does my health insurer pay for the taxi?', a: 'Statutory insurers reimburse medically necessary rides with a doctor’s prescription (Muster 4); for outpatient treatment prior approval is usually required – except e.g. with disability card aG, Bl or H or care level 4/5. We have no contract with statutory health insurers: you pay the ride, receive a receipt and claim it back from your insurer, which decides on the amount (minus the statutory co-payment of 10 %, min. €5, max. €10).' },
+      { q: 'Do I have to pay in advance?', a: 'Not with a valid cost approval of the Berufsgenossenschaft or of your private insurer – we bill them directly. With statutory health insurance you pay the ride and claim it back from your insurer.' },
       { q: 'Who pays after an accident at work?', a: 'If the accident is recognised as an accident at work or on the way to work, the Berufsgenossenschaft or Unfallkasse usually pays the rides. We bill directly with them.' },
       { q: 'Can I take my wheelchair?', a: 'Yes, a folding wheelchair, as long as you can move onto a seat with help. We do not offer transport while seated in the wheelchair.' },
       { q: 'Does the driver wait during treatment?', a: 'For short appointments by arrangement; for longer treatments we pick you up again at the agreed time.' },
@@ -96,14 +96,14 @@ function texts(l: Lang) {
     home: 'Ana sayfa', services: 'Hizmetler', crumb: 'Hasta yolculukları',
     eyebrow: 'Oturarak hasta yolculukları',
     h1a: 'Hasta yolculukları', h1b: 'özenle ve acele etmeden',
-    sub: 'Diyaliz, kemoterapi, rehabilitasyon, klinik veya doktora – sizi kapınızdan alır, binip inerken yardım eder ve Krankenkasse, Berufsgenossenschaft veya özel sigortanızla doğrudan faturalarız.',
-    badges: ['Kendi IK numaramız', 'Doğrudan faturalama', 'Binip inerken yardım', '7/24 ulaşılabilir'],
+    sub: 'Diyaliz, kemoterapi, rehabilitasyon, klinik veya doktora – sizi kapınızdan alır, binip inerken yardım eder ve Berufsgenossenschaft veya özel sigortanızla doğrudan faturalarız – yasal sigortalılar Krankenkasse için makbuz alır.',
+    badges: ['Kendi IK numaramız', 'BG & sigortayla doğrudan faturalama', 'Binip inerken yardım', '7/24 ulaşılabilir'],
     ctaCall: 'Yolculuk iste', ctaWa: 'WhatsApp',
     stats: [['20+', 'yıllık deneyim'], ['4,7 ★', 'ortalama puan'], ['IK', 'faturalama için kayıtlı'], ['7/24', 'ulaşılabilir']] as [string, string][],
     audEyebrow: 'Kimler için', audTitle: 'Hastalar ve ödeme yapan kurumlar için',
     aud: [
       ['Hastalar & yakınları', 'Düzenli veya tek seferlik yolculuklar – kapıdan kapıya, yardımla ve acele etmeden.'],
-      ['Yasal sağlık sigortaları', 'Doktor reçetesiyle (Muster 4) yolculuklar, doğrudan sigortaya faturalanır.'],
+      ['Yasal sigortalılar', 'Doktor reçetesiyle (Muster 4) yolculuklar – masrafı Krankenkasse’den geri almanız için makbuz alırsınız.'],
       ['Berufsgenossenschaft & Unfallkasse', 'Kabul edilmiş iş veya yol kazası sonrası D-doktora, kliniğe veya terapiye.'],
       ['Özel sigortalar & assistance', 'Özel sigortalar adına yolculuk deneyimi – Kostenzusage veya fatura ile.'],
       ['Klinikler, muayenehaneler & bakım evleri', 'Taburcu, yatış ve seri yolculuklar – saatleri servisinizle koordine ederiz.'],
@@ -118,13 +118,13 @@ function texts(l: Lang) {
     ] as [string, string][],
     billEyebrow: 'Faturalama', billTitle: 'Kim öder – ve neye ihtiyacınız var',
     bills: [
-      { title: 'Yasal sağlık sigortası', points: ['Doktor reçetesi: Muster 4 (Verordnung einer Krankenbeförderung).', 'Ayakta tedavi yolculukları genelde sigortanın ön onayını gerektirir.', 'aG, Bl veya H işaretli engelli kartı, bakım derecesi 4 veya 5 ya da kalıcı hareket kısıtlılığıyla bakım derecesi 3’te genelde onaylı sayılır.', 'Yasal katkı payı: ücretin %10’u, yolculuk başına en az 5 €, en fazla 10 € (muafiyet yoksa).'] },
+      { title: 'Yasal sağlık sigortası', points: ['Doktor reçetesi: Muster 4 (Verordnung einer Krankenbeförderung).', 'Ayakta tedavi yolculukları genelde ön onay gerektirir – aG, Bl veya H işaretli engelli kartı, bakım derecesi 4/5 ya da kalıcı hareket kısıtlılığıyla bakım derecesi 3’te genelde onaylı sayılır.', 'Yolculuğu bize ödersiniz ve makbuz alırsınız; reçeteyle birlikte Krankenkasse’nize sunarsınız.', 'Geri ödeme yapılıp yapılmayacağına ve miktarına Kasse karar verir (yasal katkı payı: %10, en az 5 €, en fazla 10 €).'] },
       { title: 'Berufsgenossenschaft / Unfallkasse', points: ['BG tarafından kabul edilmiş iş veya yol kazası.', 'BG’nin adını ve varsa dosya numarasını veya Kostenzusage’yi hazır bulundurun.', 'D-doktora, kliniğe ve terapi randevularına yolculuklar.', 'Doğrudan BG veya Unfallkasse’ye faturalarız.'] },
       { title: 'Özel sigorta & kendi ödeyenler', points: ['Kapsam tarifenize bağlıdır.', 'Kostenzusage varsa doğrudan sigortaya faturalarız.', 'Yoksa sigortanıza sunmanız için fatura alırsınız.', 'Sabit fiyat yolculuktan önce belli.'] },
     ],
     billNote: 'Genel bilgidir, garanti değildir. Geçerli olan sigortanızın veya ödeme yapan kurumun kararıdır – emin değilseniz yolculuktan önce onlara sorun ya da bizi arayın, yardımcı olalım.',
     stepsTitle: 'Nasıl işler',
-    steps: [['Reçete veya onay', 'Doktorunuzdan Muster 4, BG’nin veya özel sigortanızın Kostenzusage’si.'], ['Yolculuğu ayırtın', 'Telefon veya WhatsApp ile – birden fazla tarih de olur.'], ['Kapıdan alış', 'Binip inerken yardım, anlaşmaya göre bekleme veya dönüş.'], ['Faturalama', 'Doğrudan ödeme yapan kuruma – siz varsa sadece yasal katkı payını ödersiniz.']] as [string, string][],
+    steps: [['Reçete veya onay', 'Doktorunuzdan Muster 4, BG’nin veya özel sigortanızın Kostenzusage’si.'], ['Yolculuğu ayırtın', 'Telefon veya WhatsApp ile – birden fazla tarih de olur.'], ['Kapıdan alış', 'Binip inerken yardım, anlaşmaya göre bekleme veya dönüş.'], ['Faturalama', 'Doğrudan BG’ye veya özel sigortanıza – yasal sigortada geri ödeme için makbuz alırsınız.']] as [string, string][],
     b2bEyebrow: 'Kurumlar & klinikler için', b2bTitle: 'Hastalarınız için güvenilir ortak',
     b2b: ['Kurumlarla faturalama için kendi IK numaramız', 'Sabit irtibat kişisi, 7/24 ulaşılabilir', 'Önceden planlanan seri yolculuklar', 'Yolculuk başına fatura veya aylık toplu fatura', 'Hasta bakımında deneyimli şoförler', 'Özel sigortalar adına yolculuk deneyimi'],
     b2bCta: 'İşbirliğini konuşalım',
@@ -133,8 +133,8 @@ function texts(l: Lang) {
     emergency: 'Acil durumda her zaman 112’yi arayın.',
     faqTitle: 'Sık sorulan sorular',
     faqs: [
-      { q: 'Taksiyi sağlık sigortam öder mi?', a: 'Yasal sigortalar tıbben gerekli yolculukları doktor reçetesiyle (Muster 4) öder. Ayakta tedavi için genelde ön onay gerekir – örneğin aG, Bl veya H işaretli engelli kartı ya da bakım derecesi 4/5’te gerekmez. Yasal %10 katkı payını (en az 5 €, en fazla 10 €) siz ödersiniz.' },
-      { q: 'Önceden ödeme yapmam gerekiyor mu?', a: 'Reçete veya Kostenzusage geçerliyse hayır: doğrudan ödeme yapan kuruma faturalarız. Siz varsa sadece yasal katkı payını ödersiniz.' },
+      { q: 'Taksiyi sağlık sigortam öder mi?', a: 'Yasal sigortalar tıbben gerekli yolculukları doktor reçetesiyle (Muster 4) geri öder; ayakta tedavi için genelde ön onay gerekir – örneğin aG, Bl veya H işaretli engelli kartı ya da bakım derecesi 4/5’te gerekmez. Yasal sigortalarla sözleşmemiz yok: yolculuğu ödersiniz, makbuz alırsınız ve Kasse’den geri istersiniz; miktara Kasse karar verir (yasal %10 katkı payı düşülür, en az 5 €, en fazla 10 €).' },
+      { q: 'Önceden ödeme yapmam gerekiyor mu?', a: 'Berufsgenossenschaft’ın veya özel sigortanızın geçerli Kostenzusage’si varsa hayır – onlara doğrudan faturalarız. Yasal sigortada yolculuğu ödersiniz ve Kasse’den geri istersiniz.' },
       { q: 'İş kazasından sonra kim öder?', a: 'Kaza iş veya yol kazası olarak kabul edilirse yolculukları genelde Berufsgenossenschaft veya Unfallkasse öder. Doğrudan onlara faturalarız.' },
       { q: 'Tekerlekli sandalyemi alabilir miyim?', a: 'Evet, katlanır sandalyeyi – yardımla koltuğa geçebildiğiniz sürece. Sandalyede oturarak taşıma sunmuyoruz.' },
       { q: 'Şoför tedavi sırasında bekliyor mu?', a: 'Kısa randevularda anlaşmaya göre; uzun tedavilerde sizi kararlaştırılan saatte tekrar alırız.' },
@@ -147,14 +147,14 @@ function texts(l: Lang) {
     home: 'Startseite', services: 'Leistungen', crumb: 'Krankenfahrten',
     eyebrow: 'Krankenfahrten (sitzend)',
     h1a: 'Krankenfahrten', h1b: 'mit Zeit und Fürsorge',
-    sub: 'Zur Dialyse, Chemo, Reha, in die Klinik oder zum Arzt – wir holen Sie an der Haustür ab, helfen beim Ein- und Aussteigen und rechnen direkt mit Ihrer Krankenkasse, Berufsgenossenschaft oder privaten Versicherung ab.',
-    badges: ['Eigenes IK', 'Direktabrechnung', 'Hilfe beim Ein- & Aussteigen', '24/7 erreichbar'],
+    sub: 'Zur Dialyse, Chemo, Reha, in die Klinik oder zum Arzt – wir holen Sie an der Haustür ab, helfen beim Ein- und Aussteigen und rechnen direkt mit Ihrer Berufsgenossenschaft oder privaten Versicherung ab – gesetzlich Versicherte erhalten eine Quittung für ihre Krankenkasse.',
+    badges: ['Eigenes IK', 'Direktabrechnung mit BG & Versicherung', 'Hilfe beim Ein- & Aussteigen', '24/7 erreichbar'],
     ctaCall: 'Fahrt anfragen', ctaWa: 'WhatsApp',
     stats: [['20+', 'Jahre Erfahrung'], ['4,7 ★', 'Ø Bewertung'], ['IK', 'Institutionskennzeichen'], ['24/7', 'erreichbar']] as [string, string][],
     audEyebrow: 'Für wen wir fahren', audTitle: 'Für Patienten und Kostenträger',
     aud: [
       ['Patientinnen, Patienten & Angehörige', 'Regelmäßige oder einmalige Fahrten – von Tür zu Tür, mit Hilfe und ohne Zeitdruck.'],
-      ['Gesetzliche Krankenkassen', 'Fahrten mit ärztlicher Verordnung (Muster 4), direkt mit der Kasse abgerechnet.'],
+      ['Gesetzlich Versicherte', 'Fahrten mit ärztlicher Verordnung (Muster 4) – Sie erhalten eine Quittung zur Erstattung durch Ihre Krankenkasse.'],
       ['Berufsgenossenschaften & Unfallkassen', 'Fahrten nach anerkanntem Arbeits- oder Wegeunfall – zum D-Arzt, in die Klinik oder zur Therapie.'],
       ['Private Versicherungen & Assistance', 'Erfahrung mit Fahrten im Auftrag privater Versicherer – Abrechnung per Kostenzusage oder Rechnung.'],
       ['Kliniken, Praxen & Pflegeeinrichtungen', 'Entlassungen, Aufnahmen und Serienfahrten – wir stimmen die Zeiten mit Station oder Praxis ab.'],
@@ -169,13 +169,13 @@ function texts(l: Lang) {
     ] as [string, string][],
     billEyebrow: 'Abrechnung', billTitle: 'Wer zahlt – und was Sie brauchen',
     bills: [
-      { title: 'Gesetzliche Krankenkasse', points: ['Ärztliche Verordnung auf Muster 4 (Verordnung einer Krankenbeförderung).', 'Fahrten zur ambulanten Behandlung brauchen in der Regel eine vorherige Genehmigung der Kasse.', 'Als genehmigt gelten sie meist bei Merkzeichen aG, Bl oder H, Pflegegrad 4 oder 5 oder Pflegegrad 3 mit dauerhaft eingeschränkter Mobilität.', 'Gesetzliche Zuzahlung: 10 % des Fahrpreises, mind. 5 €, höchstens 10 € pro Fahrt (sofern keine Befreiung).'] },
+      { title: 'Gesetzliche Krankenkasse', points: ['Ärztliche Verordnung auf Muster 4 (Verordnung einer Krankenbeförderung).', 'Fahrten zur ambulanten Behandlung brauchen in der Regel eine vorherige Genehmigung – als genehmigt gelten sie meist bei Merkzeichen aG, Bl oder H, Pflegegrad 4 oder 5 oder Pflegegrad 3 mit dauerhaft eingeschränkter Mobilität.', 'Sie bezahlen die Fahrt bei uns und erhalten eine Quittung, die Sie mit der Verordnung bei Ihrer Krankenkasse einreichen.', 'Ob und in welcher Höhe erstattet wird, entscheidet Ihre Kasse (gesetzliche Zuzahlung: 10 %, mind. 5 €, höchstens 10 € pro Fahrt).'] },
       { title: 'Berufsgenossenschaft / Unfallkasse', points: ['Arbeits- oder Wegeunfall, von der BG anerkannt.', 'Bitte Name der BG und – falls vorhanden – Aktenzeichen oder Kostenübernahme bereithalten.', 'Fahrten zum D-Arzt, in die Klinik und zu Therapieterminen.', 'Wir rechnen direkt mit der BG bzw. Unfallkasse ab.'] },
       { title: 'Private Versicherung & Selbstzahler', points: ['Die Erstattung richtet sich nach Ihrem Tarif.', 'Mit Kostenzusage rechnen wir direkt mit dem Versicherer ab.', 'Sonst erhalten Sie eine Rechnung zur Einreichung.', 'Festpreis vor der Fahrt.'] },
     ],
     billNote: 'Allgemeine Informationen ohne Gewähr. Maßgeblich ist die Entscheidung Ihrer Krankenkasse bzw. Ihres Kostenträgers – fragen Sie im Zweifel vor der Fahrt dort nach oder rufen Sie uns an, wir helfen Ihnen gerne.',
     stepsTitle: 'So läuft es ab',
-    steps: [['Verordnung oder Zusage', 'Muster 4 vom Arzt, Kostenübernahme der BG oder Zusage Ihrer privaten Versicherung.'], ['Fahrt buchen', 'Telefonisch oder per WhatsApp – auch mehrere Termine auf einmal.'], ['Abholung an der Haustür', 'Hilfe beim Ein- und Aussteigen, Wartezeit oder Rückfahrt nach Absprache.'], ['Abrechnung', 'Direkt mit dem Kostenträger – Sie zahlen höchstens die gesetzliche Zuzahlung.']] as [string, string][],
+    steps: [['Verordnung oder Zusage', 'Muster 4 vom Arzt, Kostenübernahme der BG oder Zusage Ihrer privaten Versicherung.'], ['Fahrt buchen', 'Telefonisch oder per WhatsApp – auch mehrere Termine auf einmal.'], ['Abholung an der Haustür', 'Hilfe beim Ein- und Aussteigen, Wartezeit oder Rückfahrt nach Absprache.'], ['Abrechnung', 'Direkt mit BG oder privater Versicherung – bei gesetzlicher Krankenkasse erhalten Sie eine Quittung zur Erstattung.']] as [string, string][],
     b2bEyebrow: 'Für Kostenträger & Kliniken', b2bTitle: 'Ein verlässlicher Partner für Ihre Patienten',
     b2b: ['Eigenes Institutionskennzeichen (IK) für die Abrechnung mit Kostenträgern', 'Fester Ansprechpartner, 24/7 erreichbar', 'Serienfahrten vorausschauend geplant', 'Rechnung pro Fahrt oder monatliche Sammelrechnung', 'Fahrer mit Erfahrung im Umgang mit Patienten', 'Erfahrung mit Fahrten im Auftrag privater Versicherer'],
     b2bCta: 'Zusammenarbeit besprechen',
@@ -184,8 +184,8 @@ function texts(l: Lang) {
     emergency: 'Im Notfall immer 112 wählen.',
     faqTitle: 'Häufige Fragen',
     faqs: [
-      { q: 'Zahlt die Krankenkasse das Taxi?', a: 'Gesetzliche Kassen übernehmen medizinisch notwendige Fahrten mit ärztlicher Verordnung (Muster 4). Für ambulante Behandlungen ist meist eine vorherige Genehmigung nötig – nicht z. B. bei Merkzeichen aG, Bl oder H oder Pflegegrad 4/5. Sie zahlen die gesetzliche Zuzahlung von 10 % (mind. 5 €, höchstens 10 €).' },
-      { q: 'Muss ich in Vorleistung gehen?', a: 'Nein, wenn Verordnung oder Kostenzusage gültig sind: Wir rechnen direkt mit dem Kostenträger ab. Sie zahlen höchstens die gesetzliche Zuzahlung.' },
+      { q: 'Zahlt die Krankenkasse das Taxi?', a: 'Gesetzliche Kassen erstatten medizinisch notwendige Fahrten mit ärztlicher Verordnung (Muster 4); für ambulante Behandlungen ist meist eine vorherige Genehmigung nötig – nicht z. B. bei Merkzeichen aG, Bl oder H oder Pflegegrad 4/5. Wir haben keinen Vertrag mit gesetzlichen Krankenkassen: Sie bezahlen die Fahrt, erhalten eine Quittung und reichen sie bei Ihrer Kasse ein, die über die Höhe der Erstattung entscheidet (abzüglich der Zuzahlung von 10 %, mind. 5 €, höchstens 10 €).' },
+      { q: 'Muss ich in Vorleistung gehen?', a: 'Nicht bei gültiger Kostenzusage der Berufsgenossenschaft oder Ihrer privaten Versicherung – dann rechnen wir direkt mit ihr ab. Bei der gesetzlichen Krankenkasse zahlen Sie die Fahrt und lassen sie sich erstatten.' },
       { q: 'Wer zahlt nach einem Arbeitsunfall?', a: 'Ist der Unfall als Arbeits- oder Wegeunfall anerkannt, übernimmt in der Regel die Berufsgenossenschaft bzw. Unfallkasse die Fahrten. Wir rechnen direkt mit ihr ab.' },
       { q: 'Kann ich meinen Rollstuhl mitnehmen?', a: 'Ja, einen Faltrollstuhl – sofern Sie sich mit Hilfe auf einen Sitz umsetzen können. Beförderungen im Rollstuhl sitzend bieten wir nicht an.' },
       { q: 'Wartet der Fahrer während der Behandlung?', a: 'Bei kurzen Terminen nach Absprache; bei längeren Behandlungen holen wir Sie zur vereinbarten Zeit wieder ab.' },

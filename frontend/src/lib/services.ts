@@ -110,9 +110,9 @@ export const SERVICES: Service[] = [
   {
     key: 'medical', icon: HeartPulse, href: '/krankenfahrten',
     text: {
-      de: { title: 'Krankenfahrten (sitzend)', short: 'Klinik, Arzt & Reha', text: 'Sitzende Fahrten zu Klinik, Arztpraxis, Dialyse oder Reha – mit Zeit und Hilfe beim Ein- und Aussteigen.', bullets: ['Hilfe beim Ein- & Aussteigen', 'Wartezeit nach Absprache', 'Direktabrechnung mit Krankenkasse & BG'], cta: 'Mehr zu Krankenfahrten' },
-      en: { title: 'Patient transport (seated)', short: 'Hospital, doctor & rehab', text: 'Seated rides to hospital, doctor’s practice, dialysis or rehab – with time and help getting in and out.', bullets: ['Help getting in & out', 'Waiting time by arrangement', 'Direct billing with health insurer & BG'], cta: 'More on patient transport' },
-      tr: { title: 'Hasta yolculukları (oturarak)', short: 'Klinik, doktor & rehabilitasyon', text: 'Klinik, muayenehane, diyaliz veya rehabilitasyona oturarak yolculuk – acele etmeden, binip inerken yardımla.', bullets: ['Binip inerken yardım', 'Anlaşmaya göre bekleme', 'Krankenkasse & BG ile doğrudan faturalama'], cta: 'Hasta yolculukları' },
+      de: { title: 'Krankenfahrten (sitzend)', short: 'Klinik, Arzt & Reha', text: 'Sitzende Fahrten zu Klinik, Arztpraxis, Dialyse oder Reha – mit Zeit und Hilfe beim Ein- und Aussteigen.', bullets: ['Hilfe beim Ein- & Aussteigen', 'Wartezeit nach Absprache', 'Direktabrechnung mit BG & Versicherung'], cta: 'Mehr zu Krankenfahrten' },
+      en: { title: 'Patient transport (seated)', short: 'Hospital, doctor & rehab', text: 'Seated rides to hospital, doctor’s practice, dialysis or rehab – with time and help getting in and out.', bullets: ['Help getting in & out', 'Waiting time by arrangement', 'Direct billing with BG & private insurers'], cta: 'More on patient transport' },
+      tr: { title: 'Hasta yolculukları (oturarak)', short: 'Klinik, doktor & rehabilitasyon', text: 'Klinik, muayenehane, diyaliz veya rehabilitasyona oturarak yolculuk – acele etmeden, binip inerken yardımla.', bullets: ['Binip inerken yardım', 'Anlaşmaya göre bekleme', 'BG & özel sigortayla doğrudan faturalama'], cta: 'Hasta yolculukları' },
     },
   },
 ];
