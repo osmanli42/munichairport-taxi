@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Phone, Mail, FileText, UserCheck, Users, Shield, Clock, Tag, Globe, CheckCircle, Star,
   Zap, Receipt, FileDown, PlaneTakeoff, BarChart3, Lock, Headphones,
-  ArrowRight, LogIn, Building2, Briefcase, Plane, CalendarClock,
+  ArrowRight, LogIn, Building2, Briefcase, Plane, CalendarClock, MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CONTACT_INFO } from '@/lib/utils';
@@ -313,9 +313,92 @@ const content = {
   },
 };
 
+// Additional texts for the redesigned lower part of the page (portal groups, audiences, trust, FAQ).
+const extra = {
+  de: {
+    portal_eyebrow: 'Das Firmenkundenportal',
+    groups: ['Buchen', 'Abrechnen', 'Sicherheit & Service'],
+    portal_note: 'Lieber ohne Portal? Buchungen per Telefon, WhatsApp oder E-Mail laufen genauso über Ihr Firmenkonto.',
+    how_eyebrow: 'In drei Schritten',
+    audience_eyebrow: 'Für wen',
+    audience_texts: [
+      'Gäste-Transfers direkt von der Rezeption buchen – mit Namensschild am Terminal und Abrechnung über das Hotel.',
+      'Dienstreisen von Mitarbeitern, Besuch von Kunden und Bewerbern – alles auf einer monatlichen Sammelrechnung.',
+      'Flughafentransfers für Ihre Reisenden zum Festpreis – auch für Familien und Gruppen im Van.',
+      'Mehrere Fahrzeuge für Gäste und Referenten, abgestimmt auf Ihren Ablaufplan – von der Ankunft bis zur Rückfahrt.',
+    ],
+    trust_eyebrow: 'Vertrauen',
+    trust_text: 'Wir sind ein konzessioniertes Taxiunternehmen aus der Flughafenregion München. Unsere Fahrer kennen den Flughafen, die Messe und die Hotels der Stadt – und behandeln Ihre Gäste so, wie Sie es selbst tun würden.',
+    rating: 'Ø Bewertung unserer Fahrgäste',
+    faq_title: 'Häufige Fragen von Firmenkunden',
+    faqs: [
+      { q: 'Wer kann ein Firmenkonto beantragen?', a: 'Unternehmen, Hotels, Reisebüros und Agenturen. Nach dem Antrag prüfen wir Ihre Firmendaten und schicken Ihnen die Zugangsdaten per E-Mail.' },
+      { q: 'Wie wird abgerechnet?', a: 'Alle Fahrten eines Monats werden auf einer Sammelrechnung zusammengefasst. Jede Fahrt und jede Sammelrechnung können Sie als PDF herunterladen.' },
+      { q: 'Können mehrere Mitarbeiter buchen?', a: 'Ja. Rezeption, Assistenz und Kollegen erhalten eigene Zugänge, und jede Fahrt lässt sich einer Kostenstelle oder Referenz zuordnen.' },
+      { q: 'Was passiert, wenn ein Flug Verspätung hat?', a: 'Wir verfolgen den Flug automatisch und passen die Abholung an. Ab der Landung sind 60 Minuten Wartezeit kostenlos.' },
+      { q: 'Können wir auch ohne Portal buchen?', a: 'Natürlich – per Telefon, WhatsApp oder E-Mail. Die Fahrt wird trotzdem Ihrem Firmenkonto zugeordnet.' },
+    ],
+    cta_eyebrow: 'Persönlicher Ansprechpartner',
+  },
+  en: {
+    portal_eyebrow: 'The corporate client portal',
+    groups: ['Booking', 'Billing', 'Security & service'],
+    portal_note: 'Prefer not to use the portal? Bookings by phone, WhatsApp or e-mail are charged to your company account just the same.',
+    how_eyebrow: 'In three steps',
+    audience_eyebrow: 'Who it is for',
+    audience_texts: [
+      'Book guest transfers straight from the front desk – with a name sign at the terminal and billing via the hotel.',
+      'Business trips of employees, visits of clients and applicants – all on one monthly collective invoice.',
+      'Airport transfers for your travellers at a fixed price – also for families and groups in a van.',
+      'Several vehicles for guests and speakers, matched to your schedule – from arrival to the return trip.',
+    ],
+    trust_eyebrow: 'Trust',
+    trust_text: 'We are a licensed taxi company from the Munich Airport region. Our drivers know the airport, the trade fair and the city’s hotels – and treat your guests the way you would yourself.',
+    rating: 'avg. rating from our passengers',
+    faq_title: 'FAQ for corporate clients',
+    faqs: [
+      { q: 'Who can apply for a company account?', a: 'Companies, hotels, travel agencies and agencies. After your application we check your company details and send you your login by e-mail.' },
+      { q: 'How is billing done?', a: 'All rides of a month are combined on one collective invoice. You can download every ride and every collective invoice as a PDF.' },
+      { q: 'Can several employees book?', a: 'Yes. Reception, assistants and colleagues get their own logins, and every ride can be assigned to a cost centre or reference.' },
+      { q: 'What happens if a flight is delayed?', a: 'We track the flight automatically and adjust the pickup. From landing, 60 minutes of waiting time are free.' },
+      { q: 'Can we book without the portal?', a: 'Of course – by phone, WhatsApp or e-mail. The ride is still assigned to your company account.' },
+    ],
+    cta_eyebrow: 'Personal contact',
+  },
+  tr: {
+    portal_eyebrow: 'Firma müşteri portalı',
+    groups: ['Rezervasyon', 'Faturalama', 'Güvenlik & hizmet'],
+    portal_note: 'Portal kullanmak istemiyor musunuz? Telefon, WhatsApp veya e-postayla yapılan rezervasyonlar da firma hesabınıza işlenir.',
+    how_eyebrow: 'Üç adımda',
+    audience_eyebrow: 'Kimler için',
+    audience_texts: [
+      'Misafir transferlerini doğrudan resepsiyondan ayırtın – terminalde isim tabelası, faturalama otel üzerinden.',
+      'Çalışanların iş seyahatleri, müşteri ve aday ziyaretleri – hepsi tek aylık toplu faturada.',
+      'Yolcularınız için sabit fiyatlı havalimanı transferi – aileler ve gruplar için van ile de.',
+      'Misafir ve konuşmacılar için programınıza göre birden fazla araç – varıştan dönüşe kadar.',
+    ],
+    trust_eyebrow: 'Güven',
+    trust_text: 'Münih Havalimanı bölgesinden ruhsatlı bir taksi firmasıyız. Şoförlerimiz havalimanını, fuarı ve şehrin otellerini tanır – misafirlerinize sizin davranacağınız gibi davranır.',
+    rating: 'yolcularımızın ortalama puanı',
+    faq_title: 'Firma müşterilerinden sık sorular',
+    faqs: [
+      { q: 'Kimler firma hesabı açabilir?', a: 'Şirketler, oteller, seyahat acenteleri ve ajanslar. Başvurudan sonra firma bilgilerinizi kontrol eder, giriş bilgilerinizi e-postayla göndeririz.' },
+      { q: 'Faturalama nasıl yapılır?', a: 'Bir aydaki tüm yolculuklar tek toplu faturada birleştirilir. Her yolculuğu ve her toplu faturayı PDF olarak indirebilirsiniz.' },
+      { q: 'Birden fazla çalışan rezervasyon yapabilir mi?', a: 'Evet. Resepsiyon, asistan ve meslektaşlar kendi girişlerini alır; her yolculuk bir masraf yerine veya referansa atanabilir.' },
+      { q: 'Uçuş rötar yaparsa ne olur?', a: 'Uçuşu otomatik takip eder ve alış saatini uyarlarız. İnişten itibaren 60 dakika bekleme ücretsizdir.' },
+      { q: 'Portal olmadan da rezervasyon yapabilir miyiz?', a: 'Elbette – telefon, WhatsApp veya e-postayla. Yolculuk yine firma hesabınıza işlenir.' },
+    ],
+    cta_eyebrow: 'Kişisel irtibat',
+  },
+};
+
+const FEATURE_GROUPS = [[0, 3, 7, 5], [1, 2, 4, 6], [8, 9]];
+const AUD_IMG = ['/images/business/aud-hotel.webp', '/images/business/aud-company.webp', '/images/business/aud-travel.webp', '/images/business/aud-event.webp'];
+
 export default function BusinessPage() {
   const locale = useLocale();
   const d = content[locale as keyof typeof content] || content.de;
+  const x = extra[locale as keyof typeof extra] || extra.de;
   const [applicationsEnabled, setApplicationsEnabled] = useState(true);
 
   useEffect(() => {
@@ -486,84 +569,99 @@ export default function BusinessPage() {
         </div>
       </section>
 
-      {/* Feature showcase */}
-      <section id="features" className="py-16 bg-white scroll-mt-20 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-2" style={{ color: '#0f1b2d' }}>{d.features_title}</h2>
-          <p className="text-gray-500 text-center mb-12">{d.features_subtitle}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {d.features.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div key={i} className="group flex gap-4 p-6 rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm hover:shadow-lg hover:ring-gold-300 hover:-translate-y-0.5 transition-all duration-200">
-                  <div className="w-12 h-12 shrink-0 bg-primary-50 rounded-xl flex items-center justify-center transition-colors group-hover:bg-gold-400">
-                    <Icon size={22} className="text-primary-700 group-hover:text-primary-900" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">{f.text}</p>
+      {/* Portal: photo + grouped features */}
+      <section id="features" className="scroll-mt-20 bg-white py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:px-8">
+          <div className="relative">
+            <img src="/images/business/portal.webp" alt="" loading="lazy" className="aspect-[4/3] w-full rounded-3xl object-cover shadow-2xl" />
+            <div className="absolute -bottom-6 left-6 right-6 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-gray-200 sm:left-auto sm:right-6 sm:w-72">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-400 text-primary-900"><Zap size={22} /></span>
+                <div className="leading-tight">
+                  <div className="font-extrabold text-gray-900">{d.features[0].title}</div>
+                  <div className="text-xs text-gray-500">{d.features[0].text}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="pt-6 lg:pt-0">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{x.portal_eyebrow}</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: '#0f1b2d' }}>{d.features_title}</h2>
+            <p className="mt-2 text-gray-500">{d.features_subtitle}</p>
+            <div className="mt-8 space-y-6">
+              {FEATURE_GROUPS.map((idx, g) => (
+                <div key={g}>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary-700">
+                    <span className="h-px w-6 bg-gold-400" /> {x.groups[g]}
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {idx.map((i) => {
+                      const f = d.features[i];
+                      const Icon = f.icon;
+                      return (
+                        <div key={i} className="group flex gap-3 rounded-xl p-3 transition hover:bg-gray-50">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700 transition group-hover:bg-gold-400 group-hover:text-primary-900"><Icon size={19} /></span>
+                          <div>
+                            <div className="text-sm font-bold text-gray-900">{f.title}</div>
+                            <div className="text-xs leading-relaxed text-gray-500">{f.text}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <p className="mt-6 flex gap-2 rounded-xl bg-gold-400/10 p-4 text-sm text-gray-700 ring-1 ring-gold-400/30"><Headphones size={18} className="mt-0.5 shrink-0 text-gold-600" /> {x.portal_note}</p>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-16 bg-primary-900 text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-12">{d.how_title}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      {/* How it works: timeline */}
+      <section className="relative overflow-hidden bg-primary-900 py-20 text-white">
+        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gold-400/10 blur-2xl" />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold uppercase tracking-[.2em] text-gold-400">{x.how_eyebrow}</p>
+          <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">{d.how_title}</h2>
+          <ol className="relative mt-14 grid gap-10 md:grid-cols-3 md:gap-6">
+            <span className="absolute left-[16.6%] right-[16.6%] top-8 hidden h-0.5 bg-gradient-to-r from-gold-400/20 via-gold-400 to-gold-400/20 md:block" aria-hidden="true" />
             {d.steps.map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} className="relative rounded-2xl bg-white/5 p-6 text-center ring-1 ring-white/10">
-                  <div className="w-16 h-16 mx-auto bg-gold-400 rounded-2xl flex items-center justify-center mb-4 shadow-lg relative">
-                    <Icon size={28} className="text-primary-900" />
-                    <span className="absolute -top-2 -right-2 w-7 h-7 bg-white text-primary-900 text-xs font-extrabold rounded-full flex items-center justify-center ring-2 ring-primary-900">{i + 1}</span>
+                <li key={i} className="relative text-center">
+                  <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gold-400 text-primary-900 shadow-lg shadow-gold-400/20">
+                    <Icon size={28} />
+                    <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-extrabold text-primary-900 ring-2 ring-primary-900">{i + 1}</span>
                   </div>
-                  <h3 className="font-bold text-white mb-1">{s.title}</h3>
-                  <p className="text-sm text-white/70">{s.text}</p>
-                </div>
+                  <h3 className="mt-5 text-lg font-bold">{s.title}</h3>
+                  <p className="mx-auto mt-1 max-w-xs text-sm text-white/70">{s.text}</p>
+                </li>
               );
             })}
-          </div>
+          </ol>
+          {applicationsEnabled && (
+            <div className="mt-12 text-center">
+              <Link href="/portal/apply" className="inline-flex items-center gap-2 rounded-xl bg-gold-400 px-7 py-3.5 font-bold text-primary-900 transition hover:-translate-y-0.5 hover:bg-gold-300">{d.cta_apply} <ArrowRight size={18} /></Link>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Audience strip */}
-      <section className="py-12 bg-white border-y border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm font-medium text-gray-400 mb-6 uppercase tracking-wide">{d.audience_title}</p>
-          <div className="flex flex-wrap justify-center gap-x-12 gap-y-6">
+      {/* Audiences: photo cards */}
+      <section className="bg-gray-50 py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold uppercase tracking-[.2em] text-gold-600">{x.audience_eyebrow}</p>
+          <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: '#0f1b2d' }}>{d.audience_title}</h2>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {d.audiences.map((a, i) => {
               const Icon = a.icon;
               return (
-                <div key={i} className="flex items-center gap-2 text-gray-600">
-                  <Icon size={20} className="text-primary-500" />
-                  <span className="font-medium text-sm">{a.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Why Us */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-12" style={{ color: '#0f1b2d' }}>{d.why_title}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {d.advantages.map((adv, i) => {
-              const Icon = adv.icon;
-              return (
-                <div key={i} className="flex flex-col items-center text-center p-6 bg-white rounded-2xl ring-1 ring-gray-200 shadow-sm hover:shadow-lg hover:ring-gold-300 transition">
-                  <div className="w-12 h-12 bg-gold-400/15 rounded-xl flex items-center justify-center mb-3">
-                    <Icon size={22} className="text-gold-600" />
+                <div key={i} className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-1 hover:shadow-xl">
+                  <div className="relative overflow-hidden">
+                    <img src={AUD_IMG[i]} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105" />
+                    <span className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-primary-900 shadow backdrop-blur"><Icon size={16} className="text-gold-600" /> {a.label}</span>
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-1 text-sm">{adv.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">{adv.text}</p>
+                  <p className="p-5 text-sm leading-relaxed text-gray-600">{x.audience_texts[i]}</p>
                 </div>
               );
             })}
@@ -571,38 +669,78 @@ export default function BusinessPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-gray-50 px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-gold-400 to-gold-500 p-8 text-center md:p-12">
-          <h2 className="text-3xl font-extrabold text-primary-900 mb-4">{d.cta_title}</h2>
-          <p className="text-primary-900/80 mb-8 text-lg max-w-2xl mx-auto">{d.cta_text}</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href={CONTACT_INFO.phoneHref}
-              className="flex items-center justify-center gap-2 bg-primary-900 hover:bg-primary-800 text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
-            >
-              <Phone size={20} />
-              {d.cta_call}
+      {/* Trust: fleet photo + advantages */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="order-2 lg:order-1">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{x.trust_eyebrow}</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: '#0f1b2d' }}>{d.why_title}</h2>
+            <p className="mt-3 leading-relaxed text-gray-600">{x.trust_text}</p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              {d.advantages.map((adv, i) => {
+                const Icon = adv.icon;
+                return (
+                  <div key={i} className="flex gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gold-400/15 text-gold-600"><Icon size={19} /></span>
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">{adv.title}</div>
+                      <div className="text-xs leading-relaxed text-gray-500">{adv.text}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="relative order-1 lg:order-2">
+            <img src="/images/business/trust-fleet.webp" alt="" loading="lazy" className="aspect-[4/3] w-full rounded-3xl object-cover shadow-2xl" />
+            <div className="absolute -bottom-6 left-6 flex items-center gap-3 rounded-2xl bg-primary-900 px-5 py-4 text-white shadow-xl">
+              <span className="text-3xl font-extrabold text-gold-400">4,7</span>
+              <div className="leading-tight">
+                <div className="flex text-gold-400">{[0, 1, 2, 3, 4].map((k) => <Star key={k} size={14} fill="currentColor" />)}</div>
+                <div className="text-xs text-white/80">{x.rating}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="bg-gray-50 py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: '#0f1b2d' }}>{x.faq_title}</h2>
+          <div className="mt-10 space-y-3">
+            {x.faqs.map((f) => (
+              <details key={f.q} className="group rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 open:ring-gold-300">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-semibold text-gray-900">
+                  {f.q}<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-lg leading-none text-gray-500 transition group-open:rotate-45 group-open:bg-gold-400 group-open:text-primary-900">+</span>
+                </summary>
+                <p className="px-5 pb-5 text-sm leading-relaxed text-gray-600">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA with photo */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        <img src="/images/business/hero.webp" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-[72%_center] opacity-35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-900/90 to-primary-900/60" />
+        <div className="relative mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-400">{x.cta_eyebrow}</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{d.cta_title}</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-white/85">{d.cta_text}</p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <a href={CONTACT_INFO.phoneHref} className="flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-7 py-4 text-lg font-bold text-primary-900 transition hover:bg-gold-300">
+              <Phone size={20} /> {d.cta_call}
             </a>
-            <a
-              href={`mailto:${CONTACT_INFO.email}`}
-              className="flex items-center justify-center gap-2 border-2 border-primary-900 text-primary-900 hover:bg-primary-900 hover:text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
-            >
-              <Mail size={20} />
-              {d.cta_email}
+            <a href={`mailto:${CONTACT_INFO.email}`} className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-7 py-4 text-lg font-bold ring-1 ring-white/30 backdrop-blur transition hover:bg-white/20">
+              <Mail size={20} /> {d.cta_email}
             </a>
-            <a
-              href={CONTACT_INFO.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-              </svg>
-              {d.cta_whatsapp}
+            <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-xl bg-green-500 px-7 py-4 text-lg font-bold text-white transition hover:bg-green-600">
+              <MessageCircle size={20} /> {d.cta_whatsapp}
             </a>
           </div>
+          <p className="mt-6 text-sm text-white/70">{CONTACT_INFO.phone} · {CONTACT_INFO.email}</p>
         </div>
       </section>
     </>
