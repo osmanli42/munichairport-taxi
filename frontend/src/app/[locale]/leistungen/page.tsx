@@ -87,9 +87,9 @@ export default async function LeistungenPage({ params }: Props) {
   // Large dark cards (airport, messe, sightseeing, events) open the grid, the other eight follow as white cards.
   const big: { key: ServiceKey; img: string; price: string | null }[] = [
     { key: 'airport', img: '/images/hero-airport.webp', price: t.priceCity },
-    { key: 'messe', img: '/images/messe/eingang.webp', price: t.priceMesse },
-    { key: 'sightseeing', img: '/images/sightseeing/neuschwanstein.webp', price: null },
-    { key: 'events', img: '/images/stadion/hero.webp', price: null },
+    { key: 'messe', img: '/images/messe/eingang-v2.webp', price: t.priceMesse },
+    { key: 'sightseeing', img: '/images/sightseeing/neuschwanstein-v2.webp', price: null },
+    { key: 'events', img: '/images/stadion/hero-v2.webp', price: null },
   ];
   const small = SERVICES.filter((s) => !big.some((b) => b.key === s.key));
 

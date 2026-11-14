@@ -340,38 +340,55 @@ export default function BusinessPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
       {/* Hero */}
-      <section className="bg-primary-600 text-white py-20 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gold-400 rounded-full translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full -translate-x-1/2 translate-y-1/2" />
-        </div>
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex justify-center gap-2 mb-6 flex-wrap">
-            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">{d.hero_badge1}</span>
-            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">{d.hero_badge2}</span>
-            <span className="bg-white/10 border border-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">{d.hero_badge3}</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">{d.hero_title}</h1>
-          <p className="text-primary-200 text-lg md:text-xl max-w-2xl mx-auto mb-10">{d.hero_subtitle}</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {applicationsEnabled && (
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        <img src="/images/business/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[72%_center]" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/95 via-primary-900/75 to-primary-900/10" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-primary-900/60 to-transparent" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-14 sm:px-6 md:pb-24 md:pt-20 lg:px-8">
+          <div className="max-w-2xl">
+            <div className="mb-6 flex flex-wrap gap-2">
+              {[d.hero_badge1, d.hero_badge2, d.hero_badge3].map((b) => (
+                <span key={b} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/25 backdrop-blur">
+                  <CheckCircle size={13} className="text-gold-400" /> {b}
+                </span>
+              ))}
+            </div>
+            <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow sm:text-5xl md:text-6xl">{d.hero_title}</h1>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/90 drop-shadow md:text-xl">{d.hero_subtitle}</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              {applicationsEnabled && (
+                <Link
+                  href="/portal/apply"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-7 py-4 text-lg font-bold text-primary-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-gold-300"
+                >
+                  {d.cta_apply} <ArrowRight size={20} />
+                </Link>
+              )}
               <Link
-                href="/portal/apply"
-                className="flex items-center justify-center gap-2 bg-gold-400 hover:bg-gold-500 text-primary-600 font-bold px-8 py-4 rounded-xl transition-colors text-lg shadow-lg"
+                href="/portal"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-7 py-4 text-lg font-bold text-white ring-1 ring-white/35 backdrop-blur transition hover:bg-white/20"
               >
-                {d.cta_apply} <ArrowRight size={20} />
+                <LogIn size={20} /> {d.cta_login}
               </Link>
+            </div>
+            {!applicationsEnabled && (
+              <p className="mt-4 max-w-lg text-sm text-white/75">{d.applications_closed}</p>
             )}
-            <Link
-              href="/portal"
-              className="flex items-center justify-center gap-2 bg-transparent border-2 border-white/40 hover:bg-white/10 text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
-            >
-              <LogIn size={20} /> {d.cta_login}
-            </Link>
           </div>
-          {!applicationsEnabled && (
-            <p className="text-primary-200 text-sm mt-4 max-w-lg mx-auto">{d.applications_closed}</p>
-          )}
+          <dl className="mt-12 grid max-w-3xl grid-cols-2 gap-x-6 gap-y-4 border-t border-white/15 pt-6 md:grid-cols-4">
+            {d.services_trust.map((t) => {
+              const Ikon = t.icon;
+              return (
+                <div key={t.small} className="flex items-center gap-2.5">
+                  <Ikon size={22} className="shrink-0 text-gold-400" strokeWidth={1.75} />
+                  <div className="leading-tight">
+                    <dt className="text-sm font-extrabold">{t.big}</dt>
+                    <dd className="text-xs text-white/75">{t.small}</dd>
+                  </div>
+                </div>
+              );
+            })}
+          </dl>
         </div>
       </section>
 
@@ -410,9 +427,8 @@ export default function BusinessPage() {
           {/* Kartlar */}
           <div className="grid gap-6 lg:grid-cols-3 items-start">
             {d.services.map((service, i) => {
-              const foto = ['/images/biz-1-sammelrechnung.webp', '/images/biz-2-abholschild.webp', '/images/biz-3-partner.webp'][i];
-              const etiketler = d.services_tags[i];
-              const oneCikan = i === 1;
+              const foto = ['/images/business/sammelrechnung.webp', '/images/business/abholschild.webp', '/images/business/partner.webp'][i];
+                            const oneCikan = i === 1;
               return (
                 <div
                   key={i}
@@ -424,7 +440,7 @@ export default function BusinessPage() {
                 >
                   {/* Foto + ustundeki rozet ve anahtar kelimeler */}
                   <div className="relative m-3 rounded-xl overflow-hidden">
-                    <img src={foto} alt={service.title} loading="lazy" width={393} height={214} className="w-full aspect-[393/214] object-cover block" />
+                    <img src={foto} alt={service.title} loading="lazy" width={393} height={214} className="w-full aspect-[16/9] object-cover block transition duration-500 hover:scale-[1.03]" />
                     {oneCikan && (
                       <span
                         className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white"
@@ -433,17 +449,6 @@ export default function BusinessPage() {
                         <Star size={12} fill="currentColor" /> {d.services_popular}
                       </span>
                     )}
-                    <div className={`absolute right-3 flex flex-col items-end gap-0.5 ${oneCikan ? 'bottom-3' : 'top-3'}`}>
-                      {etiketler.map((t) => (
-                        <span
-                          key={t}
-                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
-                          style={{ color: '#0f1b2d', background: 'rgba(255,255,255,.78)' }}
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
                   </div>
 
                   <div className="px-6 pb-6 pt-2 flex flex-col flex-1">
@@ -478,40 +483,25 @@ export default function BusinessPage() {
             })}
           </div>
 
-          {/* Guven seridi */}
-          <div className="mt-10 grid grid-cols-2 lg:grid-cols-4 gap-y-6">
-            {d.services_trust.map((t, i) => {
-              const Ikon = t.icon;
-              return (
-                <div key={i} className={`flex items-center justify-center gap-3 ${i > 0 ? 'lg:border-l' : ''}`} style={{ borderColor: '#dde5ef' }}>
-                  <Ikon size={26} strokeWidth={1.75} style={{ color: '#0f1b2d' }} />
-                  <div className="leading-tight">
-                    <div className="font-extrabold text-sm" style={{ color: '#0f1b2d' }}>{t.big}</div>
-                    <div className="text-xs" style={{ color: '#6b7c93' }}>{t.small}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 
       {/* Feature showcase */}
-      <section id="features" className="py-16 bg-white scroll-mt-20">
+      <section id="features" className="py-16 bg-white scroll-mt-20 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-primary-600 text-center mb-2">{d.features_title}</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-2" style={{ color: '#0f1b2d' }}>{d.features_title}</h2>
           <p className="text-gray-500 text-center mb-12">{d.features_subtitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {d.features.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={i} className="flex gap-4 p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-gray-50/50">
-                  <div className="w-12 h-12 shrink-0 bg-primary-100 rounded-xl flex items-center justify-center">
-                    <Icon size={22} className="text-primary-600" />
+                <div key={i} className="group flex gap-4 p-6 rounded-2xl bg-white ring-1 ring-gray-200 shadow-sm hover:shadow-lg hover:ring-gold-300 hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="w-12 h-12 shrink-0 bg-primary-50 rounded-xl flex items-center justify-center transition-colors group-hover:bg-gold-400">
+                    <Icon size={22} className="text-primary-700 group-hover:text-primary-900" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm mb-1">{f.title}</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">{f.text}</p>
+                    <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">{f.text}</p>
                   </div>
                 </div>
               );
@@ -521,20 +511,20 @@ export default function BusinessPage() {
       </section>
 
       {/* How it works */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-primary-600 text-center mb-12">{d.how_title}</h2>
+      <section className="py-16 bg-primary-900 text-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-12">{d.how_title}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {d.steps.map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} className="relative text-center">
-                  <div className="w-16 h-16 mx-auto bg-primary-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg relative">
-                    <Icon size={28} className="text-white" />
-                    <span className="absolute -top-2 -right-2 w-6 h-6 bg-gold-400 text-primary-600 text-xs font-bold rounded-full flex items-center justify-center">{i + 1}</span>
+                <div key={i} className="relative rounded-2xl bg-white/5 p-6 text-center ring-1 ring-white/10">
+                  <div className="w-16 h-16 mx-auto bg-gold-400 rounded-2xl flex items-center justify-center mb-4 shadow-lg relative">
+                    <Icon size={28} className="text-primary-900" />
+                    <span className="absolute -top-2 -right-2 w-7 h-7 bg-white text-primary-900 text-xs font-extrabold rounded-full flex items-center justify-center ring-2 ring-primary-900">{i + 1}</span>
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-1">{s.title}</h3>
-                  <p className="text-sm text-gray-500">{s.text}</p>
+                  <h3 className="font-bold text-white mb-1">{s.title}</h3>
+                  <p className="text-sm text-white/70">{s.text}</p>
                 </div>
               );
             })}
@@ -561,16 +551,16 @@ export default function BusinessPage() {
       </section>
 
       {/* Why Us */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-primary-600 text-center mb-12">{d.why_title}</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-12" style={{ color: '#0f1b2d' }}>{d.why_title}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             {d.advantages.map((adv, i) => {
               const Icon = adv.icon;
               return (
-                <div key={i} className="flex flex-col items-center text-center p-6 bg-gray-50 rounded-2xl hover:bg-primary-50 transition-colors">
-                  <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center mb-3">
-                    <Icon size={22} className="text-primary-600" />
+                <div key={i} className="flex flex-col items-center text-center p-6 bg-white rounded-2xl ring-1 ring-gray-200 shadow-sm hover:shadow-lg hover:ring-gold-300 transition">
+                  <div className="w-12 h-12 bg-gold-400/15 rounded-xl flex items-center justify-center mb-3">
+                    <Icon size={22} className="text-gold-600" />
                   </div>
                   <h3 className="font-bold text-gray-900 mb-1 text-sm">{adv.title}</h3>
                   <p className="text-xs text-gray-500 leading-relaxed">{adv.text}</p>
@@ -582,21 +572,21 @@ export default function BusinessPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-primary-600">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">{d.cta_title}</h2>
-          <p className="text-primary-200 mb-8 text-lg">{d.cta_text}</p>
+      <section className="bg-gray-50 px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-gold-400 to-gold-500 p-8 text-center md:p-12">
+          <h2 className="text-3xl font-extrabold text-primary-900 mb-4">{d.cta_title}</h2>
+          <p className="text-primary-900/80 mb-8 text-lg max-w-2xl mx-auto">{d.cta_text}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href={CONTACT_INFO.phoneHref}
-              className="flex items-center justify-center gap-2 bg-gold-400 hover:bg-gold-500 text-primary-600 font-bold px-8 py-4 rounded-xl transition-colors text-lg"
+              className="flex items-center justify-center gap-2 bg-primary-900 hover:bg-primary-800 text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
             >
               <Phone size={20} />
               {d.cta_call}
             </a>
             <a
               href={`mailto:${CONTACT_INFO.email}`}
-              className="flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-primary-600 font-bold px-8 py-4 rounded-xl transition-colors text-lg"
+              className="flex items-center justify-center gap-2 border-2 border-primary-900 text-primary-900 hover:bg-primary-900 hover:text-white font-bold px-8 py-4 rounded-xl transition-colors text-lg"
             >
               <Mail size={20} />
               {d.cta_email}

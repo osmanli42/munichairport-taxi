@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: l === 'de' ? `${BASE}${PATH}` : `${BASE}/${l}${PATH}`,
       languages: { de: `${BASE}${PATH}`, en: `${BASE}/en${PATH}`, tr: `${BASE}/tr${PATH}`, 'x-default': `${BASE}${PATH}` },
     },
-    openGraph: { title: m.title, description: m.description, type: 'article', images: [`${BASE}/images/stadion/hero.webp`] },
+    openGraph: { title: m.title, description: m.description, type: 'article', images: [`${BASE}/images/stadion/hero-v2.webp`] },
   };
 }
 
@@ -131,7 +131,7 @@ export default async function StadionKonzertePage({ params }: Props) {
       {schemas.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />)}
       <section className="relative overflow-hidden bg-primary-900 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/stadion/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
+        <img src="/images/stadion/hero-v2.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/90 via-primary-900/60 to-primary-900/10" />
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-6 sm:px-6 md:pb-28">
           <nav className="mb-8 flex flex-wrap items-center gap-1.5 text-xs text-white/75">

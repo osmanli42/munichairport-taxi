@@ -230,7 +230,7 @@ export default function SightseeingPage({ params }: Props) {
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/sightseeing/neuschwanstein.webp" alt="" loading="lazy" className="h-56 w-full object-cover object-[35%_center]" />
+            <img src="/images/sightseeing/neuschwanstein-v2.webp" alt="" loading="lazy" className="h-56 w-full object-cover object-[35%_center]" />
             <div className="p-6">
               <h2 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900"><Plane size={22} className="text-primary-700" /> {t.airportTitle}</h2>
               <p className="mt-3 text-sm leading-relaxed text-gray-700">{t.airport}</p>
