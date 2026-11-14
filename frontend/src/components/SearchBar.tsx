@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle, UtensilsCrossed, Store } from 'lucide-react';
+import { MapPin, Users, Search, Loader2, AlertCircle, Plane, ArrowLeftRight, Calendar, X, Hotel, Phone, MessageCircle, UtensilsCrossed, Store, User, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { newPlacesSessionToken } from '@/lib/placesSession';
 
@@ -75,7 +75,7 @@ function formatDateShort(dateStr: string, locale: string) {
 
 /* ─── Address Field ─── */
 function AddressField({
-  placeholder, value, onChange, onValidSelect, locale, icon, airportOnFocus, openSignal,
+  placeholder, value, onChange, onValidSelect, locale, icon, airportOnFocus, openSignal, bare,
 }: {
   placeholder: string;
   value: string;
@@ -87,6 +87,8 @@ function AddressField({
   airportOnFocus?: boolean;
   /** Wird erhöht, wenn "Suchen" ohne gewählten Vorschlag gedrückt wurde: Feld fokussieren und Vorschlagsliste öffnen. */
   openSignal?: number;
+  /** Startseiten-Hero: transparenter Hintergrund, größere Schrift */
+  bare?: boolean;
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [addressPlaces, setAddressPlaces] = useState<Record<string, AddressPlace[]>>({});
@@ -260,7 +262,7 @@ function AddressField({
 
   return (
     <div ref={wrapperRef} className="relative flex-1 min-w-0">
-      <div className="flex items-center gap-2 h-full bg-white px-4 py-3">
+      <div className={`flex items-center h-full ${bare ? 'gap-3 bg-transparent px-6 py-3' : 'gap-2 bg-white px-4 py-3'}`}>
         <span className="shrink-0">{icon}</span>
         <input
           ref={inputRef}
@@ -275,7 +277,7 @@ function AddressField({
             if (showAirport || predictions.length > 0) setOpen(true);
           }}
           placeholder={placeholder}
-          className="flex-1 bg-transparent text-gray-800 text-[15px] font-medium outline-none placeholder:text-gray-400 min-w-0"
+          className={`flex-1 bg-transparent text-gray-800 outline-none min-w-0 ${bare ? 'text-[17px] font-normal placeholder:text-[#5b5b5b]' : 'text-[15px] font-medium placeholder:text-gray-400'}`}
         />
         {(loading || validating) && <Loader2 size={14} className="animate-spin text-gray-400 shrink-0" />}
       </div>
@@ -340,7 +342,7 @@ const DAYS_EN = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_TR = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
 export function DateTimeField({
-  label, date, time, onDateChange, onTimeChange, minDate, locale,
+  label, date, time, onDateChange, onTimeChange, minDate, locale, bare,
 }: {
   label: string;
   date: string;
@@ -349,6 +351,8 @@ export function DateTimeField({
   onTimeChange: (v: string) => void;
   minDate: string;
   locale: string;
+  /** Startseiten-Hero: transparenter Hintergrund, Gold-Icon, größere Schrift */
+  bare?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [pickerStep, setPickerStep] = useState<'date' | 'time'>('date');
@@ -444,12 +448,14 @@ export function DateTimeField({
       <button
         type="button"
         onClick={() => { setOpen(!open); if (!open) setPickerStep('date'); }}
-        className="flex items-center gap-2.5 bg-white px-4 py-3 h-full hover:bg-gray-50 transition-colors w-full text-left"
+        className={bare
+          ? 'flex items-center gap-4 bg-transparent px-6 py-3 h-full hover:bg-black/[.03] transition-colors w-full text-left'
+          : 'flex items-center gap-2.5 bg-white px-4 py-3 h-full hover:bg-gray-50 transition-colors w-full text-left'}
       >
-        <Calendar size={18} className="text-gray-400 shrink-0" />
+        <Calendar size={bare ? 24 : 18} strokeWidth={bare ? 1.6 : 2} className={bare ? 'text-[#c9a052] shrink-0' : 'text-gray-400 shrink-0'} />
         <div>
-          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-none">{label}</div>
-          <div className="text-[15px] font-bold text-gray-800 mt-0.5 whitespace-nowrap">
+          <div className={bare ? 'text-[12px] font-medium text-[#444] uppercase tracking-[.14em] leading-none' : 'text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-none'}>{label}</div>
+          <div className={bare ? 'text-[18px] font-bold text-[#1c1e22] mt-1.5 whitespace-nowrap' : 'text-[15px] font-bold text-gray-800 mt-0.5 whitespace-nowrap'}>
             {dateFormatted} - {time}
           </div>
         </div>
@@ -608,11 +614,14 @@ interface SearchBarProps {
    * exactly like on the home page. Default false: pre-filled values count as chosen (ergebnisse back-link).
    */
   requireSelection?: boolean;
+  /** 'hero' = Startseiten-Design (cremefarbene Leiste, Gold-Icons, dunkler Suchen-Button) – nur Desktop */
+  variant?: 'hero';
 }
 
-export default function SearchBar({ initialValues, onSearchComplete, compact, requireSelection }: SearchBarProps = {}) {
+export default function SearchBar({ initialValues, onSearchComplete, compact, requireSelection, variant }: SearchBarProps = {}) {
   const locale = useLocale();
   const router = useRouter();
+  const H = variant === 'hero';
   const searchParams = useSearchParams();
 
   // Read from URL params if no initialValues provided (e.g. returning from ergebnisse)
@@ -876,15 +885,18 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className={H ? 'w-full' : 'w-full max-w-6xl mx-auto'}>
       {/* ─── DESKTOP ─── */}
       <div className="hidden lg:block">
-        <div className="border-[3px] border-gold-400 rounded-2xl shadow-2xl overflow-visible bg-white">
-          <div className="flex items-stretch overflow-visible rounded-xl">
+        <div className={H
+          ? 'border-2 border-[#e2c07c] rounded-[22px] overflow-visible bg-[#fbf6ec] shadow-[0_18px_50px_rgba(0,0,0,.45)]'
+          : 'border-[3px] border-gold-400 rounded-2xl shadow-2xl overflow-visible bg-white'}>
+          <div className={`flex items-stretch overflow-visible ${H ? 'rounded-[20px] h-[88px] py-2 pr-2' : 'rounded-xl'}`}>
             {/* From */}
             <div className="flex-1 min-w-0 overflow-visible rounded-l-xl">
               <AddressField
-                icon={<MapPin size={18} className="text-green-500" />}
+                bare={H}
+                icon={H ? <MapPin size={24} strokeWidth={1.6} className="text-[#c9a052]" /> : <MapPin size={18} className="text-green-500" />}
                 placeholder={l.from}
                 value={pickup}
                 onChange={setPickup}
@@ -899,15 +911,18 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             <button
               onClick={swapAddresses}
               title={l.swap}
-              className="shrink-0 w-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors border-x border-gray-200"
+              className={H
+                ? 'shrink-0 w-[68px] my-1 flex items-center justify-center text-[#c9a052] hover:text-[#a8802f] transition-colors border-x border-[#e3d6bd]'
+                : 'shrink-0 w-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors border-x border-gray-200'}
             >
-              <ArrowLeftRight size={14} />
+              <ArrowLeftRight size={H ? 22 : 14} strokeWidth={H ? 1.6 : 2} />
             </button>
 
             {/* To */}
             <div className="flex-1 min-w-0 overflow-visible">
               <AddressField
-                icon={<MapPin size={18} className="text-red-400" />}
+                bare={H}
+                icon={H ? <MapPin size={24} strokeWidth={1.6} className="text-[#c9a052]" /> : <MapPin size={18} className="text-red-400" />}
                 placeholder={l.to}
                 value={dropoff}
                 onChange={setDropoff}
@@ -919,11 +934,12 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             </div>
 
             {/* Divider */}
-            <div className="w-px bg-gray-200" />
+            <div className={H ? 'w-px my-1 bg-[#e3d6bd]' : 'w-px bg-gray-200'} />
 
             {/* Date/Time */}
             <div className="shrink-0">
               <DateTimeField
+                bare={H}
                 label={l.arrival}
                 date={date}
                 time={time}
@@ -935,13 +951,14 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             </div>
 
             {/* Divider */}
-            <div className="w-px bg-gray-200" />
+            <div className={H ? 'w-px my-1 bg-[#e3d6bd]' : 'w-px bg-gray-200'} />
 
             {/* Return or Add Return */}
             <div className="shrink-0">
               {hasReturn ? (
                 <div className="flex items-center h-full">
                   <DateTimeField
+                    bare={H}
                     label={l.returnFlight}
                     date={returnDate}
                     time={returnTime}
@@ -960,18 +977,35 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
               ) : (
                 <button
                   onClick={() => setHasReturn(true)}
-                  className="flex items-center gap-2 bg-white px-3 py-3 h-full hover:bg-gray-50 transition-colors"
+                  className={H
+                    ? 'flex items-center gap-3.5 bg-transparent px-6 py-3 h-full hover:bg-black/[.03] transition-colors'
+                    : 'flex items-center gap-2 bg-white px-3 py-3 h-full hover:bg-gray-50 transition-colors'}
                 >
-                  <Calendar size={16} className="text-gray-400 shrink-0" />
-                  <span className="text-sm font-medium text-gray-400 whitespace-nowrap">{l.addReturn}</span>
+                  <Calendar size={H ? 24 : 16} strokeWidth={H ? 1.6 : 2} className={H ? 'text-[#c9a052] shrink-0' : 'text-gray-400 shrink-0'} />
+                  <span className={H ? 'text-[17px] text-[#3d3d3d] whitespace-nowrap' : 'text-sm font-medium text-gray-400 whitespace-nowrap'}>{l.addReturn}</span>
                 </button>
               )}
             </div>
 
             {/* Divider */}
-            <div className="w-px bg-gray-200" />
+            <div className={H ? 'w-px my-1 bg-[#e3d6bd]' : 'w-px bg-gray-200'} />
 
             {/* Passengers */}
+            {H ? (
+            <label className="relative shrink-0 flex items-center gap-3 px-6 cursor-pointer hover:bg-black/[.03] transition-colors">
+              <User size={24} strokeWidth={1.6} className="text-[#c9a052] shrink-0" />
+              <span className="text-[20px] font-bold text-[#1c1e22]">{passengers}</span>
+              <ChevronDown size={18} strokeWidth={2.4} className="text-[#1c1e22]" />
+              <select
+                aria-label={locale === 'en' ? 'Passengers' : locale === 'tr' ? 'Yolcu' : 'Personen'}
+                value={passengers}
+                onChange={(e) => setPassengers(Number(e.target.value))}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            ) : (
             <div className="shrink-0 flex items-center gap-2 bg-white px-3 py-3">
               <Users size={16} className="text-gray-400 shrink-0" />
               <span className="text-sm font-bold text-gray-800 whitespace-nowrap">{passengers}</span>
@@ -980,14 +1014,17 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 <button onClick={() => setPassengers(p => Math.max(1, p - 1))} className="w-5 h-4 flex items-center justify-center text-gray-500 hover:text-primary-600 text-xs font-bold leading-none">▼</button>
               </div>
             </div>
+            )}
 
             {/* Search */}
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-bold px-6 rounded-r-xl transition-colors text-[15px]"
+              className={H
+                ? 'shrink-0 flex items-center gap-3 bg-[#1b1d21] hover:bg-black disabled:opacity-70 text-white font-semibold px-8 rounded-[14px] transition-colors text-[19px] shadow-md'
+                : 'shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-bold px-6 rounded-r-xl transition-colors text-[15px]'}
             >
-              {searching ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
+              {searching ? <Loader2 size={20} className="animate-spin" /> : <Search size={H ? 24 : 20} strokeWidth={H ? 2.2 : 2} />}
               {l.search}
             </button>
           </div>

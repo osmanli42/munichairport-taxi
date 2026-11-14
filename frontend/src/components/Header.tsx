@@ -62,32 +62,33 @@ export default function Header() {
   ];
 
   return (
-    <header className="bg-primary-600 shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-50 border-b border-[#e9dfcc]" style={{ background: '#f8f3ea' }}>
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-[52px]">
+        <div className="flex items-center justify-between h-16 lg:h-[88px]">
           {/* Logo */}
           <Link href={lp('/')} className="flex items-center group min-w-0">
             <img
-              src="/images/logo-wide.webp"
-              srcSet="/images/logo-wide-320.webp 320w, /images/logo-wide-400.webp 400w, /images/logo-wide-640.webp 640w, /images/logo-wide.webp 823w"
-              sizes="(min-width: 1024px) 300px, 200px"
-              alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-10 2xl:h-12 w-auto max-w-full object-contain object-left" />
+              src="/images/logo-wide-dark.webp"
+              srcSet="/images/logo-wide-dark-320.webp 320w, /images/logo-wide-dark-400.webp 400w, /images/logo-wide-dark-640.webp 640w, /images/logo-wide-dark.webp 823w"
+              sizes="(min-width: 1024px) 380px, 200px"
+              alt="Flughafen-muenchen.TAXI – Taxi zum & vom Flughafen München" width={823} height={132} className="h-8 lg:h-10 2xl:h-[60px] w-auto max-w-full object-contain object-left" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-0.5">
+          <nav className="hidden lg:flex items-stretch self-stretch gap-1 xl:gap-3 2xl:gap-5">
             {navLinks.map((link) => {
               const linkCls = cn(
-                'px-2.5 xl:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                'relative flex items-center h-full px-1.5 xl:px-2 text-[15px] 2xl:text-[17px] transition-colors whitespace-nowrap text-[#1c1e22]',
+                'after:absolute after:left-0 after:right-0 after:bottom-[18px] after:h-[3px] after:rounded-full after:transition-opacity',
                 pathname === lp(link.href)
-                  ? 'bg-primary-700 text-white'
-                  : 'text-primary-100 hover:bg-primary-700 hover:text-white'
+                  ? 'font-bold after:bg-[#c9a052] after:opacity-100'
+                  : 'font-normal hover:text-[#a8802f] after:opacity-0'
               );
               if (!link.services) {
                 return <Link key={link.href} href={lp(link.href)} className={linkCls}>{link.label}</Link>;
               }
               return (
-                <div key={link.href} className="relative group">
+                <div key={link.href} className="relative group flex">
                   <Link href={lp(link.href)} aria-haspopup="true" className={cn(linkCls, 'inline-flex items-center gap-1')}>
                     {link.label}
                     <ChevronDown size={14} className="transition-transform group-hover:rotate-180 group-focus-within:rotate-180" />
@@ -123,21 +124,20 @@ export default function Header() {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3 xl:gap-6">
             {/* Phone */}
             <a
               href={CONTACT_INFO.phoneHref}
               aria-label={CONTACT_INFO.phone}
-              className="hidden lg:flex items-center space-x-2 whitespace-nowrap bg-gold-400 hover:bg-gold-500 text-primary-600 px-3 py-2 rounded-md text-sm font-bold transition-colors"
+              className="hidden lg:flex items-center gap-2.5 whitespace-nowrap pl-3 xl:pl-6 border-l border-[#bdb3a3] h-8 text-[#1c1e22] hover:text-[#a8802f] text-[15px] 2xl:text-[17px] transition-colors"
             >
-              <Phone size={14} />
+              <Phone size={22} strokeWidth={1.5} />
               <span className="hidden xl:inline">{CONTACT_INFO.phone}</span>
             </a>
 
             {/* Language Switcher */}
             <div className="relative group">
-              <button className="flex items-center space-x-1 bg-primary-700 hover:bg-primary-800 text-white px-3 py-2 rounded-md text-sm transition-colors">
-                <FlagIcon code={locale} />
+              <button className="flex items-center gap-1.5 text-[#1c1e22] hover:text-[#a8802f] px-1 py-2 text-[15px] 2xl:text-[17px] transition-colors">
                 <span>{localeLabels[locale]}</span>
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -161,7 +161,7 @@ export default function Header() {
 
             {/* Mobile menu button */}
             <button
-              className="lg:hidden bg-primary-700 hover:bg-primary-800 text-white p-2 rounded-md"
+              className="lg:hidden bg-[#1c1e22] hover:bg-black text-white p-2 rounded-md"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
@@ -180,7 +180,7 @@ export default function Header() {
                     type="button"
                     onClick={() => setServicesOpen(!servicesOpen)}
                     aria-expanded={servicesOpen}
-                    className="flex w-full items-center justify-between px-4 py-3 text-white hover:bg-primary-700 rounded-md font-medium"
+                    className="flex w-full items-center justify-between px-4 py-3 text-[#1c1e22] hover:bg-[#efe6d4] rounded-md font-medium"
                   >
                     {link.label}
                     <ChevronDown size={18} className={cn('transition-transform', servicesOpen && 'rotate-180')} />
@@ -209,7 +209,7 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={lp(link.href)}
-                  className="px-4 py-3 text-white hover:bg-primary-700 rounded-md font-medium"
+                  className="px-4 py-3 text-[#1c1e22] hover:bg-[#efe6d4] rounded-md font-medium"
                   onClick={() => setMenuOpen(false)}
                 >
                   {link.label}

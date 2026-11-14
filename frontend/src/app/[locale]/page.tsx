@@ -3,19 +3,22 @@ import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Shield, Clock, Star, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, UsersRound, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
+import { Shield, Clock, Star, Tag, Baby, CreditCard, Phone, BadgePercent, Plane, Trophy, Ban, MailCheck, ShieldCheck, Users, UsersRound, User, Check, Calendar, Luggage, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 // Platzhalter in Endhöhe der Suche: ohne ihn schiebt die nachgeladene Suche alles darunter
 // um bis zu 252px nach unten (CLS ~0,12 auf Mobilgeräten)
 const SearchBar = dynamic(() => import('@/components/SearchBar'), {
   ssr: false,
-  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[65px] rounded-2xl bg-white/10" />,
+  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[92px] rounded-[22px] bg-white/10" />,
 });
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';
 import HomeSeoContent from '@/components/HomeSeoContent';
 import StepAnimation from '@/components/StepAnimations';
 import { CONTACT_INFO } from '@/lib/utils';
+import { Outfit } from 'next/font/google';
+
+const heroFont = Outfit({ subsets: ['latin', 'latin-ext'], weight: ['300', '400', '600'], display: 'swap' });
 
 export async function generateMetadata({
   params: { locale },
@@ -71,82 +74,110 @@ export default function HomePage() {
   };
   const sd = stepsData[locale] || stepsData.de;
 
-  // LCP: hero fotografi inline CSS background oldugu icin tarayicinin preload
-  // tarayicisi HTML'de goremiyor ve ancak render sonrasi kesfediyor. Preload ile
-  // indirme sayfa yuklenir yuklenmez basliyor.
-  ReactDOM.preload('/images/hero-airport-v2.webp', { as: 'image', fetchPriority: 'high' });
+  // LCP: Hero-Foto als <img> mit srcset + Preload, damit der Download sofort startet
+  // (Handy bekommt die 1200px-Version, ~38 KB statt 100 KB).
+  ReactDOM.preload('/images/hero-taxi-2026.webp', {
+    as: 'image',
+    fetchPriority: 'high',
+    imageSrcSet: '/images/hero-taxi-2026-1200.webp 1200w, /images/hero-taxi-2026.webp 2400w',
+    imageSizes: '(min-width: 1024px) 84vw, 100vw',
+  });
+
+  const GOLD = '#d6a957';
+  const heroBadges = [
+    { icon: Tag, text: t('features.fixed_price') },
+    { icon: Clock, text: t('features.punctual') },
+    { icon: Star, text: t('features.247') },
+  ];
 
   return (
     <>
       {/* Hero Section */}
-      <section className="relative bg-primary-800 text-white overflow-visible">
-        {/* Background photo — Munich Airport at sunset, full strength */}
-        <div
-          className="absolute inset-0 pointer-events-none bg-cover bg-[position:76%_10%] md:bg-[position:center_10%]"
-          style={{ backgroundImage: "url('/images/hero-airport-v2.webp')" }}
-        />
-        {/* Dark overlay — keeps the headline, badges and buttons readable over the photo */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(16,34,60,0.72) 0%, rgba(16,34,60,0.56) 45%, rgba(16,34,60,0.82) 100%)',
-          }}
-        />
+      <section className="relative text-white overflow-visible" style={{ background: '#17191d' }}>
+        {/* Foto: neuer Mercedes E-Klasse (2026) Taxi am Terminal — Desktop rechts, Handy vollflächig */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <img
+            src="/images/hero-taxi-2026.webp"
+            srcSet="/images/hero-taxi-2026-1200.webp 1200w, /images/hero-taxi-2026.webp 2400w"
+            sizes="(min-width: 1024px) 84vw, 100vw"
+            alt=""
+            width={2400}
+            height={1018}
+            fetchPriority="high"
+            className="absolute right-0 top-0 h-full w-full lg:w-[84%] object-cover object-[64%_center] lg:object-right"
+          />
+          {/* Links dunkel für den Text, rechts freies Foto */}
+          <div
+            className="absolute inset-0 hidden lg:block"
+            style={{ background: 'linear-gradient(90deg, #17191d 0%, rgba(23,25,29,.94) 22%, rgba(23,25,29,.72) 38%, rgba(23,25,29,.25) 52%, rgba(23,25,29,0) 64%)' }}
+          />
+          <div
+            className="absolute inset-0 lg:hidden"
+            style={{ background: 'linear-gradient(180deg, rgba(23,25,29,.82) 0%, rgba(23,25,29,.55) 45%, rgba(23,25,29,.9) 100%)' }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-40"
+            style={{ background: 'linear-gradient(180deg, rgba(23,25,29,0) 0%, rgba(22,24,28,.85) 100%)' }}
+          />
+        </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-16 pb-8">
-          {/* Hero text - centered top */}
-          <div className="text-center animate-fade-in mb-6 sm:mb-10">
-            <h1 className="text-4xl lg:text-6xl font-bold leading-tight mb-4" style={{ textShadow: '0 2px 14px rgba(0,0,0,0.45)' }}>
+        <div className="relative max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px] pt-8 sm:pt-16 lg:pt-[108px] pb-8 lg:pb-[44px]">
+          <div className="animate-fade-in max-w-[900px]">
+            <h1
+              className={`${heroFont.className} font-semibold tracking-[-0.01em] leading-[1.12] text-[34px] sm:text-5xl lg:text-[64px] mb-4 lg:mb-6`}
+              style={{ textShadow: '0 2px 18px rgba(0,0,0,0.35)' }}
+            >
               {t('title')}
-              <span className="block text-gold-400">{t('subtitle')}</span>
+              <span className="block" style={{ color: GOLD }}>{t('subtitle')}</span>
             </h1>
 
-            <p className="text-primary-200 text-lg mb-4 sm:mb-8 max-w-2xl mx-auto" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>{t('description')}</p>
+            <p className={`${heroFont.className} font-light text-white/95 text-lg sm:text-xl lg:text-[26px] lg:leading-[1.4] max-w-[620px] mb-4 sm:mb-8 lg:mb-[54px]`}>
+              {t('description')}
+            </p>
 
-            {/* Feature badges — hidden on mobile so the search bar stays above the fold */}
-            <div className="hidden sm:flex flex-wrap justify-center gap-3 mb-8">
-              {[
-                { icon: Shield, text: t('features.fixed_price') },
-                { icon: Clock, text: t('features.punctual') },
-                { icon: Star, text: t('features.247') },
-              ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
-                  <Icon size={16} className="text-gold-400" />
-                  <span className="text-sm font-medium">{text}</span>
+            {/* Feature-Leiste — auf dem Handy ausgeblendet, damit die Suche oben bleibt */}
+            <div className="hidden sm:flex items-center">
+              {heroBadges.map(({ icon: Icon, text }, i) => (
+                <div key={text} className={`flex items-center gap-3 ${i > 0 ? 'pl-7 ml-7 border-l' : ''}`} style={{ borderColor: 'rgba(214,169,87,.55)' }}>
+                  <Icon size={26} strokeWidth={1.5} style={{ color: GOLD }} />
+                  <span className={`${heroFont.className} text-[19px] font-normal`}>{text}</span>
                 </div>
               ))}
             </div>
-
-            {/* CTA butonlari kaldirildi; yer tutucu ayni yuksekligi koruyor (48px buton + 40px bosluk),
-                boylece altindaki arama cubugu ve sonraki bolumler yukari kaymiyor. */}
-            <div className="hidden sm:block h-12 mb-10" aria-hidden="true" />
           </div>
 
-          {/* Rabatt-Banner (Rabatte-Tab) — auf Desktop im Platzhalter über der Suche, damit nichts verrutscht */}
-          <div className="relative w-full sm:-mt-[88px] sm:mb-10 sm:h-12 sm:flex sm:items-center sm:justify-center">
+          {/* Rabatt-Banner (Rabatte-Tab) — fester Platz über der Suche, damit nichts verrutscht */}
+          <div className="relative w-full mt-4 sm:mt-0 sm:h-[76px] sm:flex sm:items-center">
             <AutoDiscountBanner locale={locale} />
           </div>
 
           {/* Search Bar */}
           <div id="booking" className="animate-slide-up w-full" style={{ scrollMarginTop: '250px' }}>
-            <SearchBar />
+            <SearchBar variant="hero" />
           </div>
         </div>
       </section>
 
       {/* Stats Strip */}
-      <section className="bg-primary-900 border-b border-primary-800 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <section style={{ background: '#16181c' }} className="py-8 lg:py-10">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 text-center">
             {[
               { value: '20+', label: locale === 'en' ? 'YEARS OF EXPERIENCE' : locale === 'tr' ? 'YIL DENEYİM' : 'JAHRE ERFAHRUNG' },
-              { value: locale === 'en' ? '4.7 ★' : '4,7 ★', label: locale === 'en' ? 'AVG. RATING' : locale === 'tr' ? 'ORT. PUAN' : 'Ø BEWERTUNG' },
+              { value: locale === 'en' ? '4.7' : '4,7', star: true, label: locale === 'en' ? 'AVG. RATING' : locale === 'tr' ? 'ORT. PUAN' : 'Ø BEWERTUNG' },
               { value: '100%', label: locale === 'en' ? 'FIXED PRICES' : locale === 'tr' ? 'SABİT FİYAT' : 'FESTPREISE' },
               { value: '24/7', label: locale === 'en' ? 'AVAILABLE' : locale === 'tr' ? 'HİZMETTE' : 'VERFÜGBAR' },
-            ].map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center">
-                <div className="text-4xl font-extrabold text-gold-400 leading-tight tracking-tight">{stat.value}</div>
-                <div className="text-xs font-bold text-primary-300 mt-1 tracking-widest uppercase">{stat.label}</div>
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className={`flex flex-col items-center ${i > 0 ? 'md:border-l' : ''} ${i % 2 === 1 ? 'border-l md:border-l' : ''}`}
+                style={{ borderColor: 'rgba(214,169,87,.5)' }}
+              >
+                <div className={`${heroFont.className} flex items-center gap-2 text-5xl lg:text-[62px] font-semibold leading-none tracking-tight`} style={{ color: GOLD }}>
+                  {stat.value}
+                  {stat.star && <Star className="w-10 h-10 lg:w-[52px] lg:h-[52px]" fill={GOLD} strokeWidth={0} />}
+                </div>
+                <div className={`${heroFont.className} text-sm lg:text-[20px] font-normal text-white mt-3 lg:mt-4 tracking-[.18em] uppercase`}>{stat.label}</div>
               </div>
             ))}
           </div>
