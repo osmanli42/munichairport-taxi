@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: l === 'de' ? `${BASE}${PATH}` : `${BASE}/${l}${PATH}`,
       languages: { de: `${BASE}${PATH}`, en: `${BASE}/en${PATH}`, tr: `${BASE}/tr${PATH}`, 'x-default': `${BASE}${PATH}` },
     },
-    openGraph: { title: m[l].title, description: m[l].description, type: 'article' },
+    openGraph: { title: m[l].title, description: m[l].description, type: 'article', images: [`${BASE}/images/messe/hero.webp`] },
   };
 }
 
@@ -165,7 +165,7 @@ export default async function MesseTransferPage({ params }: Props) {
       {schemas.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />)}
       <section className="relative overflow-hidden bg-primary-900 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/hero-airport.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
+        <img src="/images/messe/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[60%_center]" fetchPriority="high" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/90 via-primary-900/55 to-primary-900/10" />
         <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 md:pb-32">
           <nav className="mb-8 flex items-center gap-1.5 text-xs text-white/75">
