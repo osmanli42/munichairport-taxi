@@ -65,7 +65,7 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-primary-900 text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/about/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[75%_center]" fetchPriority="high" />
+        <img src="/images/about/hero-v2.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[75%_center]" fetchPriority="high" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary-900/95 via-primary-900/80 to-primary-900/10" />
         <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 md:pb-20 md:pt-24 lg:px-8">
           <div className="max-w-2xl">

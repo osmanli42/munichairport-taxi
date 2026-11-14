@@ -3,8 +3,8 @@ import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Phone, Mail, MapPin, Clock, MessageCircle, ClipboardList, HelpCircle,
-  Calendar, Send, CheckCircle2, Plus, ArrowRight,
+  Phone, Mail, MapPin, Clock, MessageCircle, HelpCircle,
+  Calendar, Send, CheckCircle2, Plus, ArrowRight, CalendarCheck, PencilLine, Briefcase, Users, HeartPulse, Camera,
 } from 'lucide-react';
 import { CONTACT_INFO } from '@/lib/utils';
 import { contactDesign, heroStatIcons } from './contactDesign';
@@ -83,94 +83,97 @@ export default function ContactPage() {
     'Rosenheim', 'Dachau', 'Fürstenfeldbruck', 'Ebersberg', 'Salzburg', 'Innsbruck',
   ];
 
-  return (
-    <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
+  const prefix = locale === 'de' ? '' : `/${locale}`;
+  const lp = (h: string) => (h === '/' ? prefix || '/' : `${prefix}${h}`);
+  const quickHref: Record<string, string> = { call: CONTACT_INFO.phoneHref, wa: CONTACT_INFO.whatsapp, mail: `mailto:${CONTACT_INFO.email}` };
+  const quickIcon = { call: Phone, wa: MessageCircle, mail: Mail } as const;
+  const quickValue: Record<string, string> = { call: CONTACT_INFO.phone, wa: CONTACT_INFO.phone, mail: CONTACT_INFO.email };
+  const helpIcons = [CalendarCheck, PencilLine, Briefcase, Users, HeartPulse, Camera];
 
-      {/* Hero — FAQ sayfasiyla ayni desen: koyu lacivert zemin, iki kenarda
-          fotograf merkeze dogru laciverte soluyor, ortada gercek (cevrilebilir) metin.
-          Sol: FAQ tasarimindan M Flughafen München terminali (metinsiz bolge).
-          Sag: Kontakt tasarimindan taksi + terminal + "Mehr als ein Taxi" el yazisi. */}
-      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute top-0 left-0 hidden sm:block h-full" style={{ width: '260px' }}>
-            <img src="/images/faq-bg-left.webp" alt="" width={180} height={280} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(15,27,45,.20) 0%, #0f1b2d 92%)' }} />
-          </div>
-          <div className="absolute top-0 right-0 hidden sm:block h-full" style={{ width: '300px' }}>
-            <img src="/images/contact-bg-right.webp" alt="" width={554} height={348} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(15,27,45,.15) 0%, #0f1b2d 90%)' }} />
+  return (
+    <div className="bg-gray-50">
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/contact/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/95 via-primary-900/80 to-primary-900/10" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-36 pt-16 sm:px-6 md:pt-24 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-400">{t('badge')}</p>
+            <h1 className="mt-3 text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow sm:text-5xl md:text-6xl">
+              {dz.heroTitleA} <span className="text-gold-400">{dz.heroTitleB}</span>
+            </h1>
+            <p className="mt-4 text-xl font-semibold text-white/95 drop-shadow">{dz.heroTagline}</p>
+            <p className="mt-3 max-w-xl text-lg leading-relaxed text-white/85 drop-shadow">{dz.heroText}</p>
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {dz.heroStats.map((label, i) => {
+                const Ikon = heroStatIcons[i] || heroStatIcons[0];
+                return (
+                  <li key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/25 backdrop-blur">
+                    <Ikon size={14} className="text-gold-400" /> {label}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </div>
+      </section>
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
-            <span className="text-xs font-bold tracking-[.2em] uppercase" style={{ color: '#c9a84c' }}>{t('badge')}</span>
-            <span className="hidden sm:block h-px w-10" style={{ background: '#c9a84c' }} />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
-            {dz.heroTitleA} <span className="text-gold-400">{dz.heroTitleB}</span>
-          </h1>
-          <p className="text-lg font-semibold mb-2" style={{ color: '#e2ebf5' }}>{dz.heroTagline}</p>
-          <p className="text-sm max-w-xl mx-auto" style={{ color: '#a9bdd4' }}>{dz.heroText}</p>
+      {/* Quick contact cards */}
+      <div className="relative z-10 mx-auto -mt-24 grid max-w-7xl gap-5 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
+        {dz.quick.map(([title, text, key]) => {
+          const Icon = quickIcon[key as keyof typeof quickIcon];
+          const wa = key === 'wa';
+          return (
+            <a key={key} href={quickHref[key]} {...(wa ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              className="group flex flex-col rounded-3xl bg-white p-6 shadow-xl ring-1 ring-gray-200 transition hover:-translate-y-1 hover:ring-gold-300">
+              <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${wa ? 'bg-green-500 text-white' : 'bg-gold-400 text-primary-900'}`}><Icon size={22} /></span>
+              <h2 className="mt-4 text-lg font-extrabold text-gray-900">{title}</h2>
+              <p className="mt-1 text-sm leading-relaxed text-gray-600">{text}</p>
+              <span className="mt-4 inline-flex items-center gap-1.5 break-all text-sm font-bold text-primary-700 group-hover:underline">{quickValue[key]} <ArrowRight size={15} className="shrink-0" /></span>
+            </a>
+          );
+        })}
+      </div>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-5">
-            {dz.heroStats.map((label, i) => {
-              const Ikon = heroStatIcons[i] || heroStatIcons[0];
+      {/* How can we help */}
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold uppercase tracking-[.2em] text-gold-600">{dz.helpEyebrow}</p>
+          <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{dz.helpTitle}</h2>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {dz.help.map(([title, text, href], i) => {
+              const Icon = helpIcons[i];
               return (
-                <div key={label} className="flex items-center gap-2.5">
-                  <span
-                    className="flex items-center justify-center rounded-full shrink-0"
-                    style={{ width: '38px', height: '38px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
-                  >
-                    <Ikon size={17} style={{ color: '#c9a84c' }} />
-                  </span>
-                  <span className="text-sm font-bold text-white">{label}</span>
-                </div>
+                <Link key={title} href={lp(href)} className="group flex gap-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-gold-300">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 transition group-hover:bg-gold-400 group-hover:text-primary-900"><Icon size={20} /></span>
+                  <div>
+                    <h3 className="flex items-center gap-1.5 font-extrabold text-gray-900">{title} <ArrowRight size={15} className="text-gold-600 transition group-hover:translate-x-1" /></h3>
+                    <p className="mt-1 text-sm leading-relaxed text-gray-600">{text}</p>
+                  </div>
+                </Link>
               );
             })}
           </div>
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-
-          {/* Left — Contact info */}
-          <div
-            className="rounded-2xl px-7 py-7"
-            style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-          >
-            <div className="flex items-center gap-4 mb-5">
-              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
-                <ClipboardList size={19} style={{ color: '#a07820' }} />
-              </div>
-              <div>
-                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('direct_label')}</span>
-                <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('contact_info_title')}</h2>
-              </div>
-            </div>
-
-            <div>
+      {/* Details + booking */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="rounded-3xl bg-white p-7 shadow-sm ring-1 ring-gray-200 md:p-8">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{t('direct_label')}</p>
+            <h2 className="mt-1 text-2xl font-extrabold text-gray-900">{dz.detailsTitle}</h2>
+            <div className="mt-4">
               {contactItems.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex flex-wrap items-center gap-3 sm:gap-4 py-4"
-                  style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : undefined}
-                >
-                  <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
-                    <item.icon size={18} style={{ color: '#a07820' }} />
-                  </div>
-                  <div className="flex-1 min-w-[140px]">
-                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#a07820' }}>
-                      {item.label}
-                    </p>
+                <div key={i} className={`flex flex-wrap items-center gap-3 py-4 sm:gap-4 ${i > 0 ? 'border-t border-gray-100' : ''}`}>
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold-400/15 text-gold-600"><item.icon size={19} /></span>
+                  <div className="min-w-[140px] flex-1">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gold-600">{item.label}</p>
                     {item.href ? (
-                      <a href={item.href} className="text-base font-bold hover:underline" style={{ color: '#0f1b2d' }}>
-                        {item.value}
-                      </a>
+                      <a href={item.href} className="text-base font-bold text-gray-900 hover:underline">{item.value}</a>
                     ) : (
-                      <p className="text-base font-bold" style={{ color: '#0f1b2d' }}>{item.value}</p>
+                      <p className="text-base font-bold text-gray-900">{item.value}</p>
                     )}
                   </div>
                   {item.extra}
@@ -179,170 +182,96 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Right — Booking CTA */}
-          <div
-            className="rounded-2xl px-7 py-7"
-            style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)', border: '1px solid rgba(201,168,76,.3)' }}
-          >
-            <div className="flex items-center gap-4 mb-5">
-              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)' }}>
-                <Calendar size={19} style={{ color: '#c9a84c' }} />
-              </div>
+          <div className="rounded-3xl bg-gradient-to-br from-primary-900 to-primary-800 p-7 text-white shadow-xl md:p-8">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold-400 text-primary-900"><Calendar size={20} /></span>
               <div>
-                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('booking_badge')}</span>
-                <h2 className="text-lg font-bold leading-tight text-white">{t('booking_title')}</h2>
+                <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-400">{t('booking_badge')}</p>
+                <h2 className="text-2xl font-extrabold leading-tight">{t('booking_title')}</h2>
               </div>
             </div>
-            <p className="text-sm mb-6" style={{ color: '#a9bdd4' }}>{t('booking_text')}</p>
-
-            <div className="space-y-3 mb-6">
-              <Link
-                href="/"
-                className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                style={{ background: 'linear-gradient(135deg, #c9a84c, #d4af6a)', color: '#0f1b2d', boxShadow: '0 4px 16px rgba(201,168,76,.3)' }}
-              >
-                {t('book_online')} <ArrowRight size={16} />
+            <p className="mt-4 text-white/80">{t('booking_text')}</p>
+            <div className="mt-6 space-y-3">
+              <Link href={prefix || '/'} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gold-400 py-3.5 font-bold text-primary-900 transition hover:-translate-y-0.5 hover:bg-gold-300">
+                {t('book_online')} <ArrowRight size={17} />
               </Link>
-              <a
-                href={CONTACT_INFO.phoneHref}
-                className="flex items-center justify-center gap-2 w-full font-bold text-sm py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
-                style={{ background: 'transparent', border: '1.5px solid rgba(201,168,76,.5)', color: '#fff' }}
-              >
-                <Phone size={15} /> {t('call')}
+              <a href={CONTACT_INFO.phoneHref} className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold ring-1 ring-white/30 transition hover:bg-white/10">
+                <Phone size={16} /> {t('call')}
               </a>
             </div>
-
-            <div className="space-y-2.5">
+            <ul className="mt-6 space-y-2.5">
               {dz.bookingChecklist.map((c) => (
-                <div key={c} className="flex items-start gap-2.5 text-sm" style={{ color: '#c3d2e3' }}>
-                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: '#c9a84c' }} />
-                  {c}
-                </div>
+                <li key={c} className="flex items-start gap-2.5 text-sm text-white/85"><CheckCircle2 size={17} className="mt-0.5 shrink-0 text-gold-400" /> {c}</li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
+      </section>
 
-        {/* FAQ teaser */}
-        <div
-          className="rounded-2xl px-7 py-7 mb-8"
-          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-        >
-          <div className="flex flex-wrap items-center gap-4 justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#fdf3de' }}>
-                <HelpCircle size={19} style={{ color: '#a07820' }} />
-              </div>
-              <div>
-                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>{t('quick_answers_label')}</span>
-                <h2 className="text-lg font-bold leading-tight" style={{ color: '#0f1b2d' }}>{t('faq_title')}</h2>
-              </div>
+      {/* FAQ teaser */}
+      <section className="py-20">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{t('quick_answers_label')}</p>
+              <h2 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-900">{t('faq_title')}</h2>
             </div>
-            <Link
-              href={locale === 'de' ? '/faq' : `/${locale}/faq`}
-              className="inline-flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ background: '#fff', border: '1.5px solid #d9e2ee', color: '#0f1b2d' }}
-            >
+            <Link href={`${prefix}/faq`} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-gray-900 shadow-sm ring-1 ring-gray-200 hover:ring-gold-300">
               {dz.allQuestions} <ArrowRight size={15} />
             </Link>
           </div>
-
-          <div>
+          <div className="mt-6 space-y-3">
             {faqs.map(({ q }, i) => (
-              <Link
-                key={i}
-                href={locale === 'de' ? '/faq' : `/${locale}/faq`}
-                className="flex items-center justify-between gap-3 py-3.5 group"
-                style={i > 0 ? { borderTop: '1px solid #f0f4f8' } : undefined}
-              >
-                <span className="text-sm font-semibold" style={{ color: '#25344a' }}>{q}</span>
-                <Plus size={16} className="shrink-0 transition-transform group-hover:rotate-90" style={{ color: '#a07820' }} />
+              <Link key={i} href={`${prefix}/faq`} className="group flex items-center justify-between gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-gray-200 transition hover:ring-gold-300">
+                <span className="flex items-center gap-3 font-semibold text-gray-800"><HelpCircle size={18} className="shrink-0 text-gold-600" /> {q}</span>
+                <Plus size={17} className="shrink-0 text-gold-600 transition-transform group-hover:rotate-90" />
               </Link>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Service area */}
-        <div
-          className="rounded-2xl px-7 py-7"
-          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-        >
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10 mb-6">
-            <div className="shrink-0 lg:w-56">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3" style={{ background: '#fdf3de' }}>
-                <MapPin size={19} style={{ color: '#a07820' }} />
-              </div>
-              <span className="text-xs font-bold tracking-widest uppercase block mb-1" style={{ color: '#c9a84c' }}>
-                {dz.areaEyebrow}
-              </span>
-              <h2 className="text-xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>{dz.areaTitle}</h2>
+      {/* Service area */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{dz.areaEyebrow}</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{dz.areaTitle}</h2>
+            <p className="mt-4 leading-relaxed text-gray-600">{dz.areaText}</p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {cities.map((city) => <span key={city} className="rounded-full bg-primary-50 px-3.5 py-2 text-xs font-semibold text-primary-800 ring-1 ring-primary-100">{city}</span>)}
+              <span className="rounded-full px-3.5 py-2 text-xs font-medium text-gray-500 ring-1 ring-gray-300">{dz.areaMore}</span>
             </div>
-            <p className="text-sm leading-relaxed lg:pt-14" style={{ color: '#4a6280' }}>
-              {dz.areaText}
-            </p>
           </div>
-
-          <div className="flex flex-col lg:flex-row lg:items-center gap-8">
-            <div className="flex flex-wrap gap-2 flex-1">
-              {cities.map(city => (
-                <span
-                  key={city}
-                  className="text-xs font-semibold px-3.5 py-2 rounded-full"
-                  style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
-                >
-                  {city}
-                </span>
-              ))}
-              <span
-                className="text-xs font-medium px-3.5 py-2 rounded-full"
-                style={{ background: '#fff', color: '#8a9bb0', border: '1.5px dashed #c8d3e0' }}
-              >
-                {dz.areaMore}
-              </span>
-            </div>
-
-            {/* Decorative mini map: München merkez + 5 komsu sehir */}
-            <svg viewBox="0 0 260 150" className="hidden lg:block shrink-0" style={{ width: '250px', height: '144px' }} aria-hidden="true">
+          <div className="relative overflow-hidden rounded-3xl bg-gray-50 p-6 ring-1 ring-gray-200">
+            <svg viewBox="0 0 260 150" className="w-full" aria-hidden="true">
               <defs>
                 <pattern id="contactMapDots" width="7" height="7" patternUnits="userSpaceOnUse">
                   <circle cx="1.2" cy="1.2" r="1.2" fill="#c9d3e0" />
                 </pattern>
               </defs>
               <path d="M35 20 C 90 2, 175 5, 220 35 C 250 55, 245 95, 210 120 C 170 145, 100 148, 55 128 C 15 110, 8 75, 12 50 C 15 35, 22 25, 35 20 Z" fill="url(#contactMapDots)" opacity="0.7" />
-
-              {/* baglantilar */}
-              <path d="M130 75 L 75 30" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
-              <path d="M130 75 L 195 25" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
-              <path d="M130 75 L 40 95" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
-              <path d="M130 75 L 222 100" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
-              <path d="M130 75 L 118 138" fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />
-
-              {/* uydu sehirler */}
+              {[[75, 30], [195, 25], [40, 95], [222, 100], [118, 138]].map(([x, y]) => <path key={`${x}-${y}`} d={`M130 75 L ${x} ${y}`} fill="none" stroke="#c9a84c" strokeWidth="1.6" strokeDasharray="3 3" />)}
               {[
                 { x: 75, y: 30, label: 'Ingolstadt', anchor: 'middle', dy: -8 },
                 { x: 195, y: 25, label: 'Regensburg', anchor: 'middle', dy: -8 },
-                { x: 40, y: 95, label: 'Augsburg', anchor: 'end', dy: 4, dx: -8 },
-                { x: 222, y: 100, label: 'Salzburg', anchor: 'start', dy: 4, dx: 8 },
-                { x: 118, y: 138, label: 'Innsbruck', anchor: 'middle', dy: 14 },
+                { x: 40, y: 95, label: 'Augsburg', anchor: 'start', dy: 14, dx: -14 },
+                { x: 222, y: 100, label: 'Salzburg', anchor: 'end', dy: 16, dx: 6 },
+                { x: 118, y: 138, label: 'Innsbruck', anchor: 'start', dy: 4, dx: 8 },
               ].map((c) => (
                 <g key={c.label}>
                   <circle cx={c.x} cy={c.y} r="4" fill="#c9a84c" />
                   <circle cx={c.x} cy={c.y} r="1.6" fill="#fff" />
-                  <text x={c.x + (c.dx || 0)} y={c.y + c.dy} textAnchor={c.anchor as 'middle' | 'end' | 'start'} fontSize="9.5" fontWeight="700" fill="#5a6a80">
-                    {c.label}
-                  </text>
+                  <text x={c.x + (c.dx || 0)} y={c.y + c.dy} textAnchor={c.anchor as 'middle' | 'end' | 'start'} fontSize="9.5" fontWeight="700" fill="#5a6a80">{c.label}</text>
                 </g>
               ))}
-
-              {/* merkez: München */}
               <circle cx="130" cy="75" r="7" fill="#1e3a5f" />
               <circle cx="130" cy="75" r="2.6" fill="#fff" />
               <text x="130" y="60" textAnchor="middle" fontSize="11" fontWeight="800" fill="#1e3a5f">München</text>
             </svg>
           </div>
         </div>
-
-      </div>
+      </section>
     </div>
   );
 }

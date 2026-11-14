@@ -19,14 +19,35 @@ type ContactDesign = {
   areaTitle: string;
   areaText: string;
   areaMore: string;
+  quick: [string, string, string][];
+  helpEyebrow: string;
+  helpTitle: string;
+  help: [string, string, string][];
+  detailsTitle: string;
 };
 
 export const contactDesign: Record<string, ContactDesign> = {
   de: {
+    quick: [
+      ['Anrufen', 'Rund um die Uhr persönlich erreichbar – auch nachts und an Feiertagen.', 'call'],
+      ['WhatsApp', 'Adresse, Flugnummer oder Fotos bequem per Nachricht senden.', 'wa'],
+      ['E-Mail', 'Für Angebote, Rechnungen und Anfragen von Firmen.', 'mail'],
+    ],
+    helpEyebrow: 'Ihr Anliegen',
+    helpTitle: 'Wobei können wir helfen?',
+    help: [
+      ['Fahrt buchen & Preis berechnen', 'Festpreis online in wenigen Sekunden – für Kombi, Van und Großraumtaxi.', '/'],
+      ['Buchung ansehen oder ändern', 'Zeit, Personen oder Gepäck anpassen – oder bis 3 Std. vorher kostenlos stornieren.', '/buchung-verwalten'],
+      ['Firmenkunden & Rechnung', 'Firmenkonto mit monatlicher Sammelrechnung und Buchungsportal.', '/business'],
+      ['Gruppen, Events & Shuttle', 'Mehrere Fahrzeuge für Hochzeiten, Firmenfeiern und Stadion-Besuche.', '/leistungen#gruppen'],
+      ['Krankenfahrten', 'Sitzende Fahrten zu Klinik, Arzt, Dialyse und Reha.', '/krankenfahrten'],
+      ['Ausflüge & Sightseeing', 'Neuschwanstein, Königssee, Salzburg – mit Fahrer, der vor Ort wartet.', '/sightseeing'],
+    ],
+    detailsTitle: 'So erreichen Sie uns',
     heroTitleA: 'Wir sind',
     heroTitleB: 'für Sie da.',
     heroTagline: 'Schnell. Persönlich. Zuverlässig.',
-    heroText: 'Ihr Flughafentransfer in besten Händen – rund um die Uhr erreichbar.',
+    heroText: 'Ob Buchung, Preisanfrage oder Firmenkonto – Sie erreichen uns rund um die Uhr persönlich per Telefon, WhatsApp oder E-Mail.',
     heroStats: ['Persönliche Beratung', '24/7 Erreichbar', 'Schnelle Antwort'],
     routeLabel: 'Route',
     bookingChecklist: [
@@ -42,10 +63,26 @@ export const contactDesign: Record<string, ContactDesign> = {
     areaMore: 'und viele weitere …',
   },
   en: {
+    quick: [
+      ['Call us', 'Personally reachable around the clock – also at night and on holidays.', 'call'],
+      ['WhatsApp', 'Send your address, flight number or photos by message.', 'wa'],
+      ['Email', 'For quotes, invoices and company enquiries.', 'mail'],
+    ],
+    helpEyebrow: 'Your request',
+    helpTitle: 'How can we help?',
+    help: [
+      ['Book a ride & get a price', 'Fixed price online in seconds – for saloon, van and large taxi.', '/'],
+      ['View or change a booking', 'Change time, passengers or luggage – or cancel free of charge up to 3 hrs before.', '/buchung-verwalten'],
+      ['Business clients & invoices', 'Company account with monthly collective invoice and booking portal.', '/business'],
+      ['Groups, events & shuttle', 'Several vehicles for weddings, company parties and stadium visits.', '/leistungen#gruppen'],
+      ['Patient transport', 'Seated rides to hospital, doctor, dialysis and rehab.', '/krankenfahrten'],
+      ['Day trips & sightseeing', 'Neuschwanstein, Königssee, Salzburg – with a driver who waits on site.', '/sightseeing'],
+    ],
+    detailsTitle: 'How to reach us',
     heroTitleA: 'We are',
     heroTitleB: 'here for you.',
     heroTagline: 'Fast. Personal. Reliable.',
-    heroText: 'Your airport transfer in the best hands – reachable around the clock.',
+    heroText: 'Whether a booking, a price enquiry or a company account – you can reach us personally around the clock by phone, WhatsApp or email.',
     heroStats: ['Personal advice', 'Available 24/7', 'Fast response'],
     routeLabel: 'Route',
     bookingChecklist: [
@@ -61,10 +98,26 @@ export const contactDesign: Record<string, ContactDesign> = {
     areaMore: 'and many more …',
   },
   tr: {
+    quick: [
+      ['Arayın', 'Günün her saati, gece ve tatillerde de kişisel olarak ulaşılabilir.', 'call'],
+      ['WhatsApp', 'Adres, uçuş numarası veya fotoğrafları mesajla gönderin.', 'wa'],
+      ['E-posta', 'Teklif, fatura ve firma talepleri için.', 'mail'],
+    ],
+    helpEyebrow: 'Talebiniz',
+    helpTitle: 'Size nasıl yardımcı olabiliriz?',
+    help: [
+      ['Yolculuk ayırt & fiyat hesapla', 'Saniyeler içinde online sabit fiyat – binek, van ve büyük taksi.', '/'],
+      ['Rezervasyonu gör veya değiştir', 'Saat, kişi veya bagajı değiştirin – ya da 3 saat öncesine kadar ücretsiz iptal edin.', '/buchung-verwalten'],
+      ['Firma müşterileri & fatura', 'Aylık toplu fatura ve rezervasyon portalıyla firma hesabı.', '/business'],
+      ['Gruplar, etkinlikler & shuttle', 'Düğün, firma kutlaması ve stadyum için birden fazla araç.', '/leistungen#gruppen'],
+      ['Hasta yolculukları', 'Klinik, doktor, diyaliz ve rehabilitasyona oturarak yolculuk.', '/krankenfahrten'],
+      ['Gezi & turlar', 'Neuschwanstein, Königssee, Salzburg – orada bekleyen şoförle.', '/sightseeing'],
+    ],
+    detailsTitle: 'Bize nasıl ulaşırsınız',
     heroTitleA: 'Sizin için',
     heroTitleB: 'buradayız.',
     heroTagline: 'Hızlı. Kişisel. Güvenilir.',
-    heroText: 'Havalimanı transferiniz emin ellerde – günün her saati ulaşılabilir.',
+    heroText: 'Rezervasyon, fiyat sorusu veya firma hesabı – bize günün her saati telefon, WhatsApp veya e-postayla kişisel olarak ulaşabilirsiniz.',
     heroStats: ['Kişisel danışmanlık', '7/24 Ulaşılabilir', 'Hızlı yanıt'],
     routeLabel: 'Yol tarifi',
     bookingChecklist: [
