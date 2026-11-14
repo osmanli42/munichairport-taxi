@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 // um bis zu 252px nach unten (CLS ~0,12 auf Mobilgeräten)
 const SearchBar = dynamic(() => import('@/components/SearchBar'), {
   ssr: false,
-  loading: () => <div aria-hidden="true" className="h-[252px] sm:h-[239px] lg:h-[clamp(68px,9.8vh,92px)] rounded-[22px] bg-white/10" />,
+  loading: () => <div aria-hidden="true" className="h-[230px] sm:h-[239px] lg:h-[clamp(68px,9.8vh,92px)] rounded-[22px] bg-white/10" />,
 });
 const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner'), { ssr: false });
 import PopularRoutes from '@/components/PopularRoutes';

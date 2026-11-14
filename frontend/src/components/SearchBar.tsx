@@ -1084,12 +1084,13 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
 
       {/* ─── MOBILE ─── */}
       <div className="lg:hidden">
-        <div className="bg-gold-400 rounded-2xl p-1 shadow-2xl overflow-visible">
+        <div className={H ? 'bg-[#fbf6ec] border-2 border-[#e2c07c] rounded-[20px] shadow-[0_14px_40px_rgba(0,0,0,.45)] overflow-visible' : 'bg-gold-400 rounded-2xl p-1 shadow-2xl overflow-visible'}>
           <div className="flex flex-col overflow-visible">
             {/* From */}
             <div className="overflow-visible rounded-t-xl">
               <AddressField
-                icon={<MapPin size={18} className="text-green-500" />}
+                bare={H}
+                icon={H ? <MapPin size={22} strokeWidth={1.6} className="text-[#c9a052]" /> : <MapPin size={18} className="text-green-500" />}
                 placeholder={l.from}
                 value={pickup}
                 onChange={setPickup}
@@ -1101,16 +1102,30 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             </div>
 
             {/* Swap */}
+            {H ? (
+            <div className="relative h-px mx-3.5 bg-[#e3d6bd]">
+              <button
+                onClick={swapAddresses}
+                title={l.swap}
+                aria-label={l.swap}
+                className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-[#fbf6ec] border border-[#e2c07c] text-[#c9a052] active:bg-[#f1e6cf]"
+              >
+                <ArrowLeftRight size={16} strokeWidth={1.8} className="rotate-90" />
+              </button>
+            </div>
+            ) : (
             <div className="px-3 py-0.5 flex items-center bg-white">
               <button onClick={swapAddresses} className="flex items-center gap-1.5 text-gray-400 hover:text-primary-600 text-xs transition-colors">
                 <ArrowLeftRight size={12} /> {l.swap}
               </button>
             </div>
+            )}
 
             {/* To */}
-            <div className="overflow-visible border-t border-gray-100">
+            <div className={`overflow-visible ${H ? '' : 'border-t border-gray-100'}`}>
               <AddressField
-                icon={<MapPin size={18} className="text-red-400" />}
+                bare={H}
+                icon={H ? <MapPin size={22} strokeWidth={1.6} className="text-[#c9a052]" /> : <MapPin size={18} className="text-red-400" />}
                 placeholder={l.to}
                 value={dropoff}
                 onChange={setDropoff}
@@ -1122,10 +1137,11 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             </div>
 
             {/* Date & Return row */}
-            <div className="flex border-t border-gray-100">
+            <div className={`flex border-t ${H ? 'border-[#e3d6bd]' : 'border-gray-100'}`}>
               {/* Departure Date/Time */}
-              <div className="flex-1 border-r border-gray-100">
+              <div className={`flex-1 border-r ${H ? 'border-[#e3d6bd]' : 'border-gray-100'}`}>
                 <DateTimeField
+                  bare={H}
                   label={l.arrival}
                   date={date}
                   time={time}
@@ -1142,6 +1158,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                   <div className="flex items-center h-full">
                     <div className="flex-1 min-w-0">
                       <DateTimeField
+                        bare={H}
                         label={l.returnFlight}
                         date={returnDate}
                         time={returnTime}
@@ -1161,10 +1178,10 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
                 ) : (
                   <button
                     onClick={() => setHasReturn(true)}
-                    className="flex items-center gap-2 bg-white px-4 py-3 w-full h-full"
+                    className={H ? 'flex items-center gap-2.5 bg-transparent px-3.5 py-3 w-full h-full text-left' : 'flex items-center gap-2 bg-white px-4 py-3 w-full h-full'}
                   >
-                    <Calendar size={16} className="text-gray-400 shrink-0" />
-                    <span className="text-sm text-gray-400">{l.addReturn}</span>
+                    <Calendar size={H ? 22 : 16} strokeWidth={H ? 1.6 : 2} className={H ? 'text-[#c9a052] shrink-0' : 'text-gray-400 shrink-0'} />
+                    <span className={H ? 'text-[15px] leading-tight text-[#3d3d3d]' : 'text-sm text-gray-400'}>{l.addReturn}</span>
                   </button>
                 )}
               </div>
@@ -1172,7 +1189,7 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
 
             {/* Rückfahrt mit anderer Adresse */}
             {hasReturn && returnAddressEnabled && !customReturn && (
-              <div className="px-3 py-1.5 bg-white border-t border-gray-100">
+              <div className={`px-3 py-1.5 border-t ${H ? 'border-[#e3d6bd]' : 'bg-white border-gray-100'}`}>
                 <button onClick={openCustomReturn} className="flex items-center gap-1.5 text-primary-700 text-xs font-semibold">
                   <ArrowLeftRight size={12} /> {l.otherReturn}
                 </button>
@@ -1218,19 +1235,23 @@ export default function SearchBar({ initialValues, onSearchComplete, compact, re
             )}
 
             {/* Passengers & Search */}
-            <div className="flex border-t border-gray-100">
-              <div className="flex items-center gap-3 bg-white px-4 py-3 flex-1 border-r border-gray-100 rounded-bl-xl">
-                <Users size={16} className="text-gray-400" />
-                <span className="text-sm font-bold text-gray-800 flex-1">{passengers} {passengers > 1 ? l.persons : l.person}</span>
-                <button onClick={() => setPassengers(p => Math.max(1, p - 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-sm">−</button>
-                <button onClick={() => setPassengers(p => Math.min(8, p + 1))} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-sm">+</button>
+            <div className={`flex border-t ${H ? 'border-[#e3d6bd] p-2 gap-2' : 'border-gray-100'}`}>
+              <div className={H
+                ? 'flex items-center gap-2 px-1.5 py-1 flex-1 min-w-0'
+                : 'flex items-center gap-3 bg-white px-4 py-3 flex-1 border-r border-gray-100 rounded-bl-xl'}>
+                {H ? <User size={22} strokeWidth={1.6} className="text-[#c9a052] shrink-0" /> : <Users size={16} className="text-gray-400" />}
+                <span className={H ? 'text-[15px] font-bold text-[#1c1e22] flex-1 min-w-0 leading-tight' : 'text-sm font-bold text-gray-800 flex-1'}>{passengers} {passengers > 1 ? l.persons : l.person}</span>
+                <button aria-label="−" onClick={() => setPassengers(p => Math.max(1, p - 1))} className={H ? 'w-8 h-8 shrink-0 rounded-full border border-[#e2c07c] text-[#a8802f] font-bold text-base' : 'w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-sm'}>−</button>
+                <button aria-label="+" onClick={() => setPassengers(p => Math.min(8, p + 1))} className={H ? 'w-8 h-8 shrink-0 rounded-full border border-[#e2c07c] text-[#a8802f] font-bold text-base' : 'w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-sm'}>+</button>
               </div>
               <button
                 onClick={handleSearch}
                 disabled={searching}
-                className="shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-bold px-6 py-3 rounded-br-xl transition-colors text-sm"
+                className={H
+                  ? 'shrink-0 flex items-center gap-2 bg-[#1b1d21] active:bg-black disabled:opacity-70 text-white font-semibold px-5 py-3 rounded-[14px] transition-colors text-[16px] shadow-md'
+                  : 'shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-70 text-white font-bold px-6 py-3 rounded-br-xl transition-colors text-sm'}
               >
-                {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={H ? 20 : 18} strokeWidth={H ? 2.2 : 2} />}
                 {l.search}
               </button>
             </div>
