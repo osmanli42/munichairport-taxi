@@ -3,9 +3,10 @@ import { getTranslations } from 'next-intl/server';
 import { AboutGuide } from '@/components/PageGuide';
 import type { Metadata } from 'next';
 import { CONTACT_INFO } from '@/lib/utils';
+import Link from 'next/link';
 import {
   ShieldCheck, Clock, Tag, Globe, Phone, Mail, MapPin, Star, Users,
-  Trophy, MessageCircle,
+  Trophy, MessageCircle, ArrowRight, BadgeCheck, Car,
 } from 'lucide-react';
 import { aboutDesign, contactExtraIcons } from './aboutDesign';
 
@@ -37,12 +38,8 @@ export default function AboutPage() {
   const locale = useLocale();
   const dz = aboutDesign[locale] || aboutDesign.de;
 
-  const reasons = [
-    { icon: ShieldCheck, title: t('reasons.experience.title'), text: t('reasons.experience.text') },
-    { icon: Clock, title: t('reasons.punctual.title'), text: t('reasons.punctual.text') },
-    { icon: Tag, title: t('reasons.fixed.title'), text: t('reasons.fixed.text') },
-    { icon: Globe, title: t('reasons.multilingual.title'), text: t('reasons.multilingual.text') },
-  ];
+  const prefix = locale === 'de' ? '' : `/${locale}`;
+  const valueIcons = [Trophy, Clock, Tag, Globe, BadgeCheck, Car];
 
   const statIcons = [Trophy, Users, Star, Clock];
   const stats = (t.raw('stats') as { value: string; label: string }[]).map((s, i) => ({ ...s, icon: statIcons[i] }));
@@ -62,53 +59,89 @@ export default function AboutPage() {
   };
 
   return (
-    <div style={{ background: '#f4f7fb', minHeight: '100vh' }}>
+    <div className="bg-white">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
-      {/* Hero — arka plan: Munih Havalimani M terminali (ust) + taksi sirasi/kule/ucak (sag),
-          tasarim gorselinden kesildi, sol/alt (metin alani) koyu laciverte (#0f1b2d) soluyor */}
-      <section className="relative overflow-hidden text-white py-16" style={{ background: '#0f1b2d' }}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute top-0 left-0 w-full hidden sm:block" style={{ height: '110px' }}>
-            <img src="/images/about-bg-top.webp" alt="" width={1024} height={168} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(15,27,45,.15) 0%, #0f1b2d 96%)' }} />
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/about/hero.webp" alt="" className="absolute inset-0 h-full w-full object-cover object-[75%_center]" fetchPriority="high" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/95 via-primary-900/80 to-primary-900/10" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 md:pb-20 md:pt-24 lg:px-8">
+          <div className="max-w-2xl">
+            <span className="inline-block rounded-full bg-gold-400/15 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-400 ring-1 ring-gold-400/40">{t('badge')}</span>
+            <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow sm:text-5xl md:text-6xl">
+              Flughafen-München<span className="text-gold-400">.TAXI</span>
+            </h1>
+            <p className="mt-5 text-lg leading-relaxed text-white/90 drop-shadow">{dz.heroSub}</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href={prefix || '/'} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-7 py-3.5 font-bold text-primary-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-gold-300">{dz.heroBook} <ArrowRight size={18} /></Link>
+              <Link href={`${prefix}/contact`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-7 py-3.5 font-bold ring-1 ring-white/30 backdrop-blur transition hover:bg-white/20">{dz.heroContact}</Link>
+            </div>
           </div>
-          <div className="absolute top-0 right-0 h-full hidden md:block" style={{ width: '360px' }}>
-            <img src="/images/about-bg-right.webp" alt="" width={354} height={448} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(15,27,45,.10) 0%, #0f1b2d 88%)' }} />
-          </div>
-        </div>
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-5"
-            style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
-          >
-            {t('badge')}
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
-            Flughafen-München<span style={{ color: '#c9a84c' }}>.TAXI</span>
-          </h1>
-          <p className="text-lg max-w-xl" style={{ color: '#a9bdd4' }}>
-            {t('subtitle')}
-          </p>
-
-          {/* Stats row */}
-          <div className="mt-10 flex flex-wrap gap-x-10 gap-y-5">
-            {stats.map(s => {
+          <dl className="mt-12 grid max-w-3xl grid-cols-2 gap-4 rounded-2xl bg-white/10 p-5 ring-1 ring-white/15 backdrop-blur md:grid-cols-4">
+            {stats.map((s) => {
               const Ikon = s.icon;
               return (
-                <div key={s.label} className="flex items-center gap-2.5">
-                  <span
-                    className="flex items-center justify-center rounded-full shrink-0"
-                    style={{ width: '38px', height: '38px', border: '1.5px solid rgba(201,168,76,.5)', background: 'rgba(201,168,76,.12)' }}
-                  >
-                    <Ikon size={17} style={{ color: '#c9a84c' }} />
-                  </span>
-                  <div>
-                    <div className="text-base font-extrabold leading-tight" style={{ color: '#fff' }}>{s.value}</div>
-                    <div className="text-xs font-medium" style={{ color: '#a9bdd4' }}>{s.label}</div>
+                <div key={s.label} className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-400/15 ring-1 ring-gold-400/40"><Ikon size={18} className="text-gold-400" /></span>
+                  <div className="leading-tight">
+                    <dt className="text-lg font-extrabold">{s.value}</dt>
+                    <dd className="text-xs text-white/75">{s.label}</dd>
                   </div>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      </section>
+
+      {/* Story */}
+      <section className="bg-white py-20">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/about/freising.webp" alt="" loading="lazy" className="aspect-[4/3] w-full rounded-3xl object-cover shadow-2xl" />
+            <div className="absolute -bottom-6 right-6 flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-xl ring-1 ring-gray-200">
+              <MapPin size={22} className="text-gold-600" />
+              <div className="leading-tight">
+                <div className="text-sm font-extrabold text-gray-900">Freising</div>
+                <div className="text-xs text-gray-500">{CONTACT_INFO.address.split(',')[0]}</div>
+              </div>
+            </div>
+          </div>
+          <div className="pt-6 lg:pt-0">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{dz.storyEyebrow}</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{dz.storyTitle}</h2>
+            <p className="mt-5 leading-relaxed text-gray-600">{dz.storyP1}</p>
+            <p className="mt-4 leading-relaxed text-gray-600">{dz.storyP2}</p>
+            <figure className="mt-8 rounded-2xl bg-gold-400/10 p-6 ring-1 ring-gold-400/30">
+              <blockquote className="text-lg font-medium italic leading-relaxed text-gray-800">&ldquo;{dz.quote}&rdquo;</blockquote>
+              <figcaption className="mt-4 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-900 text-gold-400"><Users size={18} /></span>
+                <div className="leading-tight">
+                  <div className="text-sm font-bold text-gray-900">{CONTACT_INFO.owners}</div>
+                  <div className="text-xs text-gray-500">{t('owner')}</div>
+                </div>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      {/* Values */}
+      <section className="bg-gray-50 py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-xs font-bold uppercase tracking-[.2em] text-gold-600">{dz.valuesEyebrow}</p>
+          <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{dz.valuesTitle}</h2>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {dz.values.map(([title, text], i) => {
+              const Icon = valueIcons[i];
+              return (
+                <div key={title} className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-gold-300">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-700 transition group-hover:bg-gold-400 group-hover:text-primary-900"><Icon size={22} /></span>
+                  <h3 className="mt-4 font-extrabold text-gray-900">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{text}</p>
                 </div>
               );
             })}
@@ -116,109 +149,61 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-
-        {/* Why us + reasons */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-
-          {/* Why us card */}
-          <div
-            className="rounded-2xl px-7 py-7"
-            style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-          >
-            <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#c9a84c' }}>
-              {t('section_company')}
-            </span>
-            <h2 className="text-2xl font-extrabold tracking-tight mt-1 mb-4" style={{ color: '#0f1b2d' }}>
-              {t('why_us')}
-            </h2>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: '#4a6280' }}>
-              {t('description')}
-            </p>
-
-            <div className="rounded-xl px-5 py-5" style={{ background: '#fdf8ec', border: '1px solid #f3e7c4' }}>
-              <span className="block text-3xl font-extrabold leading-none mb-1" style={{ color: '#e0c268', fontFamily: 'Georgia, serif' }}>&ldquo;</span>
-              <p className="italic text-sm leading-relaxed mb-4" style={{ color: '#5a4a24' }}>{dz.quote}</p>
-              <p className="font-bold text-sm" style={{ color: '#0f1b2d' }}>{CONTACT_INFO.owners}</p>
-              <p className="text-xs" style={{ color: '#8a7550' }}>{t('owner')}</p>
-            </div>
+      {/* Fleet */}
+      <section className="relative overflow-hidden bg-primary-900 text-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-400">{dz.fleetEyebrow}</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{dz.fleetTitle}</h2>
+            <p className="mt-4 leading-relaxed text-white/80">{dz.fleetText}</p>
+            <Link href={`${prefix}/vehicles`} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-gold-400 px-6 py-3 font-bold text-primary-900 hover:bg-gold-300">{dz.fleetCta} <ArrowRight size={18} /></Link>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/business/trust-fleet-v2.webp" alt="" loading="lazy" className="aspect-video w-full rounded-3xl object-cover shadow-2xl ring-1 ring-white/10" />
+        </div>
+      </section>
 
-          {/* Reasons */}
-          <div className="space-y-3">
-            {reasons.map(({ icon: Icon, title, text }) => (
-              <div
-                key={title}
-                className="rounded-2xl px-6 py-4 flex items-center gap-4"
-                style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-              >
-                <div
-                  className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
-                  style={{ background: '#fdf3de' }}
-                >
-                  <Icon size={19} style={{ color: '#a07820' }} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm mb-0.5" style={{ color: '#0f1b2d' }}>{title}</h3>
-                  <p className="text-sm" style={{ color: '#6b7c93' }}>{text}</p>
-                </div>
+      {/* Service area */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-gold-600">{t('section_area')}</p>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">{t('area_title')}</h2>
+              <p className="mt-4 leading-relaxed text-gray-600">{t('area_text')}</p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {cities.map((city) => (
+                  <span key={city} className="rounded-full bg-primary-50 px-3.5 py-2 text-xs font-semibold text-primary-800 ring-1 ring-primary-100">{city}</span>
+                ))}
+                <span className="rounded-full px-3.5 py-2 text-xs font-medium text-gray-500 ring-1 ring-dashed ring-gray-300">{dz.areaMore}</span>
               </div>
-            ))}
+              <Link href={`${prefix}/leistungen`} className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-primary-700 hover:underline">{dz.areaCta} <ArrowRight size={15} /></Link>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/sightseeing/hero.webp" alt="" loading="lazy" className="aspect-[16/10] w-full rounded-3xl object-cover shadow-xl" />
           </div>
         </div>
+      </section>
 
-        {/* Contact: dark CTA card + detail card */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <div
-            className="rounded-2xl overflow-hidden px-7 py-8"
-            style={{ background: 'linear-gradient(135deg, #0f1b2d 0%, #1e3a5f 100%)', border: '1px solid rgba(201,168,76,.3)' }}
-          >
-            <div
-              className="inline-block text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-4"
-              style={{ background: 'rgba(201,168,76,.15)', border: '1px solid rgba(201,168,76,.35)', color: '#c9a84c' }}
-            >
-              {t('contact')}
+      {/* Contact */}
+      <section className="bg-gray-50 py-20">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="rounded-3xl bg-gradient-to-br from-primary-900 to-primary-800 p-8 text-white shadow-xl md:p-10">
+            <span className="inline-block rounded-full bg-gold-400/15 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-gold-400 ring-1 ring-gold-400/40">{t('contact')}</span>
+            <h2 className="mt-4 text-3xl font-extrabold">{dz.ctaTitle}</h2>
+            <p className="mt-3 leading-relaxed text-white/80">{dz.ctaText}</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a href={CONTACT_INFO.phoneHref} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-400 px-6 py-3 font-bold text-primary-900 transition hover:-translate-y-0.5 hover:bg-gold-300"><Phone size={17} /> {dz.ctaCall}</a>
+              <a href={CONTACT_INFO.whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-6 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-green-600"><MessageCircle size={17} /> {dz.ctaWhatsapp}</a>
             </div>
-            <h3 className="text-2xl font-extrabold text-white mb-2">{dz.ctaTitle}</h3>
-            <p className="text-sm mb-6" style={{ color: '#7a9ab8' }}>{dz.ctaText}</p>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <a
-                href={CONTACT_INFO.phoneHref}
-                className="flex items-center justify-center gap-2.5 font-bold px-6 py-3 rounded-xl transition-all hover:-translate-y-0.5"
-                style={{ background: 'linear-gradient(135deg, #c9a84c, #d4af6a)', color: '#0f1b2d', boxShadow: '0 4px 16px rgba(201,168,76,.3)' }}
-              >
-                <Phone size={16} /> {dz.ctaCall}
-              </a>
-              <a
-                href={CONTACT_INFO.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2.5 font-bold px-6 py-3 rounded-xl transition-all hover:-translate-y-0.5"
-                style={{ background: '#25d366', color: '#fff', boxShadow: '0 4px 16px rgba(37,211,102,.25)' }}
-              >
-                <MessageCircle size={16} /> {dz.ctaWhatsapp}
-              </a>
-            </div>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6">
+            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2">
               {dz.contactExtra.map((c, i) => {
                 const Ikon = contactExtraIcons[i] || contactExtraIcons[0];
-                return (
-                  <div key={c} className="flex items-center gap-2 text-xs font-medium" style={{ color: '#a9bdd4' }}>
-                    <Ikon size={15} style={{ color: '#c9a84c' }} />
-                    {c}
-                  </div>
-                );
+                return <div key={c} className="flex items-center gap-2 text-xs font-medium text-white/75"><Ikon size={15} className="text-gold-400" /> {c}</div>;
               })}
             </div>
           </div>
-
-          {/* Contact details */}
-          <div
-            className="rounded-2xl px-7 py-7 space-y-4"
-            style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-          >
+          <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
             {[
               { icon: Users, label: t('owner'), value: CONTACT_INFO.owners, href: undefined },
               { icon: Phone, label: t('label_phone'), value: CONTACT_INFO.phone, href: CONTACT_INFO.phoneHref },
@@ -226,97 +211,22 @@ export default function AboutPage() {
               { icon: MapPin, label: t('label_address'), value: CONTACT_INFO.address, href: undefined },
               { icon: Clock, label: t('label_availability'), value: t('availability_value'), href: undefined },
             ].map((item, i, arr) => (
-              <div
-                key={item.label}
-                className="flex items-start gap-3.5"
-                style={i < arr.length - 1 ? { paddingBottom: '1rem', borderBottom: '1px solid #f0f4f8' } : undefined}
-              >
-                <div
-                  className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
-                  style={{ background: '#fdf3de' }}
-                >
-                  <item.icon size={16} style={{ color: '#a07820' }} />
-                </div>
+              <div key={item.label} className={`flex items-start gap-4 py-4 ${i < arr.length - 1 ? 'border-b border-gray-100' : ''} ${i === 0 ? 'pt-0' : ''}`}>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold-400/15 text-gold-600"><item.icon size={18} /></span>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: '#a07820' }}>
-                    {item.label}
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gold-600">{item.label}</p>
                   {item.href ? (
-                    <a href={item.href} className="text-sm font-semibold hover:underline" style={{ color: '#0f1b2d' }}>
-                      {item.value}
-                    </a>
+                    <a href={item.href} className="text-sm font-semibold text-gray-900 hover:underline">{item.value}</a>
                   ) : (
-                    <p className="text-sm font-semibold" style={{ color: '#0f1b2d' }}>{item.value}</p>
+                    <p className="text-sm font-semibold text-gray-900">{item.value}</p>
                   )}
                 </div>
               </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Service area */}
-        <div
-          className="rounded-2xl px-7 py-7"
-          style={{ background: '#fff', border: '1.5px solid #e5edf5', boxShadow: '0 2px 12px rgba(15,27,45,.04)' }}
-        >
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10 mb-6">
-            <div className="shrink-0 lg:w-56">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center mb-3"
-                style={{ background: '#fdf3de' }}
-              >
-                <MapPin size={19} style={{ color: '#a07820' }} />
-              </div>
-              <span className="text-xs font-bold tracking-widest uppercase block mb-1" style={{ color: '#c9a84c' }}>
-                {t('section_area')}
-              </span>
-              <h2 className="text-xl font-extrabold tracking-tight" style={{ color: '#0f1b2d' }}>{t('area_title')}</h2>
-            </div>
-            <p className="text-sm leading-relaxed lg:pt-14" style={{ color: '#4a6280' }}>
-              {t('area_text')}
-            </p>
-          </div>
-
-          <div className="flex flex-col lg:flex-row lg:items-center gap-8">
-            <div className="flex flex-wrap gap-2 flex-1">
-              {cities.map(city => (
-                <span
-                  key={city}
-                  className="text-xs font-semibold px-3.5 py-2 rounded-full"
-                  style={{ background: '#eef3f9', color: '#1e3a5f', border: '1px solid #c8d8ec' }}
-                >
-                  {city}
-                </span>
-              ))}
-              <span
-                className="text-xs font-medium px-3.5 py-2 rounded-full"
-                style={{ background: '#fff', color: '#8a9bb0', border: '1.5px dashed #c8d3e0' }}
-              >
-                {dz.areaMore}
-              </span>
-            </div>
-
-            {/* Decorative mini map: Munchen -> Salzburg */}
-            <svg viewBox="0 0 220 110" className="hidden lg:block shrink-0" style={{ width: '190px', height: '95px' }} aria-hidden="true">
-              <defs>
-                <pattern id="aboutMapDots" width="7" height="7" patternUnits="userSpaceOnUse">
-                  <circle cx="1.2" cy="1.2" r="1.2" fill="#c9d3e0" />
-                </pattern>
-              </defs>
-              <path d="M12 15 C 40 5, 70 10, 85 30 C 100 50, 90 75, 65 85 C 40 95, 15 85, 10 60 C 6 40, 4 25, 12 15 Z" fill="url(#aboutMapDots)" opacity="0.7" />
-              <path d="M115 20 C 145 10, 180 18, 200 40 C 212 55, 205 78, 180 90 C 155 100, 125 92, 115 68 C 108 50, 100 32, 115 20 Z" fill="url(#aboutMapDots)" opacity="0.7" />
-              <path d="M55 45 Q 110 25 165 55" fill="none" stroke="#c9a84c" strokeWidth="2" strokeDasharray="4 4" />
-              <circle cx="55" cy="45" r="6" fill="#1e3a5f" />
-              <circle cx="55" cy="45" r="2.2" fill="#fff" />
-              <circle cx="165" cy="55" r="6" fill="#c9a84c" />
-              <circle cx="165" cy="55" r="2.2" fill="#fff" />
-              <text x="55" y="70" textAnchor="middle" fontSize="11" fontWeight="700" fill="#1e3a5f">München</text>
-              <text x="165" y="80" textAnchor="middle" fontSize="11" fontWeight="700" fill="#a07820">Salzburg</text>
-            </svg>
-          </div>
-        </div>
-
-      </div>
       <AboutGuide locale={locale} />
     </div>
   );
