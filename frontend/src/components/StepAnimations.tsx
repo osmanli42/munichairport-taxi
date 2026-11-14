@@ -147,7 +147,7 @@ function Step3({ t }: { t: (typeof L)[Lang] }) {
         <div className={s.signMeta}>LH 2405 · {t.terminal}</div>
       </div>
       <div className={s.ride}>
-        <img src="/images/step-3-einsteigen.webp" alt="" width={720} height={346} loading="lazy" decoding="async" className={s.rideImg} />
+        <img src="/images/step-3-einsteigen.webp?v=1" alt="" width={720} height={346} loading="lazy" decoding="async" className={s.rideImg} />
         <span className={s.rideChip}><Check size="1.1em" strokeWidth={3} />{t.welcome}</span>
       </div>
     </div>
