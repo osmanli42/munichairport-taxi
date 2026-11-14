@@ -284,6 +284,7 @@ export default async function LeistungenPage({ params }: Props) {
                   {points.map((x) => <li key={x} className="flex gap-2 text-sm text-gray-700"><Check size={17} className="mt-0.5 shrink-0 text-emerald-600" /> {x}</li>)}
                 </ul>
                 {note && <p className="mt-3 text-xs text-gray-500">{note}</p>}
+                {key === 'medical' && <Link href={serviceHref(svc.medical, prefix)} className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary-700 hover:underline">{svc.medical.text[l].cta} <ArrowRight size={15} /></Link>}
                 {contactButtons()}
               </section>
             );
