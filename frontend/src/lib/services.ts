@@ -1,5 +1,5 @@
 import {
-  Plane, Presentation, MountainSnow, Route, Users, Beer, TrainFront, Briefcase, Package, HeartPulse, Camera,
+  Plane, Presentation, MountainSnow, Route, Users, Beer, TrainFront, Briefcase, Package, HeartPulse, Camera, Ticket,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export const lang = (l: string): Lang => (l === 'en' || l === 'tr' ? l : 'de');
 
 export type ServiceKey =
   | 'airport' | 'messe' | 'ski' | 'longDistance' | 'groups'
-  | 'oktoberfest' | 'city' | 'business' | 'courier' | 'medical' | 'sightseeing';
+  | 'oktoberfest' | 'city' | 'business' | 'courier' | 'medical' | 'sightseeing' | 'events';
 
 type ServiceText = { title: string; short: string; text: string; bullets: [string, string, string]; cta: string };
 
@@ -54,9 +54,9 @@ export const SERVICES: Service[] = [
   {
     key: 'groups', icon: Users, href: '#gruppen',
     text: {
-      de: { title: 'Shuttle, Gruppen & Events', short: 'Hochzeit, Firmenevent, Stadion', text: 'Für Gruppen stimmen wir mehrere Fahrzeuge aufeinander ab – für Hochzeiten, Firmenfeiern, Konzerte und Spiele.', bullets: ['Großraumtaxi bis 8 Personen', 'Mehrere Fahrzeuge zur gleichen Zeit', 'Hin- und Rückfahrt vorab geplant'], cta: 'Gruppenfahrt anfragen' },
-      en: { title: 'Shuttle, groups & events', short: 'Weddings, company events, stadium', text: 'For groups we coordinate several vehicles – for weddings, company parties, concerts and matches.', bullets: ['Large taxi for up to 8 people', 'Several vehicles at the same time', 'Outward and return trip planned ahead'], cta: 'Request a group ride' },
-      tr: { title: 'Shuttle, grup & etkinlik', short: 'Düğün, firma etkinliği, stadyum', text: 'Gruplar için birden fazla aracı koordine ediyoruz – düğün, firma kutlaması, konser ve maçlar için.', bullets: ['8 kişiye kadar büyük taksi', 'Aynı anda birden fazla araç', 'Gidiş ve dönüş önceden planlanır'], cta: 'Grup yolculuğu iste' },
+      de: { title: 'Shuttle, Gruppen & Events', short: 'Hochzeit, Firmenfeier, Verein', text: 'Für Gruppen stimmen wir mehrere Fahrzeuge aufeinander ab – für Hochzeiten, Firmenfeiern, Konzerte und Spiele.', bullets: ['Großraumtaxi bis 8 Personen', 'Mehrere Fahrzeuge zur gleichen Zeit', 'Hin- und Rückfahrt vorab geplant'], cta: 'Gruppenfahrt anfragen' },
+      en: { title: 'Shuttle, groups & events', short: 'Weddings, company parties, clubs', text: 'For groups we coordinate several vehicles – for weddings, company parties, concerts and matches.', bullets: ['Large taxi for up to 8 people', 'Several vehicles at the same time', 'Outward and return trip planned ahead'], cta: 'Request a group ride' },
+      tr: { title: 'Shuttle, grup & etkinlik', short: 'Düğün, firma kutlaması, kulüp', text: 'Gruplar için birden fazla aracı koordine ediyoruz – düğün, firma kutlaması, konser ve maçlar için.', bullets: ['8 kişiye kadar büyük taksi', 'Aynı anda birden fazla araç', 'Gidiş ve dönüş önceden planlanır'], cta: 'Grup yolculuğu iste' },
     },
   },
   {
@@ -65,6 +65,14 @@ export const SERVICES: Service[] = [
       de: { title: 'Sightseeing & Ausflüge', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Tagesausflüge mit dem Taxi ab München oder vom Flughafen: Ihr Fahrer bringt Sie hin, wartet vor Ort und fährt Sie zurück.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Pauschalpreis inkl. Rückfahrt vorab', 'Halt für Fotos, wo Sie möchten'], cta: 'Ausflüge ansehen' },
       en: { title: 'Sightseeing & day trips', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Day trips by taxi from Munich or the airport: your driver takes you there, waits on site and drives you back.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Package price incl. return agreed upfront', 'Photo stops wherever you like'], cta: 'See day trips' },
       tr: { title: 'Gezi & günübirlik turlar', short: 'Neuschwanstein, Königssee, Salzburg …', text: 'Münih’ten veya havalimanından taksiyle günübirlik gezi: Şoförünüz sizi götürür, orada bekler ve geri getirir.', bullets: ['Neuschwanstein, Königssee, Chiemsee, Salzburg', 'Dönüş dahil paket fiyat önceden belli', 'İstediğiniz yerde fotoğraf molası'], cta: 'Gezileri gör' },
+    },
+  },
+  {
+    key: 'events', icon: Ticket, href: '/stadion-konzerte',
+    text: {
+      de: { title: 'Stadion & Konzerte', short: 'Allianz Arena, Olympiapark, SAP Garden', text: 'Zum Spiel oder Konzert und danach entspannt nach Hause – mit festem Treffpunkt statt Warten am überfüllten Taxistand.', bullets: ['Hin- und Rückfahrt vorab gebucht', 'Fester Treffpunkt nach dem Event', 'Van & Großraumtaxi bis 8 Personen'], cta: 'Zum Event-Transfer' },
+      en: { title: 'Stadium & concerts', short: 'Allianz Arena, Olympic Park, SAP Garden', text: 'To the match or concert and home again in comfort – with a fixed meeting point instead of queuing at a crowded taxi rank.', bullets: ['Outward and return trip booked ahead', 'Fixed meeting point after the event', 'Van & large taxi for up to 8'], cta: 'Event transfer' },
+      tr: { title: 'Stadyum & konserler', short: 'Allianz Arena, Olympiapark, SAP Garden', text: 'Maça veya konsere, sonra rahatça eve – kalabalık taksi durağında beklemek yerine sabit buluşma noktasıyla.', bullets: ['Gidiş ve dönüş önceden ayırtılır', 'Etkinlik sonrası sabit buluşma noktası', '8 kişiye kadar van & büyük taksi'], cta: 'Etkinlik transferi' },
     },
   },
   {

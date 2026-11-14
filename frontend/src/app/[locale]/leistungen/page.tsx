@@ -84,13 +84,14 @@ export default async function LeistungenPage({ params }: Props) {
     </div>
   );
 
-  // Large dark cards (airport, messe, wide sightseeing) open the grid, the other eight follow as white cards.
+  // Large dark cards (airport, messe, sightseeing, events) open the grid, the other eight follow as white cards.
   const big: { key: ServiceKey; img: string; price: string | null }[] = [
     { key: 'airport', img: '/images/hero-airport.webp', price: t.priceCity },
     { key: 'messe', img: '/images/hero-taxis.webp', price: t.priceMesse },
     { key: 'sightseeing', img: '/images/sightseeing/neuschwanstein.webp', price: null },
+    { key: 'events', img: '/images/stadion/hero.webp', price: null },
   ];
-  const small = SERVICES.filter((s) => s.key !== 'airport' && s.key !== 'messe' && s.key !== 'sightseeing');
+  const small = SERVICES.filter((s) => !big.some((b) => b.key === s.key));
 
   return (
     <div className="bg-gray-50">
@@ -140,7 +141,7 @@ export default async function LeistungenPage({ params }: Props) {
               const Icon = s.icon;
               const x = s.text[l];
               return (
-                <Link key={key} href={serviceHref(s, prefix)} className={`group relative flex min-h-[340px] flex-col justify-end overflow-hidden rounded-3xl bg-primary-900 p-6 text-white shadow-lg ${key === 'sightseeing' ? 'sm:col-span-2 lg:col-span-4' : 'sm:col-span-1 lg:col-span-2'}`}>
+                <Link key={key} href={serviceHref(s, prefix)} className="group relative flex min-h-[340px] flex-col justify-end overflow-hidden rounded-3xl bg-primary-900 p-6 text-white shadow-lg sm:col-span-1 lg:col-span-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                   <div className="absolute inset-0 bg-gradient-to-t from-primary-900 via-primary-900/80 to-primary-900/20" />
