@@ -1,4 +1,3 @@
-import ReactDOM from 'react-dom';
 import { useTranslations, useLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { Metadata } from 'next';
@@ -15,6 +14,9 @@ const AutoDiscountBanner = dynamic(() => import('@/components/AutoDiscountBanner
 import PopularRoutes from '@/components/PopularRoutes';
 import HomeSeoContent from '@/components/HomeSeoContent';
 import StepAnimation from '@/components/StepAnimations';
+import HeroBackground, { HeroSeasonMobilePhoto, HeroSnow } from '@/components/HeroBackground';
+import { heroTextFor, heroEffects } from '@/lib/heroSeasons';
+import { resolveHeroSeasonImg } from '@/lib/heroSeasonServer';
 import { CONTACT_INFO } from '@/lib/utils';
 import { Outfit } from 'next/font/google';
 
@@ -32,7 +34,31 @@ export async function generateMetadata({
   };
 }
 
-export default function HomePage() {
+const GOLD = '#d6a957';
+
+// Drei Merkmale (Festpreise · Pünktlich · 24/7) im Hero
+function HeroBadges({ badges, className }: { badges: { icon: typeof Tag; text: string }[]; className: string }) {
+  return (
+    <div className={`${heroFont.className} ${className} items-center`}>
+              {badges.map(({ icon: Icon, text }, i) => (
+                <div key={text} className={`flex items-center gap-2 sm:gap-3 ${i > 0 ? 'pl-3 ml-3 sm:pl-7 sm:ml-7 border-l' : ''}`} style={{ borderColor: 'rgba(214,169,87,.55)' }}>
+                  <Icon strokeWidth={1.5} className="shrink-0 w-[18px] h-[18px] sm:w-[clamp(18px,3vh,26px)] sm:h-[clamp(18px,3vh,26px)]" style={{ color: GOLD }} />
+                  <span className={`${heroFont.className} text-[12.5px] leading-tight sm:text-[clamp(14px,2.3vh,19px)] font-normal`}>{text}</span>
+                </div>
+              ))}
+    </div>
+  );
+}
+
+const heroParam = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
+
+// Saisonbild (System → Hero-Kalender) wird hier auf dem Server bestimmt — Wechsel um 00:00 Berliner Zeit
+export default async function HomePage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
+  const seasonImg = await resolveHeroSeasonImg(heroParam(searchParams?.heroPreview), heroParam(searchParams?.heroDate));
+  return <HomeContent seasonImg={seasonImg} />;
+}
+
+function HomeContent({ seasonImg }: { seasonImg: string | null }) {
   const t = useTranslations('hero');
   const tVehicles = useTranslations('vehicles');
   const locale = useLocale();
@@ -74,16 +100,9 @@ export default function HomePage() {
   };
   const sd = stepsData[locale] || stepsData.de;
 
-  // LCP: Hero-Foto als <img> mit srcset + Preload, damit der Download sofort startet
-  // (Handy bekommt die 1200px-Version, ~38 KB statt 100 KB).
-  ReactDOM.preload('/images/hero-taxi-2026.webp', {
-    as: 'image',
-    fetchPriority: 'high',
-    imageSrcSet: '/images/hero-taxi-2026-1200.webp 1200w, /images/hero-taxi-2026.webp 2400w',
-    imageSizes: '(min-width: 1024px) 84vw, 100vw',
-  });
-
-  const GOLD = '#d6a957';
+  // Saison-Design: eigene Überschrift; ohne Texte bleibt die normale Überschrift
+  const seasonText = heroTextFor(seasonImg, locale);
+  const fx = heroEffects(seasonImg);
   const heroBadges = [
     { icon: Tag, text: t('features.fixed_price') },
     { icon: Clock, text: t('features.punctual') },
@@ -96,23 +115,18 @@ export default function HomePage() {
       <section className="relative text-white overflow-visible" style={{ background: '#17191d' }}>
         {/* Foto: neuer Mercedes E-Klasse (2026) Taxi am Terminal — Desktop rechts, Handy vollflächig */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img
-            src="/images/hero-taxi-2026.webp"
-            srcSet="/images/hero-taxi-2026-1200.webp 1200w, /images/hero-taxi-2026.webp 2400w"
-            sizes="(min-width: 1024px) 84vw, 100vw"
-            alt=""
-            width={2400}
-            height={1018}
-            fetchPriority="high"
-            className="absolute right-0 top-0 h-full w-full lg:w-[84%] object-cover object-[64%_center] lg:object-right"
-          />
+          <HeroBackground img={seasonImg} />
           {/* Links dunkel für den Text, rechts freies Foto */}
           <div
             className="absolute inset-0 hidden lg:block"
-            style={{ background: 'linear-gradient(90deg, #17191d 0%, rgba(23,25,29,.94) 22%, rgba(23,25,29,.72) 38%, rgba(23,25,29,.25) 52%, rgba(23,25,29,0) 64%)' }}
+            style={{ background: seasonImg
+              // Saisonbild: weicher Übergang vom dunklen Textbereich ins Foto
+              ? 'linear-gradient(90deg, rgba(23,25,29,.97) 0%, rgba(23,25,29,.93) 12%, rgba(23,25,29,.84) 22%, rgba(23,25,29,.68) 32%, rgba(23,25,29,.46) 42%, rgba(23,25,29,.25) 51%, rgba(23,25,29,.1) 60%, rgba(23,25,29,0) 70%)'
+              : 'linear-gradient(90deg, #17191d 0%, rgba(23,25,29,.94) 22%, rgba(23,25,29,.72) 38%, rgba(23,25,29,.25) 52%, rgba(23,25,29,0) 64%)' }}
           />
+          {(fx.snow || fx.glow) && <HeroSnow snow={fx.snow} glow={fx.glow} />}
           <div
-            className="absolute inset-0 lg:hidden"
+            className={`absolute inset-0 lg:hidden ${seasonImg ? 'hidden' : ''}`}
             style={{ background: 'linear-gradient(180deg, rgba(23,25,29,.82) 0%, rgba(23,25,29,.55) 45%, rgba(23,25,29,.9) 100%)' }}
           />
           <div
@@ -121,30 +135,44 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="relative max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px] pt-8 sm:pt-16 lg:pt-[clamp(20px,10.5vh,108px)] pb-8 lg:pb-[clamp(12px,4.2vh,44px)]">
+        <div className={`relative max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-[60px] ${seasonText ? 'pt-5 sm:pt-12 lg:pt-[clamp(14px,6.6vh,70px)]' : 'pt-8 sm:pt-16 lg:pt-[clamp(20px,10.5vh,108px)]'} pb-8 lg:pb-[clamp(12px,4.2vh,44px)]`}>
           <div className="animate-fade-in max-w-[900px]">
+            {seasonText && (seasonText.kickerLine === 'none' ? (
+              <div className={`${heroFont.className} mb-3 lg:mb-[clamp(8px,2.6vh,28px)] uppercase font-semibold tracking-[.16em] lg:tracking-[.3em] text-[11px] sm:text-sm lg:text-[clamp(11px,1.9vh,17px)]`} style={{ color: GOLD }}>
+                <span className="lg:hidden">{seasonText.kickerMobile || seasonText.kicker}</span>
+                <span className="hidden lg:inline">{seasonText.kicker}</span>
+              </div>
+            ) : seasonText.kickerLine === 'after' ? (
+              <div className={`${heroFont.className} flex items-center gap-3 lg:gap-5 mb-3 lg:mb-[clamp(8px,2.6vh,28px)] uppercase whitespace-nowrap ${seasonText.kickerWide ? 'font-normal tracking-[.2em] lg:tracking-[.22em] text-[12px] sm:text-sm lg:text-[clamp(12px,2.2vh,20px)]' : 'font-semibold tracking-[.06em] sm:tracking-[.1em] text-[11.5px] sm:text-sm lg:text-[clamp(13px,2.4vh,22px)]'}`} style={{ color: GOLD }}>
+                <span className="lg:hidden">{seasonText.kickerMobile || seasonText.kicker}</span>
+                <span className="hidden lg:inline">{seasonText.kicker}</span>
+                <span className="h-px flex-1 max-w-[270px] lg:flex-none lg:w-24" style={{ background: GOLD }} />
+              </div>
+            ) : (
+              <div className={`${heroFont.className} flex items-center justify-center lg:justify-start gap-3 lg:gap-5 mb-3 lg:mb-[clamp(8px,2.6vh,28px)] uppercase whitespace-nowrap tracking-[.14em] sm:tracking-[.2em] text-[10.5px] sm:text-sm lg:text-[clamp(12px,2.1vh,19px)]`} style={{ color: GOLD }}>
+                <span className="h-px w-5 sm:w-8 lg:w-11 shrink-0" style={{ background: GOLD }} />
+                <span className="text-center">{seasonText.kicker}</span>
+                <span className="h-px w-5 sm:w-8 shrink-0 lg:hidden" style={{ background: GOLD }} />
+              </div>
+            ))}
             <h1
-              className={`${heroFont.className} font-semibold tracking-[-0.01em] leading-[1.12] text-[34px] sm:text-5xl lg:text-[clamp(34px,min(4.2vw,7.6vh),64px)] mb-4 lg:mb-[clamp(6px,2.2vh,24px)]`}
+              className={`${heroFont.className} font-semibold tracking-[-0.01em] leading-[1.12] ${seasonText ? 'text-[30px]' : 'text-[34px]'} sm:text-5xl lg:text-[clamp(34px,min(4.2vw,7.6vh),64px)] mb-4 lg:mb-[clamp(6px,2.2vh,24px)]`}
               style={{ textShadow: '0 2px 18px rgba(0,0,0,0.35)' }}
             >
-              {t('title')}
-              <span className="block" style={{ color: GOLD }}>{t('subtitle')}</span>
+              {seasonText ? seasonText.title : t('title')}
+              <span className="block" style={{ color: GOLD }}>{seasonText ? seasonText.subtitle : t('subtitle')}</span>
             </h1>
 
-            <p className={`${heroFont.className} font-light text-white/95 text-lg sm:text-xl lg:text-[clamp(16px,3vh,26px)] lg:leading-[1.4] lg:max-w-[clamp(440px,72vh,620px)] mb-4 sm:mb-8 lg:mb-[clamp(10px,5.6vh,54px)]`}>
-              {t('description')}
+            <p className={`${heroFont.className} font-light text-white/95 ${seasonText ? 'text-[15px] leading-snug' : 'text-lg'} sm:text-xl lg:text-[clamp(16px,3vh,26px)] lg:leading-[1.4] ${seasonText ? 'lg:max-w-[clamp(480px,90vh,780px)]' : 'lg:max-w-[clamp(440px,72vh,620px)]'} mb-4 sm:mb-8 lg:mb-[clamp(10px,5.6vh,54px)]`}>
+              {seasonText ? seasonText.description : t('description')}
             </p>
 
             {/* Feature-Leiste — auf dem Handy ausgeblendet, damit die Suche oben bleibt */}
-            <div className="hidden sm:flex items-center">
-              {heroBadges.map(({ icon: Icon, text }, i) => (
-                <div key={text} className={`flex items-center gap-3 ${i > 0 ? 'pl-7 ml-7 border-l' : ''}`} style={{ borderColor: 'rgba(214,169,87,.55)' }}>
-                  <Icon strokeWidth={1.5} className="w-[clamp(18px,3vh,26px)] h-[clamp(18px,3vh,26px)]" style={{ color: GOLD }} />
-                  <span className={`${heroFont.className} text-[clamp(14px,2.3vh,19px)] font-normal`}>{text}</span>
-                </div>
-              ))}
-            </div>
+            <HeroBadges badges={heroBadges} className={!seasonImg ? 'hidden sm:flex' : seasonText?.badgesBelowPhoto ? 'relative z-10 hidden lg:flex' : 'relative z-10 flex'} />
           </div>
+
+          {seasonImg && <HeroSeasonMobilePhoto img={seasonImg} snow={fx.snow} />}
+          {seasonText?.badgesBelowPhoto && <HeroBadges badges={heroBadges} className="relative z-10 flex lg:hidden justify-between mt-7 -mb-1" />}
 
           {/* Rabatt-Banner (Rabatte-Tab) — fester Platz über der Suche, damit nichts verrutscht */}
           <div className="relative w-full mt-4 sm:mt-0 sm:h-[clamp(14px,7.5vh,76px)] sm:flex sm:items-center">

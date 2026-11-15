@@ -5,6 +5,7 @@ import PasswordChangeCard from './PasswordChangeCard';
 import TwoFactorCard from './TwoFactorCard';
 import MailOpenCard from './MailOpenCard';
 import CookieBannerCard from './CookieBannerCard';
+import HeroSeasonsCard from './HeroSeasonsCard';
 import SecurityCard from './SecurityCard';
 import CalendarMissingPanel from './CalendarMissingPanel';
 import CallbackMailPanel from './CallbackMailPanel';
@@ -834,6 +835,7 @@ export default function SystemTab({ token }: { token: string }) {
 
       <MailOpenCard />
       <CookieBannerCard />
+      <HeroSeasonsCard />
       <PasswordChangeCard />
       <TwoFactorCard />
     </div>

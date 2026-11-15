@@ -1684,6 +1684,24 @@ export async function initializeDatabase(): Promise<void> {
       ['smart_early_days', '30'],
       ['smart_signal_usual_quiet', '1'],
       ['smart_price_notice_enabled', '1'],
+      // Saisonale Hero-Bilder der Startseite: Zeitraum (Berliner Datum, beide Tage inklusive) → Bild.
+      // Pflege im Admin (System → Hero-Kalender); außerhalb der Zeiträume das Standard-Hero.
+      ['hero_seasons_enabled', '1'],
+      ['hero_seasons', JSON.stringify([
+        { id: 'winter', name: 'Winterbeginn', start: '2026-11-22', end: '2026-11-28', enabled: true, img: 'winter' },
+        { id: 'advent-1', name: '1. Advent', start: '2026-11-29', end: '2026-12-05', enabled: true, img: 'advent-1' },
+        { id: 'advent-2', name: '2. Advent', start: '2026-12-06', end: '2026-12-12', enabled: true, img: 'advent-2' },
+        { id: 'advent-3', name: '3. Advent', start: '2026-12-13', end: '2026-12-19', enabled: true, img: 'advent-3' },
+        { id: 'advent-4', name: '4. Advent', start: '2026-12-20', end: '2026-12-23', enabled: true, img: 'advent-4' },
+        { id: 'weihnachten', name: 'Weihnachten', start: '2026-12-24', end: '2026-12-26', enabled: true, img: 'weihnachten' },
+        { id: 'silvester-2027', name: 'Silvester / Neujahr 2027', start: '2026-12-27', end: '2027-01-06', enabled: true, img: 'silvester-2027' },
+        { id: 'fasching', name: 'Faschingsferien', start: '2027-01-18', end: '2027-02-14', enabled: true, img: 'fasching' },
+        { id: 'ostern', name: 'Osterferien', start: '2027-02-15', end: '2027-04-04', enabled: true, img: 'ostern' },
+        { id: 'pfingsten', name: 'Pfingstferien', start: '2027-04-12', end: '2027-05-30', enabled: true, img: 'pfingsten' },
+        { id: 'sommer', name: 'Sommerferien', start: '2027-06-07', end: '2027-08-22', enabled: true, img: 'sommer' },
+        { id: 'oktoberfest', name: 'Oktoberfest', start: '2027-08-23', end: '2027-10-03', enabled: true, img: 'oktoberfest' },
+        { id: 'herbst', name: 'Herbstferien', start: '2027-10-04', end: '2027-11-07', enabled: true, img: 'herbst' },
+      ])],
     ]) {
       try {
         await conn.execute(`INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, val]);
