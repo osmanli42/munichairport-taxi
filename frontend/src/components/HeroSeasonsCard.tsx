@@ -28,7 +28,7 @@ export default function HeroSeasonsCard() {
   const activeRow = enabled ? activeHeroSeason(rows, today) : null;
   const active = activeRow && heroSetReady(activeRow.img) ? activeRow : null;
 
-  // Überschneidungen: der obere Eintrag gewinnt — trotzdem anzeigen
+  // Überschneidungen: der später beginnende Zeitraum gewinnt — trotzdem anzeigen
   const overlaps = useMemo(() => {
     const ids = new Set<string>();
     const on = rows.filter((r) => r.enabled);
@@ -132,7 +132,7 @@ export default function HeroSeasonsCard() {
               </label>
               {!heroSetReady(r.img) && <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5" title="Für diesen Zeitraum gibt es noch kein fertiges Bild — es erscheint das Standard-Hero">Bild fehlt</span>}
               {isActive && <span className="text-[11px] font-bold text-green-700 bg-green-100 rounded-full px-2 py-0.5">Heute aktiv</span>}
-              {overlaps.has(r.id) && <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5" title="Überschneidet sich mit einem anderen Zeitraum — der frühere gewinnt">Überschneidung</span>}
+              {overlaps.has(r.id) && <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5" title="Überschneidet sich mit einem anderen Zeitraum — der später beginnende gewinnt (z. B. Halloween in den Herbstferien)">Überschneidung</span>}
               <div className="flex items-center gap-2 ml-auto">
                 {heroSetReady(r.img) && <a href={`/?heroPreview=${r.img}`} target="_blank" rel="noreferrer" className="text-xs text-primary-700 hover:underline inline-flex items-center gap-1">
                   Vorschau <ExternalLink size={12} />

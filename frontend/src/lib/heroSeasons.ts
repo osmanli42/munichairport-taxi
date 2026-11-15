@@ -113,6 +113,14 @@ export const HERO_IMAGE_SETS: { img: string; label: string; kickerLine?: 'after'
     },
   },
   {
+    img: 'halloween', label: 'Halloween', kickerLine: 'none', badgesBelowPhoto: true,
+    text: {
+      de: { kicker: 'Halloween · Entspannt ankommen', title: 'Gruselig wird nur die\u00a0Deko.', subtitle: 'Nicht der Fahrpreis.', description: 'Ihr Transfer zum & vom Flughafen München.\nKomfortabel, zuverlässig und zum Festpreis.' },
+      en: { kicker: 'Halloween · Arrive relaxed', title: 'Only the decorations are scary.', subtitle: 'Not the fare.', description: 'Your transfer to & from Munich Airport.\nComfortable, reliable and at a fixed price.' },
+      tr: { kicker: 'Cadılar Bayramı · Rahat varış', title: 'Korkutucu olan sadece süsler.', subtitle: 'Ücret değil.', description: 'Münih Havalimanı’na ve havalimanından transferiniz.\nKonforlu, güvenilir ve sabit fiyatla.' },
+    },
+  },
+  {
     img: 'herbst', label: 'Herbstferien', kickerLine: 'after',
     text: {
       de: { kicker: 'Herbstferien · Noch einmal raus', title: 'Goldene Tage.', subtitle: 'Entspannte Reisen.', description: 'Genießen Sie Ihre Auszeit – wir übernehmen den Transfer.\nZum & vom Flughafen München, komfortabel zum Festpreis.' },
@@ -142,9 +150,11 @@ export function berlinToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
 
-// Erster aktiver Zeitraum, der das Datum enthält (bei Überschneidung gewinnt der obere Eintrag)
+// Bei Überschneidung gewinnt der später beginnende Zeitraum (z. B. Halloween innerhalb der Herbstferien);
+// danach geht es mit dem längeren Zeitraum weiter.
 export function activeHeroSeason(seasons: HeroSeason[], date: string): HeroSeason | null {
-  return seasons.find((s) => s.enabled && s.start <= date && date <= s.end) || null;
+  const hits = seasons.filter((s) => s.enabled && s.start <= date && date <= s.end);
+  return hits.sort((a, b) => b.start.localeCompare(a.start))[0] || null;
 }
 
 // snow = feine Schneeflocken über dem ganzen Hero, glow = zusätzlich warme goldene Lichtpunkte

@@ -1709,6 +1709,20 @@ export async function initializeDatabase(): Promise<void> {
     }
     // ────────────────────────────────────────────────────────────────────
 
+    // Hero-Kalender: Halloween (18.–31.10.2027) einmalig ergänzen, falls noch nicht vorhanden —
+    // überlagert dort die Herbstferien (später beginnender Zeitraum gewinnt), ab 1.11. wieder Herbst
+    try {
+      const [hs] = await conn.execute(`SELECT setting_value FROM settings WHERE setting_key = 'hero_seasons'`) as any;
+      if (hs[0]) {
+        const list = JSON.parse(hs[0].setting_value || '[]');
+        if (Array.isArray(list) && !list.some((x: any) => x?.img === 'halloween')) {
+          list.push({ id: 'halloween', name: 'Halloween', start: '2027-10-18', end: '2027-10-31', enabled: true, img: 'halloween' });
+          list.sort((a: any, b: any) => String(a.start).localeCompare(String(b.start)));
+          await conn.execute(`UPDATE settings SET setting_value = ? WHERE setting_key = 'hero_seasons'`, [JSON.stringify(list)]);
+        }
+      }
+    } catch (e: any) { console.error('hero_seasons halloween migration failed:', e.message); }
+
     // Seed default prices if not exists
     const [priceRows] = await conn.execute('SELECT COUNT(*) as count FROM prices') as any;
     if (priceRows[0].count === 0) {
