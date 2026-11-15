@@ -143,9 +143,16 @@ function HomeContent({ seasonImg }: { seasonImg: string | null }) {
                 <span className="hidden lg:inline">{seasonText.kicker}</span>
               </div>
             ) : seasonText.kickerLine === 'after' ? (
-              <div className={`${heroFont.className} flex items-center gap-3 lg:gap-5 mb-3 lg:mb-[clamp(8px,2.6vh,28px)] uppercase whitespace-nowrap ${seasonText.kickerWide ? 'font-normal tracking-[.2em] lg:tracking-[.22em] text-[12px] sm:text-sm lg:text-[clamp(12px,2.2vh,20px)]' : 'font-semibold tracking-[.06em] sm:tracking-[.1em] text-[11.5px] sm:text-sm lg:text-[clamp(13px,2.4vh,22px)]'}`} style={{ color: GOLD }}>
-                <span className="lg:hidden">{seasonText.kickerMobile || seasonText.kicker}</span>
-                <span className="hidden lg:inline">{seasonText.kicker}</span>
+              <div className={`${heroFont.className} flex items-center gap-3 lg:gap-5 mb-3 lg:mb-[clamp(8px,2.6vh,28px)] uppercase whitespace-nowrap ${seasonText.kickerWide ? 'font-normal tracking-[.1em] sm:tracking-[.18em] lg:tracking-[.22em] text-[11px] sm:text-sm lg:text-[clamp(12px,2.2vh,20px)]' : 'font-semibold tracking-[.06em] sm:tracking-[.1em] text-[11.5px] sm:text-sm lg:text-[clamp(13px,2.4vh,22px)]'}`} style={{ color: GOLD }}>
+                {seasonText.kickerBoldFirst ? (
+                  // erster Teil kräftig, Rest leicht (wie im Design)
+                  <span>{seasonText.kicker.split(' · ').map((part, i) => <span key={i} className={i === 0 ? 'font-semibold' : 'font-light'}>{i > 0 && ' · '}{part}</span>)}</span>
+                ) : (
+                  <>
+                    <span className="lg:hidden">{seasonText.kickerMobile || seasonText.kicker}</span>
+                    <span className="hidden lg:inline">{seasonText.kicker}</span>
+                  </>
+                )}
                 <span className="h-px flex-1 max-w-[270px] lg:flex-none lg:w-24" style={{ background: GOLD }} />
               </div>
             ) : (
@@ -164,7 +171,10 @@ function HomeContent({ seasonImg }: { seasonImg: string | null }) {
             </h1>
 
             <p className={`${heroFont.className} font-light text-white/95 ${seasonText ? 'text-[15px] leading-snug' : 'text-lg'} sm:text-xl lg:text-[clamp(16px,3vh,26px)] lg:leading-[1.4] ${seasonText ? 'lg:max-w-[clamp(480px,90vh,780px)]' : 'lg:max-w-[clamp(440px,72vh,620px)]'} mb-4 sm:mb-8 lg:mb-[clamp(10px,5.6vh,54px)]`}>
-              {seasonText ? seasonText.description : t('description')}
+              {seasonText
+                // \n im Text = Zeilenumbruch nur am Computer (wie im Design); am Handy fließt der Text
+                ? seasonText.description.split('\n').map((part, i) => <span key={i}>{i > 0 && <br className="hidden lg:block" />}{i > 0 && ' '}{part}</span>)
+                : t('description')}
             </p>
 
             {/* Feature-Leiste — auf dem Handy ausgeblendet, damit die Suche oben bleibt */}

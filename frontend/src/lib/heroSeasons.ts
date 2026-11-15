@@ -15,7 +15,7 @@ export interface HeroText { kicker: string; kickerMobile?: string; title: string
 // Ohne `text` bleibt die normale Hero-Überschrift stehen.
 // kickerLine: Goldlinie vor/um die Dachzeile (Standard), dahinter ('after', linksbündig) oder keine ('none', weit gesperrt)
 // badgesBelowPhoto: auf dem Handy stehen die drei Merkmale unter dem Foto statt darüber
-export const HERO_IMAGE_SETS: { img: string; label: string; kickerLine?: 'after' | 'none'; badgesBelowPhoto?: boolean; kickerWide?: boolean; snow?: boolean; glow?: boolean; text?: Record<string, HeroText> }[] = [
+export const HERO_IMAGE_SETS: { img: string; label: string; kickerLine?: 'after' | 'none'; badgesBelowPhoto?: boolean; kickerWide?: boolean; kickerBoldFirst?: boolean; snow?: boolean; glow?: boolean; text?: Record<string, HeroText> }[] = [
   {
     img: 'winter', label: 'Winterbeginn', snow: true,
     text: {
@@ -72,17 +72,59 @@ export const HERO_IMAGE_SETS: { img: string; label: string; kickerLine?: 'after'
       tr: { kicker: '2027’ye hoş geldiniz · Rahat yolculuk', kickerMobile: '2027’ye hoş geldiniz', title: 'Yeni yıla rahatça girin.', subtitle: 'Havalimanı transferiniz hazır.', description: 'Münih Havalimanı’na ve havalimanından – yılbaşında da. Güvenilir, konforlu ve sabit fiyatla.' },
     },
   },
-  { img: 'fasching', label: 'Fasching' },
-  { img: 'ostern', label: 'Ostern' },
-  { img: 'pfingsten', label: 'Pfingsten' },
-  { img: 'sommer', label: 'Sommer' },
-  { img: 'oktoberfest', label: 'Oktoberfest' },
-  { img: 'herbst', label: 'Herbst' },
+  {
+    img: 'fasching', label: 'Faschingsferien', kickerLine: 'after',
+    text: {
+      de: { kicker: 'Faschingsferien · Zeit für Urlaub', title: 'Raus aus dem Alltag.', subtitle: 'Entspannt in die Ferien.', description: 'Mit der Familie zum & vom Flughafen München.\nIhr Flughafentransfer zum Festpreis.' },
+      en: { kicker: 'Carnival holidays · Time for a break', title: 'Leave everyday life behind.', subtitle: 'Relaxed into the holidays.', description: 'With the family to & from Munich Airport.\nYour airport transfer at a fixed price.' },
+      tr: { kicker: 'Karnaval tatili · Tatil zamanı', title: 'Günlük hayattan uzaklaşın.', subtitle: 'Tatile rahatça başlayın.', description: 'Ailenizle Münih Havalimanı’na ve havalimanından.\nSabit fiyatlı havalimanı transferiniz.' },
+    },
+  },
+  {
+    img: 'ostern', label: 'Osterferien', kickerLine: 'after',
+    text: {
+      de: { kicker: 'Osterferien · Entspannt verreisen', title: 'Entspannt starten.', subtitle: 'Ostern genießen.', description: 'Ihr Flughafentransfer zum & vom Flughafen München.\nKomfortabel reisen – zum Festpreis.' },
+      en: { kicker: 'Easter holidays · Travel relaxed', title: 'Start relaxed.', subtitle: 'Enjoy Easter.', description: 'Your airport transfer to & from Munich Airport.\nTravel in comfort – at a fixed price.' },
+      tr: { kicker: 'Paskalya tatili · Rahat seyahat', title: 'Rahat başlayın.', subtitle: 'Paskalya’nın tadını çıkarın.', description: 'Münih Havalimanı’na ve havalimanından transferiniz.\nKonforlu yolculuk – sabit fiyatla.' },
+    },
+  },
+  {
+    img: 'pfingsten', label: 'Pfingstferien', kickerLine: 'after', badgesBelowPhoto: true,
+    text: {
+      de: { kicker: 'Pfingstferien · Zeit für eine Auszeit', title: 'Vorfreude auf Urlaub.', subtitle: 'Entspannt zum Flughafen.', description: 'Starten Sie entspannt in die Pfingstferien.\nIhr Transfer zum & vom Flughafen München – zum Festpreis.' },
+      en: { kicker: 'Whitsun holidays · Time for a break', title: 'Looking forward to your holiday.', subtitle: 'Relaxed to the airport.', description: 'Start your Whitsun holidays relaxed.\nYour transfer to & from Munich Airport – at a fixed price.' },
+      tr: { kicker: 'Pentekost tatili · Mola zamanı', title: 'Tatil heyecanı.', subtitle: 'Havalimanına rahatça.', description: 'Pentekost tatiline rahat başlayın.\nMünih Havalimanı’na ve havalimanından transferiniz – sabit fiyatla.' },
+    },
+  },
+  {
+    img: 'sommer', label: 'Sommerferien', kickerLine: 'after', kickerWide: true, kickerBoldFirst: true, badgesBelowPhoto: true,
+    text: {
+      de: { kicker: 'Sommerferien · Urlaub von Anfang an', title: 'Der Sommer ruft.', subtitle: 'Wir bringen Sie zum Flug.', description: 'Mit der Familie entspannt zum Flughafen München.\nIhr Flughafentransfer zum Festpreis – hin und zurück.' },
+      en: { kicker: 'Summer holidays · Holiday from the very start', title: 'Summer is calling.', subtitle: 'We take you to your flight.', description: 'Relaxed to Munich Airport with the whole family.\nYour airport transfer at a fixed price – there and back.' },
+      tr: { kicker: 'Yaz tatili · Tatil ilk andan başlar', title: 'Yaz çağırıyor.', subtitle: 'Sizi uçağınıza götürürüz.', description: 'Ailenizle rahatça Münih Havalimanı’na.\nSabit fiyatlı havalimanı transferiniz – gidiş ve dönüş.' },
+    },
+  },
+  {
+    img: 'oktoberfest', label: 'Oktoberfest', kickerLine: 'none', badgesBelowPhoto: true,
+    text: {
+      de: { kicker: 'Oktoberfest · Stilvoll ankommen', title: 'Vom Flieger', subtitle: 'auf die Wiesn.', description: 'Ihr Transfer vom Flughafen München zum Oktoberfest.\nKomfortabel, zuverlässig und zum Festpreis.' },
+      en: { kicker: 'Oktoberfest · Arrive in style', title: 'From the plane', subtitle: 'straight to the Wiesn.', description: 'Your transfer from Munich Airport to the Oktoberfest.\nComfortable, reliable and at a fixed price.' },
+      tr: { kicker: 'Oktoberfest · Şık bir varış', title: 'Uçaktan', subtitle: 'doğrudan Wiesn’e.', description: 'Münih Havalimanı’ndan Oktoberfest’e transferiniz.\nKonforlu, güvenilir ve sabit fiyatla.' },
+    },
+  },
+  {
+    img: 'herbst', label: 'Herbstferien', kickerLine: 'after',
+    text: {
+      de: { kicker: 'Herbstferien · Noch einmal raus', title: 'Goldene Tage.', subtitle: 'Entspannte Reisen.', description: 'Genießen Sie Ihre Auszeit – wir übernehmen den Transfer.\nZum & vom Flughafen München, komfortabel zum Festpreis.' },
+      en: { kicker: 'Autumn holidays · One more getaway', title: 'Golden days.', subtitle: 'Relaxed journeys.', description: 'Enjoy your time off – we take care of the transfer.\nTo & from Munich Airport, comfortable and at a fixed price.' },
+      tr: { kicker: 'Sonbahar tatili · Bir kez daha kaçamak', title: 'Altın günler.', subtitle: 'Rahat yolculuklar.', description: 'Tatilinizin tadını çıkarın – transferi biz üstleniriz.\nMünih Havalimanı’na ve havalimanından, konforlu ve sabit fiyatla.' },
+    },
+  },
 ];
 
-export function heroTextFor(img: string | null, locale: string): (HeroText & { kickerLine?: 'after' | 'none'; badgesBelowPhoto?: boolean; kickerWide?: boolean }) | null {
+export function heroTextFor(img: string | null, locale: string): (HeroText & { kickerLine?: 'after' | 'none'; badgesBelowPhoto?: boolean; kickerWide?: boolean; kickerBoldFirst?: boolean }) | null {
   const set = img ? HERO_IMAGE_SETS.find((s) => s.img === img) : null;
-  return set?.text ? { ...(set.text[locale] || set.text.de), kickerLine: set.kickerLine, badgesBelowPhoto: set.badgesBelowPhoto, kickerWide: set.kickerWide } : null;
+  return set?.text ? { ...(set.text[locale] || set.text.de), kickerLine: set.kickerLine, badgesBelowPhoto: set.badgesBelowPhoto, kickerWide: set.kickerWide, kickerBoldFirst: set.kickerBoldFirst } : null;
 }
 
 export function parseHeroSeasons(raw: string | undefined | null): HeroSeason[] {
