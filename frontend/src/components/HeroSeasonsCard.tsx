@@ -28,14 +28,24 @@ export default function HeroSeasonsCard() {
   const activeRow = enabled ? activeHeroSeason(rows, today) : null;
   const active = activeRow && heroSetReady(activeRow.img) ? activeRow : null;
 
-  // Überschneidungen: der später beginnende Zeitraum gewinnt — trotzdem anzeigen
-  const overlaps = useMemo(() => {
-    const ids = new Set<string>();
+  // Überschneidungen: der später beginnende Zeitraum gewinnt. Pro Zeile ein klarer Hinweis:
+  // gewinnende Zeile „Ersetzt Herbstferien“, überlagerte Zeile „18.–31.10. Halloween“.
+  const overlapNotes = useMemo(() => {
+    const notes = new Map<string, string[]>();
+    const add = (id: string, text: string) => notes.set(id, [...(notes.get(id) || []), text]);
+    const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
     const on = rows.filter((r) => r.enabled);
-    for (let i = 0; i < on.length; i++) for (let j = i + 1; j < on.length; j++) {
-      if (on[i].start <= on[j].end && on[j].start <= on[i].end) { ids.add(on[i].id); ids.add(on[j].id); }
+    for (const a of on) for (const b of on) {
+      if (a.id === b.id || !(a.start <= b.end && b.start <= a.end)) continue;
+      // b gewinnt über a, wenn b später beginnt (bei gleichem Start: der kürzere/spätere Eintrag)
+      if (b.start > a.start || (b.start === a.start && b.end < a.end)) {
+        const from = b.start > a.start ? b.start : a.start;
+        const to = b.end < a.end ? b.end : a.end;
+        add(b.id, `Ersetzt ${a.name}`);
+        add(a.id, `${dm(from)}–${dm(to)} ${b.name}`);
+      }
     }
-    return ids;
+    return notes;
   }, [rows]);
   const invalid = rows.some((r) => !r.start || !r.end || r.start > r.end || !r.name.trim());
 
@@ -132,7 +142,10 @@ export default function HeroSeasonsCard() {
               </label>
               {!heroSetReady(r.img) && <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-0.5" title="Für diesen Zeitraum gibt es noch kein fertiges Bild — es erscheint das Standard-Hero">Bild fehlt</span>}
               {isActive && <span className="text-[11px] font-bold text-green-700 bg-green-100 rounded-full px-2 py-0.5">Heute aktiv</span>}
-              {overlaps.has(r.id) && <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5" title="Überschneidet sich mit einem anderen Zeitraum — der später beginnende gewinnt (z. B. Halloween in den Herbstferien)">Überschneidung</span>}
+              {overlapNotes.get(r.id)?.map((note) => (
+                <span key={note} className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5"
+                  title="Zwei Zeiträume überschneiden sich — es gilt der später beginnende, danach wieder der andere">{note}</span>
+              ))}
               <div className="flex items-center gap-2 ml-auto">
                 {heroSetReady(r.img) && <a href={`/?heroPreview=${r.img}`} target="_blank" rel="noreferrer" className="text-xs text-primary-700 hover:underline inline-flex items-center gap-1">
                   Vorschau <ExternalLink size={12} />
