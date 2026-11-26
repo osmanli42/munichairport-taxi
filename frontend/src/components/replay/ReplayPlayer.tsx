@@ -426,7 +426,7 @@ export default function ReplayPlayer({
                     <i className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
                   </span>
                   <span className="flex-1 min-w-0 truncate text-[11px] text-slate-300 bg-slate-900/70 rounded-md px-2 py-0.5 text-center">
-                    flughafen-muenchen.taxi{currentPage?.label && currentPage.label !== '/' ? currentPage.label : ''}
+                    {row.site === 'fmt' ? 'flughafen-muenchen-taxi.de' : 'flughafen-muenchen.taxi'}{currentPage?.label && currentPage.label !== '/' ? currentPage.label : ''}
                   </span>
                 </div>
               )}

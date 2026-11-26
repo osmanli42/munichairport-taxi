@@ -20,6 +20,7 @@ import zlib from 'zlib';
 import { query, run } from '../db';
 import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { smartDecisions } from '../services/rabattAutopilot';
+import { FMT_PATH_PREFIX, PARTNER_HUMAN } from '../utils/partnerSite';
 
 const gzipAsync = promisify(zlib.gzip);
 
@@ -231,8 +232,12 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
     if (minDuration > 0) {
       where.push(`TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) >= ${minDuration}`);
     }
-    // Filter out bot sessions
-    where.push('(vs.is_bot = 0 OR vs.is_bot IS NULL)');
+    // Filter out bot sessions. is_bot 2 = human on a partner site (fmt, see utils/partnerSite.ts).
+    where.push(`(vs.is_bot IN (0, ${PARTNER_HUMAN}) OR vs.is_bot IS NULL)`);
+    // site=fmt → only flughafen-muenchen-taxi.de, site=main → only flughafen-muenchen.taxi
+    const siteFilter = String(req.query.site || '');
+    if (siteFilter === 'fmt') where.push(`vs.site = 'fmt'`);
+    else if (siteFilter === 'main') where.push(`vs.site IS NULL`);
 
     const device = String(req.query.device || '');
     if (['mobile', 'tablet', 'desktop'].includes(device)) {
@@ -326,7 +331,7 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         vs.ua_browser, vs.ua_os, vs.ua_device,
         vs.referrer, vs.utm_source, vs.utm_campaign, vs.gclid,
         vs.country, vs.city,
-        vs.landing_page, vs.first_seen, vs.last_seen, vs.pageview_count,
+        vs.landing_page, vs.first_seen, vs.last_seen, vs.pageview_count, vs.site,
         TIMESTAMPDIFF(SECOND, vs.first_seen, vs.last_seen) AS session_seconds,
         m.starred, m.watched_at, m.note,
         (SELECT GROUP_CONCAT(DISTINCT path SEPARATOR ' → ')
@@ -334,7 +339,8 @@ router.get('/admin/recordings', authenticateAdmin, async (req: AuthRequest, res:
         -- Huni aşaması: fiyat sayfası / rezervasyon formu görüldü mü
         (SELECT MAX(pv.path LIKE '%/ergebnisse%') FROM visitor_pageviews pv
            WHERE pv.session_id = r.session_id) AS saw_prices,
-        (SELECT MAX(pv.path LIKE '%/buchen%') FROM visitor_pageviews pv
+        -- fmt: the booking form (with live price) is anfrage.html
+        (SELECT MAX(pv.path LIKE '%/buchen%' OR pv.path LIKE '${FMT_PATH_PREFIX}/anfrage%') FROM visitor_pageviews pv
            WHERE pv.session_id = r.session_id) AS opened_form,
         ${signalExprs},
         ${bookingExprs}
@@ -761,6 +767,7 @@ router.get('/admin/recordings/:id', authenticateAdmin, async (req: AuthRequest, 
        FROM visitor_sessions s WHERE s.session_id = ? LIMIT 1`,
       [sessionId]
     );
+    if (meta && Number(meta.is_bot) === PARTNER_HUMAN) meta.is_bot = 0; // partner-site human
 
     const pageviews = await query<any>(
       `SELECT path, title, viewed_at, UNIX_TIMESTAMP(viewed_at) * 1000 AS ts, load_time_ms

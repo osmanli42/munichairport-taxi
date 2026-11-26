@@ -5,6 +5,7 @@ import { authenticateAdmin, AuthRequest } from '../middleware/auth';
 import { geoFromIp, getClientIp, isPrivateIp } from '../utils/ipGeo';
 import { berlinMidnightUtcSql } from '../utils/berlinTime';
 import { variantString } from '../utils/experiments';
+import { partnerSite, partnerPath, PARTNER_HUMAN } from '../utils/partnerSite';
 import { scoreLiveSessions, getConversionModel, trainConversionModel, modelSummary } from '../services/conversionModel';
 import { smartDecisions } from '../services/rabattAutopilot';
 
@@ -124,6 +125,8 @@ async function ensureTables(): Promise<void> {
   for (const col of ['ads_keyword VARCHAR(255)', 'ads_matchtype VARCHAR(10)', 'ads_adgroup VARCHAR(40)', 'ads_network VARCHAR(10)', 'ads_creative VARCHAR(40)']) {
     try { await run(`ALTER TABLE visitor_sessions ADD COLUMN ${col} DEFAULT NULL`); } catch {}
   }
+  // Partner site of the session (NULL = flughafen-muenchen.taxi itself) — see utils/partnerSite.ts
+  try { await run(`ALTER TABLE visitor_sessions ADD COLUMN site VARCHAR(10) DEFAULT NULL`); } catch {}
   tablesReady = true;
 }
 
@@ -194,11 +197,13 @@ export function adsParams(path: string) {
 router.post('/track/pageview', async (req: Request, res: Response) => {
   try {
     await ensureTables();
+    const site = partnerSite(req);
     const {
-      session_id, visitor_id, path, title,
+      session_id, visitor_id, title,
       referrer, utm_source, utm_medium, utm_campaign, gclid,
       screen_w, screen_h, lang, load_time_ms,
     } = req.body || {};
+    const path = partnerPath(site, req.body?.path);
 
     if (!session_id || !visitor_id || !path) {
       res.status(400).json({ error: 'missing fields' });
@@ -206,7 +211,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
     }
 
     const ua = (req.headers['user-agent'] as string) || '';
-    const isBot = detectBot(ua) ? 1 : 0;
+    const isBot = detectBot(ua) ? 1 : site ? PARTNER_HUMAN : 0;
     const { browser, os, device } = parseUa(ua);
     const ip = getClientIp(req);
     const ipHash = hashIp(ip);
@@ -240,8 +245,8 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
           (session_id, visitor_id, ip_hash, country, city, lat, lng, ua_browser, ua_os, ua_device,
            screen_w, screen_h, lang, is_bot,
            referrer, utm_source, utm_medium, utm_campaign, gclid, landing_page, pageview_count, exp_variants,
-           ads_keyword, ads_matchtype, ads_adgroup, ads_network, ads_creative)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+           ads_keyword, ads_matchtype, ads_adgroup, ads_network, ads_creative, site)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
         [
           trunc(session_id, 64), trunc(visitor_id, 64), ipHash,
           geo.country, geo.city, geo.lat ?? null, geo.lng ?? null,
@@ -254,6 +259,7 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
           trunc(utm_campaign, 255), trunc(gclid, 255), trunc(path, 500),
           expVariants,
           ads.keyword, ads.matchtype, ads.adgroup, ads.network, ads.creative,
+          site,
         ]
       );
     } else {
@@ -281,7 +287,8 @@ router.post('/track/pageview', async (req: Request, res: Response) => {
 router.post('/track/heartbeat', async (req: Request, res: Response) => {
   try {
     await ensureTables();
-    const { session_id, path } = req.body || {};
+    const { session_id } = req.body || {};
+    const path = partnerPath(partnerSite(req), req.body?.path);
     if (!session_id) {
       res.status(400).json({ error: 'missing session_id' });
       return;
@@ -328,7 +335,8 @@ const ALLOWED_EVENT_TYPES = new Set([
 router.post('/track/event', async (req: Request, res: Response) => {
   try {
     await ensureTables();
-    const { session_id, path, events } = req.body || {};
+    const { session_id, events } = req.body || {};
+    const path = partnerPath(partnerSite(req), req.body?.path);
     if (!session_id || !path || !Array.isArray(events) || events.length === 0) {
       res.status(400).json({ error: 'missing fields' });
       return;
@@ -565,14 +573,16 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
   try {
     await ensureTables();
     const includeBots = req.query.bots === '1';
-    const botFilter = includeBots ? '' : 'AND s.is_bot = 0';
+    // is_bot 2 = human on a partner site (fmt) — shown in Live, reported to the UI as 0 + site
+    const botFilter = includeBots ? '' : `AND s.is_bot IN (0, ${PARTNER_HUMAN})`;
 
     const sessions = await query<any>(
       `SELECT
          s.session_id, s.visitor_id, s.ua_browser, s.ua_os, s.ua_device,
          s.screen_w, s.screen_h, s.lang,
          s.referrer, s.utm_source, s.utm_medium, s.utm_campaign, s.gclid,
-         s.landing_page, s.first_seen, s.last_seen, s.pageview_count, s.is_bot,
+         s.landing_page, s.first_seen, s.last_seen, s.pageview_count,
+         IF(s.is_bot = ${PARTNER_HUMAN}, 0, s.is_bot) AS is_bot, s.site,
          s.country, s.city, s.lat, s.lng,
          TIMESTAMPDIFF(SECOND, s.first_seen, NOW()) AS session_seconds,
          TIMESTAMPDIFF(SECOND, s.last_seen, NOW()) AS idle_seconds,
@@ -645,14 +655,15 @@ router.get('/admin/live-visitors', authenticateAdmin, async (req: AuthRequest, r
     // Kaufwahrscheinlichkeit je Besucher (services/conversionModel.ts). Fehler hier dürfen die
     // Live-Liste nie blockieren — dann eben ohne Prognose.
     try {
-      const preds = await scoreLiveSessions(sessions.filter((x: any) => !x.is_bot).map((x: any) => x.session_id));
+      // The model is trained on flughafen-muenchen.taxi visits only — no score for partner sites.
+      const preds = await scoreLiveSessions(sessions.filter((x: any) => !x.is_bot && !x.site).map((x: any) => x.session_id));
       for (const x of sessions as any[]) x.prediction = preds.get(x.session_id) || null;
     } catch (e: any) {
       console.error('live prediction error:', e.message);
     }
     // Smart Rabatt: letzte Entscheidung je Sitzung
     try {
-      const smart = await smartDecisions(sessions.map((x: any) => x.session_id));
+      const smart = await smartDecisions(sessions.filter((x: any) => !x.site).map((x: any) => x.session_id));
       for (const x of sessions as any[]) x.smart = smart.get(x.session_id) || null;
     } catch (e: any) {
       console.error('live smart decision error:', e.message);
@@ -798,9 +809,9 @@ router.get('/admin/activity-events', authenticateAdmin, async (req: AuthRequest,
     const today = berlinMidnightUtcSql(0);
 
     const newVisitors = await query<any>(
-      `SELECT session_id, first_seen AS ts, city, country, referrer, utm_source, gclid
+      `SELECT session_id, first_seen AS ts, city, country, referrer, utm_source, gclid, site
        FROM visitor_sessions
-       WHERE is_bot = 0 AND first_seen >= ?`,
+       WHERE is_bot IN (0, ${PARTNER_HUMAN}) AND first_seen >= ?`,
       [today]
     );
 
@@ -840,10 +851,10 @@ router.get('/admin/activity-events', authenticateAdmin, async (req: AuthRequest,
     // dropped out of the live 60s window, so a currently-active session (however
     // long it's been open) never shows here yet.
     const visitorLeft = await query<any>(
-      `SELECT session_id, last_seen AS ts, city, country, referrer, utm_source, gclid,
+      `SELECT session_id, last_seen AS ts, city, country, referrer, utm_source, gclid, site,
          TIMESTAMPDIFF(SECOND, first_seen, last_seen) AS session_seconds
        FROM visitor_sessions
-       WHERE is_bot = 0 AND last_seen >= ? AND TIMESTAMPDIFF(SECOND, last_seen, NOW()) > 60`,
+       WHERE is_bot IN (0, ${PARTNER_HUMAN}) AND last_seen >= ? AND TIMESTAMPDIFF(SECOND, last_seen, NOW()) > 60`,
       [today]
     );
 
@@ -1048,6 +1059,7 @@ router.get('/admin/session/:id', authenticateAdmin, async (req: AuthRequest, res
       res.status(404).json({ error: 'not found' });
       return;
     }
+    if (Number(session.is_bot) === PARTNER_HUMAN) session.is_bot = 0; // partner-site human, see utils/partnerSite.ts
     const pageviews = await query<any>(
       `SELECT path, title, viewed_at, duration_sec FROM visitor_pageviews
        WHERE session_id = ? ORDER BY id ASC`,

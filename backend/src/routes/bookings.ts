@@ -656,7 +656,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     );
     const expSettings: Record<string, string> = {};
     for (const row of expRows) expSettings[row.setting_key] = row.setting_value;
-    const experimentVariant = variantString(visitor_id, expSettings) || null;
+    // A visit on the partner site flughafen-muenchen-taxi.de (utils/partnerSite.ts) never saw
+    // this site's checkout, so it must not be counted in an A/B variant.
+    const [partnerVisit] = visitor_id || session_id
+      ? await query<{ site: string }>(
+          `SELECT site FROM visitor_sessions WHERE site IS NOT NULL AND (session_id = ? OR visitor_id = ?) LIMIT 1`,
+          [session_id || '', visitor_id || ''])
+      : [];
+    const experimentVariant = partnerVisit ? null : (variantString(visitor_id, expSettings) || null);
 
     const result = await run(`
       INSERT INTO bookings (

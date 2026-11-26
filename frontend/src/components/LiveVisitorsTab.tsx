@@ -53,6 +53,8 @@ interface LiveSession {
   current_path: string;
   current_title: string | null;
   is_bot: number;
+  /** Partner site of the visit ('fmt' = flughafen-muenchen-taxi.de), null = this site */
+  site?: string | null;
   country: string | null;
   city: string | null;
   prev_visits: number;
@@ -119,6 +121,7 @@ interface RawActivityRow {
   referrer?: string | null;
   utm_source?: string | null;
   gclid?: string | null;
+  site?: string | null;
   session_seconds?: number;
   milestone?: number;
   revenue?: number;
@@ -209,6 +212,16 @@ function sourceLabel(s: { gclid?: string | null; utm_source?: string | null; ref
   return { label: '➡️ Direct', color: 'bg-green-100 text-green-800' };
 }
 
+// Visitors of flughafen-muenchen-taxi.de are tracked into the same Live list (backend
+// utils/partnerSite.ts); this badge keeps the two sites apart.
+function SiteBadge({ site }: { site?: string | null }) {
+  if (site !== 'fmt') return null;
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-slate-800 text-amber-300"
+      title="Ziyaretçi flughafen-muenchen-taxi.de sitesinde">fmt · flughafen-muenchen-taxi.de</span>
+  );
+}
+
 function countryFlag(code: string): string {
   if (!code || code.length !== 2) return '🌍';
   const upper = code.toUpperCase();
@@ -232,7 +245,7 @@ function getFunnelStage(s: LiveSession): { label: string; color: string; step: n
   if ((s.session_bookings_count ?? 0) > 0) return { label: '✅ Rezervasyon Yaptı', color: 'bg-green-500 text-white', step: 4 };
   if (s.form_submit_clicks > 0) return { label: '📤 Gönderim Denedi', color: 'bg-orange-600 text-white', step: 3 };
   if (s.form_fields_touched > 0) return { label: '📝 Form Dolduruyor', color: 'bg-orange-500 text-white', step: 3 };
-  if (s.booking_clicks > 0 || (s.current_path && s.current_path.includes('/buchen'))) return { label: '🛒 Buchen\'de', color: 'bg-orange-400 text-white', step: 3 };
+  if (s.booking_clicks > 0 || (s.current_path && (s.current_path.includes('/buchen') || (s.site === 'fmt' && s.current_path.includes('/anfrage'))))) return { label: '🛒 Buchen\'de', color: 'bg-orange-400 text-white', step: 3 };
   if (s.price_clicks > 0 || (s.current_path && s.current_path.includes('/ergebnisse'))) return { label: '💰 Fiyata Bakıyor', color: 'bg-yellow-500 text-white', step: 2 };
   return { label: '👀 Geziniyor', color: 'bg-blue-400 text-white', step: 1 };
 }
@@ -436,7 +449,8 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
       const d = await r.json();
       const rows: RawActivityRow[] = d.events || [];
       const mapped: ActivityEvent[] = rows.map((row, i) => {
-        const loc = row.city ? `${countryFlag(row.country || '')} ${row.city}` : '';
+        const loc = [row.site === 'fmt' ? 'fmt' : '', row.city ? `${countryFlag(row.country || '')} ${row.city}` : '']
+          .filter(Boolean).join(' · ');
         const src = sourceLabel(row);
         const time = new Date(row.ts.includes('T') ? row.ts : row.ts.replace(' ', 'T'));
         const id = `${row.type}-${row.ts}-${i}`;
@@ -836,6 +850,7 @@ export default function LiveVisitorsTab({ token }: { token: string }) {
                         <span className={`text-xs font-medium ${status.text}`}>{status.label}</span>
                       </div>
                       <div className="w-px h-3 bg-gray-200" />
+                      <SiteBadge site={s.site} />
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${src.color}`}>{src.label}</span>
                       <span className="flex items-center gap-1 text-xs text-gray-500">
                         {deviceIcon(s.ua_device)} {s.ua_browser} · {s.ua_os}

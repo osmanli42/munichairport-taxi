@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { fmtOrigins } from './utils/partnerSite';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initializeDatabase, testConnection } from './db';
@@ -69,10 +70,15 @@ app.use(cors({
     'https://flughafen-muenchen.taxi',
     'https://www.flughafen-muenchen.taxi',
     'https://munichairport-taxi.vercel.app',
+    // flughafen-muenchen-taxi.de sends its Live/Replay tracking here (utils/partnerSite.ts)
+    ...fmtOrigins(),
   ],
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
+// flughafen-muenchen-taxi.de posts its tracking as text/plain JSON: a CORS "simple" request
+// needs no preflight, so sendBeacon / keepalive uploads on page close still arrive.
+app.use('/api/track', express.json({ type: 'text/plain', limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Health check

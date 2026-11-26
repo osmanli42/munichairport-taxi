@@ -20,6 +20,8 @@ export interface RecordingRow {
   utm_source: string | null;
   utm_campaign: string | null;
   gclid: string | null;
+  /** Partner site ('fmt' = flughafen-muenchen-taxi.de), null = flughafen-muenchen.taxi */
+  site?: string | null;
   country: string | null;
   city: string | null;
   landing_page: string | null;
@@ -249,6 +251,9 @@ export function shownPrice(v: string | null): number | null {
 }
 
 export function prettyPath(href: string): string {
+  // flughafen-muenchen-taxi.de sessions store host-prefixed paths ("flughafen-muenchen-taxi.de/anfrage.html")
+  const fmt = /^flughafen-muenchen-taxi\.de(\/[^?#]*)?/.exec(href);
+  if (fmt) return `flughafen-muenchen-taxi.de${decodeURIComponent(fmt[1] || '/')}`;
   try {
     const u = new URL(href, 'https://x.invalid');
     return decodeURIComponent(u.pathname) || '/';

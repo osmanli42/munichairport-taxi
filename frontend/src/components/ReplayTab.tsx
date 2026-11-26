@@ -45,6 +45,7 @@ export default function ReplayTab({ token }: { token: string }) {
   const [minDuration, setMinDuration] = useState(10);
   const [device, setDevice] = useState('');
   const [source, setSource] = useState('');
+  const [site, setSite] = useState('');
   const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
   const [drill, setDrill] = useState<Drill | null>(null);
@@ -127,6 +128,7 @@ export default function ReplayTab({ token }: { token: string }) {
     if (q) p.set('q', q);
     if (device) p.set('device', device);
     if (source) p.set('source', source);
+    if (site) p.set('site', site);
     if (segment === 'form' || segment === 'prices' || segment === 'booked' || segment === 'called') p.set('stage', segment);
     if (segment === 'issues') p.set('issues', '1');
     if (segment === 'starred') p.set('starred', '1');
@@ -134,7 +136,7 @@ export default function ReplayTab({ token }: { token: string }) {
     if (drill?.kind === 'error_target') p.set('error_target', drill.value);
     if (drill?.kind === 'last_field') p.set('last_field', drill.value);
     return p;
-  }, [sort, minDuration, period, days, q, device, source, segment, drill]);
+  }, [sort, minDuration, period, days, q, device, source, site, segment, drill]);
 
   const loadList = useCallback(async () => {
     setListLoading(true);
@@ -375,6 +377,7 @@ export default function ReplayTab({ token }: { token: string }) {
               </div>
               <Select value={device} onChange={setDevice} options={[['', 'Tüm cihazlar'], ['mobile', 'Mobil'], ['desktop', 'Masaüstü'], ['tablet', 'Tablet']]} />
               <Select value={source} onChange={setSource} options={[['', 'Tüm kaynaklar'], ['ads', 'Google Ads'], ['organic', 'Organik / direkt']]} />
+              <Select value={site} onChange={setSite} options={[['', 'İki site'], ['main', 'flughafen-muenchen.taxi'], ['fmt', 'flughafen-muenchen-taxi.de']]} />
               <Select value={String(minDuration)} onChange={(v) => setMinDuration(Number(v))}
                 options={[['0', 'Her süre'], ['10', '10 sn+'], ['30', '30 sn+'], ['60', '1 dk+'], ['180', '3 dk+']]} />
               <Select value={sort} onChange={(v) => setSort(v as Sort)}
@@ -581,6 +584,9 @@ function SessionRow({ row: r, selected, onSelect, onDelete }: { row: RecordingRo
 
       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
         <Journey r={r} />
+        {r.site === 'fmt' && (
+          <span className="px-1.5 py-px rounded font-semibold bg-slate-800 text-amber-300" title="flughafen-muenchen-taxi.de">fmt</span>
+        )}
         <span className="flex items-center gap-1">{devIcon(r.ua_device, 11)} {r.ua_browser || '—'}</span>
         {(r.city || r.country) && <span>{countryFlag(r.country)} {r.city || r.country}</span>}
         <span className={src.ads ? 'text-amber-700 font-medium' : ''}>{src.text}</span>
